@@ -1,0 +1,193 @@
+{
+  "data": [
+    {
+      "ID": "2S8Cm9dHORWWKpoCkxfRkZa0e5l",
+      "RouteID": "2B9HOBW9EOvJQDTQqxc3UKEhhur",
+      "AvailabilityID": "2PPrELk9WcfJaNREWEPXypvhXAD",
+      "AvailabilitySegments": [
+        {
+          "ID": "2S8CmA8bXa9KHaxZfUtihUzRTPd",
+          "RouteID": "2B9HOBW9EOvJQDTQqxc3UKEhhur",
+          "AvailabilityID": "2PPrELk9WcfJaNREWEPXypvhXAD",
+          "AvailabilityTripID": "2S8Cm9dHORWWKpoCkxfRkZa0e5l",
+          "FlightNumber": "CM326",
+          "Distance": 966,
+          "FareClass": "I",
+          "AircraftName": "739",
+          "AircraftCode": "739",
+          "OriginAirport": "CUN",
+          "DestinationAirport": "PTY",
+          "DepartsAt": "2024-05-01T13:52:00Z",
+          "ArrivesAt": "2024-05-01T16:31:00Z",
+          "CreatedAt": "2023-07-05T01:02:57.782804Z",
+          "UpdatedAt": "2023-07-08T07:12:25.266914Z",
+          "Source": "lifemiles",
+          "Order": 0
+        },
+        {
+          "ID": "2S8CmEryWzLYnioVN6fJ2Ue5Lg8",
+          "RouteID": "2B9HOBW9EOvJQDTQqxc3UKEhhur",
+          "AvailabilityID": "2PPrELk9WcfJaNREWEPXypvhXAD",
+          "AvailabilityTripID": "2S8Cm9dHORWWKpoCkxfRkZa0e5l",
+          "FlightNumber": "TK800",
+          "Distance": 6739,
+          "FareClass": "I",
+          "AircraftName": "77W",
+          "AircraftCode": "77W",
+          "OriginAirport": "PTY",
+          "DestinationAirport": "IST",
+          "DepartsAt": "2024-05-01T20:05:00Z",
+          "ArrivesAt": "2024-05-02T16:45:00Z",
+          "CreatedAt": "2023-07-05T01:02:57.782804Z",
+          "UpdatedAt": "2023-07-08T07:12:25.266914Z",
+          "Source": "lifemiles",
+          "Order": 1
+        }
+      ],
+      "TotalDuration": 1133,
+      "Stops": 1,
+      "Carriers": "CM, TK",
+      "RemainingSeats": 9,
+      "MileageCost": 70000,
+      "TotalTaxes": 1290,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
+      "AllianceCost": 87944,
+      "FlightNumbers": "CM326, TK800",
+      "DepartsAt": "2024-05-01T13:52:00Z",
+      "Cabin": "business",
+      "ArrivesAt": "2024-05-02T16:45:00Z",
+      "CreatedAt": "2023-07-05T01:02:57.782804Z",
+      "UpdatedAt": "2023-07-08T07:12:25.266914Z",
+      "Source": "lifemiles"
+    },
+    {
+      "ID": "2PpmopJhuy4EHjBDqz0anF23NZG",
+      "RouteID": "2B9HOBW9EOvJQDTQqxc3UKEhhur",
+      "AvailabilityID": "2PPrELk9WcfJaNREWEPXypvhXAD",
+      "AvailabilitySegments": [
+        {
+          "ID": "2PpmoqoW1gd8hxW4bbdQFE9n8jj",
+          "RouteID": "2B9HOBW9EOvJQDTQqxc3UKEhhur",
+          "AvailabilityID": "2PPrELk9WcfJaNREWEPXypvhXAD",
+          "AvailabilityTripID": "2PpmopJhuy4EHjBDqz0anF23NZG",
+          "FlightNumber": "TK184",
+          "Distance": 6503,
+          "FareClass": "I",
+          "AircraftName": "77W",
+          "AircraftCode": "77W",
+          "OriginAirport": "CUN",
+          "DestinationAirport": "IST",
+          "DepartsAt": "2024-05-01T14:00:00Z",
+          "ArrivesAt": "2024-05-02T10:10:00Z",
+          "CreatedAt": "2023-05-15T14:56:14.168038Z",
+          "UpdatedAt": "2023-07-08T07:12:25.266914Z",
+          "Source": "lifemiles",
+          "Order": 0
+        }
+      ],
+      "TotalDuration": 730,
+      "Stops": 0,
+      "Carriers": "TK",
+      "RemainingSeats": 4,
+      "MileageCost": 70000,
+      "TotalTaxes": 4174,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
+      "AllianceCost": 77239,
+      "FlightNumbers": "TK184",
+      "DepartsAt": "2024-05-01T14:00:00Z",
+      "Cabin": "business",
+      "ArrivesAt": "2024-05-02T10:10:00Z",
+      "CreatedAt": "2023-05-15T14:56:14.168038Z",
+      "UpdatedAt": "2023-07-08T07:12:25.266914Z",
+      "Source": "lifemiles"
+    },
+    {
+      "ID": "2Rz56y1pd82svLce0X9LEOr3btm",
+      "RouteID": "2B9HOBW9EOvJQDTQqxc3UKEhhur",
+      "AvailabilityID": "2PPrELk9WcfJaNREWEPXypvhXAD",
+      "AvailabilitySegments": [
+        {
+          "ID": "2Rz5716GezvEXsK8lgXC5r1ikLb",
+          "RouteID": "2B9HOBW9EOvJQDTQqxc3UKEhhur",
+          "AvailabilityID": "2PPrELk9WcfJaNREWEPXypvhXAD",
+          "AvailabilityTripID": "2Rz56y1pd82svLce0X9LEOr3btm",
+          "FlightNumber": "CM262",
+          "Distance": 966,
+          "FareClass": "I",
+          "AircraftName": "738",
+          "AircraftCode": "738",
+          "OriginAirport": "CUN",
+          "DestinationAirport": "PTY",
+          "DepartsAt": "2024-05-01T11:52:00Z",
+          "ArrivesAt": "2024-05-01T14:35:00Z",
+          "CreatedAt": "2023-07-01T19:31:37.227793Z",
+          "UpdatedAt": "2023-07-08T07:12:25.266914Z",
+          "Source": "lifemiles",
+          "Order": 0
+        },
+        {
+          "ID": "2Rz56wgdGerLguXFBcJ1Pvz1lNv",
+          "RouteID": "2B9HOBW9EOvJQDTQqxc3UKEhhur",
+          "AvailabilityID": "2PPrELk9WcfJaNREWEPXypvhXAD",
+          "AvailabilityTripID": "2Rz56y1pd82svLce0X9LEOr3btm",
+          "FlightNumber": "TK800",
+          "Distance": 6739,
+          "FareClass": "I",
+          "AircraftName": "77W",
+          "AircraftCode": "77W",
+          "OriginAirport": "PTY",
+          "DestinationAirport": "IST",
+          "DepartsAt": "2024-05-01T20:05:00Z",
+          "ArrivesAt": "2024-05-02T16:45:00Z",
+          "CreatedAt": "2023-07-01T19:31:37.227793Z",
+          "UpdatedAt": "2023-07-08T07:12:25.266914Z",
+          "Source": "lifemiles",
+          "Order": 1
+        }
+      ],
+      "TotalDuration": 1253,
+      "Stops": 1,
+      "Carriers": "CM, TK",
+      "RemainingSeats": 9,
+      "MileageCost": 70000,
+      "TotalTaxes": 1290,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
+      "AllianceCost": 87944,
+      "FlightNumbers": "CM262, TK800",
+      "DepartsAt": "2024-05-01T11:52:00Z",
+      "Cabin": "business",
+      "ArrivesAt": "2024-05-02T16:45:00Z",
+      "CreatedAt": "2023-07-01T19:31:37.227793Z",
+      "UpdatedAt": "2023-07-08T07:12:25.266914Z",
+      "Source": "lifemiles"
+    }
+  ],
+  "origin_coordinates": {
+    "Lat": 21.036500930800003,
+    "Lon": -86.8770980835
+  },
+  "destination_coordinates": {
+    "Lat": 40.9768981934,
+    "Lon": 28.814599990799998
+  },
+  "booking_links": [
+    {
+      "label": "Book via Avianca LifeMiles",
+      "link": "https://www.lifemiles.com/fly/find",
+      "primary": true
+    },
+    {
+      "label": "Book via Air Canada Aeroplan",
+      "link": "https://www.aircanada.com/aeroplan/redeem/availability/outbound?org0=CUN&dest0=IST&departureDate0=2024-05-01&lang=en-CA&tripType=O&ADT=1&YTH=0&CHD=0&INF=0&INS=0&marketCode=INT",
+      "primary": false
+    },
+    {
+      "label": "Book via United MileagePlus",
+      "link": "https://www.united.com/en/us/fsr/choose-flights?f=CUN&t=IST&d=2024-05-01&sc=7&st=bestmatches&cbm=-1&cbm2=-1&ft=0&cp=0&tt=1&at=1&rm=1&act=0&px=1&taxng=1&clm=7&tqp=A",
+      "primary": false
+    }
+  ]
+}

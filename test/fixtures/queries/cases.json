@@ -1,0 +1,463 @@
+{
+  "_comment": "Table-driven parser fixtures. Dates may be written as 'today' or 'today+N'. `llm` = the fake client's fixed QueryObjectLLM answer (used_llm must then be true). `error` = substring of the expected ParseError message when no llm is given. `missing` is checked against parseDeterministic.",
+  "cases": [
+    {
+      "name": "canonical zh example",
+      "text": "香港、上海、东京、首尔到西雅图，未来一个月最便宜的头等舱",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG", "PVG", "SHA", "NRT", "HND", "ICN", "GMP"],
+        "destinations": ["SEA"],
+        "cabins": ["F"],
+        "date_from": "today",
+        "date_to": "today+30",
+        "sort_by": "miles_asc",
+        "language": "zh",
+        "used_llm": false,
+        "provenance": { "origins": "deterministic", "date_from": "deterministic", "cabins": "deterministic", "sort_by": "deterministic" }
+      }
+    },
+    {
+      "name": "english equivalent of the canonical example",
+      "text": "Hong Kong, Shanghai, Tokyo and Seoul to Seattle, cheapest first class in the next month",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG", "PVG", "SHA", "NRT", "HND", "ICN", "GMP"],
+        "destinations": ["SEA"],
+        "cabins": ["F"],
+        "date_from": "today",
+        "date_to": "today+30",
+        "sort_by": "miles_asc",
+        "language": "en",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "english raw IATA list with slash-separated destinations",
+      "text": "from HKG, SHA to SEA / LAX next month business",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG", "PVG", "SHA"],
+        "destinations": ["SEA", "LAX"],
+        "cabins": ["J"],
+        "date_from": "today",
+        "date_to": "today+30",
+        "language": "en",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "mixed language",
+      "text": "from HKG to 西雅图 next month business",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "cabins": ["J"],
+        "date_from": "today",
+        "date_to": "today+30",
+        "language": "zh",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "zh explicit date range + both cabins + direct + max miles",
+      "text": "香港飞西雅图 10月1日到10月15日 商务或头等 直飞 8万以内",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-15",
+        "cabins": ["J", "F"],
+        "direct_only": true,
+        "max_miles": 80000,
+        "used_llm": false
+      }
+    },
+    {
+      "name": "en explicit range with month names, premium economy, lowest fees",
+      "text": "Seoul to Tokyo Oct 1 - Oct 15, premium economy, lowest fees",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["ICN", "GMP"],
+        "destinations": ["NRT", "HND"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-15",
+        "cabins": ["W"],
+        "sort_by": "fees_asc",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "traditional Chinese with bare month",
+      "text": "首爾到東京 十月 頭等",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["ICN", "GMP"],
+        "destinations": ["NRT", "HND"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-31",
+        "cabins": ["F"],
+        "language": "zh",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "simplified 首尔 and 上海 expansions",
+      "text": "上海到首尔 下个月 经济",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["PVG", "SHA"],
+        "destinations": ["ICN", "GMP"],
+        "cabins": ["Y"],
+        "date_from": "today",
+        "date_to": "today+30",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "ISO range and standalone F",
+      "text": "New York to London 2026-10-01 to 2026-10-15 F",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["JFK", "EWR", "LGA"],
+        "destinations": ["LHR", "LGW", "LCY", "STN"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-15",
+        "cabins": ["F"],
+        "used_llm": false
+      }
+    },
+    {
+      "name": "dash between codes, slash dates, most seats",
+      "text": "SFO-NRT 10/1-10/15 J most seats",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["SFO"],
+        "destinations": ["NRT"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-15",
+        "cabins": ["J"],
+        "sort_by": "seats_desc",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "program name containing a city name does not add a place",
+      "text": "北京到新加坡 新加坡航空 未来三个月",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["PEK", "PKX"],
+        "destinations": ["SIN"],
+        "programs": ["singapore"],
+        "date_from": "today",
+        "date_to": "today+90",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "92-day cap truncation with warning; two programs",
+      "text": "HKG to SEA next 6 months, AA or Alaska",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "programs": ["american", "alaska"],
+        "date_from": "today",
+        "date_to": "today+91",
+        "warnings_contains": "truncated",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "holiday word needs the LLM",
+      "text": "国庆 香港到西雅图 商务",
+      "today": "2026-09-06",
+      "missing": ["date_from", "date_to"],
+      "llm": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-07",
+        "cabins": ["J"],
+        "programs": null,
+        "direct_only": false,
+        "max_miles": null,
+        "sort_by": "miles_asc"
+      },
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-07",
+        "cabins": ["J"],
+        "used_llm": true,
+        "provenance": { "date_from": "llm", "origins": "deterministic", "cabins": "deterministic" }
+      }
+    },
+    {
+      "name": "holiday word without an LLM client is a ParseError",
+      "text": "Thanksgiving HKG to SEA",
+      "today": "2026-09-06",
+      "missing": ["date_from", "date_to"],
+      "expect": { "error": "start date" }
+    },
+    {
+      "name": "LLM overshooting the cap is truncated, not rejected",
+      "text": "春节 上海到东京",
+      "today": "2026-09-06",
+      "missing": ["date_from", "date_to"],
+      "llm": {
+        "origins": ["PVG", "SHA"],
+        "destinations": ["NRT", "HND"],
+        "date_from": "2027-01-01",
+        "date_to": "2027-06-30",
+        "cabins": ["J", "F"],
+        "programs": null,
+        "direct_only": false,
+        "max_miles": null,
+        "sort_by": "miles_asc"
+      },
+      "expect": { "date_from": "2027-01-01", "date_to": "2027-04-02", "warnings_contains": "truncated", "used_llm": true }
+    },
+    {
+      "name": "single zh date and earliest sort",
+      "text": "上海到东京 10月15日 earliest",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["PVG", "SHA"],
+        "destinations": ["NRT", "HND"],
+        "date_from": "2026-10-15",
+        "date_to": "2026-10-15",
+        "sort_by": "date_asc",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "N days window and economy",
+      "text": "台北到洛杉矶 未来30天 经济舱",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["TPE"],
+        "destinations": ["LAX"],
+        "date_from": "today",
+        "date_to": "today+30",
+        "cabins": ["Y"],
+        "used_llm": false
+      }
+    },
+    {
+      "name": "to before from",
+      "text": "to SEA from HKG next 14 days",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "date_from": "today",
+        "date_to": "today+14",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "unknown destination is reported as missing",
+      "text": "Beijing to Timbuktu next month",
+      "today": "2026-09-06",
+      "missing": ["destinations"],
+      "expect": { "error": "destination airport(s)" }
+    },
+    {
+      "name": "origins missing when only a to-marker is present",
+      "text": "去西雅图 未来两周",
+      "today": "2026-09-06",
+      "missing": ["origins"],
+      "expect": { "error": "origin airport(s)" }
+    },
+    {
+      "name": "date range before the places does not split them",
+      "text": "10月1日到10月15日 香港到西雅图",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-15",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "bare English month and united",
+      "text": "LAX to Tokyo in October, United",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["LAX"],
+        "destinations": ["NRT", "HND"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-31",
+        "programs": ["united"],
+        "used_llm": false
+      }
+    },
+    {
+      "name": "bare month that is the current month starts today",
+      "text": "HKG to SEA September",
+      "today": "2026-09-06",
+      "expect": { "date_from": "today", "date_to": "2026-09-30", "used_llm": false }
+    },
+    {
+      "name": "max miles in 万 with 最多, fees sort, 下个月",
+      "text": "香港到西雅图 最多10万里程 税费最低 下个月",
+      "today": "2026-09-06",
+      "expect": { "max_miles": 100000, "sort_by": "fees_asc", "date_from": "today", "date_to": "today+30", "used_llm": false }
+    },
+    {
+      "name": "range crossing a year boundary",
+      "text": "Vancouver to Paris December 20 - January 5",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["YVR"],
+        "destinations": ["CDG", "ORY"],
+        "date_from": "2026-12-20",
+        "date_to": "2027-01-05",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "lowercase 'sea' is a word, not an airport",
+      "text": "I want to fly from hong kong to seattle over the sea next month, direct, under 80k miles",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "direct_only": true,
+        "max_miles": 80000,
+        "used_llm": false
+      }
+    },
+    {
+      "name": "lowercase codes are not recognised at all",
+      "text": "hkg to sea next month",
+      "today": "2026-09-06",
+      "missing": ["origins", "destinations"],
+      "expect": { "error": "origin airport(s), destination airport(s)" }
+    },
+    {
+      "name": "upper-case SEA raw IATA plus multiple destinations",
+      "text": "HKG to SEA, SFO, LAX next two weeks nonstop",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA", "SFO", "LAX"],
+        "date_from": "today",
+        "date_to": "today+14",
+        "direct_only": true,
+        "used_llm": false
+      }
+    },
+    {
+      "name": "comma-formatted miles with <= and default cabins",
+      "text": "ORD to HKG <= 80,000 miles next 3 months",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["ORD"],
+        "destinations": ["HKG"],
+        "max_miles": 80000,
+        "cabins": ["J", "F"],
+        "date_from": "today",
+        "date_to": "today+90",
+        "provenance": { "cabins": "default" },
+        "used_llm": false
+      }
+    },
+    {
+      "name": "arrow marker and explicit year month",
+      "text": "东京 → 香港 2027年1月 商务",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["NRT", "HND"],
+        "destinations": ["HKG"],
+        "date_from": "2027-01-01",
+        "date_to": "2027-01-31",
+        "cabins": ["J"],
+        "used_llm": false
+      }
+    },
+    {
+      "name": "kickoff §0.1 literal (ASCII comma before the date window)",
+      "text": "香港、上海、东京、首尔到西雅图,未来一个月最便宜的头等舱",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG", "PVG", "SHA", "NRT", "HND", "ICN", "GMP"],
+        "destinations": ["SEA"],
+        "cabins": ["F"],
+        "date_from": "today",
+        "date_to": "today+30",
+        "sort_by": "miles_asc",
+        "language": "zh",
+        "used_llm": false,
+        "provenance": { "origins": "deterministic", "date_from": "deterministic", "cabins": "deterministic", "sort_by": "deterministic" }
+      }
+    },
+    {
+      "name": "kickoff §9 literal (ASCII commas, spaces, bare 头等)",
+      "text": "香港,上海,东京,首尔到西雅图 未来一个月 头等",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG", "PVG", "SHA", "NRT", "HND", "ICN", "GMP"],
+        "destinations": ["SEA"],
+        "cabins": ["F"],
+        "date_from": "today",
+        "date_to": "today+30",
+        "sort_by": "miles_asc",
+        "language": "zh",
+        "used_llm": false,
+        "provenance": { "origins": "deterministic", "date_from": "deterministic", "cabins": "deterministic" }
+      }
+    },
+    {
+      "name": "Chinese-numeral explicit range is deterministic and exact",
+      "text": "HKG to SEA 十月一日到十月十五日 头等",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-15",
+        "cabins": ["F"],
+        "used_llm": false,
+        "provenance": { "date_from": "deterministic" }
+      }
+    },
+    {
+      "name": "Chinese-numeral single day is one day, not the whole month",
+      "text": "上海到东京 十月十五日",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["PVG", "SHA"],
+        "destinations": ["NRT", "HND"],
+        "date_from": "2026-10-15",
+        "date_to": "2026-10-15",
+        "used_llm": false
+      }
+    },
+    {
+      "name": "three-digit zh day count stays deterministic and is capped",
+      "text": "香港到西雅图 未来100天",
+      "today": "2026-09-06",
+      "expect": {
+        "origins": ["HKG"],
+        "destinations": ["SEA"],
+        "date_from": "today",
+        "date_to": "today+91",
+        "used_llm": false,
+        "warnings_contains": "truncated to 92 days"
+      }
+    },
+    {
+      "name": "reversed ISO range is swapped with a visible warning",
+      "text": "HKG to SEA 2026-10-15 to 2026-10-01",
+      "today": "2026-09-06",
+      "expect": { "date_from": "2026-10-01", "date_to": "2026-10-15", "used_llm": false, "warnings_contains": "end-first" }
+    }
+  ]
+}
