@@ -6,12 +6,12 @@ import { useT } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 /**
- * Primary navigation — links only to pages that exist today. "Saved queries" (Phase 3) and the
- * "Ask" drawer (Phase 4) return here when their routes land: add `{ href: "/saved", key:
- * "nav.saved" }` and have GridApp read an `ask` search param before its ?q= sync runs.
+ * Primary navigation — links only to pages that exist today. The "Ask" drawer (Phase 4) returns
+ * here when its route lands: have GridApp read an `ask` search param before its ?q= sync runs.
  */
 export const NAV_ITEMS = [
   { href: "/grid", key: "nav.grid" },
+  { href: "/queries", key: "nav.saved" },
   { href: "/settings", key: "nav.settings" },
 ] as const;
 

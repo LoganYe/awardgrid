@@ -90,3 +90,14 @@ Every non-trivial choice, one line each, newest at the bottom. Format:
 - **Unmonitored pairs on cache hits**: the routes catalog is pre-loaded from `routes_cache` before serving from cache so the "not monitored by seats.aero" label survives re-renders. _Why:_ correctness reviewer finding.
 - **Key validation is quota-reserved**: the one validation call reserves quota first and refunds on 401/403 or transport failure. _Why:_ a user at the soft limit must not be able to spend beyond it via Settings.
 - **Nav links for Saved queries / Ask** are hidden until Phases 3–4 land. _Why:_ no dead links in v0.1.0 UI.
+
+## Phase 3
+
+- **Master tick every minute** (`* * * * *`, UTC, `noOverlap`), with per-query due-ness computed by a tiny 5-field cron matcher against `last_run_at`. _Why:_ one node-cron task instead of one per saved query; the earlier "*/5" note in ARCHITECTURE §9 is superseded.
+- **Cron floor**: the API rejects schedules that could fire more than hourly (`cron_too_frequent`). _Why:_ a per-minute standing query would drain the 1,000/day quota.
+- **Notification baseline**: the diff baseline is the most recent run whose changes are not pending (notified, nothing-to-send, first run, no Telegram); quiet-hours and send-failed runs are stepped over so changes are delivered later, never lost. First run notifies nothing. _Why:_ §6 quiet hours must delay, not drop.
+- **Failed deliveries** (`{ok:false}` from the transport: blocked/429/5xx/network) record `send_failed` and retry on the next run. _Why:_ reviewer blocker — previously recorded as notified.
+- **Run claim**: a conditional `UPDATE saved_queries SET last_run_at` (60 s window) serialises "run now" (web) against the worker tick; the loser returns `in_progress` / HTTP 409. _Why:_ no duplicate digests across processes.
+- **Telegram messages** ≤ 4096 chars: cell lines fold into "+N more", then the grid link falls back to `/queries`. Chat ids never appear in logs (mock sink stores a hash). One chat can be linked to one account at a time; `/unlink` clears every holder.
+- **Poller shutdown**: `getUpdates` takes the stop signal (`AbortSignal.any`) and confirms handled updates with a zero-timeout call on stop; the offset is not persisted (a crash may replay one already-used `/start`, which only yields a "link expired" reply).
+- **Run-now HTTP mapping**: `no_key` → 409, `quota` → 429 with `resetAt`, other skips → 200 with `skipped_reason`; mock mode returns `{ deepLink: null, mock: true }` from `/api/telegram/link`.

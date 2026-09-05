@@ -1,15 +1,16 @@
 "use client";
 
 /**
- * Telegram card (placeholder until standing queries land in Phase 3 — the "Link Telegram"
- * button is disabled) plus quiet hours + time zone, which DO save via PUT /api/settings.
+ * Telegram card: live linking UI (deep link + status polling, see
+ * components/queries/telegram-link.tsx) plus quiet hours + time zone, which save via
+ * PUT /api/settings.
  * Time zone options come from Intl.supportedValuesOf("timeZone") on the client via
  * useSyncExternalStore (server snapshot = short fallback list, so hydration agrees).
  */
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
+import { TelegramLink } from "@/components/queries/telegram-link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,8 @@ export interface TelegramSectionProps {
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
   telegramLinked: boolean;
+  /** No TELEGRAM_BOT_TOKEN on the server: linking unavailable, alerts mocked. */
+  telegramMock: boolean;
 }
 
 interface SettingsResponse {
@@ -72,7 +75,7 @@ let clientZones: string[] | null = null;
 const getClientZones = () => (clientZones ??= supportedTimeZones());
 const getServerZones = () => FALLBACK_ZONES;
 
-export function TelegramSection({ timezone, quietHoursStart, quietHoursEnd, telegramLinked }: TelegramSectionProps) {
+export function TelegramSection({ timezone, quietHoursStart, quietHoursEnd, telegramLinked, telegramMock }: TelegramSectionProps) {
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
@@ -117,13 +120,8 @@ export function TelegramSection({ timezone, quietHoursStart, quietHoursEnd, tele
   }
 
   return (
-    <SettingsSection id="telegram" title={t("settings.telegram.title")} description={t("settings.telegram.subtitle")}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="outline" size="sm" disabled aria-disabled="true">
-          {t("settings.telegram.link")}
-        </Button>
-        <Badge variant="secondary">{telegramLinked ? t("settings.telegram.linked") : t("settings.telegram.coming_soon")}</Badge>
-      </div>
+    <SettingsSection id="telegram" title={t("settings.telegram.title")} description={t("settings.telegram.live_subtitle")}>
+      <TelegramLink linked={telegramLinked} mock={telegramMock} />
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
         <div className="flex flex-col gap-0.5">
