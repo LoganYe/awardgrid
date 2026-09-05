@@ -1,0 +1,5 @@
+route    2026-10-15                   2026-10-16
+HKG-SEA  80k · $56 · 2 · alaska · 2h  112.5k · — · 0 · american · 3d*
+PVG-SEA  —                            —
+
+miles · $fees · seats · program · age   — none   n/m not monitored by seats.aero   * stale (>6h)   Data: seats.aero
