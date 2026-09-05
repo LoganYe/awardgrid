@@ -70,6 +70,29 @@ describe("Quota", () => {
     expect(await quota.used("u")).toBe(947);
   });
 
+  it("a reservation that straddles UTC midnight settles on the day it was made; unmatched refunds are clamped", async () => {
+    const store = new InMemoryQuotaStore();
+    let clock = new Date("2026-10-01T23:59:30Z");
+    const quota = new Quota({ store, now: () => clock });
+    const day = quota.today();
+    expect(await quota.reserve("u", 40, day)).toBe(40);
+    // …the run finishes after midnight: 3 calls were made, 37 come back to 2026-10-01.
+    clock = new Date("2026-10-02T00:00:10Z");
+    await quota.release("u", 37, day);
+    await quota.increment("u", 1, day); // one late-counted call, same day
+    expect(await store.get("u", "2026-10-01")).toBe(4);
+    expect(await store.get("u", "2026-10-02")).toBe(0);
+    expect(await quota.used("u")).toBe(0);
+    expect(await quota.remaining("u")).toBe(950);
+
+    // A refund without the day key never drives the new day negative or past the soft limit.
+    await quota.release("u", 3);
+    expect(await store.get("u", "2026-10-02")).toBe(0);
+    expect(await quota.remaining("u")).toBe(950);
+    await store.increment("u", "2026-10-02", -5); // a stray negative row from elsewhere
+    expect(await quota.remaining("u")).toBe(950); // still capped at the soft limit
+  });
+
   it("helpers: day key, next midnight, env soft limit, page estimates", () => {
     expect(utcDayKey(new Date("2026-12-31T23:59:59Z"))).toBe("2026-12-31");
     expect(nextUtcMidnight(new Date("2026-12-31T23:59:59Z")).toISOString()).toBe("2027-01-01T00:00:00.000Z");

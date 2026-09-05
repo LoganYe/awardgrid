@@ -5,6 +5,7 @@
  * listed in `missing` so parse.ts can decide whether the LLM (or the UI) fills them.
  */
 import { SEATS_SOURCES, type SeatsSource } from "@/lib/seatsaero/types";
+import { notice, noticesToText, type Notice } from "@/lib/notices";
 import { parseDates } from "@/lib/query/dates";
 import { detectLanguage } from "@/lib/query/language";
 import { DEFAULT_PLACES, expandMentions, splitPlaces, type Places } from "@/lib/query/places";
@@ -17,8 +18,10 @@ export interface DeterministicResult {
   partial: Partial<QueryObjectInput>;
   missing: MissingField[];
   provenance: Record<string, Provenance>;
-  /** Human-readable notes (e.g. the 92-day cap was applied). */
+  /** Human-readable notes in English (e.g. the 92-day cap was applied) — `notices` rendered. */
   warnings: string[];
+  /** The same notes as {code, vars}, for translation in the UI. */
+  notices: Notice[];
 }
 
 export interface DeterministicOptions {
@@ -176,7 +179,7 @@ export function parseDeterministic(text: string, opts: DeterministicOptions): De
   const provenance: Record<string, Provenance> = {};
   const partial: Partial<QueryObjectInput> = { raw_text: text };
   const missing: MissingField[] = [];
-  const warnings: string[] = [];
+  const notices: Notice[] = [];
 
   const { programs, masked } = scanPrograms(text);
   if (programs.length > 0) {
@@ -202,11 +205,9 @@ export function parseDeterministic(text: string, opts: DeterministicOptions): De
     partial.date_to = dates.date_to;
     provenance.date_from = "deterministic";
     provenance.date_to = "deterministic";
-    if (dates.warning) warnings.push(dates.warning);
+    if (dates.warning) notices.push(dates.warning);
     if (dates.capped) {
-      warnings.push(
-        `date range truncated to ${MAX_SPAN_DAYS} days (${dates.date_from} → ${dates.date_to}); split longer searches into several queries`,
-      );
+      notices.push(notice("parse.range_truncated", { days: MAX_SPAN_DAYS, date_from: dates.date_from, date_to: dates.date_to }));
     }
   } else missing.push("date_from", "date_to");
 
@@ -236,5 +237,5 @@ export function parseDeterministic(text: string, opts: DeterministicOptions): De
   provenance.language = "deterministic";
   provenance.raw_text = "deterministic";
 
-  return { partial, missing, provenance, warnings };
+  return { partial, missing, provenance, warnings: noticesToText(notices), notices };
 }

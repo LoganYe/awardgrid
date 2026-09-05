@@ -3,6 +3,7 @@
  * origins/destinations or both date bounds cannot be produced deterministically. Without an
  * LLM client the caller gets a ParseError naming the missing fields so the UI can ask for them.
  */
+import { notice, noticesToText, type Notice } from "@/lib/notices";
 import { addDays, capRange, parseISODate } from "@/lib/query/dates";
 import { parseDeterministic, type MissingField, type Provenance } from "@/lib/query/deterministic";
 import { ParseError, parseWithLLM, type ParserClient } from "@/lib/query/llm";
@@ -21,7 +22,10 @@ export interface ParseQueryResult {
   query: QueryObject;
   provenance: Record<string, Provenance>;
   used_llm: boolean;
+  /** English renderings of `notices` (CLI, logs, tests). */
   warnings: string[];
+  /** Structured {code, vars} for translation in the UI. */
+  notices: Notice[];
 }
 
 const FIELD_LABELS: Record<MissingField, string> = {
@@ -42,7 +46,7 @@ function describeMissing(missing: MissingField[]): string {
  * /^[A-Z]{3}$/ schema, so expand here exactly as the deterministic path does. Codes outside the
  * seed are kept (the seed is small and the grid still works) but flagged so the chips get a look.
  */
-function expandLLMPlaces(codes: readonly string[], field: "origins" | "destinations", places: Places, warnings: string[]): string[] {
+function expandLLMPlaces(codes: readonly string[], field: "origins" | "destinations", places: Places, notices: Notice[]): string[] {
   const out: string[] = [];
   const unknown: string[] = [];
   for (const code of codes) {
@@ -50,7 +54,7 @@ function expandLLMPlaces(codes: readonly string[], field: "origins" | "destinati
     for (const airport of expandPlace(code, places)) if (!out.includes(airport)) out.push(airport);
   }
   if (unknown.length > 0) {
-    warnings.push(`${field} ${unknown.join(", ")} came from the language model and are not in the places seed; check the chips`);
+    notices.push(notice("parse.unknown_codes", { field, codes: unknown.join(", ") }));
   }
   return out;
 }
@@ -62,17 +66,17 @@ function mergeLLM(
   llm: QueryObjectLLM,
   missing: MissingField[],
   places: Places,
-  warnings: string[],
+  notices: Notice[],
 ): Partial<QueryObjectInput> {
   const out: Partial<QueryObjectInput> = { ...partial };
   const take = (field: keyof QueryObjectLLM): boolean => provenance[field] !== "deterministic";
 
   if (missing.includes("origins") && llm.origins.length > 0) {
-    out.origins = expandLLMPlaces(llm.origins, "origins", places, warnings);
+    out.origins = expandLLMPlaces(llm.origins, "origins", places, notices);
     provenance.origins = "llm";
   }
   if (missing.includes("destinations") && llm.destinations.length > 0) {
-    out.destinations = expandLLMPlaces(llm.destinations, "destinations", places, warnings);
+    out.destinations = expandLLMPlaces(llm.destinations, "destinations", places, notices);
     provenance.destinations = "llm";
   }
   if (missing.includes("date_from")) {
@@ -105,7 +109,7 @@ function mergeLLM(
 }
 
 /** Enforce date_to >= date_from and the 92-day cap by truncation (never by failing). */
-function normalizeDates(input: Partial<QueryObjectInput>, warnings: string[]): void {
+function normalizeDates(input: Partial<QueryObjectInput>, notices: Notice[]): void {
   if (!input.date_from || !input.date_to) return;
   let from: number;
   let to: number;
@@ -116,14 +120,12 @@ function normalizeDates(input: Partial<QueryObjectInput>, warnings: string[]): v
     return; // let QueryObject.parse report the invalid date
   }
   if (to < from) {
-    warnings.push(`end date ${input.date_to} was before start date ${input.date_from}; using a single day`);
+    notices.push(notice("parse.end_before_start", { date_to: input.date_to, date_from: input.date_from }));
     to = from;
   }
   const capped = capRange(from, to);
   if (capped.capped) {
-    warnings.push(
-      `date range truncated to ${MAX_SPAN_DAYS} days (${capped.date_from} → ${capped.date_to}); split longer searches into several queries`,
-    );
+    notices.push(notice("parse.range_truncated", { days: MAX_SPAN_DAYS, date_from: capped.date_from, date_to: capped.date_to }));
   }
   input.date_from = capped.date_from;
   input.date_to = capped.date_to;
@@ -131,20 +133,17 @@ function normalizeDates(input: Partial<QueryObjectInput>, warnings: string[]): v
 
 export async function parseQuery(text: string, opts: ParseQueryOptions): Promise<ParseQueryResult> {
   const trimmed = text.trim();
-  if (trimmed.length === 0) throw new ParseError("Please enter a query.", { missing: ["origins", "destinations", "date_from", "date_to"] });
+  if (trimmed.length === 0) throw new ParseError(notice("parse.empty"), { missing: ["origins", "destinations", "date_from", "date_to"] });
   parseISODate(opts.today); // fail fast on a bad `today`
 
   const det = parseDeterministic(trimmed, { today: opts.today, places: opts.places });
-  const warnings: string[] = [...det.warnings];
+  const notices: Notice[] = [...det.notices];
   let input = det.partial;
   let usedLLM = false;
 
   if (det.missing.length > 0) {
     if (!opts.llmClient) {
-      throw new ParseError(
-        `Could not determine the ${describeMissing(det.missing)} from "${trimmed}". Name the cities (e.g. 香港到西雅图 / HKG to SEA) and a date window (e.g. 未来一个月 / next month).`,
-        { missing: det.missing },
-      );
+      throw new ParseError(notice("parse.missing", { fields: describeMissing(det.missing), text: trimmed }), { missing: det.missing });
     }
     const llm = await parseWithLLM(trimmed, {
       today: opts.today,
@@ -154,25 +153,25 @@ export async function parseQuery(text: string, opts: ParseQueryOptions): Promise
       places: opts.places,
     });
     usedLLM = true;
-    input = mergeLLM(det.partial, det.provenance, llm.result, det.missing, opts.places ?? DEFAULT_PLACES, warnings);
-    if (llm.attempts > 1) warnings.push("the language model needed a retry to produce a valid answer");
+    input = mergeLLM(det.partial, det.provenance, llm.result, det.missing, opts.places ?? DEFAULT_PLACES, notices);
+    if (llm.attempts > 1) notices.push(notice("parse.llm_retry"));
   }
 
-  normalizeDates(input, warnings);
+  normalizeDates(input, notices);
   if (input.date_from && parseISODate(input.date_from) < parseISODate(opts.today)) {
-    warnings.push(`start date ${input.date_from} is in the past relative to ${opts.today}`);
+    notices.push(notice("parse.start_in_past", { date_from: input.date_from, today: opts.today }));
   }
   if (input.date_from && parseISODate(input.date_from) > addDays(parseISODate(opts.today), 366)) {
-    warnings.push(`start date ${input.date_from} is more than a year out; award calendars rarely open that far`);
+    notices.push(notice("parse.start_far_out", { date_from: input.date_from }));
   }
 
   const checked = QueryObject.safeParse(input);
   if (!checked.success) {
     const issues = checked.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
-    throw new ParseError(`The parsed query is incomplete or invalid (${issues}).`, {
+    throw new ParseError(notice("parse.invalid", { issues }), {
       missing: det.missing,
       cause: checked.error,
     });
   }
-  return { query: checked.data, provenance: det.provenance, used_llm: usedLLM, warnings };
+  return { query: checked.data, provenance: det.provenance, used_llm: usedLLM, warnings: noticesToText(notices), notices };
 }

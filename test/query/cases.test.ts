@@ -4,6 +4,7 @@
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { noticeText } from "@/lib/notices";
 import { addDays, formatISODate, parseISODate } from "@/lib/query/dates";
 import { parseDeterministic } from "@/lib/query/deterministic";
 import { ParseError, type ParserClient, type ParserRequest } from "@/lib/query/llm";
@@ -78,6 +79,9 @@ describe("parser fixtures", () => {
         const err = await parseQuery(c.text, { today: c.today, llmClient }).catch((x: unknown) => x);
         expect(err).toBeInstanceOf(ParseError);
         expect((err as ParseError).message).toContain(e.error);
+        // Every ParseError carries its structured notice, rendered identically to `message`.
+        expect((err as ParseError).notice).not.toBeNull();
+        expect(noticeText((err as ParseError).notice!)).toBe((err as ParseError).message);
         if (c.missing) expect((err as ParseError).missing).toEqual(c.missing);
         return;
       }
