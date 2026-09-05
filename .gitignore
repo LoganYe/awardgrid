@@ -1,0 +1,38 @@
+# Node
+node_modules/
+.pnpm-store/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Env / secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Build output
+build/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# SQLite (runtime data)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+/data/runtime/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Vitest / misc
+.vitest-cache/

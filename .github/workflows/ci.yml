@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  checks:
+    name: typecheck · lint · test
+    runs-on: ubuntu-latest
+    env:
+      # Tests must pass with no network and no keys (Definition of done).
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test (fixtures only, no network)
+        run: pnpm test
+
+      - name: No secrets or databases tracked
+        run: |
+          set -euo pipefail
+          bad=$(git ls-files | grep -E '(^|/)\.env(\.[^/]*)?$|\.(db|sqlite|sqlite3|db-wal|db-shm)$' | grep -vE '(^|/)\.env\.example$' || true)
+          if [ -n "$bad" ]; then
+            echo "Tracked files that must never be committed:"; echo "$bad"; exit 1
+          fi
+          echo "OK: no .env or SQLite files tracked"
+
+  secret-scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
