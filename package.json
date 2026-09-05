@@ -1,0 +1,54 @@
+{
+  "name": "awardgrid",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private friends-only award-flight grid on seats.aero + travel-hacking-toolkit",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "find": "tsx src/cli/find.ts",
+    "admin": "tsx src/cli/admin.ts",
+    "worker": "tsx src/cli/worker.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/cli/migrate.ts",
+    "build:plugin": "tsx scripts/build-plugin.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.260",
+    "@anthropic-ai/sdk": "^0.123.0",
+    "@node-rs/argon2": "^2.2.0",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.2",
+    "next": "16.3.4",
+    "node-cron": "^4.6.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.4",
+    "prettier": "^3.9.6",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.13",
+    "typescript": "^5",
+    "vitest": "^5.0.0"
+  }
+}
