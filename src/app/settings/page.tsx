@@ -1,5 +1,5 @@
 /**
- * /settings — keys (+ today's quota), Telegram placeholder + quiet hours, language, account.
+ * /settings — keys (+ today's quota), Telegram linking + quiet hours, language, account.
  * Server component: requires a session (redirects to /login), reads masked key summaries and
  * the api_usage row, and hands only safe fields to the client sections. Nothing here can see
  * a plaintext key: listKeys() returns last4 + mask, and the User type omits the password hash.
@@ -13,6 +13,7 @@ import { requireUser } from "@/lib/auth/next";
 import { getT } from "@/lib/i18n/server";
 import { listKeys } from "@/lib/keys";
 import { getServerDb } from "@/lib/server/db";
+import { telegramConfigured } from "@/lib/server/queries";
 import { getTodayUsage } from "@/lib/server/usage";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -40,6 +41,7 @@ export default async function SettingsPage() {
         quietHoursStart={user.quietHoursStart}
         quietHoursEnd={user.quietHoursEnd}
         telegramLinked={user.telegramChatId !== null}
+        telegramMock={!telegramConfigured()}
       />
       {/* Shows the language currently in effect (cookie); saving writes it to the account too. */}
       <LanguageSection locale={locale} />

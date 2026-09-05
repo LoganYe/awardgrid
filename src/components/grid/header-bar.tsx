@@ -3,6 +3,7 @@
 import { DownloadIcon, Rows3Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SaveQueryDialog } from "@/components/queries/SaveQueryDialog";
 import { formatAge } from "@/lib/grid/freshness";
 import type { Grid, Orientation } from "@/lib/grid/types";
 import { useLocale, useT } from "@/lib/i18n/client";
@@ -25,7 +26,7 @@ function formatReset(iso: string, locale: string): string {
   return d.toLocaleString(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short" });
 }
 
-/** Calls used this render · cache badge · oldest/newest seen · quota · CSV · orientation. */
+/** Calls used this render · cache badge · oldest/newest seen · quota · save as standing query · CSV · orientation. */
 export function HeaderBar({ grid, quota, now, orientation, exporting, onToggleOrientation, onExport }: HeaderBarProps) {
   const t = useT();
   const locale = useLocale();
@@ -49,6 +50,7 @@ export function HeaderBar({ grid, quota, now, orientation, exporting, onToggleOr
         </span>
       )}
       <span className="ml-auto flex items-center gap-1.5">
+        <SaveQueryDialog query={grid.query} />
         <Button type="button" variant="outline" size="xs" onClick={onToggleOrientation} aria-label={t("grid.transpose")}>
           <Rows3Icon data-icon="inline-start" className={cn(orientation === "routes" && "rotate-90")} />
           {orientation === "dates" ? t("grid.rows_dates") : t("grid.rows_routes")}
