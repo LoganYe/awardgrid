@@ -28,6 +28,7 @@ import {
   type CacheQuery,
   type CoverageRecord,
 } from "@/lib/seatsaero/cache";
+import { notice, noticesToText, type Notice } from "@/lib/notices";
 import { availabilitiesToRows } from "@/lib/seatsaero/normalize";
 import type { RoutesCatalog, RoutesKnowledge } from "@/lib/seatsaero/routes";
 
@@ -231,7 +232,10 @@ export interface FindResult {
   routes_calls_used: number;
   served_from_cache: boolean;
   unmonitored_pairs: RoutePair[];
+  /** English renderings of `notices` (CLI, logs, tests). */
   warnings: string[];
+  /** Structured {code, vars} for translation in the UI. */
+  notices: Notice[];
   /** The plan that was executed; null when served from cache. */
   plan: FindPlan | null;
   /** Oldest fetched_at among the returned rows (null when empty). */
@@ -245,7 +249,7 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
   const { query, userId, quota, cache, routes } = opts;
   const now = opts.now ?? (() => new Date());
   const ttl = opts.ttlMinutes ?? cacheTtlMinutesFromEnv();
-  const warnings: string[] = [];
+  const notices: Notice[] = [];
   const pairs = pairsOf(query);
   const programs = query.programs && query.programs.length > 0 ? [...query.programs] : null;
   /**
@@ -273,7 +277,10 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
     const cached = await cache.getRows(userId, scope);
     const rows = cached.rows;
     const zero = zeroRowPairs(pairs, rows);
-    // Only claim "not monitored" when THIS user's catalog knows every requested source.
+    // Only claim "not monitored" when THIS user's catalog knows every requested source. The
+    // catalog may be a fresh instance (one per web request): hydrate from the routes store
+    // first — that reads what earlier requests paid for and never calls the API.
+    if (routes) await routes.hydrate(userId, sources);
     const allLoaded = routes !== undefined && sources.every((s) => routes.isLoaded(userId, s));
     return {
       rows,
@@ -281,7 +288,8 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
       routes_calls_used: 0,
       served_from_cache: true,
       unmonitored_pairs: allLoaded ? routes.unmonitoredPairs(userId, zero, sources) : [],
-      warnings,
+      warnings: noticesToText(notices),
+      notices,
       plan: null,
       fetched_at_min: cached.fetched_at_min,
     };
@@ -304,11 +312,14 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
   const unmonitored: RoutePair[] = [];
   let reserved = 0;
   let routesCalls = 0;
+  // One UTC day key for the whole run: reservations made before midnight are settled on the
+  // same day after it (otherwise a refund would over-credit the new day).
+  const day = quota.today();
   try {
     const remaining = await quota.remaining(userId);
-    const pageCap = await quota.reserve(userId, Math.max(1, Math.min(remaining, opts.maxPages ?? MAX_PAGES_PER_FIND)));
+    const pageCap = await quota.reserve(userId, Math.max(1, Math.min(remaining, opts.maxPages ?? MAX_PAGES_PER_FIND)), day);
     reserved += pageCap;
-    const availabilities = await executePlan(plan, client, pageCap, warnings);
+    const availabilities = await executePlan(plan, client, pageCap, notices);
 
     // (d) normalize, filter locally to the query, replace the cached scope, record coverage.
     // A truncated pull (page cap / quota headroom) is still recorded as coverage: the
@@ -338,19 +349,16 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
     const zero = zeroRowPairs(pairs, rows);
     if (zero.length > 0 && routes) {
       // Settle the search reservation first so `remaining` reflects what this run really spent.
-      await quota.release(userId, reserved - calls);
+      await quota.release(userId, reserved - calls, day);
       reserved = calls;
       const left = await quota.remaining(userId);
       const wanted = Math.min(left, sources.filter((s) => !routes.isLoaded(userId, s)).length, opts.maxRoutesCalls ?? SEATS_SOURCES.length);
-      const cap = wanted > 0 ? await quota.reserve(userId, wanted) : 0;
+      const cap = wanted > 0 ? await quota.reserve(userId, wanted, day) : 0;
       reserved += cap;
       const loaded = await routes.ensureLoaded(userId, sources, client, { maxFetches: cap });
       routesCalls = loaded.fetched.length;
       if (loaded.skipped.length > 0) {
-        warnings.push(
-          `Could not check whether seats.aero monitors ${zero.length} empty pair(s): ` +
-            `${loaded.skipped.length} program route list(s) skipped to stay within today's quota.`,
-        );
+        notices.push(notice("find.routes_skipped", { pairs: zero.length, skipped: loaded.skipped.length }));
       } else {
         unmonitored.push(...routes.unmonitoredPairs(userId, zero, sources));
       }
@@ -359,8 +367,8 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
     unsubscribe();
     // Settle: refund the unused reservation, or (after a failure part-way) charge any call the
     // reservation did not already cover. Failed calls count too — seats.aero charged for them.
-    if (reserved > calls) await quota.release(userId, reserved - calls);
-    else if (calls > reserved) await quota.increment(userId, calls - reserved);
+    if (reserved > calls) await quota.release(userId, reserved - calls, day);
+    else if (calls > reserved) await quota.increment(userId, calls - reserved, day);
   }
 
   return {
@@ -369,7 +377,8 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
     routes_calls_used: routesCalls,
     served_from_cache: false,
     unmonitored_pairs: unmonitored,
-    warnings,
+    warnings: noticesToText(notices),
+    notices,
     plan,
     fetched_at_min: rows.length > 0 ? fetchedAt : null,
   };
@@ -380,13 +389,13 @@ async function executePlan(
   plan: FindPlan,
   client: SeatsAeroClient,
   maxTotalPages: number,
-  warnings: string[],
+  notices: Notice[],
 ): Promise<Availability[]> {
   const seen = new Map<string, Availability>();
   let pagesLeft = maxTotalPages;
   for (const req of plan.requests) {
     if (pagesLeft <= 0) {
-      warnings.push("Stopped before finishing the search: today's seats.aero quota headroom is used up.");
+      notices.push(notice("find.quota_headroom"));
       break;
     }
     const result =
@@ -395,8 +404,10 @@ async function executePlan(
         : await client.bulkAvailabilityAll(req.params, { maxPages: pagesLeft });
     pagesLeft -= result.pages;
     if (result.truncated) {
-      warnings.push(
-        `Results may be incomplete: stopped after ${result.pages} page(s) of ${req.kind === "search" ? "Cached Search" : `Bulk Availability (${req.source})`} to protect the daily quota.`,
+      notices.push(
+        req.kind === "search"
+          ? notice("find.truncated_search", { pages: result.pages })
+          : notice("find.truncated_bulk", { pages: result.pages, source: req.source }),
       );
     }
     for (const av of result.data) if (!seen.has(av.ID)) seen.set(av.ID, av);

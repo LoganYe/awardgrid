@@ -10,6 +10,7 @@
  * → bare month. A holiday word suppresses the bare-month fallback only ("十月国庆" → LLM), never
  * an explicit range ("国庆 10月1日到10月7日" is exact enough).
  */
+import { notice, type Notice } from "@/lib/notices";
 import { MAX_SPAN_DAYS } from "@/lib/query/schema";
 
 export interface DateRange {
@@ -18,7 +19,7 @@ export interface DateRange {
   /** true when date_to was truncated to honour MAX_SPAN_DAYS */
   capped: boolean;
   /** Set when the text was understood but not taken literally (e.g. a reversed explicit range). */
-  warning?: string;
+  warning?: Notice;
 }
 
 const DAY_MS = 86_400_000;
@@ -217,7 +218,12 @@ function finishRange(from: number | null, to: number | null): DateRange | null {
   const swapped = capRange(to, from);
   return {
     ...swapped,
-    warning: `the date range was written end-first (${formatISODate(from)} → ${formatISODate(to)}); searching ${swapped.date_from} → ${swapped.date_to}`,
+    warning: notice("parse.range_end_first", {
+      from: formatISODate(from),
+      to: formatISODate(to),
+      date_from: swapped.date_from,
+      date_to: swapped.date_to,
+    }),
   };
 }
 

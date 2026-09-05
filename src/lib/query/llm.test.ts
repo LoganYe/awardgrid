@@ -140,6 +140,9 @@ describe("parseQuery + LLM merge", () => {
     expect(r.provenance.origins).toBe("llm");
     expect(r.warnings.some((w) => w.includes("ZZZ") && w.includes("not in the places seed"))).toBe(true);
     expect(r.warnings.some((w) => w.includes("TYO"))).toBe(false);
+    // The same notes ride along as structured notices (translated by the UI); one per warning.
+    expect(r.notices).toHaveLength(r.warnings.length);
+    expect(r.notices.some((n) => n.code === "parse.unknown_codes" && String(n.vars?.codes).includes("ZZZ"))).toBe(true);
   });
 
   it("an unknown program code from the LLM is a schema failure (retried once), never passed downstream", async () => {

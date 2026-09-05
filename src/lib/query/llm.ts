@@ -8,6 +8,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { notice, noticeText, type Notice } from "@/lib/notices";
 import { DEFAULT_PLACES, type Places } from "@/lib/query/places";
 import { DEFAULT_CABINS, MAX_SPAN_DAYS, QueryObjectLLM, type QueryObjectInput } from "@/lib/query/schema";
 import { SEATS_SOURCES } from "@/lib/seatsaero/types";
@@ -25,10 +26,14 @@ export function resolveParserModel(env: Record<string, string | undefined> = pro
 /** User-facing parse failure. `missing` lists fields the UI can ask for when known. */
 export class ParseError extends Error {
   readonly missing: string[];
-  constructor(message: string, opts: { missing?: string[]; cause?: unknown } = {}) {
-    super(message, opts.cause === undefined ? undefined : { cause: opts.cause });
+  /** Structured form of `message` ({code, vars}) so the UI can translate it; message = noticeText(notice). */
+  readonly notice: Notice | null;
+  constructor(message: string | Notice, opts: { missing?: string[]; cause?: unknown } = {}) {
+    const n = typeof message === "string" ? null : message;
+    super(n ? noticeText(n) : (message as string), opts.cause === undefined ? undefined : { cause: opts.cause });
     this.name = "ParseError";
     this.missing = opts.missing ?? [];
+    this.notice = n;
   }
 }
 
@@ -137,7 +142,7 @@ export async function parseWithLLM(text: string, opts: LLMParseOptions): Promise
         cause = err;
         continue;
       }
-      throw new ParseError("The query parser could not reach the language model. Please try again.", { cause: err });
+      throw new ParseError(notice("parse.llm_unreachable"), { cause: err });
     }
     if (msg.stop_reason === "refusal") {
       lastReason = "the model declined to answer";
@@ -156,8 +161,5 @@ export async function parseWithLLM(text: string, opts: LLMParseOptions): Promise
     }
     return { result: checked.data, attempts: attempt, model };
   }
-  throw new ParseError(
-    `Could not understand the query after ${LLM_RETRIES + 1} attempts (${lastReason}). Try naming the cities, dates and cabin explicitly, e.g. "HKG to SEA, next month, business".`,
-    { cause },
-  );
+  throw new ParseError(notice("parse.llm_failed", { attempts: LLM_RETRIES + 1, reason: lastReason }), { cause });
 }

@@ -80,3 +80,13 @@ Every non-trivial choice, one line each, newest at the bottom. Format:
 - **Phase 2 scaffolding in the Phase 1 tree**: `src/lib/db`, `src/lib/auth`, `src/lib/crypto`, `drizzle/*`, `src/cli/migrate.ts` were written during Phase 1 and are unused by the fast lane; `src/cli/admin.ts` / `src/cli/worker.ts` are one-line "not implemented until Phase N" stubs so the package.json scripts resolve. _Why:_ kept rather than stashed so the tree typechecks as one unit; the Phase 2 PR is where they get their tests and wiring.
 - **Unknown-currency fees in the ASCII grid**: `formatFees(x, null)` renders `$` per the Phase 0 "empty `TaxesCurrency` means USD" assumption. _Why:_ recorded assumption; the web UI carries the tooltip, the CLI note is this line.
 - **Phase boundary**: the Drizzle schema/migration, `src/lib/db`, `src/lib/crypto/aes.ts` and `src/lib/auth/password.ts` were written during Phase 1 (they are the contracts Phase 2 engineers build against) but are committed in the Phase 2 PR, so each PR contains only its phase's scope. _Why:_ §0.3/§10 one PR per phase; the Phase 1 fast lane uses in-memory stores only.
+
+## Phase 2
+
+- **Dev-only seats.aero mock**: `scripts/mock-seatsaero.ts` serves the recorded fixtures (dates shifted to today) and `SEATS_AERO_BASE_URL` rewrites the client's base URL when set. _Why:_ lets friends and reviewers exercise the whole UI with zero quota; unset in production it is inert.
+- **Route handlers read the session cookie from the request** (`userFromRequest`) instead of `next/headers`. _Why:_ keeps every handler unit-testable with plain `Request` objects; pages still use `requireUser()`.
+- **CSRF**: state-changing handlers require `Content-Type: application/json` and a same-origin `Origin`/`Sec-Fetch-Site` check (`src/lib/server/origin.ts`); cookies are `SameSite=Lax`, `HttpOnly`, `Secure` in production (`COOKIE_SECURE=false` opt-out for plain-HTTP Tailscale). _Why:_ security reviewer finding; cheap belt-and-braces for a friends-only app.
+- **Login rate limiting** trusts proxy IP headers only when `TRUST_PROXY_HEADERS=1`; otherwise keys on username only + a global limiter. _Why:_ spoofable `X-Forwarded-For` would let an attacker bypass per-IP limits.
+- **Unmonitored pairs on cache hits**: the routes catalog is pre-loaded from `routes_cache` before serving from cache so the "not monitored by seats.aero" label survives re-renders. _Why:_ correctness reviewer finding.
+- **Key validation is quota-reserved**: the one validation call reserves quota first and refunds on 401/403 or transport failure. _Why:_ a user at the soft limit must not be able to spend beyond it via Settings.
+- **Nav links for Saved queries / Ask** are hidden until Phases 3–4 land. _Why:_ no dead links in v0.1.0 UI.

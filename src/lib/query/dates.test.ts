@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { noticeText } from "@/lib/notices";
 import { capRange, parseDates, parseISODate, parseSmallNumber } from "@/lib/query/dates";
 
 const today = "2026-09-06";
@@ -95,11 +96,13 @@ describe("parseDates — explicit", () => {
       date_from: "2026-10-01",
       date_to: "2026-10-15",
       capped: false,
-      warning: expect.stringContaining("end-first"),
+      warning: { code: "parse.range_end_first", vars: { from: "2026-10-15", to: "2026-10-01", date_from: "2026-10-01", date_to: "2026-10-15" } },
     });
-    expect(parseDates("2026年10月15日到2026年10月1日", today)).toMatchObject({ date_from: "2026-10-01", date_to: "2026-10-15", warning: expect.any(String) });
-    expect(parseDates("Oct 15, 2026 - Oct 1, 2026", today)).toMatchObject({ date_from: "2026-10-01", date_to: "2026-10-15", warning: expect.any(String) });
-    expect(parseDates("10/15/2026-10/1/2026", today)).toMatchObject({ date_from: "2026-10-01", date_to: "2026-10-15", warning: expect.any(String) });
+    expect(noticeText(parseDates("2026-10-15 to 2026-10-01", today)!.warning!)).toContain("end-first");
+    const endFirst = { code: "parse.range_end_first", vars: expect.any(Object) };
+    expect(parseDates("2026年10月15日到2026年10月1日", today)).toMatchObject({ date_from: "2026-10-01", date_to: "2026-10-15", warning: endFirst });
+    expect(parseDates("Oct 15, 2026 - Oct 1, 2026", today)).toMatchObject({ date_from: "2026-10-01", date_to: "2026-10-15", warning: endFirst });
+    expect(parseDates("10/15/2026-10/1/2026", today)).toMatchObject({ date_from: "2026-10-01", date_to: "2026-10-15", warning: endFirst });
     // Without years the end rolls into next year ("Dec 20 - Jan 5" semantics), so it is not "reversed".
     expect(parseDates("10月15日到10月1日", today)).toEqual({ date_from: "2026-10-15", date_to: "2027-01-14", capped: true });
   });

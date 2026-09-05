@@ -122,6 +122,20 @@ export class RoutesCatalog {
   }
 
   /**
+   * Pull `sources` into the in-process index from the STORE only — zero API calls. Returns
+   * the sources that are loaded afterwards. The web app builds a fresh catalog per request,
+   * so a grid served from the availability cache must hydrate this way before it can claim
+   * "not monitored" for a pair whose route lists were paid for on an earlier request.
+   */
+  async hydrate(userId: string, sources: readonly string[]): Promise<string[]> {
+    const loaded: string[] = [];
+    for (const source of sources) {
+      if (await this.#loadFromStore(userId, source)) loaded.push(source);
+    }
+    return loaded;
+  }
+
+  /**
    * Make sure `sources` are loaded for this user, reading the store first and calling
    * Get Routes (through `client`, i.e. the user's own key) only for missing/expired ones,
    * never more than `maxFetches` times.
@@ -135,13 +149,7 @@ export class RoutesCatalog {
     const result: EnsureLoadedResult = { fetched: [], cached: [], skipped: [] };
     let budget = opts.maxFetches ?? Number.POSITIVE_INFINITY;
     for (const source of sources) {
-      if (this.isLoaded(userId, source)) {
-        result.cached.push(source);
-        continue;
-      }
-      const stored = await this.#store.get(userId, source);
-      if (stored && this.#now().getTime() - Date.parse(stored.fetched_at) < this.#ttlMs) {
-        this.#index(userId, source, stored.routes, Date.parse(stored.fetched_at));
+      if (await this.#loadFromStore(userId, source)) {
         result.cached.push(source);
         continue;
       }
@@ -170,6 +178,17 @@ export class RoutesCatalog {
     const known = sources.filter((s) => this.isLoaded(userId, s));
     if (known.length === 0) return [];
     return pairs.filter((p) => !known.some((s) => this.isMonitored(userId, s, p.origin, p.dest)));
+  }
+
+  /** True when the source is loaded afterwards (already in memory, or a fresh store entry was indexed). */
+  async #loadFromStore(userId: string, source: string): Promise<boolean> {
+    if (this.isLoaded(userId, source)) return true;
+    const stored = await this.#store.get(userId, source);
+    if (stored && this.#now().getTime() - Date.parse(stored.fetched_at) < this.#ttlMs) {
+      this.#index(userId, source, stored.routes, Date.parse(stored.fetched_at));
+      return true;
+    }
+    return false;
   }
 
   /** The in-memory entry when it exists and is younger than the TTL; expired ones are evicted. */
