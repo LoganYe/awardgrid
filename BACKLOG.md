@@ -43,15 +43,6 @@ comment that points here).
   independently, so a real overnight or date-line leg carries its own day marker); the generator is outside the fixer
   pass's edit scope (`src/**`, `e2e/**`, `docs/**`, `scripts/**`). One change: compute the true local arrival and let
   the day marker explain it. (#30 finding 5)
-- **Fold the per-feature captures into the matrix, then run `screenshot-index --strict` in CI.** 6.6 declared the
-  §9 matrix in `e2e/matrix.ts` but left the earlier per-feature screenshot code in `grid.spec.ts`, `chips.spec.ts`,
-  `cell-drawer.spec.ts`, `ask-drawer.spec.ts`, `queries.spec.ts`, `settings.spec.ts` and `shell.spec.ts` alone —
-  other engineers were editing those files in the same working tree. The result is the three detail folders
-  (`ask-drawer/`, `cell-drawer/`, `chips/`) and ~15 extra stems beside the matrix's own. They all obey the naming
-  rule, so the contact sheet lists them; but `scripts/screenshot-index.ts --strict --check` still exits 1, which is
-  why the plain `--check` is what the docs promise and neither is wired into the `checks` job yet. Delete the
-  redundant captures, drop the detail folders, then add `pnpm exec tsx scripts/screenshot-index.ts --strict --check`
-  to CI as the guard that a new state cannot be photographed without being declared. (FINAL_REPORT §9.2)
 - **Density control in the grid toolbar.** Row height follows the breakpoint (48 / 32 / 40 px) with no user override;
   the toolbar deliberately holds exactly the controls spec §3.3 lists. A "compact" toggle would let a desktop user get
   the two-line cell. (DECISIONS 6.0 "Row height")

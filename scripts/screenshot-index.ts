@@ -6,6 +6,10 @@
  *     pnpm exec tsx scripts/screenshot-index.ts --check    # check only, write nothing
  *     pnpm exec tsx scripts/screenshot-index.ts --strict   # also fail on captures outside the matrix
  *
+ * `--strict --check` is the CI guard (the `checks` job in .github/workflows/ci.yml): since #34
+ * every capture outside the frozen `before/` has exactly one owner, so a new state cannot be
+ * photographed without being declared in the matrix first.
+ *
  * The matrix itself lives in `e2e/matrix.ts` (imported here, so the sheet can never describe a
  * different set of states than `e2e/screenshots.spec.ts` captures). This script reads only the
  * file tree: it never runs a browser, so it is safe to run on any machine, offline.
@@ -14,12 +18,13 @@
  *   - a directory under docs/screenshots/v0.2/ that is not a known page,
  *   - a file that is not a PNG named `<state>-<viewport>-<theme>[-zh].png`,
  *   - a matrix entry with no PNG on disk,
- *   - (with --strict) a PNG that is not in the matrix.
+ *   - (with --strict) a PNG that is not in the matrix, or one in `before/` that is not part of
+ *     the frozen v0.1 record.
  */
 import { readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
-  DETAIL_PAGES,
+  BEFORE_FILES,
   expectedFiles,
   FILE_RE,
   MATRIX,
@@ -35,7 +40,7 @@ import {
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIR = path.join(ROOT, ...SHOT_ROOT.split("/"));
 const BEFORE = "before";
-const KNOWN_DIRS: readonly string[] = [...MATRIX_PAGES, ...DETAIL_PAGES, BEFORE];
+const KNOWN_DIRS: readonly string[] = [...MATRIX_PAGES, BEFORE];
 
 /** 400 KB: Playwright's PNGs are already small; anything above this wants looking at. */
 const SIZE_BUDGET = 400 * 1024;
@@ -117,14 +122,24 @@ function main(): void {
   const missing = expectedFiles().filter((f) => !onDisk.has(f));
   for (const f of missing) problems.push(`${SHOT_ROOT}/${f}: missing (declared in e2e/matrix.ts)`);
 
-  // Captures a matrix page holds that the matrix does not declare. The per-feature specs
-  // (grid.spec.ts, chips.spec.ts, …) still write a few of these; they are listed in the sheet.
+  // Captures a matrix page holds that the matrix does not declare. Since #34 nothing writes
+  // these — `--strict --check` runs in CI — so the sheet lists any that appear as a defect.
   const expected = new Set(expectedFiles());
   const extras = new Map<MatrixPage, string[]>();
   for (const page of MATRIX_PAGES) {
     const list = (tree.get(page) ?? []).map((f) => f.file).filter((f) => !expected.has(`${page}/${f}`));
     if (list.length > 0) extras.set(page, list);
     if (STRICT) for (const f of list) problems.push(`${SHOT_ROOT}/${page}/${f}: not declared in e2e/matrix.ts`);
+  }
+
+  // `before/` is the frozen v0.1 record, so it is checked against its committed list rather than
+  // against the matrix — otherwise it is the one folder a new state can be parked in to dodge the
+  // guard, which is exactly what --strict exists to prevent (#34).
+  if (STRICT) {
+    const frozen = new Set(BEFORE_FILES);
+    const onDisk = (tree.get(BEFORE) ?? []).map((f) => f.file);
+    for (const f of onDisk) if (!frozen.has(f)) problems.push(`${SHOT_ROOT}/${BEFORE}/${f}: not part of the frozen v0.1 record (e2e/matrix.ts BEFORE_FILES)`);
+    for (const f of BEFORE_FILES) if (!onDisk.includes(f)) problems.push(`${SHOT_ROOT}/${BEFORE}/${f}: missing from the frozen v0.1 record`);
   }
 
   if (problems.length > 0) {
@@ -167,7 +182,6 @@ function main(): void {
     "## Contents",
     "",
     ...MATRIX_PAGES.map((p) => `- [${p}](#${p})`),
-    ...DETAIL_PAGES.map((p) => `- [${p} (per-feature detail)](#${p}-per-feature-detail)`),
     "- [before (v0.1)](#before-v01)",
     "",
   ];
@@ -180,27 +194,10 @@ function main(): void {
     if (extra && extra.length > 0) {
       const stems = [...new Set(extra.map(stemOf))].sort();
       out.push(
-        `Also in this folder, written by the feature specs rather than the matrix: ${stems.map((s) => `\`${s}\``).join(", ")}.`,
+        `Also in this folder, and **not declared in \`e2e/matrix.ts\`** — \`--strict\` fails on these: ${stems.map((s) => `\`${s}\``).join(", ")}.`,
         "",
       );
     }
-  }
-
-  for (const page of DETAIL_PAGES) {
-    const files = tree.get(page) ?? [];
-    if (files.length === 0) continue;
-    const present = new Set(files.map((f) => f.file));
-    const stems = [...new Set(files.map((f) => stemOf(f.file)))].sort();
-    const rows = stems.map((stem) => (stem.endsWith("-zh") ? { state: stem.slice(0, -3), zh: true } : { state: stem }));
-    out.push(
-      `## ${page} (per-feature detail)`,
-      "",
-      `Captured by \`e2e/${page}.spec.ts\` while it asserts that feature's semantics. These are extra`,
-      "detail on states the matrix already covers from the page's point of view.",
-      "",
-      ...tableFor(page, rows, present),
-      "",
-    );
   }
 
   const beforeFiles = tree.get(BEFORE) ?? [];

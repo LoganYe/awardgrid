@@ -1,34 +1,20 @@
 /**
  * Phase 6.2 — the grid (spec §3.3, §3.4, §3.7, §6, §8; docs/UI_PLAN.md §5–§7). One test per
- * page state, each capturing docs/screenshots/v0.2/grid/<state>-<viewport>-<theme>[-zh].png
- * (plain captures — toHaveScreenshot baselines arrive in 6.6) and asserting the semantics:
+ * page state, asserting the semantics:
  * role=grid with aria-rowcount, the roving keyboard focus, the six cell states with their
  * pattern + label, the tooltip, the toolbar, the empty / quota / partial / loading states, and
  * no animation under prefers-reduced-motion. Everything on screen is seeded demo data.
+ *
+ * This spec asserts; it does not photograph. Every capture of these states is declared in
+ * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
 import { zh } from "../src/lib/i18n/dictionaries/zh";
 import { applyTheme, CANONICAL_QUERY_EN, CANONICAL_QUERY_ZH, expect, loginAs, projectIndex, projectSuffix, submitQuery, test, type E2eUsername } from "./fixtures";
 import { E2E_SLOW_USERS } from "./users";
 
-const GRID_DIR = path.resolve(import.meta.dirname, "..", "docs", "screenshots", "v0.2", "grid");
-
 const isMobile = () => projectSuffix(test.info().project.name).viewport === "mobile";
-
-/** Viewport PNG at docs/screenshots/v0.2/grid/<state>-<viewport>-<theme>[-zh].png. */
-async function gridShot(page: Page, state: string, opts: { zh?: boolean } = {}): Promise<string> {
-  const { viewport, theme } = projectSuffix(test.info().project.name);
-  mkdirSync(GRID_DIR, { recursive: true });
-  const file = path.join(GRID_DIR, `${state}-${viewport}-${theme}${opts.zh ? "-zh" : ""}.png`);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  // Bounded: the quota indicator keeps polling, so "networkidle" may never arrive.
-  await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => undefined);
-  await page.screenshot({ path: file, animations: "disabled", caret: "hide" });
-  return file;
-}
 
 const grid = (page: Page) => page.getByRole("grid");
 const cells = (page: Page, state?: string) => page.locator(state ? `td[role="gridcell"][data-state="${state}"]` : 'td[role="gridcell"]');
@@ -199,7 +185,6 @@ test.describe("grid", () => {
 
     // Nothing in a cell is joined with a middle dot.
     await expect(table).not.toContainText("·");
-    await gridShot(page, "results");
   });
 
   test("results in Chinese", async ({ page }) => {
@@ -211,7 +196,6 @@ test.describe("grid", () => {
     await expect(cells(page, "ok").first()).toHaveAttribute("aria-label", /里程/);
     await expect(cells(page, "unmonitored").first()).toHaveAttribute("aria-label", new RegExp(zh["grid.cell.not_monitored"]));
     await expect(table.locator("thead th[role='columnheader']").nth(1)).toContainText(/里程计划/);
-    await gridShot(page, "results", { zh: true });
   });
 
   test("hover: row and column headers highlight, the tooltip lists every program", async ({ page }) => {
@@ -237,7 +221,6 @@ test.describe("grid", () => {
     const col = Number(await multi.getAttribute("data-col"));
     await expect(page.locator(`tbody tr[aria-rowindex="${row + 2}"] th[role="rowheader"]`)).toHaveAttribute("data-hl", "true");
     await expect(page.locator(`thead th[aria-colindex="${col + 2}"]`)).toHaveAttribute("data-hl", "true");
-    await gridShot(page, "hover-tooltip");
     // Hoverable (WCAG 2.1 SC 1.4.13): the pointer can move onto the tooltip and it stays open,
     // still describing the same cell; no other cell's tooltip replaces it meanwhile.
     const tipId = (await tip.getAttribute("id")) ?? "";
@@ -330,7 +313,6 @@ test.describe("grid", () => {
     // The focused cell's headers highlight, and the tooltip opens after the delay.
     await expect(page.locator(`thead th[aria-colindex="${after!.col + 2}"]`)).toHaveAttribute("data-hl", "true");
     await expect(page.getByRole("tooltip")).toBeVisible();
-    await gridShot(page, "focus-ring");
     // Esc closes the tooltip; the grid keeps focus.
     await page.keyboard.press("Escape");
     await expect(page.getByRole("tooltip")).toBeHidden();
@@ -369,7 +351,6 @@ test.describe("grid", () => {
     await expect(table.locator("thead th[role='columnheader']").nth(1)).toHaveAttribute("title", /^\d{4}-\d{2}-\d{2}$/);
     // Every route becomes a row, 30+ dates the columns: still below the virtualization threshold.
     await expect(table).toHaveAttribute("aria-rowcount", String(routes + 1));
-    await gridShot(page, "rows-routes");
   });
 
   test("cabin chips: J, then F, drop the cabin tag", async ({ page }) => {
@@ -387,7 +368,6 @@ test.describe("grid", () => {
       await expect(page.locator(".ag-cabin")).toHaveCount(0);
       const ok = cells(page, "ok").first();
       await expect(ok).toHaveAttribute("aria-label", cabin === "J" ? /, business, / : /, first, /);
-      await gridShot(page, `cabin-${cabin}`);
     }
   });
 
@@ -409,7 +389,6 @@ test.describe("grid", () => {
     await closeControls(page);
     await expect(cells(page, "filtered")).toHaveCount(0);
     const withDynamic = await cells(page, "ok").count();
-    await gridShot(page, "dynamic-on");
 
     // Off again: the scope is cached, so the dynamic rows render as muted "filtered" cells.
     controls = await openControls(page);
@@ -428,7 +407,6 @@ test.describe("grid", () => {
     // At the spec's 112 px minimum column (fixed-width layout) line 1 never overflows the cell and
     // the miles are never clipped — the tag is the only item that shrinks (its title keeps the word).
     if (!isMobile()) expect(await overflowAt112(page)).toEqual({ lines: 0, miles: 0 });
-    await gridShot(page, "dynamic-off-filtered");
   });
 
   test("empty results: the sentence and three suggestions", async ({ page }) => {
@@ -442,7 +420,6 @@ test.describe("grid", () => {
     await expect(empty.getByRole("button", { name: en["grid.empty.add_cabin"] })).toBeVisible();
     // The grid is replaced by the empty state until the hatched cells are reviewed.
     await expect(grid(page)).toBeHidden();
-    await gridShot(page, "empty-results");
     const review = empty.getByRole("button", { name: en["grid.empty.review_unmonitored"] });
     if (await review.count()) {
       await review.click();
@@ -473,7 +450,6 @@ test.describe("grid", () => {
     await expect(controls.getByRole("button", { name: en["grid.save_query"] })).toBeDisabled();
     await expect(controls.getByTestId("save-query")).toHaveAttribute("title", en["grid.toolbar.save_disabled_quota"]);
     await closeControls(page);
-    await gridShot(page, "quota");
   });
 
   test("partial: one program's Get Routes failed, the grid still renders", async ({ page }) => {
@@ -493,7 +469,6 @@ test.describe("grid", () => {
     await expect(first.locator(".ag-cell-in")).toHaveCSS("outline-style", "dotted");
     // With a route list missing, the header counts what it sees instead of claiming a monitoring count.
     if (!isMobile()) await expect(grid(page).locator("thead th[role='columnheader']").nth(1).locator(".ag-head-sub")).toHaveText(/with availability$/);
-    await gridShot(page, "partial-not-fetched");
   });
 
   test("loading: a skeleton in the real shape, static under reduced motion", async ({ page }) => {
@@ -516,7 +491,6 @@ test.describe("grid", () => {
     // Skeleton cells are not tabbable.
     await expect(table.locator('td[role="gridcell"][tabindex="0"]')).toHaveCount(0);
     await page.waitForTimeout(300);
-    await gridShot(page, "loading");
     await expectResultsGrid(page);
     await expect(page.getByTestId("cell-skeleton")).toHaveCount(0);
   });

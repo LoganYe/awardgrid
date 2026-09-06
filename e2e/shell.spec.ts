@@ -1,33 +1,15 @@
 /**
  * Phase 6.1 — the app shell (spec §2, docs/UI_PLAN.md §6.1, §6.9): top bar, footer, theme and
- * language toggles, user menu, mobile menu, auth pages and the Legal page. Screenshots land in
- * docs/screenshots/v0.2/shell/<name>-<viewport>-<theme>.png (plain captures, not baselines).
- * Everything on screen is seeded demo data.
+ * language toggles, user menu, mobile menu, auth pages and the Legal page. Everything on screen
+ * is seeded demo data.
+ *
+ * This spec asserts; it does not photograph. Every `shell/` capture is declared in
+ * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
 import { zh } from "../src/lib/i18n/dictionaries/zh";
 import { applyTheme, expect, projectSuffix, test } from "./fixtures";
-
-const SHELL_DIR = path.resolve(import.meta.dirname, "..", "docs", "screenshots", "v0.2", "shell");
-
-/** PNG of `target` (an element), the top `clipHeight` px, or the viewport, named per the §9 convention. */
-async function shellShot(page: Page, name: string, target?: Locator, clipHeight?: number): Promise<string> {
-  const { viewport, theme } = projectSuffix(test.info().project.name);
-  mkdirSync(SHELL_DIR, { recursive: true });
-  const file = path.join(SHELL_DIR, `${name}-${viewport}-${theme}.png`);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  // Bounded: the quota indicator keeps polling, so "networkidle" may never arrive.
-  await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => undefined);
-  if (target) await target.screenshot({ path: file, animations: "disabled", caret: "hide" });
-  else if (clipHeight) {
-    const width = page.viewportSize()?.width ?? 1440;
-    await page.screenshot({ path: file, animations: "disabled", caret: "hide", clip: { x: 0, y: 0, width, height: clipHeight } });
-  } else await page.screenshot({ path: file, animations: "disabled", caret: "hide" });
-  return file;
-}
 
 const isMobile = () => projectSuffix(test.info().project.name).viewport === "mobile";
 const themeButton = (scope: Page | Locator) => scope.getByRole("button", { name: /^Theme:|^主题：/ });
@@ -63,7 +45,6 @@ test.describe("shell", () => {
       await expect(header.getByRole("navigation")).toBeHidden();
       const menu = menuButton(page);
       await expect(menu).toBeVisible();
-      await shellShot(page, "topbar", header);
       await menu.click();
       await expect(menu).toHaveAttribute("aria-expanded", "true");
       const nav = page.getByRole("banner").getByRole("navigation");
@@ -71,7 +52,6 @@ test.describe("shell", () => {
       await expect(page.getByRole("group", { name: "Language" })).toBeVisible();
       await expect(themeButton(page)).toBeVisible();
       await expect(page.getByRole("button", { name: en["nav.logout"] })).toBeVisible();
-      await shellShot(page, "topbar-menu");
       await page.keyboard.press("Escape");
       await expect(nav).toBeHidden();
     } else {
@@ -82,14 +62,12 @@ test.describe("shell", () => {
       await expect(header.getByRole("group", { name: "Language" })).toBeVisible();
       await expect(themeButton(header)).toBeVisible();
       await expect(menuButton(page)).toBeHidden();
-      await shellShot(page, "topbar", header);
 
       // User menu: username button → popover with "Log out"; Escape closes and refocuses.
       const userButton = header.getByRole("button", { name: /demo/ });
       await userButton.click();
       await expect(page.getByRole("menu")).toBeVisible();
       await expect(page.getByRole("menuitem", { name: en["nav.logout"] })).toBeVisible();
-      await shellShot(page, "topbar-user-menu", undefined, 160);
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toBeHidden();
       await expect(userButton).toBeFocused();
@@ -110,7 +88,6 @@ test.describe("shell", () => {
     if (!isMobile()) {
       await expect(header.getByRole("navigation").getByRole("link", { name: "Grid" })).toHaveAttribute("aria-current", "page");
     }
-    await shellShot(page, "topbar-grid", header);
   });
 
   test("theme toggle flips data-theme and persists across reload", async ({ page, asUser }) => {
@@ -154,7 +131,6 @@ test.describe("shell", () => {
     await themeButton(page).click();
     await expect(html).toHaveAttribute("data-theme", "system");
     if (isMobile()) await page.keyboard.press("Escape");
-    await shellShot(page, "theme-system", page.getByRole("banner"));
   });
 
   test("stored theme seeds a device that has no cookie", async ({ page, asUser }) => {
@@ -220,7 +196,6 @@ test.describe("shell", () => {
     const box = await form.boundingBox();
     expect(box?.width).toBeLessThanOrEqual(360);
     await expect(form).toHaveCSS("box-shadow", "none");
-    await shellShot(page, "login");
 
     // Wrong password → inline error under the password field (a username nobody owns, so the
     // per-username login throttle for the seeded users is never touched).
@@ -231,7 +206,6 @@ test.describe("shell", () => {
     await expect(error).toHaveText(en["error.invalid_credentials"]);
     await expect(page.getByLabel("Password")).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByLabel("Password")).toHaveAttribute("aria-describedby", /password-error/);
-    await shellShot(page, "login-error");
   });
 
   test("register page", async ({ page }) => {
@@ -242,7 +216,6 @@ test.describe("shell", () => {
     await expect(hint).toBeVisible();
     await expect(hint).not.toHaveAttribute("data-satisfied", "true");
     await expectFooter(page);
-    await shellShot(page, "register");
 
     // The password rule reads muted until it is met, then in --fg (plan §6.9).
     const fg = await page.locator("body").evaluate((el) => getComputedStyle(el).color);
@@ -256,7 +229,6 @@ test.describe("shell", () => {
     await page.getByRole("button", { name: en["auth.register.submit"] }).click();
     await expect(fieldAlert(page)).toHaveText(en["error.invalid_invite"]);
     await expect(page.getByLabel("Invite code")).toHaveAttribute("aria-invalid", "true");
-    await shellShot(page, "register-error");
   });
 
   test("legal page in the reading column", async ({ page, asUser }) => {
@@ -270,7 +242,6 @@ test.describe("shell", () => {
     const box = await article.boundingBox();
     expect(box?.width).toBeLessThanOrEqual(880);
     await expectFooter(page);
-    await shellShot(page, "legal");
   });
 
   test("unknown route shows the not-found page with the shell", async ({ page, asUser }) => {

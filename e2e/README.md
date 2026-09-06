@@ -170,24 +170,28 @@ docs/screenshots/v0.2/<page>/<state>-<viewport>-<theme>[-zh].png
         page      shell · grid · queries · settings   (before/ keeps the v0.1 record)
         viewport  desktop (1440×900) · mobile (390×844)
         theme     light · dark
-        -zh       the grid page in zh-CN (spec §8), desktop only
+        -zh       the same state again with the UI in zh-CN (spec §8)
 ```
 
 Pages are captured full-page; drawer, popover and sheet states are captured at viewport size —
 `fullPage` paints a fixed-position backdrop over the first viewport height and nothing below it,
-which photographs an artefact instead of the drawer. Two deliberate gaps, both declared in the
-matrix: `grid/hover-tooltip` is desktop-only (a tooltip never opens on touch — the tap opens the
-drawer) and `grid/results-…-zh` is desktop-only, which is the pair spec §9 asks for.
+which photographs an artefact instead of the drawer. A `clip` takes the top N px at full width,
+for a state whose subject is a strip of chrome (`shell/topbar`, `shell/topbar-user-menu`).
+Deliberate gaps, all declared in the matrix: `grid/hover-tooltip` is desktop-only (a tooltip never
+opens on touch — the tap opens the drawer), `shell/topbar-menu` is mobile-only and
+`shell/topbar-user-menu` desktop-only, because each is the presentation the other viewport does
+not have.
 
 The index script exits 1 on a folder that is not a known page, a file that breaks the naming
 rule, or a matrix entry with no PNG on disk; `--strict` also fails on a capture the matrix does
 not declare. It reports any PNG over 400 KB and prints the total size of the tree.
 
-`grid/`, `queries/` and `settings/` also hold a few captures written by the feature specs
-(`grid.spec.ts`, `queries.spec.ts`, `settings.spec.ts`) beside the matrix's own; the contact
-sheet lists them under each page as "written by the feature specs rather than the matrix".
-`ask-drawer/`, `cell-drawer/` and `chips/` are those specs' per-feature detail folders and get
-their own section.
+**One owner per capture** (#34). Every PNG outside `before/` is declared in `e2e/matrix.ts` and
+written by `screenshots.spec.ts`; the feature specs assert and photograph nothing, and there are
+no per-feature detail folders any more. `pnpm exec tsx scripts/screenshot-index.ts --strict
+--check` is a required step in the CI `checks` job, so a capture that is not declared fails the
+build rather than quietly joining the tree. To add one: add a `MatrixShot`, and a state helper in
+`e2e/states.ts` if the state is new.
 
 ## Visual-regression baselines (Linux plan)
 

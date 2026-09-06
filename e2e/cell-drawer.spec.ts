@@ -1,7 +1,6 @@
 /**
  * Phase 6.4 — the cell drawer (spec §3.5, §6, §8; docs/UI_PLAN.md §6.5). One test per state,
- * each capturing docs/screenshots/v0.2/cell-drawer/<state>-<viewport>-<theme>[-zh].png and asserting
- * the semantics the spec pins: a labelled role=dialog, programs sorted by miles, the
+ * asserting the semantics the spec pins: a labelled role=dialog, programs sorted by miles, the
  * confirmation line directly above "Open in <program>" in DOM order, the h2/h3 heading
  * structure, and Esc returning focus to the cell that opened the drawer.
  *
@@ -10,27 +9,16 @@
  * already claimed by grid.spec.ts and chips.spec.ts, and the suite runs single-worker, so
  * borrowing one here would warm its availability cache and take the loading state away from the
  * spec that owns it. Nothing in scripts/mock-seatsaero.ts needed changing.
+ *
+ * This spec asserts; it does not photograph. Every capture of these states is declared in
+ * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
 import { zh } from "../src/lib/i18n/dictionaries/zh";
 import { applyTheme, availableCells, CANONICAL_QUERY_EN, CANONICAL_QUERY_ZH, expect, loginAs, openGridWithResults, projectSuffix, test } from "./fixtures";
 
-const DIR = path.resolve(import.meta.dirname, "..", "docs", "screenshots", "v0.2", "cell-drawer");
-
 const isMobile = () => projectSuffix(test.info().project.name).viewport === "mobile";
-
-/** Viewport PNG at docs/screenshots/v0.2/cell-drawer/<state>-<viewport>-<theme>[-zh].png. */
-async function shot(page: Page, state: string, opts: { zh?: boolean } = {}): Promise<string> {
-  const { viewport, theme } = projectSuffix(test.info().project.name);
-  mkdirSync(DIR, { recursive: true });
-  const file = path.join(DIR, `${state}-${viewport}-${theme}${opts.zh ? "-zh" : ""}.png`);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  await page.screenshot({ path: file, animations: "disabled", caret: "hide" });
-  return file;
-}
 
 interface CellPos {
   row: string | undefined;
@@ -120,7 +108,6 @@ test.describe("cell drawer", () => {
     await expect(panel).toHaveAttribute("data-mode", isMobile() ? "sheet" : "push");
     if (!isMobile()) expect((await panel.boundingBox())?.width).toBe(480);
 
-    await shot(page, "open");
 
     // Esc closes and hands focus back to the cell that opened it (§3.4 keyboard model).
     await page.keyboard.press("Escape");
@@ -143,14 +130,12 @@ test.describe("cell drawer", () => {
     await button.click();
 
     await expect(program.getByTestId("flights-skeleton")).toBeVisible();
-    await shot(page, "flights-loading");
 
     await expect(program.getByTestId("flights-list")).toBeVisible({ timeout: 30_000 });
     await page.unroute("**/api/trips/**");
     // Airport-local times are printed as given, never converted (ARCHITECTURE §2.3).
     await expect(program.getByTestId("flights-list")).toContainText(/\d{2}:\d{2}/);
     await expect(program.getByTestId("flights-skeleton")).toHaveCount(0);
-    await shot(page, "flights-loaded");
   });
 
   test("says what failed and retries, without losing the drawer", async ({ page }) => {
@@ -165,7 +150,6 @@ test.describe("cell drawer", () => {
 
     const error = program.getByTestId("flights-error");
     await expect(error).toContainText(en["grid.drawer.flights_error"]);
-    await shot(page, "flights-error");
 
     fail = false;
     await program.getByTestId("flights-retry").click();
@@ -178,7 +162,6 @@ test.describe("cell drawer", () => {
     const { panel } = await openDrawer(page);
     await panel.getByTestId("drawer-copy").click();
     await expect(panel.getByTestId("drawer-toast")).toHaveText(en["grid.sheet.copied"]);
-    await shot(page, "copied-toast");
 
     // The confirmation line travels with the copied block, so a pasted plan carries the caveat.
     const copied = await page.evaluate(() => navigator.clipboard.readText().catch(() => ""));
@@ -276,7 +259,6 @@ test.describe("cell drawer", () => {
     await expect(pill).toBeVisible();
     await expect(pill).toHaveText(/^Selected: [A-Z]{3}→[A-Z]{3} .+ [FJWY] [\d,]+ .+$/);
     await expect(pill).toHaveAttribute("aria-pressed", "true");
-    await shot(page, "ask-from-cell");
 
     // Switching it off is how the user stops the cell being sent (the pill is a real toggle).
     await pill.click();
@@ -298,7 +280,6 @@ test.describe("cell drawer", () => {
     const box = await panel.boundingBox();
     const viewport = page.viewportSize();
     expect(box?.width).toBe(viewport?.width);
-    await shot(page, "mobile-sheet");
   });
 });
 
@@ -322,6 +303,5 @@ test.describe("cell drawer in Chinese", () => {
     // No horizontal overflow inside the 480 px panel (or the full-width sheet below 768 px).
     const overflow = await panel.evaluate((el) => el.scrollWidth - el.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
-    await shot(page, "open", { zh: true });
   });
 });
