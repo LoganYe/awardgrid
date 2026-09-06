@@ -43,15 +43,11 @@ Evidence is what a fresh clone can reproduce with `export PATH="$HOME/.local/nod
 
 ## 4. Needs human action
 
+_Completed after the Phase 5 merge (no human action needed): PR #10 merged, `main` green (run 34002684389 incl. the Docker smoke), tag `v0.1.0` + GitHub release created, issues #11–#20 opened — one per deferred item; see §8._
+
 Each item is the exact command or step; run the commands from the repo root with
 `export PATH="$HOME/.local/node-arm64/bin:$PATH"` (this Mac's arm64 Node 22).
 
-- **Merge Phase 5** (the branch `phase-5-ship` holds README/FINAL_REPORT/DECISIONS/BACKLOG/ci.yml/next.config.ts edits plus the untracked `Dockerfile`, `docker-compose.yml`, `.dockerignore`; git writes were not permitted to the agents):
-  `git add -A && git commit -m "feat(phase-5): ship — README, Docker Compose, CI docker smoke + bundle key scan, FINAL_REPORT" && git push -u origin phase-5-ship && gh pr create --fill && gh pr checks --watch`
-  — wait for all four jobs (`typecheck · lint · test`, `gitleaks`, `docker smoke`, and the new build + bundle-scan step) — then `gh pr merge --squash --delete-branch` and confirm `gh run list --branch main --limit 1` is green. (Use the `feat(phase-5): …` title: PR #7 was squash-merged as `Phase 2: web app — …` without a conventional-commit type and `main` is not rewritten.)
-- **Tag and release** (Definition of done): `git checkout main && git pull && git tag v0.1.0 && git push origin v0.1.0 && gh release create v0.1.0 --generate-notes`.
-- **Open one GitHub issue per deferred item** (kickoff Phase 5; `gh issue list --state all` is empty). Suggested titles, one `gh issue create --title "<title>" --body "See BACKLOG.md / FINAL_REPORT.md §4"` each:
-  `Docker local smoke: docker compose build/up never run on a dev machine` · `Live Ask smoke with a real ANTHROPIC_API_KEY (refresh test/fixtures/ask/smoke-result.json)` · `Record real seats.aero fixtures with a Pro key (≤ 40 calls): ComputedLastSeen, TotalDuration unit, Bulk envelope, quota reset` · `Deeplinks for non-AA programs` · `cpp_desc sort (needs Duffel cash reference)` · `Release-window standing-query mode` · `min_cabin_pct as an advanced setting` · `Revisit node:sqlite driver when drizzle-orm 1.0 is latest`.
 
 - **Docker smoke test (local)**: Docker is not installed here, so the image was never built on this machine. The CI job `docker smoke` (`.github/workflows/ci.yml`) performs the build + `/api/health` + `/login` check on every push; to confirm locally install Docker Desktop (or OrbStack), then:
   `docker compose build && docker compose up -d && curl -fsS localhost:3000/api/health && docker compose down -v`.
@@ -112,12 +108,14 @@ Offline sanity check without any of the above: `pnpm test` and
 
 ## 8. Conventions and CI history (kickoff §10 / Definition of done)
 
-- **CI on `main`**: green **since PR #5** (`3fd0f08`, run `33985339756`) through PR #9 (`af51e39`, run `34001665198`, both
-  jobs incl. gitleaks). The very first push (`4dea592` "chore: repo skeleton", run `33981541466`) is recorded as a
+- **CI on `main`**: green **since PR #5** (`3fd0f08`, run `33985339756`) through PR #10 (`2d94152`, run `34002684389`, all
+  jobs incl. gitleaks and the Docker smoke). The very first push (`4dea592` "chore: repo skeleton", run `33981541466`) is recorded as a
   **failure** (pre-Phase-0 skeleton before the workflow was hardened) — so "green since #5", not "always green".
 - **Conventional commits**: PRs #5, #6, #8, #9 are `docs(phase-0)` / `feat(phase-N)`; **PR #7** was squash-merged as
   `Phase 2: web app — auth, encrypted keys, grid page, settings (#7)` with no type prefix. `main` is not rewritten;
-  the Phase 5 PR uses `feat(phase-5): ship — …` (§4).
-- **Squash-merge PRs**: #5 (Phase 0), #6 (Phase 1), #7 (Phase 2), #8 (Phase 3), #9 (Phase 4); Phase 5 is the pending PR in §4.
+  the Phase 5 PR (#10) used `feat(phase-5): ship — …`.
+- **Squash-merge PRs**: #5 (Phase 0), #6 (Phase 1), #7 (Phase 2), #8 (Phase 3), #9 (Phase 4), #10 (Phase 5). `main` run `34002684389` (`2d94152`) is green on all three jobs — `typecheck · lint · test` (incl. the build + bundle key scan), `gitleaks`, `docker smoke`.
+- **Release**: tag `v0.1.0` → https://github.com/LoganYe/awardgrid/releases/tag/v0.1.0 (generated notes).
+- **Deferred items → issues**: #11 Docker local smoke · #12 live Ask smoke · #13 real seats.aero fixtures · #14 parser model live check · #15 non-AA deeplinks · #16 cpp_desc sort · #17 release-window mode · #18 min_cabin_pct setting · #19 node:sqlite revisit · #20 Telegram real-bot check (labels `deferred` / `needs-human`).
 - **Secrets**: gitleaks passed on every `main` run since #5; no `.env*` or SQLite file has ever been tracked (CI step +
   `git ls-files` check); the only Anthropic credential seen was never written to disk or printed.
