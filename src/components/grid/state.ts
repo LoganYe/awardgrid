@@ -212,26 +212,8 @@ export function gridHref(q: QueryObject | null): string {
   return q ? `/grid?q=${encodeQueryParam(q)}` : "/grid";
 }
 
-// ---------------------------------------------------------------------------
-// Formatting (monospace numerics; no currency guessing)
-// ---------------------------------------------------------------------------
-
-export function formatMiles(miles: number): string {
-  return miles.toLocaleString("en-US");
-}
-
-/** "$12.90" for USD, "CA$…" style ISO prefix otherwise, "—" when unknown. */
-export function formatFees(cents: number | null, currency: string | null): string {
-  if (cents === null) return "—";
-  const amount = (cents / 100).toFixed(2);
-  if (currency === null || currency === "USD") return `$${amount}`;
-  return `${currency} ${amount}`;
-}
-
-/** Seats: 0 means "unknown / not provided" (ARCHITECTURE §2.5) — shown as "?". */
-export function formatSeats(seats: number): string {
-  return seats > 0 ? String(seats) : "?";
-}
+// Display formatting (miles, fees, seats) lives in src/lib/grid/format.ts — one formatter set
+// for the cell, the tooltip, the aria label and the drawer (Intl in the viewer's locale).
 
 /**
  * True for a complete, plausible YYYY-MM-DD (years 2000–2199). A <input type="date"> reports

@@ -41,6 +41,7 @@ const ROW_HEADER = [
   "last_seen",
   "best",
   "booking_url",
+  "dynamic",
 ] as const;
 
 function rowFields(r: AvailabilityRow, best: boolean): (string | number | boolean | null)[] {
@@ -60,6 +61,8 @@ function rowFields(r: AvailabilityRow, best: boolean): (string | number | boolea
     r.computed_last_seen,
     best,
     r.booking_url,
+    // Dynamic pricing appended from the include_filtered scope (Phase 6 "filtered" state).
+    r.dynamic === true,
   ];
 }
 
@@ -67,7 +70,7 @@ function finish(lines: string[], opts: CsvOptions): string {
   return (opts.bom ? UTF8_BOM : "") + lines.join(CRLF) + CRLF;
 }
 
-/** One line per (pair, date, program, cabin) row; `best` = true on the cell's winning row. */
+/** One line per (pair, date, program, cabin) row; `best` = true on the cell's winning row; `dynamic` = dynamic pricing. */
 export function toCsv(grid: Grid, opts: CsvOptions = {}): string {
   const lines: string[] = [csvLine(ROW_HEADER)];
   for (const cell of iterateCells(grid)) {

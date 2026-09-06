@@ -23,9 +23,26 @@ export interface AvailabilityRow {
   fetched_at: string; // ISO timestamp when awardgrid pulled it
   /** True when fetched with include_filtered=true (a separate cache scope); absent = false. */
   include_filtered?: boolean;
+  /**
+   * True for a dynamically priced row that the query (include_filtered=false) did NOT ask
+   * for: it was appended from the cached include_filtered scope so the UI can render the
+   * "filtered" cell state and explain the "Show dynamic pricing" toggle. Absent = false.
+   */
+  dynamic?: boolean;
 }
 
-export type CellStatus = "ok" | "none" | "unmonitored" | "not_fetched";
+/**
+ * Cell states (Phase 6 §3.4). "loading" is never produced by buildGrid — the skeleton grid
+ * the UI renders while a query runs uses it. "filtered" = every row in the cell is dynamic
+ * and the query hides dynamic pricing.
+ */
+export type CellStatus = "ok" | "none" | "unmonitored" | "not_fetched" | "filtered" | "loading";
+
+/** A pair whose fetch did not complete; `reason` is an i18n key (never English text). */
+export interface NotFetchedPair {
+  pair: { origin: string; dest: string };
+  reason: string;
+}
 
 export interface GridCell {
   origin: string;
@@ -36,6 +53,8 @@ export interface GridCell {
   best: AvailabilityRow | null;
   /** Every row for this (pair, date) across programs and selected cabins, sorted. */
   all: AvailabilityRow[];
+  /** i18n key explaining a "not_fetched" cell; absent for every other status. */
+  reason?: string;
 }
 
 export type Orientation = "dates" | "routes";
@@ -63,6 +82,8 @@ export interface GridMeta {
   generated_at: string; // ISO
   /** Pairs seats.aero does not monitor for any requested program (from Get Routes), if known. */
   unmonitored_pairs: RoutePair[];
+  /** Pairs whose fetch did not complete (quota headroom, truncation); reasons are i18n keys. */
+  not_fetched_pairs: NotFetchedPair[];
   /** Oldest computed_last_seen across shown cells, for the header freshness badge. */
   oldest_seen: string | null;
   newest_seen: string | null;
@@ -71,4 +92,5 @@ export interface GridMeta {
   served_from_cache: boolean;
 }
 
-export type FreshnessTier = "fresh" | "aging" | "stale";
+/** fresh < 2 h · aging 2–6 h · stale > 6 h · unknown = missing/unparseable timestamp. */
+export type FreshnessTier = "fresh" | "aging" | "stale" | "unknown";

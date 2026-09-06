@@ -31,13 +31,13 @@ describe("toCsv", () => {
     const csv = toCsv(grid);
     const lines = csv.split("\r\n");
     expect(lines[0]).toBe(
-      "date,origin,dest,program,program_name,cabin,miles,fees_cents,currency,seats_left,direct,airlines,last_seen,best,booking_url",
+      "date,origin,dest,program,program_name,cabin,miles,fees_cents,currency,seats_left,direct,airlines,last_seen,best,booking_url,dynamic",
     );
     expect(lines[1]).toBe(
-      "2026-10-15,HKG,SEA,united,United MileagePlus,J,70000,,,2,true,UA NH,2026-10-01T10:00:00.000Z,true,",
+      "2026-10-15,HKG,SEA,united,United MileagePlus,J,70000,,,2,true,UA NH,2026-10-01T10:00:00.000Z,true,,false",
     );
     expect(lines[2]).toBe(
-      '2026-10-15,HKG,SEA,alaska,Alaska Mileage Plan,J,80000,5600,USD,2,true,AS,2026-10-01T10:00:00.000Z,false,"https://example.test/book?a=1,2"',
+      '2026-10-15,HKG,SEA,alaska,Alaska Mileage Plan,J,80000,5600,USD,2,true,AS,2026-10-01T10:00:00.000Z,false,"https://example.test/book?a=1,2",false',
     );
     expect(lines[3]).toBe("");
     expect(csv.startsWith(UTF8_BOM)).toBe(false);

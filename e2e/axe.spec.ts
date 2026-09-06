@@ -2,8 +2,9 @@
  * axe-core audit of the current UI. Runs on the desktop projects only, writes counts per impact
  * to docs/screenshots/v0.2/axe-summary.json (the 6.0 baseline stays untouched under before/)
  * and logs every serious/critical violation id. The §8 floor ("zero serious/critical") is
- * enforced now for the pages 6.1 restyled (login, register, legal); the grid, settings and
- * queries pages join once their sub-phases land — flip AXE_STRICT (or set E2E_AXE_STRICT=1).
+ * enforced now for the pages 6.1 restyled (login, register, legal) and the 6.2 grid results
+ * page in both themes; settings and queries join once their sub-phases land — flip AXE_STRICT
+ * (or set E2E_AXE_STRICT=1).
  */
 import AxeBuilder from "@axe-core/playwright";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -14,7 +15,7 @@ import { applyTheme, AXE_SUMMARY_FILE, expect, loginAs, openGridWithResults, tes
 const AXE_STRICT = process.env.E2E_AXE_STRICT === "1";
 const SUMMARY_FILE = AXE_SUMMARY_FILE;
 /** Pages already held to the §8 floor (zero serious/critical) regardless of AXE_STRICT. */
-const STRICT_PAGES = new Set(["login", "register", "legal"]);
+const STRICT_PAGES = new Set(["login", "register", "legal", "grid-results"]);
 type Impact = "critical" | "serious" | "moderate" | "minor";
 
 interface PageSummary {
@@ -36,7 +37,7 @@ function readSummary(): Summary {
       /* rewrite below */
     }
   }
-  return { generated_at: new Date().toISOString(), note: "axe-core audit of the current UI; counts per impact per page and project (strict for login, register and legal)", pages: {} };
+  return { generated_at: new Date().toISOString(), note: "axe-core audit of the current UI; counts per impact per page and project (strict for login, register, legal and grid-results)", pages: {} };
 }
 
 async function audit(page: Page, key: string): Promise<void> {
@@ -49,6 +50,11 @@ async function audit(page: Page, key: string): Promise<void> {
   });
   const bad = violations.filter((v) => v.impact === "critical" || v.impact === "serious");
   console.log(`axe ${test.info().project.name} ${key}: ${JSON.stringify(counts)}${bad.length ? ` serious/critical: ${bad.map((v) => `${v.id}(${v.nodes})`).join(", ")}` : ""}`);
+  // Name the offending elements so a failure is actionable from the run log alone.
+  for (const v of results.violations) {
+    if (v.impact !== "critical" && v.impact !== "serious") continue;
+    for (const node of v.nodes) console.log(`  ${v.id}: ${node.target.join(" ")} — ${node.failureSummary?.split("\n").slice(0, 2).join(" ") ?? ""}`);
+  }
 
   const summary = readSummary();
   summary.generated_at = new Date().toISOString();

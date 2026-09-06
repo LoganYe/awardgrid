@@ -6,9 +6,6 @@ import {
   clampDates,
   decodeQueryParam,
   encodeQueryParam,
-  formatFees,
-  formatMiles,
-  formatSeats,
   gridHref,
   isCommittableDate,
   localToday,
@@ -127,14 +124,7 @@ describe("URL codec", () => {
 });
 
 describe("formatting", () => {
-  it("miles, fees, seats, iata, local date", () => {
-    expect(formatMiles(62000)).toBe("62,000");
-    expect(formatFees(null, null)).toBe("—");
-    expect(formatFees(1290, "USD")).toBe("$12.90");
-    expect(formatFees(1290, null)).toBe("$12.90");
-    expect(formatFees(5000, "CAD")).toBe("CAD 50.00");
-    expect(formatSeats(0)).toBe("?");
-    expect(formatSeats(4)).toBe("4");
+  it("iata, local date", () => {
     expect(normalizeIata(" sea")).toBe("SEA");
     expect(normalizeIata("SEAT")).toBeNull();
     expect(localToday(new Date(2026, 9, 1, 23, 30))).toBe("2026-10-01");
@@ -172,7 +162,7 @@ describe("mergeTripsIntoGrid", () => {
       pairs: [{ origin: "HKG", dest: "SEA", key: "HKG-SEA" }],
       dates: ["2026-10-02"],
       query: base,
-      meta: { generated_at: "2026-10-01T12:00:00Z", unmonitored_pairs: [], oldest_seen: null, newest_seen: null, api_calls_used: 0, served_from_cache: false },
+      meta: { generated_at: "2026-10-01T12:00:00Z", unmonitored_pairs: [], not_fetched_pairs: [], oldest_seen: null, newest_seen: null, api_calls_used: 0, served_from_cache: false },
     };
     const out = mergeTripsIntoGrid(grid, a, { fees_cents: 1290, currency: "USD", booking_url: "https://example.test/book" });
     const cell = out.cells[0]![0]!;

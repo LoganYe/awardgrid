@@ -55,6 +55,7 @@ selector** for the mock (`DEMO_KEYS` in `scripts/mock-seatsaero.ts`) — the app
 | `nokey` | — | "Add your seats.aero key" empty state; the Ask drawer's no-key state |
 | `empty` | `demo-key-empty` | `/search` answers with no rows → "No award seats found"; `/queries` empty state |
 | `slow` | `demo-key-slow` | every mock response delayed 1 500 ms → loading states |
+| `slow2`, `slow3`, `slow4` | `demo-key-slow` | the same, one per Playwright project (`E2E_SLOW_USERS`): the cache is per user, and a project must not be served the previous project's answer |
 | `partial` | `demo-key-partial` | `aeroplan` rows omitted; `/routes?source=aeroplan` → 500 ("one program not fetched") |
 | `quota` | `demo-key-normal` | `api_usage` row for today at 950 calls → quota banner, search refused |
 

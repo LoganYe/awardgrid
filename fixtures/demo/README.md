@@ -33,7 +33,9 @@ Origins HKG, PVG, SHA, NRT, HND, ICN → SEA; 30 consecutive days from the ancho
 `american`, `alaska`, `united`, `aeroplan`, `singapore`, `jetblue`, `flyingblue` (real seats.aero
 source codes only, names as plain text). Per pair-day: J on ~45 %, F on ~15 %; 1–3 programs per
 available pair-day; J 55k–120k and F 70k–160k miles, program-dependent; `RemainingSeats` 0–4
-(0 = unknown); `Airlines` like `"AS"` or `"JL, AS"`; `Direct` mixed.
+(0 = unknown); `Airlines` like `"AS"` or `"JL, AS"`; `Direct` mixed; `JTotalTaxes` / `FTotalTaxes`
+(cents, program-dependent) with `TaxesCurrency` on ~85 % of rows — the rest leave fees unknown
+(the cell shows `?`), as some programs do upstream.
 
 ## Scenario keys (mock server, `DEMO=1`)
 

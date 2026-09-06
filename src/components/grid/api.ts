@@ -44,6 +44,14 @@ export interface FindResponse {
   warnings: string[];
   notices?: Notice[];
   quota: QuotaSnapshot;
+  /** Phase 6 additive: the dynamic-pricing scope is cached, so the toggle costs no calls. */
+  dynamic_rows_available?: boolean;
+  /** Phase 6 additive: programs whose Get Routes call failed this run. */
+  programs_failed?: string[];
+  /** Phase 6 additive: programs monitoring each pair (pair key → count) when the routes catalog knows every requested program; null otherwise. */
+  programs_by_pair?: Record<string, number> | null;
+  /** Phase 6 additive: programs the run checked for these pairs (the empty-results sentence). */
+  programs_checked?: number;
 }
 
 /** A warning as the UI renders it: translated when structured, the server's English otherwise. */

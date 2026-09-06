@@ -46,7 +46,7 @@ function ProvenanceBadge({ value }: { value: Provenance | undefined }) {
       )}
       title={t(key)}
     >
-      {value === "llm" ? "LLM" : value === "default" ? "def" : "det"}
+      {t(value === "llm" ? "grid.provenance.badge_llm" : value === "default" ? "grid.provenance.badge_default" : "grid.provenance.badge_deterministic")}
     </span>
   );
 }
@@ -138,7 +138,7 @@ function AirportChips({
         }}
         onKeyDown={onKeyDown}
         onBlur={() => draft.trim() && commit()}
-        placeholder="+ IATA"
+        placeholder={t("grid.chips.add_placeholder")}
         aria-label={t("grid.chips.add_airport")}
         aria-invalid={invalid || undefined}
         maxLength={3}

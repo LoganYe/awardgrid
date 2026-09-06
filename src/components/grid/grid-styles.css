@@ -1,0 +1,528 @@
+/*
+ * Grid UI styles (Phase 6.2, spec §3.3–§3.4, docs/UI_PLAN.md §4–§7). Plain CSS on the tokens in
+ * src/styles/tokens.css; imported once from grid-table.tsx. Everything is prefixed `ag-`.
+ *
+ * Density is driven by data-density on the wrapper (set from matchMedia in use-roving-grid.ts,
+ * SSR default "desktop"): desktop 48 px rows / three-line cells, tablet 32 px / two lines,
+ * mobile 40 px touch rows / one line. Column minimum 112 px at every density. Radius 0, no
+ * shadows; the grid lines are the table.
+ */
+
+.ag-wrap {
+  position: relative;
+  --ag-row-h: var(--row-desktop);
+  --ag-rowhead-w: 96px;
+  --ag-col-w: var(--column-min);
+}
+.ag-wrap[data-density="tablet"] {
+  --ag-row-h: var(--row-tablet);
+  --ag-rowhead-w: 80px;
+}
+.ag-wrap[data-density="mobile"] {
+  --ag-row-h: var(--row-touch);
+  --ag-rowhead-w: 72px;
+}
+
+/* The one scroll container: sticky header and first column stick inside it (both axes). */
+.ag-scroll {
+  overflow: auto;
+  max-height: calc(100vh - var(--topbar-height) - 220px);
+  min-height: 160px;
+  overscroll-behavior: contain;
+}
+.ag-wrap[data-dimmed="true"] .ag-scroll {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.ag-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: var(--type-grid);
+  line-height: var(--leading-grid);
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--radius-grid);
+}
+.ag-table[data-fixed="true"] {
+  table-layout: fixed;
+}
+
+/* ---- headers ---- */
+.ag-table th {
+  font-weight: 500;
+  text-align: left;
+  vertical-align: top;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  padding: 4px 6px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ag-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: var(--ag-row-h);
+  min-width: var(--ag-col-w);
+  border-top: 1px solid var(--line);
+}
+.ag-table thead th.ag-corner {
+  z-index: 4;
+  left: 0;
+  width: var(--ag-rowhead-w);
+  min-width: var(--ag-rowhead-w);
+  border-left: 1px solid var(--line);
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+.ag-table tbody th.ag-rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: var(--ag-rowhead-w);
+  min-width: var(--ag-rowhead-w);
+  max-width: var(--ag-rowhead-w);
+  border-left: 1px solid var(--line);
+  font-weight: 400;
+}
+.ag-table th[data-hl="true"] {
+  background: var(--bg-raised);
+}
+.ag-head-sub {
+  display: block;
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+.ag-wrap[data-density="mobile"] .ag-head-sub {
+  display: none;
+}
+.ag-wrap[data-density="tablet"] .ag-table thead th,
+.ag-wrap[data-density="mobile"] .ag-table thead th {
+  padding-top: 0;
+  vertical-align: middle;
+}
+.ag-wrap[data-density="mobile"] .ag-table tbody th.ag-rowhead,
+.ag-wrap[data-density="tablet"] .ag-table tbody th.ag-rowhead {
+  padding-top: 0;
+  vertical-align: middle;
+}
+
+/* ---- rows and cells ---- */
+.ag-table tbody tr {
+  height: var(--ag-row-h);
+}
+.ag-cell {
+  height: var(--ag-row-h);
+  min-width: var(--ag-col-w);
+  padding: 0;
+  vertical-align: top;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.ag-cell[data-state="ok"],
+.ag-cell[data-state="filtered"],
+.ag-cell[data-state="none"],
+.ag-cell[data-state="not_fetched"],
+.ag-cell[data-state="unmonitored"] {
+  cursor: pointer;
+}
+/* The 1 px bottom border is part of the row height (48 / 32 / 40), so the inner box is 1 px
+   shorter and header and body rows stay on the same 16 px line grid. */
+.ag-cell-in {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: calc(var(--ag-row-h) - 1px);
+  padding: 0 6px;
+  overflow: hidden;
+}
+.ag-wrap[data-density="mobile"] .ag-cell-in,
+.ag-wrap[data-density="tablet"] .ag-cell-in {
+  justify-content: center;
+}
+.ag-cell:hover,
+.ag-cell[aria-selected="true"] {
+  background: var(--bg-raised);
+}
+/* Focus ring: 2 px accent, drawn inside the cell (1 px in from the edge) so the scroll container
+   and the sticky headers never clip it. Widths come from tokens.css. */
+.ag-cell:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: calc(-1 * (var(--focus-ring-width) + var(--focus-ring-offset)));
+  position: relative;
+  z-index: 1;
+}
+.ag-cell:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Line 1: miles (weight 600, the loudest thing on the page) with the optional cabin tag. */
+.ag-l1 {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  height: var(--leading-grid);
+  white-space: nowrap;
+  min-width: 0;
+}
+.ag-miles {
+  font-weight: 600;
+  color: var(--fg);
+  flex: none;
+}
+.ag-cell[data-tier="stale"] .ag-miles,
+.ag-cell[data-tier="unknown"] .ag-miles,
+.ag-cell[data-state="filtered"] .ag-miles {
+  color: var(--fg-muted);
+}
+/* Cabin tag: a one-letter glyph in a 1 px outlined box; muted, never a color. */
+.ag-cabin {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  line-height: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+  color: var(--fg-muted);
+  transform: translateY(-1px);
+}
+.ag-tag {
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+  font-weight: 400;
+  color: var(--fg-muted);
+  /* The miles are never clipped: at the 112 px minimum column (and under any font metrics) the
+     tag is the item that shrinks, keeping the state visible as a tag with the word in `title`. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Line 2: fees left, seats right, justified; no separator glyph. */
+.ag-l2 {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  height: var(--leading-grid);
+  font-size: var(--type-meta);
+  line-height: var(--leading-grid);
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+/* Line 3: program short name left, freshness mark + age right. */
+.ag-l3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  height: var(--leading-grid);
+  font-size: var(--type-meta);
+  line-height: var(--leading-grid);
+  white-space: nowrap;
+}
+.ag-program {
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.ag-age {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: var(--type-meta);
+}
+.ag-age[data-tier="fresh"] {
+  color: var(--fresh);
+}
+.ag-age[data-tier="aging"] {
+  color: var(--aging);
+}
+.ag-age[data-tier="stale"] {
+  color: var(--stale);
+}
+.ag-age[data-tier="unknown"] {
+  color: var(--fg-muted);
+}
+.ag-mark {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: none;
+}
+
+/* ---- the other five states ---- */
+/* 2. No availability: a single quiet en dash. */
+.ag-cell[data-state="none"] .ag-cell-in {
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+}
+/* 3. Not monitored: diagonal hatch in --line-strong on --bg-raised (survives grayscale). The
+   cell keeps its grid lines in --line-strong: --line is invisible on the raised ground, and the
+   grid lines are the table (plan §1). */
+.ag-cell[data-state="unmonitored"] {
+  background-color: var(--bg-raised);
+  background-image: var(--hatch);
+  border-color: var(--line-strong);
+}
+.ag-cell[data-state="unmonitored"]:hover {
+  background-color: var(--bg-raised);
+}
+/* 4. Not fetched: 1 px dotted outline inside the cell, with the reason in the title / aria. */
+.ag-cell[data-state="not_fetched"] .ag-cell-in {
+  outline: 1px dotted var(--line-strong);
+  outline-offset: -2px;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  font-size: var(--type-meta);
+}
+/* 6. Loading: bars at the exact line positions of the eventual cell. Static by default; the one
+   1.2 s shimmer runs only when the user has no motion preference. */
+.ag-skel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  height: calc(var(--ag-row-h) - 1px);
+  padding: 0 6px;
+}
+.ag-skel-bar {
+  height: 6px;
+  background: var(--bg-raised);
+  border-radius: 0;
+}
+.ag-skel-bar:nth-child(1) {
+  width: 48%;
+}
+.ag-skel-bar:nth-child(2) {
+  width: 80%;
+}
+.ag-skel-bar:nth-child(3) {
+  width: 64%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ag-shimmer {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+  .ag-skel-bar {
+    animation: ag-shimmer 1.2s ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ag-skel-bar {
+    animation: none;
+  }
+}
+
+/* ---- "Run to refresh" strip on the modified state ---- */
+.ag-strip {
+  height: 24px;
+  line-height: 24px;
+  padding: 0 8px;
+  background: var(--bg-raised);
+  color: var(--fg);
+  font-size: var(--type-meta);
+}
+
+/* ---- tooltip: one positioned popover for the hovered / focused cell ---- */
+.ag-tip {
+  position: fixed;
+  z-index: 60;
+  max-width: 320px;
+  padding: 4px 8px;
+  background: var(--bg-raised);
+  color: var(--fg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-surface);
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+  font-variant-numeric: tabular-nums;
+  /* Hoverable: the pointer may rest on the tooltip (grid-table.tsx keeps it open meanwhile). */
+  pointer-events: auto;
+}
+.ag-tip-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 12px;
+  align-items: baseline;
+  white-space: nowrap;
+}
+.ag-tip-row .ag-program {
+  color: var(--fg);
+}
+.ag-tip-miles {
+  font-weight: 600;
+  text-align: right;
+}
+/* Fees and seats for the row (the drawer shows the rest); no separator glyph between them. */
+.ag-tip-detail {
+  display: inline-flex;
+  gap: 8px;
+  color: var(--fg-muted);
+}
+.ag-tip-detail > span:empty {
+  display: none;
+}
+
+/* ---- toolbar (spec §3.3) ---- */
+.ag-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  min-height: 32px;
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+}
+.ag-toolbar[data-disabled="true"] {
+  color: var(--fg-muted);
+}
+.ag-toolbar[data-disabled="true"] > * {
+  pointer-events: none;
+}
+.ag-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ag-toolbar-center {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ag-toolbar-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.ag-toolbar-label {
+  color: var(--fg-muted);
+  font-size: var(--type-meta);
+}
+.ag-note {
+  color: var(--fg-muted);
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+}
+/* Segmented control: the pressed segment sits on --bg-raised in --fg; never the accent. */
+.ag-seg {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+.ag-seg button {
+  height: 26px;
+  padding: 0 10px;
+  font-size: var(--type-grid);
+  line-height: 26px;
+  font-weight: 500;
+  color: var(--fg-muted);
+  background: var(--bg);
+  border: 0;
+  border-right: 1px solid var(--line-strong);
+  cursor: pointer;
+}
+.ag-seg button:last-child {
+  border-right: 0;
+}
+.ag-seg button[aria-pressed="true"] {
+  color: var(--fg);
+  background: var(--bg-raised);
+}
+.ag-seg button:disabled {
+  cursor: default;
+  color: var(--fg-muted);
+  background: var(--bg-raised);
+}
+.ag-seg button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+.ag-status {
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+  color: var(--fg-muted);
+}
+
+/* ---- quota banner (persistent, above the toolbar) ---- */
+.ag-quota {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+  border-left: 1px solid var(--error);
+  color: var(--fg);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+}
+
+/* ---- empty results ---- */
+.ag-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0;
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+}
+.ag-empty-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.ag-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Mobile filters sheet body */
+.ag-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 16px 16px;
+}
+.ag-filters-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+}

@@ -13,6 +13,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { test as base, expect, request as playwrightRequest, type Locator, type Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
+import type { QueryObject } from "../src/lib/query/schema";
 import { E2E_PASSWORD, type E2eUsername } from "./users";
 
 export { expect };
@@ -95,14 +96,36 @@ export async function beforeShot(page: Page, name: string): Promise<string> {
 // Page helpers (current UI)
 // ---------------------------------------------------------------------------
 
+/**
+ * /grid?q=… for a QueryObject — the shareable-URL codec of src/components/grid/state.ts
+ * (base64url of the JSON), inlined because importing state.ts would pull data/places.json
+ * through Playwright's loader, which has no JSON import attribute. The page runs the query on
+ * load, so a test can start from any exact QueryObject without going through the parser.
+ */
+export function gridQueryHref(q: QueryObject): string {
+  return `/grid?q=${Buffer.from(JSON.stringify(q), "utf8").toString("base64url")}`;
+}
+
+/** Playwright project name → 0..3, for per-project query variants that must not share a cache. */
+export function projectIndex(projectName: string): number {
+  const { viewport, theme } = projectSuffix(projectName);
+  return (viewport === "mobile" ? 2 : 0) + (theme === "dark" ? 1 : 0);
+}
+
+/** ISO date `days` calendar days after today (UTC, the e2e timezone). */
+export function isoDaysFromToday(days: number): string {
+  const t = new Date();
+  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
 /** The natural-language query box on /grid. */
 export function queryBox(page: Page): Locator {
   return page.getByRole("textbox", { name: en["grid.search"] });
 }
 
-/** Grid cells that carry a best row: their button's aria-label starts with the miles figure. */
+/** Grid cells that carry a best row (the 6.2 grid: <td role="gridcell" data-state="ok">). */
 export function availableCells(page: Page): Locator {
-  return page.locator("table td button[aria-label*='miles']");
+  return page.locator("td[role='gridcell'][data-state='ok']");
 }
 
 /** Type `text` into the query box and submit it; resolves once parsing has finished. */
@@ -117,7 +140,8 @@ export async function openGridWithResults(page: Page, username: E2eUsername = "d
   await loginAs(page, username);
   await page.goto("/grid");
   await submitQuery(page, text);
-  await expect(page.getByRole("table")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("grid")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("grid")).not.toHaveAttribute("aria-busy", "true", { timeout: 60_000 });
   await expect(availableCells(page).first()).toBeVisible({ timeout: 60_000 });
 }
 
@@ -138,12 +162,13 @@ export async function closeDrawer(page: Page): Promise<void> {
   await expect(page.getByRole("dialog")).toBeHidden();
 }
 
-/** Open the Ask drawer from the grid header bar and wait for its prompt box. */
+/** Open the Ask drawer from the grid toolbar (inside the "Filters" sheet below 768 px) and wait for its prompt box. */
 export async function openAskDrawer(page: Page): Promise<Locator> {
-  await page.getByRole("button", { name: "Ask", exact: true }).click();
-  const dialog = page.getByRole("dialog");
+  const ask = page.getByRole("button", { name: en["ask.open"], exact: true });
+  if (!(await ask.isVisible())) await page.getByRole("button", { name: en["grid.toolbar.filters"] }).click();
+  await ask.click();
+  const dialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: en["ask.open"] }) });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: "Ask" })).toBeVisible();
   return dialog;
 }
 

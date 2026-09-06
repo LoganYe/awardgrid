@@ -17,16 +17,19 @@ export interface QueryBoxProps {
   busy: boolean;
   llmAvailable: boolean;
   onSubmit: (text: string) => void;
+  /** Running is off (the seats.aero daily limit, spec §3.7): Run and Enter do nothing, the reason sits in the title. */
+  disabled?: boolean;
+  disabledTitle?: string;
 }
 
 /** Natural-language query box: Enter submits (Shift+Enter inserts a newline). */
-export function QueryBox({ initialText = "", busy, llmAvailable, onSubmit }: QueryBoxProps) {
+export function QueryBox({ initialText = "", busy, llmAvailable, onSubmit, disabled = false, disabledTitle }: QueryBoxProps) {
   const t = useT();
   const [text, setText] = useState(initialText);
 
   function submit(value: string) {
     const trimmed = value.trim();
-    if (trimmed.length === 0 || busy) return;
+    if (trimmed.length === 0 || busy || disabled) return;
     onSubmit(trimmed);
   }
 
@@ -57,9 +60,11 @@ export function QueryBox({ initialText = "", busy, llmAvailable, onSubmit }: Que
           className="min-h-14 flex-1 resize-y text-base sm:text-sm"
           aria-label={t("grid.search")}
         />
-        <Button type="submit" disabled={busy || text.trim().length === 0} className="sm:h-14 sm:px-4">
-          {busy ? t("grid.parsing") : t("grid.search")}
-        </Button>
+        <span title={disabled ? disabledTitle : undefined} className="sm:inline-flex">
+          <Button type="submit" disabled={busy || disabled || text.trim().length === 0} className="w-full sm:h-14 sm:px-4">
+            {busy ? t("grid.parsing") : t("grid.search")}
+          </Button>
+        </span>
       </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
         <span>{t("grid.examples")}:</span>
@@ -67,7 +72,7 @@ export function QueryBox({ initialText = "", busy, llmAvailable, onSubmit }: Que
           <button
             key={ex}
             type="button"
-            disabled={busy}
+            disabled={busy || disabled}
             onClick={() => {
               setText(ex);
               submit(ex);
@@ -77,7 +82,7 @@ export function QueryBox({ initialText = "", busy, llmAvailable, onSubmit }: Que
             {ex}
           </button>
         ))}
-        {!llmAvailable && <span className="basis-full text-muted-foreground/80">{t("grid.llm_off")}</span>}
+        {!llmAvailable && <span className="basis-full text-muted-foreground">{t("grid.llm_off")}</span>}
       </div>
     </form>
   );
