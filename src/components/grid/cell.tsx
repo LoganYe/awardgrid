@@ -141,7 +141,15 @@ function CellBody({ cell, status, now, density, showCabinTag, t, locale }: Pick<
   }
   const miles = formatMiles(best.miles, locale);
   const tag = showCabinTag ? <CabinTag cabin={best.cabin} /> : null;
-  const dynamicTag = status === "filtered" ? <span className="ag-tag">{t("grid.cell.filtered_short")}</span> : null;
+  const dynamicTag =
+    status === "filtered" ? (
+      // The tag is the only shrinkable item on line 1 (see .ag-tag in grid-styles.css): at the
+      // 112 px minimum column it clips with an ellipsis rather than pushing the miles out of the
+      // cell. The full word stays available in the title and in the cell's aria-label.
+      <span className="ag-tag" title={t("grid.cell.filtered")}>
+        {t("grid.cell.filtered_short")}
+      </span>
+    ) : null;
   if (density === "mobile") {
     // One line: "60,000 ●2h" (cabin tag kept when both cabins are shown; spec §6). The dynamic
     // tag stays too: the filtered state is never carried by the muted color alone (spec §8).

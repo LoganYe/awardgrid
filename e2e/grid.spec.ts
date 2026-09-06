@@ -90,15 +90,17 @@ async function tokenRgb(page: Page, token: string): Promise<string> {
  * Number of `.ag-l1` lines that overflow once every column is forced to the spec's 112 px minimum
  * (the fixed-width layout the grid uses under column virtualization).
  */
-function overflowingLinesAt112(page: Page): Promise<number> {
+function overflowAt112(page: Page): Promise<{ lines: number; miles: number }> {
   return page.evaluate(() => {
     const cols = document.querySelectorAll("thead th").length - 1;
     const style = document.createElement("style");
     style.textContent = `.ag-table{table-layout:fixed;width:${96 + 112 * cols}px;min-width:0}.ag-table thead th:not(.ag-corner),.ag-table td{width:112px;max-width:112px}`;
     document.head.appendChild(style);
-    const n = Array.from(document.querySelectorAll<HTMLElement>(".ag-l1")).filter((el) => el.scrollWidth > el.clientWidth).length;
+    const overflows = (el: HTMLElement) => el.scrollWidth > el.clientWidth + 1;
+    const lines = Array.from(document.querySelectorAll<HTMLElement>(".ag-l1")).filter(overflows).length;
+    const miles = Array.from(document.querySelectorAll<HTMLElement>(".ag-miles")).filter(overflows).length;
     style.remove();
-    return n;
+    return { lines, miles };
   });
 }
 
@@ -383,9 +385,9 @@ test.describe("grid", () => {
     // The state is never color alone: the text tag is there at every density, and the aria
     // label carries the full word.
     await expect(first.locator(".ag-tag")).toHaveText(en["grid.cell.filtered_short"]);
-    // At the spec's 112 px minimum column (fixed-width layout) line 1 — cabin tag, miles, the
-    // dynamic tag — never clips.
-    if (!isMobile()) expect(await overflowingLinesAt112(page)).toBe(0);
+    // At the spec's 112 px minimum column (fixed-width layout) line 1 never overflows the cell and
+    // the miles are never clipped — the tag is the only item that shrinks (its title keeps the word).
+    if (!isMobile()) expect(await overflowAt112(page)).toEqual({ lines: 0, miles: 0 });
     await gridShot(page, "dynamic-off-filtered");
   });
 

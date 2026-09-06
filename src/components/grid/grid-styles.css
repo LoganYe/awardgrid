@@ -173,10 +173,12 @@
   gap: 4px;
   height: var(--leading-grid);
   white-space: nowrap;
+  min-width: 0;
 }
 .ag-miles {
   font-weight: 600;
   color: var(--fg);
+  flex: none;
 }
 .ag-cell[data-tier="stale"] .ag-miles,
 .ag-cell[data-tier="unknown"] .ag-miles,
@@ -203,6 +205,12 @@
   line-height: var(--leading-meta);
   font-weight: 400;
   color: var(--fg-muted);
+  /* The miles are never clipped: at the 112 px minimum column (and under any font metrics) the
+     tag is the item that shrinks, keeping the state visible as a tag with the word in `title`. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Line 2: fees left, seats right, justified; no separator glyph. */
