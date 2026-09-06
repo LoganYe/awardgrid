@@ -154,6 +154,21 @@ describe("fixtures/demo generator", () => {
     expect(median("american")).toBeLessThan(median("singapore"));
   });
 
+  it("carries taxes on most rows (the cell's fees line) and none on a few (the fees-unknown state)", () => {
+    const withTaxes = rows.filter((r) => (r.JAvailable && r.JTotalTaxes !== undefined) || (r.FAvailable && r.FTotalTaxes !== undefined));
+    expect(withTaxes.length).toBeGreaterThan(rows.length * 0.7);
+    expect(withTaxes.length).toBeLessThan(rows.length);
+    for (const r of rows) {
+      if (r.JTotalTaxes !== undefined) {
+        expect(r.JAvailable).toBe(true);
+        expect(Number.isInteger(r.JTotalTaxes)).toBe(true);
+        expect(r.JTotalTaxes).toBeGreaterThanOrEqual(560);
+      }
+      if (r.FTotalTaxes !== undefined) expect(r.FAvailable).toBe(true);
+      if (r.TaxesCurrency !== undefined) expect(["", "USD"]).toContain(r.TaxesCurrency);
+    }
+  });
+
   it("has a Get Trips payload for every availability that parses with TripsResponse", () => {
     expect(Object.keys(dataset.trips).sort()).toEqual(rows.map((r) => r.ID).sort());
     for (const row of rows) {

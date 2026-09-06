@@ -443,6 +443,9 @@ Reviewed axis by axis with the question the spec asks: *would any generic data a
 - **Freshness tiers**: a fourth `unknown` tier replaces "unparseable = stale" so the ring-with-"?" state exists in the type system. _Why:_ spec §3.4 lists four encodings.
 - **Cell backgrounds**: no per-tier tint; tier is carried by mark + age text + miles contrast. _Why:_ §1.2 (no color washes), AA against a single ground, and the grid reads as one surface.
 - **Provenance badges**: the `det`/`llm`/`def` uppercase badges become a single 12 px sentence-case note next to the "Parsed from" line ("dates guessed") shown only when the LLM path filled a field. _Why:_ §1.2 eyebrow tell.
+- **Ask entry point** (6.2 review): spec §3.3 lists the toolbar's five controls and no trigger for the Ask drawer (§6.6); the trigger is a text-only "Ask" button at the right end of the grid toolbar, after Export CSV (inside the Filters sheet below 768 px). The toolbar therefore holds the five spec controls plus this one entry point. _Why:_ the drawer belongs to the grid page and the top bar (§6.1) stays as drawn.
+- **Dynamic tag** (6.2 review): the state-5 tag reads `dyn` / `动态` at every density; "dynamic" does not fit the 112 px minimum column beside a cabin tag and six-digit miles, and the full word lives in the cell's title and aria label. The tag is drawn on mobile too (§6.4 wireframe amended in spirit: `60,000 dyn ●2h`), so the muted color is never the only signal.
+- **Column-header count** (6.2 review): "N programs" is the routes catalog's monitoring count and appears only when the catalog knows every requested program; otherwise the header reads "N with availability" from the cells.
 
 ## 12. What the current UI gets wrong against this plan (from `docs/screenshots/v0.2/before/`)
 

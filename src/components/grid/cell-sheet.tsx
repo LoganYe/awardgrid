@@ -4,6 +4,7 @@ import { ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { formatFees, formatMiles, formatSeats } from "@/lib/grid/format";
 import { formatAge, tier } from "@/lib/grid/freshness";
 import { resolveDeeplink } from "@/lib/grid/deeplinks/index";
 import { programDisplayName } from "@/lib/grid/ranking";
@@ -14,7 +15,6 @@ import type { TripsForUserResult, TripSummary } from "@/lib/server/find";
 import { cn } from "@/lib/utils";
 import { apiTrips, type ApiFailure } from "@/components/grid/api";
 import { FRESHNESS_GLYPH, TIER_TEXT } from "@/components/grid/grid-table";
-import { formatFees, formatMiles, formatSeats } from "@/components/grid/state";
 import { failureText } from "@/components/grid/empty-states";
 
 export interface CellSheetProps {
@@ -41,15 +41,16 @@ function localDate(iso: string): string {
 
 function TripList({ trips }: { trips: TripSummary[] }) {
   const t = useT();
+  const locale = useLocale();
   if (trips.length === 0) return <p className="text-xs text-muted-foreground">{t("grid.sheet.no_trips")}</p>;
   return (
     <ul className="flex flex-col gap-2">
       {trips.map((trip) => (
         <li key={trip.id} className="rounded-md border border-border p-2 text-xs">
           <div className="num flex flex-wrap items-baseline gap-x-2">
-            <span className="font-medium text-foreground">{formatMiles(trip.miles)}</span>
-            <span>{formatFees(trip.fees_cents, trip.currency)}</span>
-            <span>{formatSeats(trip.seats)} {t("grid.cell.seats")}</span>
+            <span className="font-medium text-foreground">{formatMiles(trip.miles, locale)}</span>
+            <span>{formatFees(trip.fees_cents, trip.currency, locale)}</span>
+            <span>{formatSeats(trip.seats, locale, t)}</span>
             <span className="text-muted-foreground">{trip.cabin}</span>
             <span className="text-muted-foreground">{trip.stops === 0 ? t("grid.sheet.nonstop") : t("grid.sheet.stops", { n: trip.stops })}</span>
             {trip.mixed_cabin_pct !== null && <span className="text-aging">{t("grid.sheet.mixed_cabin", { pct: trip.mixed_cabin_pct })}</span>}
@@ -115,9 +116,9 @@ function RowCard({
         </span>
       </div>
       <div className="num flex flex-wrap gap-x-3 text-xs">
-        <span className="font-medium text-foreground">{formatMiles(row.miles)} {t("grid.cell.miles")}</span>
-        <span>{formatFees(row.fees_cents, row.currency)} {t("grid.cell.fees")}</span>
-        <span>{formatSeats(row.seats_left)} {t("grid.cell.seats")}</span>
+        <span className="font-medium text-foreground">{formatMiles(row.miles, locale)} {t("grid.cell.miles")}</span>
+        <span>{formatFees(row.fees_cents, row.currency, locale)} {t("grid.cell.fees")}</span>
+        <span>{formatSeats(row.seats_left, locale, t)}</span>
         {row.direct && <span>{t("grid.cell.direct")}</span>}
         {row.airlines.length > 0 && (
           <span className="text-muted-foreground">

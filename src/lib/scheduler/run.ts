@@ -261,6 +261,9 @@ export async function runSavedQuery(db: Db, savedQuery: SavedQuery, deps: RunDep
   try {
     const res = await findGridForUser(db, { id: user.id }, query, {
       now,
+      // Standing queries diff exactly what the user asked for: never append cached
+      // dynamic-priced rows from the include_filtered scope (they are a UI hint only).
+      dynamic_rows: false,
       ...(deps.fetch ? { fetch: deps.fetch } : {}),
       ...(deps.masterKey ? { masterKey: deps.masterKey } : {}),
       ...(deps.ttlMinutes !== undefined ? { ttlMinutes: deps.ttlMinutes } : {}),

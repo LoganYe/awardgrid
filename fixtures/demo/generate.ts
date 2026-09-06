@@ -183,6 +183,15 @@ export interface DemoAvailability {
   CreatedAt: string;
   UpdatedAt: string;
   AvailabilityTrips: null;
+  /**
+   * Observed (undocumented) tax fields the normalizer reads for the cell's fees line
+   * (`src/lib/seatsaero/types.ts`). Present on most rows; absent on a few so the "?" (fees
+   * unknown) state stays exercised.
+   */
+  JTotalTaxes?: number;
+  FTotalTaxes?: number;
+  TaxesCurrency?: string;
+  TaxesCurrencySymbol?: string;
   /** Demo-only: minutes before "now" that this row was last seen. The mock rewrites UpdatedAt from it. */
   _demo_updated_minutes_ago: number;
   /** Demo-only: dynamic-priced row, served only when include_filtered=true. */
@@ -253,6 +262,8 @@ const ANCHOR_FETCHED_AT_MS = Date.parse(`${DEMO_ANCHOR}T12:00:00Z`);
 
 export function generateDemo(seed = 20261001): DemoDataset {
   const rand = mulberry32(seed);
+  // Taxes come from a second stream so adding them left every other value byte-identical.
+  const taxRand = mulberry32(seed ^ 0x9e3779b9);
   const routes: Record<string, DemoRoute[]> = {};
   const routeByKey = new Map<string, DemoRoute>();
   for (const program of DEMO_PROGRAMS) {
@@ -338,6 +349,16 @@ export function generateDemo(seed = 20261001): DemoDataset {
           AvailabilityTrips: null,
           _demo_updated_minutes_ago: ago,
         };
+        // Taxes on ~85 % of rows (the rest keep the "fees unknown" state); currency omitted for
+        // USD on some, as observed upstream (DECISIONS.md "TotalTaxes unit").
+        if (taxRand() < 0.85) {
+          const [taxLo, taxHi] = TAXES[program];
+          if (j) row.JTotalTaxes = roundTo(int(taxRand, taxLo, taxHi), 10);
+          if (f) row.FTotalTaxes = roundTo(int(taxRand, taxLo, taxHi), 10);
+          const withCurrency = taxRand() < 0.7;
+          row.TaxesCurrency = withCurrency ? "USD" : "";
+          row.TaxesCurrencySymbol = withCurrency ? "$" : "";
+        }
         if (dynamic) row._demo_dynamic = true;
         data.push(row);
       });

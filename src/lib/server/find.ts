@@ -16,21 +16,22 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, getSessionUser, type User } from "@/lib/auth";
 import type { Db } from "@/lib/db/client";
 import { createSqliteStores } from "@/lib/db/stores";
-import { buildGrid } from "@/lib/grid/pivot";
-import type { Grid, Orientation } from "@/lib/grid/types";
+import { buildGrid, enumeratePairs } from "@/lib/grid/pivot";
+import type { AvailabilityRow, Grid, NotFetchedPair, Orientation, RoutePair } from "@/lib/grid/types";
 import { getDecryptedKey, getMasterKey, hasKey, NoKeyError } from "@/lib/keys";
 import { BodyError } from "@/lib/server/http";
 import { PARSER_MODEL_DEFAULT, ParseError, parseQuery, resolveParserModel, type ParseQueryResult, type ParserClient } from "@/lib/query";
 import type { QueryObject } from "@/lib/query/schema";
 import { SeatsAeroClient, SeatsAeroError, SeatsAeroHttpError, SeatsAeroNetworkError } from "@/lib/seatsaero/client";
 import { seatsFetchFromEnv } from "./seats-fetch";
-import { runFind } from "@/lib/seatsaero/find";
+import { runFind, type FindResult } from "@/lib/seatsaero/find";
+import { cacheTtlMinutesFromEnv, uncoveredPairs, type AvailabilityCacheStore, type CacheQuery } from "@/lib/seatsaero/cache";
 import { tripsToFees } from "@/lib/seatsaero/normalize";
 import { Quota, QuotaExceededError, softLimitFromEnv } from "@/lib/seatsaero/quota";
-import { RoutesCatalog } from "@/lib/seatsaero/routes";
+import { RoutesCatalog, type EnsureLoadedOptions, type EnsureLoadedResult } from "@/lib/seatsaero/routes";
 import type { Cabin } from "@/lib/query/schema";
 import type { Notice } from "@/lib/notices";
-import type { Trip } from "@/lib/seatsaero/types";
+import { SEATS_SOURCES, type Trip } from "@/lib/seatsaero/types";
 
 export { NoKeyError, ParseError, PARSER_MODEL_DEFAULT, QuotaExceededError };
 
@@ -47,6 +48,13 @@ export interface ServerFindOptions {
   masterKey?: Buffer;
   /** Cache TTL override (minutes); default from CACHE_TTL_MINUTES. */
   ttlMinutes?: number;
+  /**
+   * Append cached dynamic-pricing rows (flagged `dynamic: true`) to a query that hides them
+   * (Phase 6 §3.4 "filtered" cell state). Default true. Pass false for consumers that diff
+   * or notify on the rows (standing queries), so a cached include_filtered scope can never
+   * show up as "new" cells.
+   */
+  dynamic_rows?: boolean;
 }
 
 /** Quota snapshot for the header bar (soft limit, not the provider's hard 1,000). */
@@ -64,6 +72,30 @@ export interface FindGridResult {
   /** Structured {code, vars}; the UI renders these through t() in the viewer's language. */
   notices: Notice[];
   quota: QuotaSnapshot;
+  /**
+   * True when the include_filtered scope of this query is cached (fresh within the TTL) and
+   * its extra rows were appended as `dynamic: true` — the "Show dynamic pricing" toggle would
+   * cost no calls. Always false when the query already includes dynamic pricing.
+   */
+  dynamic_rows_available: boolean;
+  /**
+   * Programs whose Get Routes call failed upstream during this run (the grid still renders;
+   * "not monitored" is not claimed for them). Empty when nothing failed.
+   */
+  programs_failed: string[];
+  /**
+   * Phase 6 additive: programs monitoring each requested pair (pair key → count) from this
+   * user's routes catalog — the column header's "N programs". Null when the catalog does not
+   * know every requested program (never consulted, budget-skipped or failed upstream): the UI
+   * then shows what it can see in the cells and says so, instead of claiming a monitoring count.
+   */
+  programs_by_pair: Record<string, number> | null;
+  /**
+   * Phase 6 additive: programs the run checked for these pairs — those monitoring at least one
+   * requested pair when the catalog is known, else every requested program (the search covered
+   * them all). The empty-results sentence's "Checked N programs".
+   */
+  programs_checked: number;
 }
 
 type UserRef = Pick<User, "id">;
@@ -80,11 +112,179 @@ function resolveSeatsKey(db: Db, userId: string, masterKey: Buffer | undefined):
   return key;
 }
 
+/**
+ * A RoutesCatalog whose Get Routes failures for ONE program do not fail the whole grid: an
+ * upstream 5xx / 429 / schema error on `/routes?source=x` leaves that source unloaded (reported
+ * in `skipped`, so runFind never claims "not monitored" from partial knowledge) and records it
+ * in `failed`. Key errors (401/403) and transport errors still propagate — they affect every
+ * request, and hiding them would hide a broken key.
+ */
+export class ResilientRoutesCatalog extends RoutesCatalog {
+  readonly failed: string[] = [];
+
+  override async ensureLoaded(
+    userId: string,
+    sources: readonly string[],
+    client: SeatsAeroClient,
+    opts: EnsureLoadedOptions = {},
+  ): Promise<EnsureLoadedResult> {
+    const result: EnsureLoadedResult = { fetched: [], cached: [], skipped: [] };
+    let budget = opts.maxFetches ?? Number.POSITIVE_INFINITY;
+    for (const source of sources) {
+      try {
+        const one = await super.ensureLoaded(userId, [source], client, { maxFetches: budget });
+        budget -= one.fetched.length;
+        result.fetched.push(...one.fetched);
+        result.cached.push(...one.cached);
+        result.skipped.push(...one.skipped);
+      } catch (err) {
+        if (err instanceof SeatsAeroHttpError && err.kind === "invalid_key") throw err;
+        if (!(err instanceof SeatsAeroError) || err instanceof SeatsAeroNetworkError) throw err;
+        budget -= 1; // the failed request was still made (and charged)
+        result.skipped.push(source);
+        if (!this.failed.includes(source)) this.failed.push(source);
+      }
+    }
+    return result;
+  }
+}
+
 function wiring(db: Db, now: () => Date) {
   const stores = createSqliteStores(db);
   const quota = new Quota({ store: stores.quota, now, softLimit: softLimitFromEnv() });
-  const routes = new RoutesCatalog({ store: stores.routes, now });
+  const routes = new ResilientRoutesCatalog({ store: stores.routes, now });
   return { stores, quota, routes };
+}
+
+/** Identity of a cached row within one scope (the availability_cache primary key minus the scope). */
+function rowIdentity(r: Pick<AvailabilityRow, "program" | "origin" | "dest" | "date" | "cabin">): string {
+  return `${r.program}|${r.origin}|${r.dest}|${r.date}|${r.cabin}`;
+}
+
+/** The exact cache scope runFind reads/writes for `query`, with include_filtered forced on. */
+function filteredScope(query: QueryObject): CacheQuery {
+  const programs = query.programs && query.programs.length > 0 ? [...query.programs] : null;
+  return {
+    origins: query.origins,
+    dests: query.destinations,
+    date_from: query.date_from,
+    date_to: query.date_to,
+    cabins: query.cabins,
+    ...(programs ? { programs } : {}),
+    direct_only: query.direct_only,
+    include_filtered: true,
+  };
+}
+
+/**
+ * For a query that hides dynamic pricing: when the include_filtered scope of the SAME query is
+ * fresh in the cache for every pair, append its rows that the plain scope does not have,
+ * flagged `dynamic: true`. Reads the cache only — never the network, never quota.
+ */
+export async function appendCachedDynamicRows(
+  cache: AvailabilityCacheStore,
+  userId: string,
+  query: QueryObject,
+  rows: readonly AvailabilityRow[],
+  ttlMinutes: number,
+  now: Date,
+): Promise<{ rows: AvailabilityRow[]; available: boolean }> {
+  if (query.include_filtered) return { rows: [...rows], available: false };
+  const pairs = enumeratePairs(query);
+  const scope = filteredScope(query);
+  const coverage = await cache.getCoverage(userId, pairs);
+  if (uncoveredPairs(scope, coverage, ttlMinutes, now).length > 0) return { rows: [...rows], available: false };
+  const cached = await cache.getRows(userId, scope);
+  const have = new Set(rows.map(rowIdentity));
+  const extra: AvailabilityRow[] = [];
+  for (const r of cached.rows) {
+    if (have.has(rowIdentity(r))) continue;
+    extra.push({ ...r, dynamic: true });
+  }
+  return { rows: [...rows, ...extra], available: true };
+}
+
+/**
+ * i18n keys the grid shows for a cell whose fetch did not complete (never English text).
+ * `upstream` is the partial run: one program's Get Routes failed (ResilientRoutesCatalog), so a
+ * pair with no rows that no LOADED program monitors may belong to the failed program — the
+ * grid cannot say "not monitored" or "no availability" for it (`upstreamNotFetchedPairs`).
+ */
+export const NOT_FETCHED_REASON = {
+  quota: "grid.cell.not_fetched_quota",
+  truncated: "grid.cell.not_fetched",
+  upstream: "grid.cell.not_fetched_error",
+} as const;
+
+/**
+ * Map runFind's run-level warnings onto pairs. Truncation and quota headroom stop a run before
+ * every pair/date was pulled, but the warnings do not say which: the only honest claim is that
+ * a pair with NO rows in such a run may not have been fetched at all. Pairs seats.aero does not
+ * monitor keep their own state; pairs with rows are "ok" (their empty dates stay "none").
+ */
+export function notFetchedPairsFrom(result: Pick<FindResult, "rows" | "notices" | "unmonitored_pairs">, pairs: readonly RoutePair[]): NotFetchedPair[] {
+  let reason: string | null = null;
+  for (const n of result.notices) {
+    if (n.code === "find.quota_headroom") {
+      reason = NOT_FETCHED_REASON.quota;
+      break;
+    }
+    if (n.code === "find.truncated_search" || n.code === "find.truncated_bulk") reason = NOT_FETCHED_REASON.truncated;
+  }
+  if (reason === null) return [];
+  const withRows = new Set(result.rows.map((r) => `${r.origin}-${r.dest}`));
+  const unmonitored = new Set(result.unmonitored_pairs.map((p) => p.key));
+  const out: NotFetchedPair[] = [];
+  for (const p of pairs) {
+    if (withRows.has(p.key) || unmonitored.has(p.key)) continue;
+    out.push({ pair: { origin: p.origin, dest: p.dest }, reason });
+  }
+  return out;
+}
+
+/**
+ * Pairs whose state is unknown because a program's route list is not loaded: no rows in the
+ * run, not already flagged, and monitored by none of the programs whose route lists loaded.
+ * Pairs a loaded program monitors keep "no availability" (their rows, if any, were fetched).
+ * `reason` is the i18n key for the cell: upstream when the list failed on this request, quota
+ * when the run could not afford the call, the generic key when the gap is older than this
+ * request (a cached grid after an earlier failure — the store never records failures).
+ */
+export function upstreamNotFetchedPairs(
+  routes: Pick<RoutesCatalog, "unmonitoredPairs">,
+  userId: string,
+  sources: readonly string[],
+  pairs: readonly RoutePair[],
+  result: Pick<FindResult, "rows" | "unmonitored_pairs">,
+  already: readonly NotFetchedPair[],
+  reason: string = NOT_FETCHED_REASON.upstream,
+): NotFetchedPair[] {
+  const withRows = new Set(result.rows.map((r) => `${r.origin}-${r.dest}`));
+  const skip = new Set([...result.unmonitored_pairs.map((p) => p.key), ...already.map((n) => `${n.pair.origin}-${n.pair.dest}`)]);
+  const zero = pairs.filter((p) => !withRows.has(p.key) && !skip.has(p.key));
+  return routes.unmonitoredPairs(userId, zero, sources).map((p) => ({ pair: { origin: p.origin, dest: p.dest }, reason }));
+}
+
+/** Requested programs: the query's list, else every seats.aero source. */
+export function requestedSources(query: Pick<QueryObject, "programs">): string[] {
+  return query.programs && query.programs.length > 0 ? [...query.programs] : [...SEATS_SOURCES];
+}
+
+/**
+ * Per-pair monitoring counts and the checked-program count from the routes catalog, once it
+ * knows every requested source; `by_pair` is null otherwise (see FindGridResult).
+ */
+export function programCounts(
+  routes: Pick<RoutesCatalog, "isLoaded" | "isMonitored">,
+  userId: string,
+  sources: readonly string[],
+  pairs: readonly RoutePair[],
+): { by_pair: Record<string, number> | null; checked: number } {
+  if (!sources.every((s) => routes.isLoaded(userId, s))) return { by_pair: null, checked: sources.length };
+  const by_pair: Record<string, number> = {};
+  for (const p of pairs) by_pair[p.key] = sources.filter((s) => routes.isMonitored(userId, s, p.origin, p.dest)).length;
+  const checked = sources.filter((s) => pairs.some((p) => routes.isMonitored(userId, s, p.origin, p.dest))).length;
+  return { by_pair, checked };
 }
 
 async function snapshot(quota: Quota, userId: string): Promise<QuotaSnapshot> {
@@ -123,14 +323,59 @@ export async function findGridForUser(
     ...(opts.ttlMinutes !== undefined ? { ttlMinutes: opts.ttlMinutes } : {}),
   });
 
-  const grid = buildGrid(result.rows, query, {
+  // Phase 6 additive: dynamic rows from the cached include_filtered scope (no network) and the
+  // "not fetched" cell state derived from the run's warnings.
+  let rows: AvailabilityRow[] = result.rows;
+  let dynamicAvailable = false;
+  if (!query.include_filtered && (opts.dynamic_rows ?? true)) {
+    const appended = await appendCachedDynamicRows(
+      stores.cache,
+      user.id,
+      query,
+      result.rows,
+      opts.ttlMinutes ?? cacheTtlMinutesFromEnv(),
+      now(),
+    );
+    rows = appended.rows;
+    dynamicAvailable = appended.available;
+  }
+
+  const pairs = enumeratePairs(query);
+  const notFetched = notFetchedPairsFrom(result, pairs);
+  // Route lists paid for on earlier requests (store only, zero calls): the header's program
+  // counts, and the honest state for pairs no loaded program monitors while a list is missing.
+  const sources = requestedSources(query);
+  await routes.hydrate(user.id, sources);
+  const unloaded = sources.filter((s) => !routes.isLoaded(user.id, s));
+  if (unloaded.length > 0) {
+    const reason =
+      routes.failed.length > 0
+        ? NOT_FETCHED_REASON.upstream
+        : result.notices.some((n) => n.code === "find.routes_skipped")
+          ? NOT_FETCHED_REASON.quota
+          : NOT_FETCHED_REASON.truncated;
+    notFetched.push(...upstreamNotFetchedPairs(routes, user.id, sources, pairs, result, notFetched, reason));
+  }
+  const counts = programCounts(routes, user.id, sources, pairs);
+
+  const grid = buildGrid(rows, query, {
     orientation: opts.orientation ?? "dates",
     now: now(),
     unmonitored_pairs: result.unmonitored_pairs,
+    not_fetched_pairs: notFetched,
     api_calls_used: result.api_calls_used,
     served_from_cache: result.served_from_cache,
   });
-  return { grid, warnings: result.warnings, notices: result.notices, quota: await snapshot(quota, user.id) };
+  return {
+    grid,
+    warnings: result.warnings,
+    notices: result.notices,
+    quota: await snapshot(quota, user.id),
+    dynamic_rows_available: dynamicAvailable,
+    programs_failed: [...routes.failed],
+    programs_by_pair: counts.by_pair,
+    programs_checked: counts.checked,
+  };
 }
 
 // ---------------------------------------------------------------------------

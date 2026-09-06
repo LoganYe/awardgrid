@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NOW, makeQuery, makeRow } from "../../../test/fixtures/grid/rows";
-import { displayWidth, formatFees, formatMilesCompact, renderAscii } from "@/lib/grid/ascii";
+import { STALE_MARK, displayWidth, formatCell, formatFees, formatMilesCompact, renderAscii } from "@/lib/grid/ascii";
 import { buildGrid } from "@/lib/grid/pivot";
 
 const fixture = (name: string) =>
@@ -60,6 +60,13 @@ describe("renderAscii", () => {
   it("chunks columns into several tables when wider than `width`", () => {
     const grid = buildGrid(rows, q, { now: NOW });
     expect(renderAscii(grid, { now: NOW, width: 40 })).toBe(fixture("ascii-2x2-wrapped.txt"));
+  });
+
+  it("keeps the stale caveat mark on a row whose freshness is unknown", () => {
+    const grid = buildGrid([makeRow({ computed_last_seen: "not-a-date" })], makeQuery({ date_to: "2026-10-15" }), { now: NOW });
+    const cell = grid.cells[0]?.[0];
+    expect(cell).toBeDefined();
+    expect(formatCell(cell!, NOW)).toContain(`?${STALE_MARK}`);
   });
 
   it("zh legend and labels", () => {

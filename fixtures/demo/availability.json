@@ -71,7 +71,10 @@
       "CreatedAt": "2026-07-16T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:40:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 20
+      "_demo_updated_minutes_ago": 20,
+      "JTotalTaxes": 7140,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2K6TFpXkUCCkkqGQyEpIQPNanYl",
@@ -112,7 +115,10 @@
       "CreatedAt": "2026-07-28T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:43:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 77
+      "_demo_updated_minutes_ago": 77,
+      "JTotalTaxes": 8150,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2zAxvPMHwLCejXa0YLYvp70y1Ka",
@@ -154,6 +160,9 @@
       "UpdatedAt": "2026-09-29T08:41:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 3079,
+      "JTotalTaxes": 29510,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -195,7 +204,10 @@
       "CreatedAt": "2026-08-04T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:11:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 49
+      "_demo_updated_minutes_ago": 49,
+      "FTotalTaxes": 2620,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2aQ72emrSoqLVsPw65YFzSWb8TQ",
@@ -236,7 +248,10 @@
       "CreatedAt": "2026-08-26T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:33:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 87
+      "_demo_updated_minutes_ago": 87,
+      "FTotalTaxes": 2290,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2IF0CdX2haIJlS8tG794T3hyIIg",
@@ -318,7 +333,10 @@
       "CreatedAt": "2026-08-16T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:35:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 85
+      "_demo_updated_minutes_ago": 85,
+      "JTotalTaxes": 6210,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2xmb1EZ8TBf21FmwMhSo9FiQITA",
@@ -359,7 +377,10 @@
       "CreatedAt": "2026-07-15T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T23:53:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 727
+      "_demo_updated_minutes_ago": 727,
+      "JTotalTaxes": 910,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2ycGH3xg1dCii8GHpQnRNNFvRIt",
@@ -441,7 +462,10 @@
       "CreatedAt": "2026-07-05T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T06:52:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 1748
+      "_demo_updated_minutes_ago": 1748,
+      "JTotalTaxes": 2850,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2aMpd48CdUPpqL9sn91N3Mm5sdF",
@@ -482,7 +506,10 @@
       "CreatedAt": "2026-07-11T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:38:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 82
+      "_demo_updated_minutes_ago": 82,
+      "JTotalTaxes": 2050,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2r4x90Kv8J9yFFiaPCLOiH2DdCG",
@@ -523,7 +550,10 @@
       "CreatedAt": "2026-07-10T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T01:30:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 630
+      "_demo_updated_minutes_ago": 630,
+      "JTotalTaxes": 14900,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2JAYtV48TUMqi4kX7FBz8N7uOxk",
@@ -564,7 +594,11 @@
       "CreatedAt": "2026-07-21T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T08:50:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 190
+      "_demo_updated_minutes_ago": 190,
+      "JTotalTaxes": 2990,
+      "FTotalTaxes": 1410,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2Btv604K9pkvYh3t5G2lQiVRzCh",
@@ -605,7 +639,10 @@
       "CreatedAt": "2026-08-15T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T09:54:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 126
+      "_demo_updated_minutes_ago": 126,
+      "JTotalTaxes": 1990,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2kR3VzWXEATsWTWnmnN0Q84t7Pk",
@@ -646,7 +683,10 @@
       "CreatedAt": "2026-07-28T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:06:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 114
+      "_demo_updated_minutes_ago": 114,
+      "JTotalTaxes": 12260,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2qGsJoJJT0ZNIJi3ti3FNJxDxNb",
@@ -687,7 +727,11 @@
       "CreatedAt": "2026-07-14T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:04:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 56
+      "_demo_updated_minutes_ago": 56,
+      "JTotalTaxes": 2790,
+      "FTotalTaxes": 2990,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2ycPjQh355sYXe5ieiDPiqDmWqs",
@@ -729,6 +773,9 @@
       "UpdatedAt": "2026-10-01T10:09:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 111,
+      "JTotalTaxes": 15730,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -770,7 +817,10 @@
       "CreatedAt": "2026-08-17T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T06:44:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 316
+      "_demo_updated_minutes_ago": 316,
+      "FTotalTaxes": 2020,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2PbEx3vcPogPNhzaEhrL9VfbVfI",
@@ -811,7 +861,10 @@
       "CreatedAt": "2026-07-24T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:19:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 101
+      "_demo_updated_minutes_ago": 101,
+      "JTotalTaxes": 8040,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2QXwoIu0vCa4KSAl9qGt8lIFWag",
@@ -893,7 +946,10 @@
       "CreatedAt": "2026-07-29T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:34:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 26
+      "_demo_updated_minutes_ago": 26,
+      "FTotalTaxes": 1700,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "285obDFDWnBc7R9k5ysZd7o5OTX",
@@ -934,7 +990,10 @@
       "CreatedAt": "2026-08-11T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:00:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 60
+      "_demo_updated_minutes_ago": 60,
+      "JTotalTaxes": 1470,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2sh87F5SswAkq42HcLLSxm10PLQ",
@@ -975,7 +1034,10 @@
       "CreatedAt": "2026-07-25T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:34:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 266
+      "_demo_updated_minutes_ago": 266,
+      "JTotalTaxes": 9040,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2sdO39NlsqjLfyusEn1x0BdkdLg",
@@ -1057,7 +1119,10 @@
       "CreatedAt": "2026-08-26T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:35:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 25
+      "_demo_updated_minutes_ago": 25,
+      "JTotalTaxes": 640,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2z45tLIy12bYB1GOEMEjFGnXrSd",
@@ -1098,7 +1163,10 @@
       "CreatedAt": "2026-08-20T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:29:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 91
+      "_demo_updated_minutes_ago": 91,
+      "JTotalTaxes": 39910,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "28smBD1Vv9sOlLk3bOUt31G0Kl0",
@@ -1140,6 +1208,9 @@
       "UpdatedAt": "2026-10-01T11:28:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 32,
+      "JTotalTaxes": 16930,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
       "_demo_dynamic": true
     },
     {
@@ -1181,7 +1252,10 @@
       "CreatedAt": "2026-08-21T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:08:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 292
+      "_demo_updated_minutes_ago": 292,
+      "JTotalTaxes": 11010,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2Qv4tz15OrjuEanjYhkcFjkRYyz",
@@ -1222,7 +1296,10 @@
       "CreatedAt": "2026-08-22T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T09:34:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 146
+      "_demo_updated_minutes_ago": 146,
+      "JTotalTaxes": 1390,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2fMhVOcDUQLYGDiJAwls3NzhrcK",
@@ -1264,6 +1341,9 @@
       "UpdatedAt": "2026-10-01T09:33:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 147,
+      "JTotalTaxes": 5410,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
       "_demo_dynamic": true
     },
     {
@@ -1305,7 +1385,10 @@
       "CreatedAt": "2026-08-25T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T00:24:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 2136
+      "_demo_updated_minutes_ago": 2136,
+      "JTotalTaxes": 2250,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2ZIzMOAJSzkMfA93XtTK244O62t",
@@ -1346,7 +1429,10 @@
       "CreatedAt": "2026-08-19T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T21:45:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 855
+      "_demo_updated_minutes_ago": 855,
+      "JTotalTaxes": 1800,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2I9rHVYxKfnpcaqheXxAKkB6f1N",
@@ -1387,7 +1473,10 @@
       "CreatedAt": "2026-07-15T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T12:44:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 1396
+      "_demo_updated_minutes_ago": 1396,
+      "JTotalTaxes": 38520,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "25A1AtaZa4QW7k39ENcWNdB1sd2",
@@ -1428,7 +1517,10 @@
       "CreatedAt": "2026-08-31T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:01:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 299
+      "_demo_updated_minutes_ago": 299,
+      "JTotalTaxes": 2270,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "23B48tUsyxo8aGaj3HBt9x7cefx",
@@ -1470,6 +1562,9 @@
       "UpdatedAt": "2026-09-28T23:38:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 3622,
+      "JTotalTaxes": 19920,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
       "_demo_dynamic": true
     },
     {
@@ -1511,7 +1606,10 @@
       "CreatedAt": "2026-08-19T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:34:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 86
+      "_demo_updated_minutes_ago": 86,
+      "JTotalTaxes": 1520,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2V07mjzJMZSsYmEG0AdmtVCDDWf",
@@ -1593,7 +1691,10 @@
       "CreatedAt": "2026-08-22T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:15:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 285
+      "_demo_updated_minutes_ago": 285,
+      "JTotalTaxes": 3000,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "26ROv4ThCRhMaJA4kcdnhOopL4J",
@@ -1634,7 +1735,10 @@
       "CreatedAt": "2026-07-23T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T06:38:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 322
+      "_demo_updated_minutes_ago": 322,
+      "JTotalTaxes": 3370,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2wrjlaLc5DMhxTbuwVGYxR5XeuK",
@@ -1676,6 +1780,9 @@
       "UpdatedAt": "2026-10-01T08:14:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 226,
+      "JTotalTaxes": 18850,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -1717,7 +1824,10 @@
       "CreatedAt": "2026-08-06T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:54:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 66
+      "_demo_updated_minutes_ago": 66,
+      "JTotalTaxes": 8960,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2EvCpsecuwJ6ILixwjGgUGWpA3E",
@@ -1758,7 +1868,11 @@
       "CreatedAt": "2026-08-17T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T06:55:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 305
+      "_demo_updated_minutes_ago": 305,
+      "JTotalTaxes": 1920,
+      "FTotalTaxes": 1990,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2WrxefYvkvNr0yt4w4TFS9hA5GF",
@@ -1799,7 +1913,10 @@
       "CreatedAt": "2026-08-10T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:17:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 43
+      "_demo_updated_minutes_ago": 43,
+      "JTotalTaxes": 17330,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2COcJox018KAA8VLYHmvkps28jh",
@@ -1841,6 +1958,9 @@
       "UpdatedAt": "2026-10-01T10:09:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 111,
+      "JTotalTaxes": 1010,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -1882,7 +2002,10 @@
       "CreatedAt": "2026-08-11T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:55:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 245
+      "_demo_updated_minutes_ago": 245,
+      "JTotalTaxes": 3880,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2FDHYkxFlPkL410wBugbALxym2i",
@@ -1924,6 +2047,9 @@
       "UpdatedAt": "2026-10-01T10:38:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 82,
+      "JTotalTaxes": 2330,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -1965,7 +2091,10 @@
       "CreatedAt": "2026-07-03T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:12:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 108
+      "_demo_updated_minutes_ago": 108,
+      "JTotalTaxes": 2770,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2eAitHA1JFzeRt4W1IxtqxaJfQB",
@@ -2007,6 +2136,9 @@
       "UpdatedAt": "2026-10-01T10:27:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 93,
+      "JTotalTaxes": 690,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
       "_demo_dynamic": true
     },
     {
@@ -2048,7 +2180,10 @@
       "CreatedAt": "2026-07-19T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T19:37:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 983
+      "_demo_updated_minutes_ago": 983,
+      "JTotalTaxes": 1700,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2N5bekZeegPJx3SU4MsYiaixAn3",
@@ -2089,7 +2224,10 @@
       "CreatedAt": "2026-07-19T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:39:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 81
+      "_demo_updated_minutes_ago": 81,
+      "JTotalTaxes": 12640,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "20ofEP6BFABhOpf3RUmEkwKOei9",
@@ -2130,7 +2268,10 @@
       "CreatedAt": "2026-07-24T12:00:00.000Z",
       "UpdatedAt": "2026-09-29T14:27:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 2733
+      "_demo_updated_minutes_ago": 2733,
+      "JTotalTaxes": 42380,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2OOcSYDCfv9mFVQVneSftTjboBK",
@@ -2172,6 +2313,9 @@
       "UpdatedAt": "2026-10-01T11:13:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 47,
+      "JTotalTaxes": 26730,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -2213,7 +2357,10 @@
       "CreatedAt": "2026-08-08T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T06:44:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 316
+      "_demo_updated_minutes_ago": 316,
+      "JTotalTaxes": 2290,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2i35fPYaBDH0giQtGNQaxj1kAFa",
@@ -2254,7 +2401,10 @@
       "CreatedAt": "2026-08-19T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:37:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 263
+      "_demo_updated_minutes_ago": 263,
+      "FTotalTaxes": 20610,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "22SaOOKTREhjsXDW0y0yx8y72ZE",
@@ -2295,7 +2445,10 @@
       "CreatedAt": "2026-07-06T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:17:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 43
+      "_demo_updated_minutes_ago": 43,
+      "JTotalTaxes": 17600,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2kF1CZDauDFgmM1phJZ3r5GGsoJ",
@@ -2336,7 +2489,10 @@
       "CreatedAt": "2026-08-26T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T21:29:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 871
+      "_demo_updated_minutes_ago": 871,
+      "JTotalTaxes": 2660,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2lSs41dzuLSMZjN3Xa1e7Kh2MkX",
@@ -2377,7 +2533,10 @@
       "CreatedAt": "2026-08-28T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:14:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 106
+      "_demo_updated_minutes_ago": 106,
+      "JTotalTaxes": 2570,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2OqI9TdtXuSriKL3Yi7JopeZvmw",
@@ -2459,7 +2618,10 @@
       "CreatedAt": "2026-07-20T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:12:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 108
+      "_demo_updated_minutes_ago": 108,
+      "JTotalTaxes": 13440,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2E2zPz5ekCz5BHJNFeN4PWne5Mg",
@@ -2500,7 +2662,10 @@
       "CreatedAt": "2026-07-12T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T03:40:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 500
+      "_demo_updated_minutes_ago": 500,
+      "JTotalTaxes": 22510,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2wuMnhnNQB0jwQYGIyKA624wflZ",
@@ -2541,7 +2706,10 @@
       "CreatedAt": "2026-08-18T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T17:31:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 1109
+      "_demo_updated_minutes_ago": 1109,
+      "JTotalTaxes": 29040,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2EDamBjm4RFLCEDvaCel5z7ofR7",
@@ -2623,7 +2791,10 @@
       "CreatedAt": "2026-07-23T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:17:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 283
+      "_demo_updated_minutes_ago": 283,
+      "FTotalTaxes": 2830,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2aD5vHLO9Yw75tjQYAcM9a2WEPC",
@@ -2664,7 +2835,10 @@
       "CreatedAt": "2026-08-14T12:00:00.000Z",
       "UpdatedAt": "2026-09-28T16:00:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 4080
+      "_demo_updated_minutes_ago": 4080,
+      "JTotalTaxes": 2840,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2183xExRKws6qvp2B4J3bSNTDyW",
@@ -2706,6 +2880,9 @@
       "UpdatedAt": "2026-10-01T07:49:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 251,
+      "JTotalTaxes": 1780,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -2747,7 +2924,10 @@
       "CreatedAt": "2026-08-17T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T08:21:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 219
+      "_demo_updated_minutes_ago": 219,
+      "JTotalTaxes": 2910,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2D60n9u4XN91T7qCdSLRLHEc8sB",
@@ -2788,7 +2968,10 @@
       "CreatedAt": "2026-07-15T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:38:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 82
+      "_demo_updated_minutes_ago": 82,
+      "JTotalTaxes": 2770,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2jDeX59k7elx54esSP4rfCwsAEX",
@@ -2829,7 +3012,10 @@
       "CreatedAt": "2026-07-13T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T20:40:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 920
+      "_demo_updated_minutes_ago": 920,
+      "FTotalTaxes": 4720,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2J2MngVHiTYOLOYibrGBSSaXdxj",
@@ -2871,6 +3057,9 @@
       "UpdatedAt": "2026-10-01T11:23:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 37,
+      "JTotalTaxes": 5980,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -2913,6 +3102,9 @@
       "UpdatedAt": "2026-09-30T19:03:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 1017,
+      "JTotalTaxes": 2870,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -2954,7 +3146,10 @@
       "CreatedAt": "2026-07-04T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:19:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 41
+      "_demo_updated_minutes_ago": 41,
+      "JTotalTaxes": 7120,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "271gzz6lMOFaELec3DG03z6S5Tb",
@@ -2995,7 +3190,10 @@
       "CreatedAt": "2026-08-14T12:00:00.000Z",
       "UpdatedAt": "2026-09-29T11:31:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 2909
+      "_demo_updated_minutes_ago": 2909,
+      "JTotalTaxes": 2590,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2TbOOPCAEAGTwmKOI0p6Txf8ft3",
@@ -3037,6 +3235,9 @@
       "UpdatedAt": "2026-10-01T11:32:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 28,
+      "JTotalTaxes": 38700,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
       "_demo_dynamic": true
     },
     {
@@ -3078,7 +3279,10 @@
       "CreatedAt": "2026-08-18T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T08:26:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 214
+      "_demo_updated_minutes_ago": 214,
+      "JTotalTaxes": 10710,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "26BSE4FlpMfbObLS3dK5vO1LWLE",
@@ -3119,7 +3323,10 @@
       "CreatedAt": "2026-07-27T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T01:45:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 615
+      "_demo_updated_minutes_ago": 615,
+      "JTotalTaxes": 860,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2nBi17FI4gHpdeCS5ifkv5cdDDz",
@@ -3160,7 +3367,10 @@
       "CreatedAt": "2026-08-06T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:04:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 56
+      "_demo_updated_minutes_ago": 56,
+      "JTotalTaxes": 880,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2TE8omA1RIej9smc0iiysRABRqx",
@@ -3201,7 +3411,10 @@
       "CreatedAt": "2026-07-14T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T07:00:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 1740
+      "_demo_updated_minutes_ago": 1740,
+      "JTotalTaxes": 4020,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2ybu0mp1h7DfC2DwNcCa8ji6e71",
@@ -3242,7 +3455,10 @@
       "CreatedAt": "2026-08-23T12:00:00.000Z",
       "UpdatedAt": "2026-09-29T08:30:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 3090
+      "_demo_updated_minutes_ago": 3090,
+      "JTotalTaxes": 3070,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "296D0STdxLmmN1g29oVvxtZmgFo",
@@ -3283,7 +3499,10 @@
       "CreatedAt": "2026-08-01T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:32:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 268
+      "_demo_updated_minutes_ago": 268,
+      "FTotalTaxes": 2300,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2dnxn3kKSExoJenGxCnyz88IbMe",
@@ -3365,7 +3584,10 @@
       "CreatedAt": "2026-07-29T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:18:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 282
+      "_demo_updated_minutes_ago": 282,
+      "JTotalTaxes": 2220,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2OpQd0LvxGtzZh2P35zQCTZOkyW",
@@ -3406,7 +3628,10 @@
       "CreatedAt": "2026-08-15T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:35:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 85
+      "_demo_updated_minutes_ago": 85,
+      "JTotalTaxes": 630,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2Adi0xknorPFyAUtldOHuIztgVG",
@@ -3448,6 +3673,9 @@
       "UpdatedAt": "2026-10-01T09:11:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 169,
+      "JTotalTaxes": 2860,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -3489,7 +3717,10 @@
       "CreatedAt": "2026-07-06T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:31:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 89
+      "_demo_updated_minutes_ago": 89,
+      "JTotalTaxes": 9230,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2pjJBs96SBtVv31fL7G4cf9blBv",
@@ -3613,6 +3844,10 @@
       "UpdatedAt": "2026-09-30T06:10:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 1790,
+      "JTotalTaxes": 33770,
+      "FTotalTaxes": 21140,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -3654,7 +3889,11 @@
       "CreatedAt": "2026-07-26T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T08:42:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 198
+      "_demo_updated_minutes_ago": 198,
+      "JTotalTaxes": 2270,
+      "FTotalTaxes": 2070,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2nL84Sf9kEHBgAhhRdSuWujveJw",
@@ -3695,7 +3934,10 @@
       "CreatedAt": "2026-08-25T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:25:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 35
+      "_demo_updated_minutes_ago": 35,
+      "JTotalTaxes": 1570,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2mh91iC1YkdkfoXC0SG9d2alfHz",
@@ -3736,7 +3978,10 @@
       "CreatedAt": "2026-08-19T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T17:01:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 1139
+      "_demo_updated_minutes_ago": 1139,
+      "JTotalTaxes": 870,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2M6WnwTIXWabpJhu9KKiKozeWay",
@@ -3777,7 +4022,10 @@
       "CreatedAt": "2026-07-27T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:29:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 31
+      "_demo_updated_minutes_ago": 31,
+      "JTotalTaxes": 2410,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2uOVmXJLYriZlkxh7ev2DnHqRUy",
@@ -3818,7 +4066,10 @@
       "CreatedAt": "2026-08-22T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T06:41:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 319
+      "_demo_updated_minutes_ago": 319,
+      "JTotalTaxes": 9770,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "285OyLwkGOgpYRR95uHVratJBjv",
@@ -3900,7 +4151,11 @@
       "CreatedAt": "2026-07-19T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:47:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 73
+      "_demo_updated_minutes_ago": 73,
+      "JTotalTaxes": 12530,
+      "FTotalTaxes": 15610,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2WFnnKBo5YjHxy4jHKsEMocdBJW",
@@ -3941,7 +4196,10 @@
       "CreatedAt": "2026-07-21T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T00:20:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 700
+      "_demo_updated_minutes_ago": 700,
+      "JTotalTaxes": 2810,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2FIct1H3aNXQqXh3wKXYHTDTtt6",
@@ -3982,7 +4240,10 @@
       "CreatedAt": "2026-08-12T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:35:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 25
+      "_demo_updated_minutes_ago": 25,
+      "JTotalTaxes": 3010,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2u2BbMQcRuSUZIzytAdekJUMn6o",
@@ -4023,7 +4284,10 @@
       "CreatedAt": "2026-08-15T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T22:54:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 786
+      "_demo_updated_minutes_ago": 786,
+      "JTotalTaxes": 10270,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "28Y6FrVgOqojwJSoMbl6uzWiGlA",
@@ -4146,7 +4410,10 @@
       "CreatedAt": "2026-07-31T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T22:04:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 836
+      "_demo_updated_minutes_ago": 836,
+      "JTotalTaxes": 1490,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2cm842btghmpx44Zer7vlRH7JuQ",
@@ -4187,7 +4454,11 @@
       "CreatedAt": "2026-08-23T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:29:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 91
+      "_demo_updated_minutes_ago": 91,
+      "JTotalTaxes": 1400,
+      "FTotalTaxes": 3230,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2OMji12mITTmr1flur5iGTvO66k",
@@ -4228,7 +4499,10 @@
       "CreatedAt": "2026-08-21T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:32:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 28
+      "_demo_updated_minutes_ago": 28,
+      "JTotalTaxes": 18800,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2zF06hr4vCqhKBh1ppq2zBWXWHg",
@@ -4310,7 +4584,10 @@
       "CreatedAt": "2026-07-17T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:21:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 39
+      "_demo_updated_minutes_ago": 39,
+      "JTotalTaxes": 10010,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2FJynyrrRru14AnvqqoSDlUyynj",
@@ -4351,7 +4628,10 @@
       "CreatedAt": "2026-08-08T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:41:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 79
+      "_demo_updated_minutes_ago": 79,
+      "JTotalTaxes": 7980,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2Ve9Tl1FZtWcjIEqxP8A4RCg2ys",
@@ -4392,7 +4672,10 @@
       "CreatedAt": "2026-07-04T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T02:24:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 576
+      "_demo_updated_minutes_ago": 576,
+      "JTotalTaxes": 1940,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2mIgisNYCWqjfROUXg6cMUEaLt8",
@@ -4474,7 +4757,10 @@
       "CreatedAt": "2026-07-31T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:04:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 56
+      "_demo_updated_minutes_ago": 56,
+      "FTotalTaxes": 8860,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2Wy1qpwTM89z9lMUs0su5LkyM6h",
@@ -4515,7 +4801,10 @@
       "CreatedAt": "2026-07-28T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:15:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 45
+      "_demo_updated_minutes_ago": 45,
+      "FTotalTaxes": 1740,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2q8RQ3T4F3zfyOfhBOlalDddP3p",
@@ -4556,7 +4845,10 @@
       "CreatedAt": "2026-08-22T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:01:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 59
+      "_demo_updated_minutes_ago": 59,
+      "FTotalTaxes": 1310,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2NeNXq94Wlhu7tYmMm4ISwewItp",
@@ -4597,7 +4889,10 @@
       "CreatedAt": "2026-08-16T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:28:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 32
+      "_demo_updated_minutes_ago": 32,
+      "JTotalTaxes": 16000,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2GzLcKsR4xERPuWbdMlEiU4C5cU",
@@ -4638,7 +4933,10 @@
       "CreatedAt": "2026-08-16T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:09:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 111
+      "_demo_updated_minutes_ago": 111,
+      "JTotalTaxes": 12020,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2tlFcMlmHO9hLb2hE6AaK8UtroW",
@@ -4720,7 +5018,10 @@
       "CreatedAt": "2026-07-29T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:25:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 95
+      "_demo_updated_minutes_ago": 95,
+      "JTotalTaxes": 12730,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2REcIiyWLlefwGYu8JLbjpDEER8",
@@ -4761,7 +5062,10 @@
       "CreatedAt": "2026-07-16T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:17:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 103
+      "_demo_updated_minutes_ago": 103,
+      "JTotalTaxes": 40950,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2vNWzQsPnJ76StpNpJlTNWhzRGO",
@@ -4803,6 +5107,9 @@
       "UpdatedAt": "2026-10-01T06:15:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 345,
+      "JTotalTaxes": 35970,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
       "_demo_dynamic": true
     },
     {
@@ -4844,7 +5151,10 @@
       "CreatedAt": "2026-08-06T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:37:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 263
+      "_demo_updated_minutes_ago": 263,
+      "JTotalTaxes": 1550,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2lVuhYSBsVIVKYXr4t7s81IzzC1",
@@ -4886,6 +5196,9 @@
       "UpdatedAt": "2026-10-01T06:43:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 317,
+      "FTotalTaxes": 39930,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
       "_demo_dynamic": true
     },
     {
@@ -4927,7 +5240,10 @@
       "CreatedAt": "2026-07-30T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T09:58:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 122
+      "_demo_updated_minutes_ago": 122,
+      "JTotalTaxes": 13310,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2BN6RQTj8w9SRnmcUg3blbCQvyU",
@@ -4968,7 +5284,10 @@
       "CreatedAt": "2026-08-13T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:13:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 47
+      "_demo_updated_minutes_ago": 47,
+      "JTotalTaxes": 3920,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2JVS22g3HoxrqUIPsPC3NlGYN1j",
@@ -5009,7 +5328,10 @@
       "CreatedAt": "2026-07-09T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T09:27:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 153
+      "_demo_updated_minutes_ago": 153,
+      "JTotalTaxes": 2970,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2TpyFQoPyjVu7XcMph6MtptfNue",
@@ -5050,7 +5372,10 @@
       "CreatedAt": "2026-08-19T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T17:33:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 1107
+      "_demo_updated_minutes_ago": 1107,
+      "JTotalTaxes": 2430,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2qYxokMHOZo10QWXgQCpB2XWOR5",
@@ -5091,7 +5416,10 @@
       "CreatedAt": "2026-07-17T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T06:46:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 314
+      "_demo_updated_minutes_ago": 314,
+      "JTotalTaxes": 2600,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2YeptmdZuORie1se6TQ8QTjUueK",
@@ -5132,7 +5460,11 @@
       "CreatedAt": "2026-07-22T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T02:43:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 557
+      "_demo_updated_minutes_ago": 557,
+      "JTotalTaxes": 25990,
+      "FTotalTaxes": 36210,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2yChZf8JlK2ldXaN9vPvcBTxFc9",
@@ -5173,7 +5505,11 @@
       "CreatedAt": "2026-07-10T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T09:14:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 166
+      "_demo_updated_minutes_ago": 166,
+      "JTotalTaxes": 9330,
+      "FTotalTaxes": 6730,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2308QaITCnY5xqzzwYXOBF2885W",
@@ -5214,7 +5550,11 @@
       "CreatedAt": "2026-07-23T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:28:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 32
+      "_demo_updated_minutes_ago": 32,
+      "JTotalTaxes": 2420,
+      "FTotalTaxes": 920,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2EnVigHoB5iTiFzqHcZKmBSU0ho",
@@ -5296,7 +5636,10 @@
       "CreatedAt": "2026-07-17T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:44:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 256
+      "_demo_updated_minutes_ago": 256,
+      "JTotalTaxes": 870,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2XiMGj2Q76oUbWXeO0U5rQEDaMX",
@@ -5337,7 +5680,10 @@
       "CreatedAt": "2026-07-11T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:10:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 50
+      "_demo_updated_minutes_ago": 50,
+      "JTotalTaxes": 3290,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2SnrR5saJoCQ6llnRuLMLecJiFE",
@@ -5378,7 +5724,10 @@
       "CreatedAt": "2026-07-04T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:26:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 34
+      "_demo_updated_minutes_ago": 34,
+      "JTotalTaxes": 2150,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2zJovRWNo2xqtiXVIK6vA1x4Ht7",
@@ -5419,7 +5768,10 @@
       "CreatedAt": "2026-08-07T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:28:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 92
+      "_demo_updated_minutes_ago": 92,
+      "JTotalTaxes": 2320,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2DGftUXmKfq8cXACGIctiFhiTPa",
@@ -5460,7 +5812,10 @@
       "CreatedAt": "2026-07-31T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T22:38:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 802
+      "_demo_updated_minutes_ago": 802,
+      "FTotalTaxes": 3340,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2ZtPlyjKETssNlWPxqMOTjVGI2S",
@@ -5501,7 +5856,10 @@
       "CreatedAt": "2026-07-12T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:13:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 287
+      "_demo_updated_minutes_ago": 287,
+      "FTotalTaxes": 10010,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2inTxgzLf2LSDE7oTKv5Dujm1tV",
@@ -5542,7 +5900,10 @@
       "CreatedAt": "2026-08-13T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:33:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 87
+      "_demo_updated_minutes_ago": 87,
+      "FTotalTaxes": 23970,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2cVYOg0riO03ksl3IQYItONo5Y9",
@@ -5583,7 +5944,10 @@
       "CreatedAt": "2026-07-15T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:30:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 270
+      "_demo_updated_minutes_ago": 270,
+      "FTotalTaxes": 8490,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2oSyQ3oasaRkxPUnkPA4NWL8Lyg",
@@ -5624,7 +5988,10 @@
       "CreatedAt": "2026-08-27T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:52:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 68
+      "_demo_updated_minutes_ago": 68,
+      "FTotalTaxes": 3160,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2rwDChhEgBdZWPw2e4PGS8xSX2l",
@@ -5665,7 +6032,10 @@
       "CreatedAt": "2026-08-20T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T06:58:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 302
+      "_demo_updated_minutes_ago": 302,
+      "FTotalTaxes": 2780,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2ejvaQHvgKPj5lYslws7qfS0Oha",
@@ -5747,7 +6117,10 @@
       "CreatedAt": "2026-08-22T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T08:12:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 228
+      "_demo_updated_minutes_ago": 228,
+      "JTotalTaxes": 16450,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2XbIQOwzQ0c6ih51LZQajLYTFwu",
@@ -5788,7 +6161,10 @@
       "CreatedAt": "2026-07-05T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:11:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 49
+      "_demo_updated_minutes_ago": 49,
+      "FTotalTaxes": 10440,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2EulwmpPNFMXPLERmeFWEMDZ64K",
@@ -5829,7 +6205,10 @@
       "CreatedAt": "2026-07-10T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:21:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 39
+      "_demo_updated_minutes_ago": 39,
+      "FTotalTaxes": 2280,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2SuWGmirHIJls5xQw3fgoU3K6nL",
@@ -5870,7 +6249,10 @@
       "CreatedAt": "2026-08-12T12:00:00.000Z",
       "UpdatedAt": "2026-09-30T23:10:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 770
+      "_demo_updated_minutes_ago": 770,
+      "JTotalTaxes": 29500,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": ""
     },
     {
       "ID": "2ejUUMI4vPcGSBriGrM1KLFkBdK",
@@ -5911,7 +6293,10 @@
       "CreatedAt": "2026-07-19T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T07:13:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 287
+      "_demo_updated_minutes_ago": 287,
+      "JTotalTaxes": 1230,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2KdLM1kWjsaFJVjh90KN3mXN2gS",
@@ -5952,7 +6337,10 @@
       "CreatedAt": "2026-08-10T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:36:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 24
+      "_demo_updated_minutes_ago": 24,
+      "JTotalTaxes": 6900,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2VGUrXc3w9paRViNIIAdkBE32Rt",
@@ -5993,7 +6381,10 @@
       "CreatedAt": "2026-08-14T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T10:11:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 109
+      "_demo_updated_minutes_ago": 109,
+      "JTotalTaxes": 2470,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2WBc0gKj4QllCdAMPt54l7Bemfb",
@@ -6035,6 +6426,9 @@
       "UpdatedAt": "2026-10-01T10:21:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 99,
+      "JTotalTaxes": 810,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$",
       "_demo_dynamic": true
     },
     {
@@ -6077,6 +6471,9 @@
       "UpdatedAt": "2026-10-01T10:19:00.000Z",
       "AvailabilityTrips": null,
       "_demo_updated_minutes_ago": 101,
+      "JTotalTaxes": 16970,
+      "TaxesCurrency": "",
+      "TaxesCurrencySymbol": "",
       "_demo_dynamic": true
     },
     {
@@ -6118,7 +6515,10 @@
       "CreatedAt": "2026-08-20T12:00:00.000Z",
       "UpdatedAt": "2026-10-01T11:08:00.000Z",
       "AvailabilityTrips": null,
-      "_demo_updated_minutes_ago": 52
+      "_demo_updated_minutes_ago": 52,
+      "JTotalTaxes": 3020,
+      "TaxesCurrency": "USD",
+      "TaxesCurrencySymbol": "$"
     },
     {
       "ID": "2eLUiEuzbcGccji9ktv2D0UmjCw",

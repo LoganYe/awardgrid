@@ -12,6 +12,7 @@ import { setKey } from "@/lib/keys";
 import { QueryObject, type QueryObjectInput } from "@/lib/query/schema";
 import type { Route, TripsResponse } from "@/lib/seatsaero/types";
 import {
+  NOT_FETCHED_REASON,
   NoKeyError,
   ParseError,
   QuotaExceededError,
@@ -20,10 +21,13 @@ import {
   getTripsForUser,
   gridErrorResponse,
   llmAvailable,
+  notFetchedPairsFrom,
   parseForUser,
   summarizeTrip,
   utcToday,
 } from "@/lib/server/find";
+import { notice } from "@/lib/notices";
+import { enumeratePairs } from "@/lib/grid/pivot";
 import { SeatsAeroHttpError } from "@/lib/seatsaero/client";
 import { fakeFetch, jsonResponse, loadFixture, textResponse } from "../../../test/fixtures/seatsaero/helpers";
 import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "../../../test/fixtures/seatsaero/generate-synthetic";
@@ -119,6 +123,14 @@ describe("findGridForUser", () => {
     // hydrate it from routes_cache (zero calls) and keep the §4.3 "not monitored" state.
     expect(second.grid.meta.unmonitored_pairs).toEqual([{ origin: "GMP", dest: "SEA", key: "GMP-SEA" }]);
     expect(second.grid.cells.flat().filter((c) => c.origin === "GMP").every((c) => c.status === "unmonitored")).toBe(true);
+    // Program counts from the routes catalog (loaded on the first run, hydrated from the store on
+    // the second): every program monitors every synthetic pair except GMP.
+    for (const res of [first, second]) {
+      const byPair = res.programs_by_pair;
+      expect(byPair).not.toBeNull();
+      for (const p of enumeratePairs(query())) expect(byPair?.[p.key]).toBe(p.origin === "GMP" ? 0 : SYNTHETIC_PROGRAMS.length);
+      expect(res.programs_checked).toBe(SYNTHETIC_PROGRAMS.length);
+    }
     expect(second.grid.orientation).toBe("routes");
     expect(second.grid.rows).toHaveLength(SYNTHETIC_ORIGINS.length);
     expect(fetch.calls).toHaveLength(N);
@@ -288,5 +300,254 @@ describe("helpers", () => {
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "internal" });
     expect(JSON.stringify(spy.mock.calls)).not.toContain(ALICE_KEY);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6 additive: dynamic rows from the cached include_filtered scope, not-fetched pairs,
+// per-program Get Routes failures.
+// ---------------------------------------------------------------------------
+
+type SyntheticObject = Record<string, unknown> & { ID: string; Source: string; Date: string; Route: { OriginAirport: string } };
+
+/**
+ * Three dynamic-priced objects on (origin, date) cells the plain fixture leaves EMPTY for every
+ * program, so they can only ever come from the include_filtered scope and each one is the
+ * sole occupant of its cell.
+ */
+function dynamicObjects(): SyntheticObject[] {
+  const data = synthetic.data as SyntheticObject[];
+  const taken = new Set(data.map((o) => `${o.Route.OriginAirport}:${o.Date}`));
+  const out: SyntheticObject[] = [];
+  const template = data.find((o) => o.JAvailable === true)!;
+  for (const program of SYNTHETIC_PROGRAMS) {
+    for (const origin of SYNTHETIC_ORIGINS) {
+      if (origin === "GMP") continue;
+      for (let day = 0; day < 30 && out.length < 3; day += 1) {
+        const date = `2026-10-${String(day + 1).padStart(2, "0")}`;
+        if (taken.has(`${origin}:${date}`)) continue;
+        const route = { ...(template.Route as Record<string, unknown>), OriginAirport: origin, Source: program, ID: `route-dyn-${out.length}` };
+        out.push({
+          ...template,
+          ID: `DYN${out.length}`,
+          RouteID: route.ID,
+          Route: route as SyntheticObject["Route"],
+          Date: date,
+          ParsedDate: `${date}T00:00:00Z`,
+          Source: program,
+          JAvailable: true,
+          JMileageCost: "42500",
+          JRemainingSeats: 3,
+          JAirlines: "JL",
+          JDirect: true,
+          FAvailable: false,
+          FMileageCost: "0",
+          FRemainingSeats: 0,
+          FAirlines: "",
+          FDirect: false,
+        });
+        taken.add(`${origin}:${date}`);
+        break;
+      }
+      if (out.length >= 3) return out;
+    }
+  }
+  return out;
+}
+
+function dynamicHarness() {
+  const db: Db = openTestDb();
+  seedUsers(db, ["alice"]);
+  setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: MASTER, now: NOW });
+  const extra = dynamicObjects();
+  const fetch = fakeFetch((req) => {
+    if (req.url.pathname === "/partnerapi/search") {
+      const filtered = req.url.searchParams.get("include_filtered") === "true";
+      return jsonResponse(filtered ? { ...synthetic, data: [...synthetic.data, ...extra], count: synthetic.count + extra.length } : synthetic);
+    }
+    if (req.url.pathname === "/partnerapi/routes") return jsonResponse(syntheticRoutes(req.url.searchParams.get("source")!));
+    return textResponse("not found", 404);
+  });
+  return { db, fetch, extra };
+}
+
+describe("findGridForUser — dynamic rows (Phase 6)", () => {
+  it("appends cached include_filtered rows flagged dynamic to the plain query only, without any fetch", async () => {
+    const { db, fetch, extra } = dynamicHarness();
+    expect(extra).toHaveLength(3);
+    const plainQ = query({ include_filtered: false });
+    const filteredQ = query({ include_filtered: true });
+
+    // 1. Warm the include_filtered scope. Its own result never carries the flag.
+    const first = await findGridForUser(db, { id: "alice" }, filteredQ, { now, fetch, masterKey: MASTER });
+    expect(first.dynamic_rows_available).toBe(false);
+    expect(first.grid.cells.flat().flatMap((c) => c.all).some((r) => r.dynamic)).toBe(false);
+    expect(first.grid.cells.flat().every((c) => c.status !== "filtered")).toBe(true);
+    const warm = fetch.calls.length;
+
+    // 2. The plain query fetches its own scope (one search page; routes already cached) and
+    //    then reads the filtered scope from SQLite: no extra request.
+    const plain = await findGridForUser(db, { id: "alice" }, plainQ, { now, fetch, masterKey: MASTER });
+    expect(fetch.calls.length).toBe(warm + 1);
+    expect(fetch.calls[warm]!.url.searchParams.get("include_filtered")).toBeNull();
+    expect(plain.dynamic_rows_available).toBe(true);
+    const rows = plain.grid.cells.flat().flatMap((c) => c.all);
+    const dynamic = rows.filter((r) => r.dynamic === true);
+    expect(dynamic).toHaveLength(3);
+    expect(dynamic.map((r) => r.miles)).toEqual([42_500, 42_500, 42_500]);
+    expect(dynamic.every((r) => r.include_filtered === true)).toBe(true);
+    // Every dynamic row sits in a cell of its own → the "filtered" state with the dynamic row as best.
+    const filteredCells = plain.grid.cells.flat().filter((c) => c.status === "filtered");
+    expect(filteredCells).toHaveLength(3);
+    expect(filteredCells.every((c) => c.best?.dynamic === true && c.all.every((r) => r.dynamic))).toBe(true);
+    // Nothing that the plain scope already had is duplicated.
+    expect(rows.filter((r) => !r.dynamic)).toHaveLength(first.grid.cells.flat().flatMap((c) => c.all).length - 3);
+    expect(JSON.stringify(plain)).not.toContain(ALICE_KEY);
+
+    // 3. Served from cache within the TTL: same answer, still no request.
+    const again = await findGridForUser(db, { id: "alice" }, plainQ, { now: () => new Date(NOW.getTime() + 10 * 60_000), fetch, masterKey: MASTER });
+    expect(again.grid.meta.served_from_cache).toBe(true);
+    expect(again.dynamic_rows_available).toBe(true);
+    expect(again.grid.cells.flat().filter((c) => c.status === "filtered")).toHaveLength(3);
+    expect(fetch.calls.length).toBe(warm + 1);
+
+    // 4. Opt-out (standing queries): the plain answer only.
+    const strict = await findGridForUser(db, { id: "alice" }, plainQ, { now, fetch, masterKey: MASTER, dynamic_rows: false });
+    expect(strict.dynamic_rows_available).toBe(false);
+    expect(strict.grid.cells.flat().flatMap((c) => c.all).some((r) => r.dynamic)).toBe(false);
+    expect(fetch.calls.length).toBe(warm + 1);
+
+    // 5. With the toggle on, the same rows are ordinary "ok" rows again (from cache).
+    const on = await findGridForUser(db, { id: "alice" }, filteredQ, { now, fetch, masterKey: MASTER });
+    expect(on.grid.meta.served_from_cache).toBe(true);
+    expect(on.grid.cells.flat().every((c) => c.status !== "filtered")).toBe(true);
+    expect(on.grid.cells.flat().flatMap((c) => c.all).filter((r) => r.miles === 42_500)).toHaveLength(3);
+  });
+
+  it("without a cached include_filtered scope the plain query has no dynamic rows and says so", async () => {
+    const { db, fetch } = dynamicHarness();
+    const plain = await findGridForUser(db, { id: "alice" }, query({ include_filtered: false }), { now, fetch, masterKey: MASTER });
+    expect(plain.dynamic_rows_available).toBe(false);
+    expect(plain.grid.cells.flat().some((c) => c.status === "filtered")).toBe(false);
+    expect(plain.grid.cells.flat().flatMap((c) => c.all).some((r) => r.dynamic)).toBe(false);
+    expect(fetch.calls.every((c) => c.url.searchParams.get("include_filtered") === null)).toBe(true);
+  });
+
+  it("a stale include_filtered scope (older than the TTL) is not appended", async () => {
+    const { db, fetch } = dynamicHarness();
+    await findGridForUser(db, { id: "alice" }, query({ include_filtered: true }), { now, fetch, masterKey: MASTER });
+    const later = () => new Date(NOW.getTime() + 3 * 60 * 60_000); // beyond the 45-minute TTL
+    const plain = await findGridForUser(db, { id: "alice" }, query({ include_filtered: false }), { now: later, fetch, masterKey: MASTER });
+    expect(plain.dynamic_rows_available).toBe(false);
+    expect(plain.grid.cells.flat().flatMap((c) => c.all).some((r) => r.dynamic)).toBe(false);
+  });
+});
+
+describe("findGridForUser — not fetched pairs (Phase 6)", () => {
+  it("marks monitored pairs without rows as not fetched when the search was truncated", async () => {
+    const db: Db = openTestDb();
+    seedUsers(db, ["alice"]);
+    setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: MASTER, now: NOW });
+    const page = (synthetic.data as SyntheticObject[]).filter((o) => o.Route.OriginAirport === "HKG").slice(0, 5);
+    const fetch = fakeFetch((req) => {
+      // Every page claims there is more: the run stops at the page cap and warns.
+      if (req.url.pathname === "/partnerapi/search") return jsonResponse({ ...synthetic, data: page, count: page.length, hasMore: true, cursor: 1 });
+      if (req.url.pathname === "/partnerapi/routes") {
+        const source = req.url.searchParams.get("source")!;
+        return jsonResponse([...syntheticRoutes(source), { ...syntheticRoutes(source)[0]!, ID: `${source}-TPE`, OriginAirport: "TPE" }]);
+      }
+      return textResponse("not found", 404);
+    });
+    const q = query({ origins: [...SYNTHETIC_ORIGINS, "TPE"] });
+    const res = await findGridForUser(db, { id: "alice" }, q, { now, fetch, masterKey: MASTER });
+    expect(res.notices.map((n) => n.code)).toContain("find.truncated_search");
+    const cells = res.grid.cells.flat();
+    const status = (origin: string) => new Set(cells.filter((c) => c.origin === origin).map((c) => c.status));
+    expect(status("GMP")).toEqual(new Set(["unmonitored"]));
+    expect(status("TPE")).toEqual(new Set(["not_fetched"]));
+    expect(status("PVG")).toEqual(new Set(["not_fetched"]));
+    expect(status("HKG").has("ok")).toBe(true);
+    expect(status("HKG").has("not_fetched")).toBe(false);
+    expect(cells.find((c) => c.origin === "TPE")?.reason).toBe("grid.cell.not_fetched");
+    expect(res.grid.meta.not_fetched_pairs.map((p) => p.pair.origin).sort()).toEqual(["HND", "ICN", "NRT", "PVG", "SHA", "TPE"]);
+    expect(res.programs_failed).toEqual([]);
+  });
+
+  it("notFetchedPairsFrom: quota headroom wins over truncation; pairs with rows or unmonitored are left alone", () => {
+    const q = query({ origins: ["HKG", "PVG", "GMP"] });
+    const pairs = enumeratePairs(q);
+    const row = { origin: "HKG", dest: "SEA" } as never;
+    const base = { rows: [row], unmonitored_pairs: [{ origin: "GMP", dest: "SEA", key: "GMP-SEA" }] };
+    expect(notFetchedPairsFrom({ ...base, notices: [] }, pairs)).toEqual([]);
+    expect(notFetchedPairsFrom({ ...base, notices: [notice("find.truncated_bulk", { pages: 2, source: "alaska" })] }, pairs)).toEqual([
+      { pair: { origin: "PVG", dest: "SEA" }, reason: "grid.cell.not_fetched" },
+    ]);
+    expect(
+      notFetchedPairsFrom({ ...base, notices: [notice("find.truncated_search", { pages: 3 }), notice("find.quota_headroom")] }, pairs),
+    ).toEqual([{ pair: { origin: "PVG", dest: "SEA" }, reason: "grid.cell.not_fetched_quota" }]);
+    expect(notFetchedPairsFrom({ ...base, notices: [notice("find.routes_skipped", { pairs: 1, skipped: 2 })] }, pairs)).toEqual([]);
+  });
+});
+
+describe("findGridForUser — one program's Get Routes failing (Phase 6)", () => {
+  function failingHarness(status: number) {
+    const db: Db = openTestDb();
+    seedUsers(db, ["alice"]);
+    setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: MASTER, now: NOW });
+    const fetch = fakeFetch((req) => {
+      if (req.url.pathname === "/partnerapi/search") return jsonResponse(synthetic);
+      if (req.url.pathname === "/partnerapi/routes") {
+        const source = req.url.searchParams.get("source")!;
+        if (source === "aeroplan") return textResponse(`upstream failure ${ALICE_KEY}`, status);
+        return jsonResponse(syntheticRoutes(source));
+      }
+      return textResponse("not found", 404);
+    });
+    return { db, fetch };
+  }
+
+  it("a 500 on one program's route list keeps the grid, reports the program and never claims not monitored", async () => {
+    const { db, fetch } = failingHarness(500);
+    const res = await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER });
+    expect(res.programs_failed).toEqual(["aeroplan"]);
+    expect(res.notices.map((n) => n.code)).toContain("find.routes_skipped");
+    expect(res.grid.meta.unmonitored_pairs).toEqual([]);
+    // A pair with no rows that none of the LOADED programs monitors may belong to the failed
+    // one: it is "not fetched (upstream error)", neither "no availability" nor "not monitored".
+    const gmp = res.grid.cells.flat().filter((c) => c.origin === "GMP");
+    expect(gmp.length).toBeGreaterThan(0);
+    expect(gmp.every((c) => c.status === "not_fetched" && c.reason === NOT_FETCHED_REASON.upstream)).toBe(true);
+    expect(res.grid.meta.not_fetched_pairs.map((p) => `${p.pair.origin}-${p.pair.dest}`)).toContain("GMP-SEA");
+    // Pairs a loaded program monitors keep their own states.
+    expect(res.grid.cells.flat().some((c) => c.status === "ok")).toBe(true);
+    expect(res.grid.cells.flat().some((c) => c.status === "none")).toBe(true);
+    // one search page + one Get Routes per program (the failed one included; seats.aero charged for it)
+    expect(fetch.calls).toHaveLength(1 + SYNTHETIC_PROGRAMS.length);
+    expect(res.grid.meta.api_calls_used).toBe(1 + SYNTHETIC_PROGRAMS.length);
+    expect(JSON.stringify(res)).not.toContain(ALICE_KEY);
+    // With one route list missing the header cannot claim a monitoring count.
+    expect(res.programs_by_pair).toBeNull();
+    expect(res.programs_checked).toBe(SYNTHETIC_PROGRAMS.length);
+  });
+
+  it("the cached grid after that failure still marks the unresolved pair not fetched (generic reason, zero calls)", async () => {
+    const { db, fetch } = failingHarness(500);
+    await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER });
+    const calls = fetch.calls.length;
+    // A new request builds a fresh catalog: the failure is not stored, only the loaded lists are.
+    const again = await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER });
+    expect(fetch.calls).toHaveLength(calls);
+    expect(again.grid.meta.served_from_cache).toBe(true);
+    expect(again.programs_failed).toEqual([]);
+    expect(again.grid.meta.unmonitored_pairs).toEqual([]);
+    const gmp = again.grid.cells.flat().filter((c) => c.origin === "GMP");
+    expect(gmp.length).toBeGreaterThan(0);
+    expect(gmp.every((c) => c.status === "not_fetched" && c.reason === NOT_FETCHED_REASON.truncated)).toBe(true);
+    expect(again.programs_by_pair).toBeNull();
+  });
+
+  it("a key rejection on a route list still fails the request", async () => {
+    const { db, fetch } = failingHarness(401);
+    await expect(findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER })).rejects.toBeInstanceOf(SeatsAeroHttpError);
   });
 });

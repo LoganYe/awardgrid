@@ -11,7 +11,6 @@
  */
 import Link from "next/link";
 import { useId, useReducer, useState, type FormEvent } from "react";
-import { BookmarkPlusIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -265,8 +264,8 @@ export function SaveQueryDialog({ query, disabled }: SaveQueryDialogProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
+      {/* Text only: toolbar buttons carry no icons (docs/UI_PLAN.md §6.2, §10). */}
       <Button type="button" variant="outline" size="xs" onClick={() => setOpen(true)} disabled={disabled}>
-        <BookmarkPlusIcon data-icon="inline-start" />
         {t("grid.save_query")}
       </Button>
       {open && <QueryFormDialog mode={{ kind: "create", query }} open={open} onOpenChange={setOpen} />}

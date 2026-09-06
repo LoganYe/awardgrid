@@ -166,3 +166,72 @@ describe("gridStats", () => {
     expect(gridStats(buildGrid([], q, { now: NOW })).cheapest).toBeNull();
   });
 });
+
+describe("buildGrid — dynamic pricing and not-fetched pairs (Phase 6)", () => {
+  const plain = makeRow({ program: "alaska", miles: 80_000 });
+  const dyn = makeRow({ program: "united", miles: 60_000, dynamic: true, include_filtered: true });
+  const dyn2 = makeRow({ program: "american", miles: 70_000, dynamic: true, include_filtered: true, date: "2026-10-16" });
+  const dyn3 = makeRow({ program: "aeroplan", miles: 65_000, dynamic: true, include_filtered: true, date: "2026-10-16" });
+
+  it("a cell whose only rows are dynamic is 'filtered' with the cheapest dynamic row as best", () => {
+    const grid = buildGrid([plain, dyn, dyn2, dyn3], makeQuery({ include_filtered: false }), { now: NOW });
+    const filtered = cellAt(grid, "HKG-SEA", "2026-10-16");
+    expect(filtered?.status).toBe("filtered");
+    expect(filtered?.best).toBe(dyn3);
+    expect(filtered?.all).toEqual([dyn3, dyn2]);
+    expect(filtered?.best?.dynamic).toBe(true);
+  });
+
+  it("a mixed cell is 'ok' and its best ignores hidden dynamic rows, which stay in `all`", () => {
+    const grid = buildGrid([plain, dyn], makeQuery({ include_filtered: false }), { now: NOW });
+    const mixed = cellAt(grid, "HKG-SEA", "2026-10-15");
+    expect(mixed?.status).toBe("ok");
+    expect(mixed?.best).toBe(plain); // 80k plain beats the 60k dynamic row while the toggle is off
+    expect(mixed?.all).toEqual([dyn, plain]); // sorted by miles for the tooltip / drawer
+  });
+
+  it("with include_filtered=true dynamic rows are ordinary 'ok' rows", () => {
+    const grid = buildGrid([plain, dyn, dyn2], makeQuery({ include_filtered: true }), { now: NOW });
+    expect(cellAt(grid, "HKG-SEA", "2026-10-15")?.status).toBe("ok");
+    expect(cellAt(grid, "HKG-SEA", "2026-10-15")?.best).toBe(dyn);
+    expect(cellAt(grid, "HKG-SEA", "2026-10-16")?.status).toBe("ok");
+    expect(cellAt(grid, "HKG-SEA", "2026-10-16")?.best).toBe(dyn2);
+  });
+
+  it("gridStats counts filtered cells and never picks a hidden dynamic row as cheapest", () => {
+    const grid = buildGrid([plain, dyn, dyn2], makeQuery({ include_filtered: false }), { now: NOW });
+    const stats = gridStats(grid);
+    expect(stats.ok_cells).toBe(1);
+    expect(stats.filtered_cells).toBe(1);
+    expect(stats.cheapest?.best).toBe(plain);
+  });
+
+  it("marks empty cells of not-fetched pairs with the reason key; unmonitored wins; rows win", () => {
+    const q = makeQuery({ origins: ["HKG", "PVG", "NRT"] });
+    const grid = buildGrid([plain], q, {
+      now: NOW,
+      unmonitored_pairs: [{ origin: "PVG", dest: "SEA" }],
+      not_fetched_pairs: [
+        { pair: { origin: "PVG", dest: "SEA" }, reason: "grid.cell.not_fetched_quota" },
+        { pair: { origin: "NRT", dest: "SEA" }, reason: "grid.cell.not_fetched_quota" },
+        { pair: { origin: "HKG", dest: "SEA" }, reason: "grid.cell.not_fetched" },
+      ],
+    });
+    const nrt = cellAt(grid, "NRT-SEA", "2026-10-15");
+    expect(nrt?.status).toBe("not_fetched");
+    expect(nrt?.reason).toBe("grid.cell.not_fetched_quota");
+    expect(nrt?.best).toBeNull();
+    expect(cellAt(grid, "PVG-SEA", "2026-10-15")?.status).toBe("unmonitored");
+    expect(cellAt(grid, "PVG-SEA", "2026-10-15")?.reason).toBeUndefined();
+    expect(cellAt(grid, "HKG-SEA", "2026-10-15")?.status).toBe("ok");
+    // A pair with rows on one date is still "not fetched" on its empty dates.
+    expect(cellAt(grid, "HKG-SEA", "2026-10-16")?.status).toBe("not_fetched");
+    expect(cellAt(grid, "HKG-SEA", "2026-10-16")?.reason).toBe("grid.cell.not_fetched");
+    expect(grid.meta.not_fetched_pairs).toEqual([
+      { pair: { origin: "HKG", dest: "SEA" }, reason: "grid.cell.not_fetched" },
+      { pair: { origin: "NRT", dest: "SEA" }, reason: "grid.cell.not_fetched_quota" },
+    ]);
+    expect(gridStats(grid).not_fetched_cells).toBe(3);
+    expect(buildGrid([], makeQuery(), { now: NOW }).meta.not_fetched_pairs).toEqual([]);
+  });
+});

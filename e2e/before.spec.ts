@@ -62,7 +62,8 @@ test.describe("before: current UI", () => {
     await asUser("quota");
     await page.goto("/grid");
     await submitQuery(page, "HKG, SHA, TYO, SEL to SEA, next 30 days, business and first");
-    await expect(page.getByRole("alert").getByText(/daily limit reached|quota/i)).toBeVisible({ timeout: 60_000 });
+    // v0.1 announced the limit in an alert; since 6.2 it is a persistent status banner (spec §3.7).
+    await expect(page.getByRole("status").filter({ hasText: /daily limit reached/i })).toBeVisible({ timeout: 60_000 });
     await beforeShot(page, "grid-quota");
   });
 
@@ -70,7 +71,8 @@ test.describe("before: current UI", () => {
     await asUser("empty");
     await page.goto("/grid");
     await submitQuery(page, "HKG, SHA, TYO, SEL to SEA, next 30 days, business and first");
-    await expect(page.getByText(en["grid.empty.no_results"])).toBeVisible({ timeout: 60_000 });
+    // v0.1: "No availability for this query."; 6.2: the sentence with cabins, routes, dates and age.
+    await expect(page.getByText(/^No\b.*availability/).first()).toBeVisible({ timeout: 60_000 });
     await beforeShot(page, "grid-empty-results");
   });
 

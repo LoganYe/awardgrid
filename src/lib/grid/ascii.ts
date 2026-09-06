@@ -43,9 +43,9 @@ export function formatCell(cell: GridCell, now: Date | string, lang: Lang = "en"
   if (cell.status === "unmonitored") return UNMONITORED_MARK;
   const b = cell.best;
   if (!b) return NONE_MARK;
-  const age =
-    formatAgeCompact(b.computed_last_seen, now, lang) +
-    (tier(b.computed_last_seen, now) === "stale" ? STALE_MARK : "");
+  // Unknown freshness ("?" age) keeps the caveat mark: it was "stale" before the tier existed.
+  const t = tier(b.computed_last_seen, now);
+  const age = formatAgeCompact(b.computed_last_seen, now, lang) + (t === "stale" || t === "unknown" ? STALE_MARK : "");
   return [
     formatMilesCompact(b.miles),
     formatFees(b.fees_cents, b.currency),
