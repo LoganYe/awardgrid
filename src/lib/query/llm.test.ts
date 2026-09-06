@@ -138,7 +138,7 @@ describe("parseQuery + LLM merge", () => {
     expect(r.query.origins).toEqual(["NRT", "HND"]); // TYO expanded, HND deduped
     expect(r.query.destinations).toEqual(["SEA", "ZZZ"]);
     expect(r.provenance.origins).toBe("llm");
-    expect(r.warnings.some((w) => w.includes("ZZZ") && w.includes("not in the places seed"))).toBe(true);
+    expect(r.warnings.some((w) => w.includes("ZZZ") && w.includes("not in the places list"))).toBe(true);
     expect(r.warnings.some((w) => w.includes("TYO"))).toBe(false);
     // The same notes ride along as structured notices (translated by the UI); one per warning.
     expect(r.notices).toHaveLength(r.warnings.length);

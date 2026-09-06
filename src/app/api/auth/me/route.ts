@@ -1,5 +1,5 @@
 /**
- * GET /api/auth/me → 200 { user: { id, username, locale, timezone, hasSeatsKey } } or 401.
+ * GET /api/auth/me → 200 { user: { id, username, locale, timezone, theme, hasSeatsKey } } or 401.
  * Reads the session cookie from the request (testable without next/headers).
  */
 import { and, eq } from "drizzle-orm";
@@ -12,7 +12,15 @@ import { jsonError } from "@/lib/server/http";
 export const runtime = "nodejs";
 
 export interface MeResponse {
-  user: { id: string; username: string; locale: string; timezone: string; hasSeatsKey: boolean };
+  user: {
+    id: string;
+    username: string;
+    locale: string;
+    timezone: string;
+    /** "system" | "light" | "dark" (Phase 6.1). */
+    theme: "system" | "light" | "dark";
+    hasSeatsKey: boolean;
+  };
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -33,6 +41,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       username: user.username,
       locale: user.locale,
       timezone: user.timezone,
+      theme: user.theme,
       hasSeatsKey: key !== undefined,
     },
   };

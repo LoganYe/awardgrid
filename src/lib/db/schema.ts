@@ -21,6 +21,8 @@ export const users = sqliteTable("users", {
   timezone: text("timezone").notNull().default("UTC"),
   /** UI language: "en" | "zh". */
   locale: text("locale").notNull().default("en"),
+  /** UI theme: "system" | "light" | "dark" (Phase 6.1; the ag_theme cookie wins on the current device). */
+  theme: text("theme", { enum: ["system", "light", "dark"] }).notNull().default("system"),
 });
 
 export const inviteCodes = sqliteTable("invite_codes", {

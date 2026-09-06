@@ -5,21 +5,21 @@ import { usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
-/**
- * Primary navigation — links only to pages that exist today. The "Ask" drawer (Phase 4) returns
- * here when its route lands: have GridApp read an `ask` search param before its ?q= sync runs.
- */
+/** Grid · Queries · Settings — three text links, the current one underlined (spec §2). */
 export const NAV_ITEMS = [
   { href: "/grid", key: "nav.grid" },
-  { href: "/queries", key: "nav.saved" },
+  { href: "/queries", key: "nav.queries" },
   { href: "/settings", key: "nav.settings" },
 ] as const;
 
-export function Nav({ className }: { className?: string }) {
+export function Nav({ className, orientation = "horizontal" }: { className?: string; orientation?: "horizontal" | "vertical" }) {
   const t = useT();
   const pathname = usePathname();
   return (
-    <nav aria-label={t("nav.primary")} className={cn("flex items-center gap-0.5 overflow-x-auto", className)}>
+    <nav
+      aria-label={t("nav.primary")}
+      className={cn("flex", orientation === "vertical" ? "flex-col gap-2" : "items-center gap-5", className)}
+    >
       {NAV_ITEMS.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
@@ -28,8 +28,8 @@ export function Nav({ className }: { className?: string }) {
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "rounded-md px-2 py-1 text-sm whitespace-nowrap transition-colors hover:bg-muted hover:text-foreground",
-              active ? "bg-muted font-medium text-foreground" : "text-muted-foreground",
+              "t-body whitespace-nowrap py-1 hover:text-fg",
+              active ? "text-fg underline decoration-fg decoration-2 underline-offset-[6px]" : "text-fg-muted",
             )}
           >
             {t(item.key)}

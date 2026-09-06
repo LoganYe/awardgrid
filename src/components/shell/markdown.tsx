@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 
 /**
  * Deliberately tiny Markdown → React renderer for our own docs (LEGAL.md). Supports headings,
- * paragraphs, unordered lists, **bold**, `code`, [links](url) and <autolinks>. No raw HTML is
+ * paragraphs, unordered lists, **bold**, *emphasis*, `code`, [links](url) and <autolinks>. No raw HTML is
  * ever emitted, so the input cannot inject markup.
  */
 
 function inline(text: string, keyBase: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(\*\*[^*]+\*\*)|(`[^`]+`)|(\[[^\]]+\]\([^)]+\))|(<https?:\/\/[^>]+>)/g;
+  const re = /(\*\*[^*]+\*\*)|(\*[^*\s][^*]*\*)|(`[^`]+`)|(\[[^\]]+\]\([^)]+\))|(<https?:\/\/[^>]+>)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let i = 0;
@@ -18,9 +18,16 @@ function inline(text: string, keyBase: string): ReactNode[] {
     const key = `${keyBase}-${i++}`;
     if (tok.startsWith("**")) {
       out.push(<strong key={key}>{tok.slice(2, -2)}</strong>);
+    } else if (tok.startsWith("*")) {
+      // Emphasis is weight 500 (no italics in Chinese, docs/UI_PLAN.md §3).
+      out.push(
+        <em key={key} className="font-medium not-italic">
+          {tok.slice(1, -1)}
+        </em>,
+      );
     } else if (tok.startsWith("`")) {
       out.push(
-        <code key={key} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.9em]">
+        <code key={key} className="rounded-lg bg-bg-raised px-1 py-0.5">
           {tok.slice(1, -1)}
         </code>,
       );
@@ -46,12 +53,17 @@ function link(href: string, label: string, key: string): ReactNode {
     <a
       key={key}
       href={safe}
-      className="underline underline-offset-2 hover:text-foreground"
+      className="link"
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
     >
       {label}
     </a>
   );
+}
+
+/** Drop a leading level-1 heading ("# LEGAL") so the page can render its own h1. */
+export function stripLeadingTitle(markdown: string): string {
+  return markdown.replace(/^\s*#\s[^\n]*\n?/, "");
 }
 
 type Block =
@@ -103,9 +115,9 @@ export function parseBlocks(src: string): Block[] {
 }
 
 const HEADING_CLASS: Record<number, string> = {
-  1: "text-xl font-semibold tracking-tight mt-2",
-  2: "text-base font-semibold mt-6",
-  3: "text-sm font-semibold mt-4",
+  1: "t-title",
+  2: "t-section mt-6 mb-2",
+  3: "t-body font-medium mt-4 mb-1",
 };
 
 export function Markdown({ source, className }: { source: string; className?: string }) {
@@ -125,7 +137,7 @@ export function Markdown({ source, className }: { source: string; className?: st
         }
         if (b.type === "ul") {
           return (
-            <ul key={key} className="my-2 list-disc space-y-1.5 pl-5">
+            <ul key={key} className="my-2 list-disc space-y-2 pl-5">
               {b.items.map((item, j) => (
                 <li key={`${key}-${j}`}>{inline(item, `${key}-${j}`)}</li>
               ))}

@@ -1,17 +1,20 @@
 /**
- * axe-core audit of the CURRENT UI (Phase 6.0 baseline). Runs on the desktop projects only,
- * writes counts per impact to docs/screenshots/v0.2/before/axe-summary.json and logs every
- * serious/critical violation id. It does NOT fail yet: the §8 floor ("zero serious/critical")
- * becomes an assertion once 6.6 lands — flip AXE_STRICT below (or set E2E_AXE_STRICT=1).
+ * axe-core audit of the current UI. Runs on the desktop projects only, writes counts per impact
+ * to docs/screenshots/v0.2/axe-summary.json (the 6.0 baseline stays untouched under before/)
+ * and logs every serious/critical violation id. The §8 floor ("zero serious/critical") is
+ * enforced now for the pages 6.1 restyled (login, register, legal); the grid, settings and
+ * queries pages join once their sub-phases land — flip AXE_STRICT (or set E2E_AXE_STRICT=1).
  */
 import AxeBuilder from "@axe-core/playwright";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { applyTheme, BEFORE_DIR, expect, loginAs, openGridWithResults, test } from "./fixtures";
+import { applyTheme, AXE_SUMMARY_FILE, expect, loginAs, openGridWithResults, test } from "./fixtures";
 
 const AXE_STRICT = process.env.E2E_AXE_STRICT === "1";
-const SUMMARY_FILE = path.join(BEFORE_DIR, "axe-summary.json");
+const SUMMARY_FILE = AXE_SUMMARY_FILE;
+/** Pages already held to the §8 floor (zero serious/critical) regardless of AXE_STRICT. */
+const STRICT_PAGES = new Set(["login", "register", "legal"]);
 type Impact = "critical" | "serious" | "moderate" | "minor";
 
 interface PageSummary {
@@ -33,7 +36,7 @@ function readSummary(): Summary {
       /* rewrite below */
     }
   }
-  return { generated_at: new Date().toISOString(), note: "axe-core baseline of the v0.1 UI before Phase 6; counts per impact, not yet enforced", pages: {} };
+  return { generated_at: new Date().toISOString(), note: "axe-core audit of the current UI; counts per impact per page and project (strict for login, register and legal)", pages: {} };
 }
 
 async function audit(page: Page, key: string): Promise<void> {
@@ -50,13 +53,13 @@ async function audit(page: Page, key: string): Promise<void> {
   const summary = readSummary();
   summary.generated_at = new Date().toISOString();
   summary.pages[`${test.info().project.name}/${key}`] = { url: page.url(), counts, violations };
-  mkdirSync(BEFORE_DIR, { recursive: true });
+  mkdirSync(path.dirname(SUMMARY_FILE), { recursive: true });
   writeFileSync(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
 
-  if (AXE_STRICT) expect(bad, "serious/critical axe violations").toEqual([]);
+  if (AXE_STRICT || STRICT_PAGES.has(key)) expect(bad, "serious/critical axe violations").toEqual([]);
 }
 
-test.describe("axe baseline", () => {
+test.describe("axe", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.startsWith("desktop"), "desktop projects only");
     await applyTheme(page);
@@ -66,6 +69,19 @@ test.describe("axe baseline", () => {
     await page.goto("/login");
     await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
     await audit(page, "login");
+  });
+
+  test("register", async ({ page }) => {
+    await page.goto("/register");
+    await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
+    await audit(page, "register");
+  });
+
+  test("legal", async ({ page }) => {
+    await loginAs(page, "demo");
+    await page.goto("/legal");
+    await expect(page.getByRole("article")).toBeVisible();
+    await audit(page, "legal");
   });
 
   test("grid-results", async ({ page }) => {

@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
+import { cn } from "@/lib/utils";
 
-export function LogoutButton() {
+/** "Log out": POST /api/auth/logout, then /login. A plain text button; the caller styles it. */
+export function LogoutButton({ className, role }: { className?: string; role?: string }) {
   const t = useT();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -22,8 +23,8 @@ export function LogoutButton() {
   }
 
   return (
-    <Button variant="ghost" size="xs" onClick={logout} disabled={busy}>
+    <button type="button" role={role} onClick={logout} disabled={busy} className={cn("t-body rounded-lg text-fg disabled:text-fg-muted", className)}>
       {t("nav.logout")}
-    </Button>
+    </button>
   );
 }

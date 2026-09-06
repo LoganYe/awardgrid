@@ -6,11 +6,13 @@
  * guard in src/proxy.ts) and the resulting httpOnly cookie is copied into the test's browser
  * context — one login per user per worker, so the per-username login throttle is never hit.
  *
- * Selectors are role/text based on the current UI (no data-testids were added in 6.0).
+ * Selectors are role/text based; copy comes from the en dictionary so the harness follows the
+ * i18n audit instead of pinning strings.
  */
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { test as base, expect, request as playwrightRequest, type Locator, type Page } from "@playwright/test";
+import { en } from "../src/lib/i18n/dictionaries/en";
 import { E2E_PASSWORD, type E2eUsername } from "./users";
 
 export { expect };
@@ -20,7 +22,18 @@ export type { E2eUsername };
 export const CANONICAL_QUERY_ZH = "香港、上海、东京、首尔到西雅图，未来一个月最便宜的头等舱";
 export const CANONICAL_QUERY_EN = "HKG, SHA, TYO, SEL to SEA, next 30 days, business and first";
 
-export const BEFORE_DIR = path.resolve(import.meta.dirname, "..", "docs", "screenshots", "v0.2", "before");
+/**
+ * The Phase 6.0 "before" record. It documents the v0.1 UI and is never regenerated: to re-run
+ * before.spec.ts against a later UI (to prove the spec still works), point E2E_BEFORE_DIR at a
+ * scratch directory.
+ */
+export const BEFORE_DIR = process.env.E2E_BEFORE_DIR
+  ? path.resolve(process.env.E2E_BEFORE_DIR)
+  : // Default to a gitignored folder so a routine `pnpm e2e` never overwrites the committed record.
+    path.resolve(import.meta.dirname, "..", "test-results", "before");
+
+/** Live axe summary of the current UI (counts per impact per page and project). */
+export const AXE_SUMMARY_FILE = path.resolve(import.meta.dirname, "..", "docs", "screenshots", "v0.2", "axe-summary.json");
 
 type Cookie = Awaited<ReturnType<import("@playwright/test").APIRequestContext["storageState"]>>["cookies"][number];
 const cookieCache = new Map<string, Cookie[]>();
@@ -84,7 +97,7 @@ export async function beforeShot(page: Page, name: string): Promise<string> {
 
 /** The natural-language query box on /grid. */
 export function queryBox(page: Page): Locator {
-  return page.getByRole("textbox", { name: "Search" });
+  return page.getByRole("textbox", { name: en["grid.search"] });
 }
 
 /** Grid cells that carry a best row: their button's aria-label starts with the miles figure. */

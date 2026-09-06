@@ -288,7 +288,7 @@ describe("PUT /api/settings", () => {
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      settings: { locale: "zh", timezone: "Asia/Shanghai", quietHoursStart: "23:00", quietHoursEnd: "07:30" },
+      settings: { locale: "zh", timezone: "Asia/Shanghai", quietHoursStart: "23:00", quietHoursEnd: "07:30", theme: "system" },
     });
     const cookie = res.headers.get("set-cookie") ?? "";
     expect(cookie).toMatch(/ag_locale=zh/);
