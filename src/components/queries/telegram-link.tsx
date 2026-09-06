@@ -126,7 +126,7 @@ export function TelegramLink({ linked, mock }: TelegramLinkProps) {
 
       {state.phase === "waiting" && (
         <div className="flex flex-col gap-2 rounded-lg bg-muted/40 p-3">
-          <Button size="sm" className="w-fit" render={<a href={state.deepLink} target="_blank" rel="noopener noreferrer" />}>
+          <Button size="sm" className="w-fit" nativeButton={false} render={<a href={state.deepLink} target="_blank" rel="noopener noreferrer" />}>
             <ExternalLinkIcon data-icon="inline-start" />
             {t("settings.telegram.open_link")}
           </Button>

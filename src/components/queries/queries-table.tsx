@@ -155,7 +155,7 @@ export function QueriesTable({ initial, telegramLinked }: QueriesTableProps) {
       <Alert>
         <AlertDescription className="flex flex-wrap items-center gap-2">
           <span>{t("saved.empty")}</span>
-          <Button size="xs" variant="outline" render={<Link href="/grid" />}>
+          <Button size="xs" variant="outline" nativeButton={false} render={<Link href="/grid" />}>
             {t("saved.empty_cta")}
           </Button>
         </AlertDescription>

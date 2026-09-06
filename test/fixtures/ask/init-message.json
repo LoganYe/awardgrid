@@ -1,0 +1,75 @@
+{
+  "recorded_at": "2026-09-06T00:29:08.204Z",
+  "plugins": [
+    {
+      "name": "travel-hacker",
+      "path": "<plugin-root>"
+    }
+  ],
+  "skills": [
+    "deep-research",
+    "travel-hacker:alliances",
+    "travel-hacker:award-calendar",
+    "travel-hacker:award-holds",
+    "travel-hacker:award-sweet-spots",
+    "travel-hacker:bilt",
+    "travel-hacker:booking-guidance",
+    "travel-hacker:cabin-codes",
+    "travel-hacker:compare-flights",
+    "travel-hacker:duffel",
+    "travel-hacker:fallback-and-resilience",
+    "travel-hacker:flight-search-strategy",
+    "travel-hacker:hotel-chains",
+    "travel-hacker:ignav",
+    "travel-hacker:lessons-learned",
+    "travel-hacker:partner-awards",
+    "travel-hacker:plan-trip",
+    "travel-hacker:points-valuations",
+    "travel-hacker:premium-hotels",
+    "travel-hacker:seats-aero",
+    "travel-hacker:status-match",
+    "travel-hacker:stopovers",
+    "travel-hacker:transfer-bonuses",
+    "travel-hacker:transfer-partners",
+    "travel-hacker:trip-calculator",
+    "travel-hacker:trip-planner",
+    "travel-hacker:wheretocredit",
+    "travel-hacker:wikipedia-airports",
+    "design-sync",
+    "dataviz",
+    "update-config",
+    "verify",
+    "debug",
+    "code-review",
+    "simplify",
+    "batch",
+    "fewer-permission-prompts",
+    "doctor",
+    "loop",
+    "claude-api",
+    "workflow-authoring",
+    "run",
+    "run-skill-generator"
+  ],
+  "mcp_servers": [
+    {
+      "name": "skiplagged",
+      "status": "connected"
+    },
+    {
+      "name": "kiwi",
+      "status": "connected"
+    },
+    {
+      "name": "trivago",
+      "status": "connected"
+    },
+    {
+      "name": "ferryhopper",
+      "status": "connected"
+    }
+  ],
+  "model": "claude-sonnet-5",
+  "configured_model": "claude-sonnet-5",
+  "claude_code_version": "2.1.260"
+}

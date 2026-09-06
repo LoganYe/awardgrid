@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-09-06T00:29:08.204Z",
+  "prompt": "which program should I book the cheapest SEA→NRT F cell with, and what transfers into it?",
+  "cost_usd": 0,
+  "num_turns": 1,
+  "duration_ms": 294,
+  "subtype": "success",
+  "tools_used": [],
+  "gate_decisions": [],
+  "events": {
+    "init": 1,
+    "error": 1,
+    "result": 1
+  },
+  "answer_chars": 0,
+  "answer_excerpt": "",
+  "mentions_program": false,
+  "mentions_transfer_partner": false,
+  "error": {
+    "code": "sdk",
+    "message": "Agent error: Failed to authenticate. API Error: 403 Request not allowed"
+  }
+}

@@ -136,7 +136,7 @@ export function QueryFormDialog({ mode, open, onOpenChange, onSaved }: QueryForm
             </Alert>
             <DialogFooter>
               <DialogClose render={<Button variant="outline" size="sm" />}>{t("common.close")}</DialogClose>
-              <Button size="sm" render={<Link href="/queries" />}>
+              <Button size="sm" nativeButton={false} render={<Link href="/queries" />}>
                 {t("saved.dialog.view")}
               </Button>
             </DialogFooter>
