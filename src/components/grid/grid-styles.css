@@ -29,9 +29,41 @@
 /* The one scroll container: sticky header and first column stick inside it (both axes). */
 .ag-scroll {
   overflow: auto;
+  /* `dvh`, not `vh`: on iOS Safari `100vh` is the height with the toolbars HIDDEN, so this box
+     was about 90 px taller than what is on screen and its last rows sat permanently under the
+     floating toolbar. The `vh` line above it is the fallback for engines without `dvh`. */
   max-height: calc(100vh - var(--topbar-height) - 220px);
+  max-height: calc(100dvh - var(--topbar-height) - 220px);
   min-height: 160px;
   overscroll-behavior: contain;
+}
+
+/*
+ * Touch (verified on an iPhone running Mobile Safari, issue #32).
+ *
+ * `overscroll-behavior: contain` is right for a wheel over a desktop grid — the page must not
+ * run on past it — but on a phone the query block above the grid is far taller than the 220 px
+ * reserved above, so the grid is a letterbox in the middle of a page that is itself scrollable.
+ * With chaining blocked, a swipe inside the grid stopped dead at the last row and the only way
+ * to reach the footer was to find the few pixels that are not grid. Chaining is the phone
+ * behaviour: the grid scrolls first and the page follows at the boundary.
+ *
+ * Snapping is about a different problem. With the date column sticky and a free-form touch
+ * scroll, a column comes to rest half-hidden behind it and shows only the TAIL of its cells —
+ * the end of "84,000" reads as a miles value of 0. Snapping to column starts means a column is
+ * either behind the sticky one or fully in view. `proximity`, not `mandatory`, so a small
+ * deliberate drag can still rest where it lands; `scroll-padding-left` keeps the snapped column
+ * clear of the sticky one.
+ */
+@media (max-width: 767px), (pointer: coarse) {
+  .ag-scroll {
+    overscroll-behavior: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding-left: var(--ag-rowhead-w);
+  }
+  .ag-table thead th:not(.ag-corner) {
+    scroll-snap-align: start;
+  }
 }
 .ag-wrap[data-dimmed="true"] .ag-scroll {
   opacity: 0.8;

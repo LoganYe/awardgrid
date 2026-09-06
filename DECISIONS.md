@@ -260,3 +260,50 @@ Eyes-on review of the 156-image matrix under `docs/screenshots/v0.2/**` plus a n
 - **`grid.header.calls` said "render".** A React implementation word shown to end users, and the zh inherited it as 渲染, which is pure jargon in Chinese. It is "{n} calls this search" / 「本次搜索 {n} 次调用」 now.
 - **The demo Ask stream has a Chinese script.** Every answered zh capture was an English answer body under Chinese chrome, so the record proved nothing about CJK line-breaking or CJK line height on the 20 px body grid — the one thing §1.6 asks the answer typography to prove. Both scripts also now carry a heading, an ordered list, a link and a fenced code block, so all four remaining branches of `answer.tsx` are photographed rather than assumed. The route stays inert without `ASK_DEMO_STREAM=1`.
 - **The e2e suite followed the UI in five places** rather than the UI being bent to keep the suite green: the ask cap meter is one line, the delete confirmation names the query and offers Keep, and the top-bar quota assertion counts against the soft limit.
+
+### #32 The grid on a real phone
+
+Verified on an iPhone 17 Pro simulator (iOS 26.5, Mobile Safari/WebKit, 402 × 874 pt) against a
+production build of the offline demo. Real touch, real momentum scrolling, real sticky behaviour —
+not an emulated viewport. Momentum, both sticky axes, the hatch, the freshness marks' shapes, the
+dark theme under the system setting, 16 px inputs, 40 pt targets and the date popover all held.
+Long-pressing a cell raises no iOS selection callout: `user-select: none` already covers it.
+
+- **The tooltip asks `:focus-visible`, not "did something focus this".** Armed from `mouseenter`
+  and from focus, it opened after every tap and stayed: iOS synthesises `mouseenter` on tap and
+  never sends the matching `mouseleave`, and closing the drawer hands focus back to the cell that
+  opened it, so the tooltip landed over the row below with no pointer left to move away. The
+  pointer path is now gated on `(hover: hover) and (pointer: fine)` and the focus path on
+  `:focus-visible` — which is exactly the "did the keyboard put it here" question, so WCAG 2.1
+  SC 1.4.13 keeps its hoverable tooltip and a tap gets none. `e2e/grid.spec.ts` had been SKIPPING
+  this case with a comment claiming tooltips never open on touch; there is now a mobile test that
+  checks it instead of asserting it in prose.
+- **Columns snap clear of the sticky date column below 768 px.** With free-form touch scrolling a
+  column rests half-hidden behind the sticky column and shows only the tail of its cells — the end
+  of "84,000" renders as a miles value of 0, which is worse than ugly. `scroll-snap-type: x
+  proximity` with `scroll-padding-left: var(--ag-rowhead-w)`; `proximity`, not `mandatory`, so a
+  small deliberate drag can still rest where it lands. Playwright's programmatic scrolling lands
+  on tidy offsets, which is why nothing caught this before a thumb did.
+- **The grid chains its scroll to the page on touch.** `overscroll-behavior: contain` is right for
+  a wheel over a desktop grid. On a phone the query block above the grid is far taller than the
+  220 px reserved for it, so the grid is a letterbox in the middle of a scrollable page, and
+  `contain` meant a swipe inside it stopped dead at the last row. `auto` below 768 px / on a
+  coarse pointer: the grid scrolls first, the page follows at the boundary.
+- **`100dvh`, not `100vh`.** On iOS Safari `100vh` is the height with the toolbars HIDDEN, so the
+  scroll box was about 90 px taller than what is on screen and its last rows sat permanently under
+  the floating toolbar. A `100vh` line stays above it as the fallback.
+- **The 40 px touch floor is keyed to the pointer as well as the width.**
+  `@media (max-width: 767px), (pointer: coarse)`. Width alone was the wrong question: the same
+  phone in landscape is 874 px wide, and every control snapped back to its 24–32 px desktop size
+  under the same thumb — as did every tablet. `pointer: coarse` is the PRIMARY pointer, so a
+  touchscreen laptop (which reports `fine` with `any-pointer: coarse`) keeps the dense controls it
+  is driven with. _Read from the CSS, not observed:_ the Simulator's rotate menu could not be
+  driven from this environment and iPad access was not granted, so the landscape case is reasoned
+  from the media query rather than seen.
+- **The drawer's Open button uses the long program name.** `src/lib/grid/format.ts` states the rule
+  in its own header — "the long names stay in SOURCE_NAMES for the drawer, CSV and digests" — and
+  the button broke it, so the primary action read "Open in Singapore", naming a country. It now
+  reads "Open in Singapore KrisFlyer". Same shape for Turkish, Ethiopian and Qatar.
+- **Not changed:** the cell drawer leaves a large empty band between a single program row and the
+  action block on a phone. `docs/UI_PLAN.md` §6.5 specifies a full-height sheet below 768 px, so
+  this is the plan working, not a defect; sizing the sheet to its content would be a plan change.
