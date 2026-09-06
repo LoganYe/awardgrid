@@ -86,8 +86,14 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
 | 11 | `settings.keys.input_hint_seats` | "Copy it from the API tab of seats.aero → Settings (Pro plan)…" | "Copy it from the API tab of your seats.aero settings (Pro plan). Saving spends one API call to check it." | 「从 seats.aero 设置页的 API 标签复制（需要 Pro）。保存时会用一次 API 调用来验证。」 | 7 |
 | 12 | `saved.run.cells` | "{new_cells} new · {dropped_cells} gone" | "{new_cells} new, {dropped_cells} gone" | 「新增 {new_cells}，消失 {dropped_cells}」 | 7 |
 | 13 | `grid.deeplink_caveat` | "Confirm on the program's site before transferring any points — cached data can be stale…" | "Confirm on the program's site before transferring any points. Cached data can be stale and awards disappear." | 「转点前请先在里程计划官网确认。缓存数据可能过期，里程票随时会消失。」 | 7 |
-| 14 | `notice.parse.range_truncated` | "date range truncated to {days} days ({date_from} → {date_to}); split…" | "Date range shortened to {days} days ({date_from} to {date_to}). Split longer searches into several queries." | 「日期范围已缩短为 {days} 天（{date_from} 至 {date_to}）。更长的范围请分多次搜索。」 | 1, 7 |
-| 15 | `grid.provenance.deterministic` / `.llm` | "parsed from text" / "from language model" | "parsed" / "guessed" | 「已解析」/「推测」 | 6 (`UI_PLAN.md` §3) |
+| 14 | `notice.parse.range_truncated` | "date range truncated to {days} days ({date_from} → {date_to}); split…" | "Date range truncated to {days} days ({date_from} to {date_to}). Split longer searches into several queries." | 「日期范围已缩短为 {days} 天（{date_from} 至 {date_to}）。更长的范围请分多次搜索。」 | 1, 7 |
+| 15 | `grid.provenance.llm` | "DET" / "LLM" badges on every chip | "guessed" — one 12 px sentence-case note beside "Parsed from", shown only when the language model filled a field | 「推测」 | 6 (`UI_PLAN.md` §3) |
+
+Two notes on the table, both deliberate: row 14 keeps the word "truncated" in English because
+`test/fixtures/queries/cases.json` pins the notice text and the phrase is plain English (the zh side reads 「已缩短为」,
+which is the natural Chinese for it — the rule is one term per concept per language, not a word-for-word pairing); and
+row 15 has no `grid.provenance.deterministic` key, because the deterministic path shows nothing at all — a note appears
+only when the language model filled a field.
 
 ## 4. How to add a string
 
@@ -97,8 +103,8 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
    `quota`, `theme`); the middle segments are the section or component; the last names the thing.
    Controls end in a verb or control name (`.run`, `.submit`, `_cta`, `.open_link`); the lint treats those
    as labels (no trailing period, capitalised first word).
-2. Append it to **both** `en.ts` and `zh.ts` with the same `{placeholders}`. Reuse a glossary term; do
-   not coin a second word for a concept that has one.
+2. Append it to **both** `en.ts` and `zh.ts` with the same `{placeholders}` (569 keys each today; `i18n.test.ts` fails
+   the moment they diverge). Reuse a glossary term; do not coin a second word for a concept that has one.
 3. Never put text in JSX. Render with `t("key")` (server: `getT()` from `@/lib/i18n/server`; client:
    `useT()` from `@/lib/i18n/client`). Compose data in components (`SEA → NRT`, `60,000`), words in the
    dictionary.

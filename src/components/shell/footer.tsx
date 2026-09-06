@@ -3,7 +3,9 @@ import pkg from "../../../package.json";
 import { translator, type Locale } from "@/lib/i18n";
 
 /**
- * One 32 px line on every page: "Data: seats.aero" │ v0.2.0 │ Legal. The vertical rules are
+ * One 32 px line on every page: "Data: seats.aero" │ the version │ Legal. The version is read
+ * from `package.json` at build time, so it is whatever the release actually is — never a literal
+ * here that can drift from the tag. The vertical rules are
  * 1 px --line borders, 12 px tall — the only separator glyph in the app (spec §2).
  */
 export function Footer({ locale }: { locale: Locale }) {

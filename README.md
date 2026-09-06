@@ -145,6 +145,36 @@ no writes), `maxTurns: 12`, a per-request budget of `min($0.50, remaining)`, a *
 abort. The current grid's `QueryObject` and the selected cell are injected as context; the answer streams over SSE.
 The system prompt allows search, compare and explain only — never book, log in or bypass anything.
 
+## UI
+
+Five pages (`/grid`, `/queries`, `/settings`, `/login`, `/register`, plus `/legal`) built on one small design system:
+eleven colour tokens per theme in `src/styles/tokens.css`, one sans with tabular figures and a CJK fallback stack, a
+13/14/16/20 px scale, no logos and no brand colours. `docs/UI.md` is the working manual (tokens, component map, how to
+add a string or a token, responsive rules, the a11y floor); `docs/UI_PLAN.md` is the design record behind it.
+
+- **Themes.** Light and dark, default following the system. The top bar's theme control is a text button that cycles
+  System → Light → Dark; Settings → Language and theme has the explicit radios. The choice is stored in the `ag_theme`
+  cookie (per device, read in the root layout so there is no flash) and in `users.theme` (per account, seeding a new
+  device). Language is EN / 中文 in the same bar; both dictionaries are complete (569 keys each).
+- **Keyboard.** The grid is one tab stop with a roving focus: **arrows** move a cell, **Home / End** jump to the ends of
+  the row, **Ctrl/Cmd+Home / End** to the grid corners, **PageUp / PageDown** move 7 rows (one week), **Enter** or
+  **Space** opens the cell drawer, **Esc** closes whichever drawer is open and returns focus to the cell that opened it.
+  Every other control is reachable with Tab; the focus ring is a 2 px accent outline on `:focus-visible`.
+- **Demo mode** — the whole UI with no key, no network and no quota:
+  ```sh
+  pnpm demo                                                            # DEMO=1 mock seats.aero on :3999, serving fixtures/demo/
+  set -a && . ./.env && set +a                                         # the tsx CLIs don't read .env; the seed needs the app's MASTER_KEY
+  pnpm exec tsx scripts/seed-e2e.ts --db data/runtime/demo.db --fresh  # demo users (password demo-password-1); prints usernames only
+  DATABASE_PATH=data/runtime/demo.db SEATS_AERO_BASE_URL=http://127.0.0.1:3999/partnerapi/ pnpm dev
+  ```
+  Every value in `fixtures/demo/` is invented (`fixtures/demo/README.md` says so). Each seeded user's fake key selects a
+  scenario on the mock — `demo` (full dataset), `nokey`, `empty`, `slow` (loading states), `partial` (one program not
+  fetched), `quota` (daily limit reached) — so every page state can be reached without touching seats.aero.
+- **Screenshots.** `docs/screenshots/v0.2/<page>/<state>-<viewport>-<theme>[-zh].png` — every page in every state at
+  1440 × 900 and 390 × 844, light and dark, with the grid and both drawers also in Chinese. `docs/screenshots/v0.2/before/`
+  is the frozen record of the v0.1 UI, and `axe-summary.json` is the current accessibility audit.
+- **End-to-end.** `pnpm e2e` (see the Tests section) regenerates the screenshots and asserts the semantics behind them.
+
 ## Local development with the mock seats.aero
 
 ```sh
@@ -183,11 +213,28 @@ Docker was **not** available on the machine this was built on; the CI job `docke
 ## Tests
 
 ```sh
-pnpm build:plugin && pnpm test                 # Vitest, 79 files / 722 tests, no network, no keys (2 live-gated tests skip; 1 more skips until the plugin is built)
+pnpm build:plugin && pnpm test                 # Vitest, 104 files / 1,046 tests, no network, no keys (2 live-gated tests skip; 1 more skips until the plugin is built)
 pnpm typecheck && pnpm lint
+pnpm build && pnpm e2e                         # Playwright: UI behaviour, axe, screenshots — offline against the DEMO mock
 bash scripts/check-no-secrets-in-bundle.sh --build   # fixture/seed key strings absent from .next/, Partner-Authorization absent from client chunks
 AWARDGRID_LIVE_SMOKE=1 pnpm exec tsx scripts/ask-smoke.ts   # optional: one real Ask session; needs ANTHROPIC_API_KEY; ≤ $0.50
 ```
+
+**End-to-end and visual.** `pnpm e2e` runs the Playwright suite (`e2e/`, four projects: desktop and mobile × light and
+dark) against a production `next start` and the `DEMO=1` mock seats.aero, over a throwaway SQLite file — no network, no
+keys, no real data on any screenshot. It asserts the UI semantics of every page state, runs `@axe-core/playwright`
+(WCAG 2.x A/AA; zero serious or critical violations, counts written to `docs/screenshots/v0.2/axe-summary.json`), and
+writes the screenshot matrix under `docs/screenshots/v0.2/` (declared once in `e2e/matrix.ts`;
+`pnpm exec tsx scripts/screenshot-index.ts` rebuilds the contact sheet and fails on a missing or misnamed capture).
+`pnpm e2e -g <name>` runs one spec, `pnpm e2e:ui` opens Playwright's UI mode,
+`pnpm exec playwright show-report e2e-report` opens the last report. `e2e/README.md` documents the seeded users, the
+scenario keys and the scripted Ask stream.
+
+Visual-regression baselines (`e2e/visual.spec.ts`) are generated and committed **from Linux CI only** — macOS font
+rasterisation differs, so a Mac baseline fails on CI. The comparisons are inert unless `VISUAL=1`, so a routine run
+never fails on them: `VISUAL=1 pnpm e2e -g visual` compares, `VISUAL=1 pnpm e2e:update -g visual` rewrites, with the
+reason in the commit message. The CI `visual` job is non-blocking until it has been green on five consecutive runs
+(`DECISIONS.md` § 6.6). Details in `docs/UI.md` § 5.
 
 Every external payload is a fixture: `test/fixtures/seatsaero/` (official docs examples + a seeded synthetic Cached
 Search for the canonical query), `test/fixtures/queries/cases.json` (36 bilingual parser cases), `test/fixtures/ask/`
@@ -212,14 +259,19 @@ src/lib/ask/        SDK options, env isolation, tool gate, budget hold, streamin
 src/lib/server/     request-side helpers (find, trips, usage, origin/CSRF, rate limit)   src/lib/i18n/  en + zh-CN
 src/cli/            find (grid), admin, worker, migrate         src/proxy.ts   same-origin guard for /api/*
 scripts/            build-plugin, plugin-manifest, mock-seatsaero, seed-dev, ask-smoke, check-no-secrets-in-bundle.sh
+src/styles/         tokens.css — every colour, size, radius and duration the UI uses (docs/UI.md §1)
 test/               fixtures/, integration/ (CLI, two users, scheduler harness), ask/, query/
+e2e/                Playwright suite + harness docs      fixtures/demo/   synthetic demo dataset for the DEMO=1 mock
+docs/UI.md          UI manual (design system, component map, procedures)   docs/UI_PLAN.md   the design record
+docs/COPY.md        copy rules and the en ↔ zh glossary   docs/screenshots/v0.2/   the screenshot matrix + axe summary
 data/places.json    editable city → airports seed with zh/en aliases     data/runtime/   SQLite + mock sink (gitignored)
 docs/reference/     the seats.aero reference pages the client was built from
 vendor/travel-hacking-toolkit   git submodule (MIT)          build/plugin   pruned plugin (gitignored)
 ```
 
 Further reading: `ARCHITECTURE.md` (verified endpoints, SDK options, model IDs, docs-vs-prompt conflicts),
-`DECISIONS.md` (every choice with rationale), `LEGAL.md` (terms, attribution, disable-on-request), `BACKLOG.md`
+`DECISIONS.md` (every choice with rationale), `docs/UI.md` (the UI manual) and `docs/UI_PLAN.md` (why it looks like
+that), `docs/COPY.md` (copy rules and glossary), `LEGAL.md` (terms, attribution, disable-on-request), `BACKLOG.md`
 (deferred items), `FINAL_REPORT.md` (what works, what is mocked, needs-human-action, cost estimate).
 
 ## License

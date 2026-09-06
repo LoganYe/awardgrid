@@ -91,6 +91,78 @@ jobs:
             test-results
           retention-days: 7
 
+  # Spec §9 / §11: visual regression is NON-BLOCKING until it has been green five runs in a row
+  # (record the promotion in DECISIONS.md before making it required). `continue-on-error` keeps a
+  # font-rendering diff from blocking a merge while the baselines settle.
+  #
+  # Baselines are Linux-only: playwright.config.ts writes them without a platform suffix, so they
+  # can only be generated here. When none are committed yet, the last two steps generate a set and
+  # upload it as `visual-baselines` for a human to download and commit
+  # (`e2e/__screenshots__/<project>/visual.spec.ts/*.png`, reason in the commit message).
+  visual:
+    name: visual (Playwright snapshots, non-blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: CJK fonts for zh screenshots
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk > /dev/null
+      - name: Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build the pruned toolkit plugin
+        run: pnpm build:plugin
+      - name: Build
+        run: pnpm build
+
+      - name: Are there committed baselines?
+        id: baselines
+        run: |
+          set -euo pipefail
+          if compgen -G "e2e/__screenshots__/*/visual.spec.ts/*.png" > /dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No committed baselines under e2e/__screenshots__ — this run will generate them."
+          fi
+
+      - name: Visual regression (VISUAL=1, no network, no keys)
+        if: steps.baselines.outputs.present == 'true'
+        continue-on-error: true
+        run: VISUAL=1 pnpm e2e -g visual
+
+      - name: Upload actual and diff images
+        if: always() && steps.baselines.outputs.present == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-snapshots
+          path: |
+            e2e/__screenshots__
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # No baselines yet: generate the Linux set so it can be downloaded and committed once.
+      - name: Generate Linux baselines
+        if: steps.baselines.outputs.present != 'true'
+        continue-on-error: true
+        run: VISUAL=1 pnpm e2e:update -g visual
+
+      - name: Upload the generated baselines
+        if: always() && steps.baselines.outputs.present != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines
+          path: e2e/__screenshots__
+          if-no-files-found: warn
+          retention-days: 7
+
   secret-scan:
     name: gitleaks
     runs-on: ubuntu-latest

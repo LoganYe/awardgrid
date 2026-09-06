@@ -240,3 +240,58 @@
   text-underline-offset: 2px;
   text-decoration-thickness: 1px;
 }
+
+/* ---- Touch targets below 768 px (spec §3.4 "Touch targets on mobile 40 px", §6) ----
+ *
+ * The app is built out of dense desktop controls — 24 px toolbar buttons, 28 px chips, a 14 px
+ * switch track, 32 px inputs — because density is the product. Below 768 px the same controls
+ * are under a thumb, so every one of them grows to --row-touch (40 px), the same figure the grid
+ * uses for its touch rows. Stated once, here, rather than as a `max-md:` class on each control:
+ * a rule the whole app obeys is what makes the floor hold for controls written later, and
+ * e2e/responsive.spec.ts measures every interactive element on every page against it.
+ *
+ * Unlayered on purpose, so it beats the utility classes that set an explicit `h-*`; `min-height`
+ * wins over `height` anyway, and `min-width` only ever grows a box.
+ */
+@media (max-width: 767px) {
+  button,
+  summary,
+  select,
+  textarea,
+  /* Radios and checkboxes keep their drawn size — a 14 px dot stretched to 40 px is a pill, not
+     a bigger dot — and are tapped through the label below instead. */
+  input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]),
+  [role="button"],
+  [data-slot="button"],
+  /* A label that wraps its own control IS the target: the radio inside it is a 14 px dot. */
+  label:has(> input),
+  /* Shell links are laid out as their own box (flex items), not as words inside a sentence. */
+  header a[href],
+  footer a[href],
+  nav a[href] {
+    min-height: var(--row-touch);
+  }
+  button,
+  summary,
+  [role="button"],
+  [data-slot="button"] {
+    min-width: var(--row-touch);
+  }
+  header a[href],
+  footer a[href],
+  nav a[href] {
+    display: inline-flex;
+    align-items: center;
+  }
+  /* The footer is one 32 px line by design; on a phone it grows to hold a 40 px target. */
+  footer {
+    height: auto;
+  }
+  /*
+   * The switch keeps its 14–18 px track — a 40 px pill would be a different control — and grows
+   * the ::after overlay that already carries its hit area instead (src/components/ui/switch.tsx).
+   */
+  [data-slot="switch"]::after {
+    inset: -13px -12px;
+  }
+}

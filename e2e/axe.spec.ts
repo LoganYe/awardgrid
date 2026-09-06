@@ -1,37 +1,57 @@
 /**
- * axe-core audit of the current UI. Runs on the desktop projects only, writes counts per impact
- * to docs/screenshots/v0.2/axe-summary.json (the 6.0 baseline stays untouched under before/)
- * and logs every serious/critical violation id. The §8 floor ("zero serious/critical") is
- * enforced now for the pages 6.1 restyled (login, register, legal) and the 6.2 grid results
- * page in both themes; settings and queries join once their sub-phases land — flip AXE_STRICT
- * (or set E2E_AXE_STRICT=1).
+ * axe-core audit of every page and every state (Phase 6.6, spec §8: "WCAG AA contrast in both
+ * themes … zero serious/critical violations").
+ *
+ * Matrix: login · register · legal · grid-results · the seven chip editors · cell drawer · Ask
+ * drawer · quota · no-key · empty results · parse failure · queries (list, expanded, edit
+ * drawer, empty) · settings — each on **desktop-light, desktop-dark and mobile-light**. Dark
+ * and light are separate runs because contrast is the violation these catch and the two themes
+ * are two different palettes; mobile is a separate run because below 768 px the drawers become
+ * sheets, the toolbar becomes a sheet and the focus order changes with them.
+ *
+ * The §8 floor is enforced by default (`E2E_AXE_STRICT` defaults to on; set it to "0" to collect
+ * a report without failing). Counts per impact land in docs/screenshots/v0.2/axe-summary.json;
+ * the 6.0 baseline stays untouched under before/axe-summary.json.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { applyTheme, AXE_SUMMARY_FILE, expect, loginAs, openAskDrawer, openCellDrawer, openGridWithResults, test } from "./fixtures";
+import { en } from "../src/lib/i18n/dictionaries/en";
+import {
+  applyTheme,
+  AXE_SUMMARY_FILE,
+  CANONICAL_QUERY_EN,
+  expect,
+  loginAs,
+  openAskDrawer,
+  openCellDrawer,
+  openGridWithResults,
+  submitQuery,
+  test,
+} from "./fixtures";
 
-const AXE_STRICT = process.env.E2E_AXE_STRICT === "1";
+/**
+ * The §8 floor, on by default since 6.6. `E2E_AXE_STRICT=0` turns it into a report-only run
+ * (useful while triaging a new page); anything else — set or unset — enforces it.
+ */
+const AXE_STRICT = process.env.E2E_AXE_STRICT !== "0";
+
+/**
+ * The seven chips in spec order. Inlined rather than imported from chips-model.ts: that module
+ * pulls data/places.json, which Playwright's loader cannot import without a JSON attribute
+ * (e2e/fixtures.ts inlines the query codec for the same reason). chips.spec.ts pins the order
+ * against the real constant, so a divergence here fails there.
+ */
+const CHIP_ORDER = ["origins", "destinations", "dates", "cabins", "programs", "direct_only", "sort"] as const;
 const SUMMARY_FILE = AXE_SUMMARY_FILE;
-/** Pages already held to the §8 floor (zero serious/critical) regardless of AXE_STRICT. */
-const STRICT_PAGES = new Set([
-  "login",
-  "register",
-  "legal",
-  "grid-results",
-  "grid-chip-editor",
-  "grid-cell-drawer",
-  "grid-ask-drawer",
-  "queries",
-  "queries-expanded",
-  "queries-edit-drawer",
-  "settings",
-]);
+
 type Impact = "critical" | "serious" | "moderate" | "minor";
 
 interface PageSummary {
   url: string;
+  /** When this page was last audited — so a reader can tell a fresh entry from a leftover one. */
+  at: string;
   counts: Record<Impact, number>;
   violations: { id: string; impact: Impact | null; nodes: number; help: string }[];
 }
@@ -41,15 +61,36 @@ interface Summary {
   pages: Record<string, PageSummary>;
 }
 
+/**
+ * What the file says about itself. Written on every audit, never read back from the file: the
+ * summary is merged across tests and projects, so a note left in an older file would otherwise
+ * outlive the run that was true of it (it did: the committed file still claimed the floor was
+ * "strict for login, register and legal" long after 6.6 made it the default everywhere).
+ */
+const SUMMARY_NOTE =
+  "axe-core audit of every page and state, on desktop-light, desktop-dark and mobile-light; zero serious/critical is enforced by default (E2E_AXE_STRICT=0 downgrades it to a report). Each page carries the time it was audited.";
+
 function readSummary(): Summary {
   if (existsSync(SUMMARY_FILE)) {
     try {
-      return JSON.parse(readFileSync(SUMMARY_FILE, "utf8")) as Summary;
+      const previous = JSON.parse(readFileSync(SUMMARY_FILE, "utf8")) as Summary;
+      // Merge this run's pages into the previous ones (the projects write one file between them),
+      // but never inherit the previous run's description of what the file is, and drop entries
+      // that this suite can no longer produce: a project that is not audited any more, or an
+      // entry with no `at` (written before every entry was stamped — a renamed key, say). Both
+      // rules are monotone: neither can delete something the current run has just written.
+      const pages: Record<string, PageSummary> = {};
+      for (const [key, value] of Object.entries(previous.pages ?? {})) {
+        const project = key.split("/")[0] ?? "";
+        if (!AUDITED_PROJECTS.has(project) || !value.at) continue;
+        pages[key] = value;
+      }
+      return { ...previous, note: SUMMARY_NOTE, pages };
     } catch {
       /* rewrite below */
     }
   }
-  return { generated_at: new Date().toISOString(), note: "axe-core audit of the current UI; counts per impact per page and project (strict for login, register, legal and grid-results)", pages: {} };
+  return { generated_at: new Date().toISOString(), note: SUMMARY_NOTE, pages: {} };
 }
 
 async function audit(page: Page, key: string): Promise<void> {
@@ -70,36 +111,44 @@ async function audit(page: Page, key: string): Promise<void> {
 
   const summary = readSummary();
   summary.generated_at = new Date().toISOString();
-  summary.pages[`${test.info().project.name}/${key}`] = { url: page.url(), counts, violations };
+  summary.pages[`${test.info().project.name}/${key}`] = { url: page.url(), at: summary.generated_at, counts, violations };
   mkdirSync(path.dirname(SUMMARY_FILE), { recursive: true });
   writeFileSync(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
 
-  if (AXE_STRICT || STRICT_PAGES.has(key)) expect(bad, "serious/critical axe violations").toEqual([]);
+  if (AXE_STRICT) expect(bad, `serious/critical axe violations on ${key}`).toEqual([]);
 }
 
 /**
- * Most audits run on the desktop projects only. The two drawer audits are the exception: below
- * 768 px the same drawers become a full-height sheet and a bottom sheet with a drag handle
- * (spec §6) — different roles, different focus order, different touch targets — so the mobile
- * presentations are audited as well as the desktop ones.
+ * Three of the four projects. Dark and light are both audited because contrast is what these
+ * runs catch; mobile-light is audited because below 768 px the drawers, the toolbar and the top
+ * bar are different components with a different focus order. mobile-dark would only re-check the
+ * palette mobile-light and desktop-dark already cover between them.
  */
-const MOBILE_TOO = new Set(["grid-cell-drawer", "grid-ask-drawer"]);
+const AUDITED_PROJECTS = new Set(["desktop-light", "desktop-dark", "mobile-light"]);
+
+/** Wait for /queries to settle into the presentation this project's viewport gets. */
+async function expectQueriesReady(page: Page): Promise<void> {
+  const mobile = test.info().project.name.startsWith("mobile");
+  await expect(page.getByTestId(mobile ? "queries-list" : "queries-table")).toBeVisible();
+}
 
 test.describe("axe", () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(!testInfo.project.name.startsWith("desktop") && !MOBILE_TOO.has(testInfo.title), "desktop projects only");
+    test.skip(!AUDITED_PROJECTS.has(testInfo.project.name), "audited on desktop-light, desktop-dark and mobile-light");
     await applyTheme(page);
   });
 
+  // ---- auth and legal ----
+
   test("login", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
+    await expect(page.getByRole("button", { name: en["auth.login.submit"] })).toBeVisible();
     await audit(page, "login");
   });
 
   test("register", async ({ page }) => {
     await page.goto("/register");
-    await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
+    await expect(page.getByRole("button", { name: en["auth.register.submit"] })).toBeVisible();
     await audit(page, "register");
   });
 
@@ -110,57 +159,102 @@ test.describe("axe", () => {
     await audit(page, "legal");
   });
 
+  // ---- grid ----
+
   test("grid-results", async ({ page }) => {
-    await openGridWithResults(page);
+    await openGridWithResults(page, "demo", CANONICAL_QUERY_EN);
     await audit(page, "grid-results");
   });
 
   /**
-   * The grid with a chip editor open (6.3): the popover is the densest interactive surface on the
-   * page — a search combobox, city group rows with per-airport toggles and the free-entry field —
-   * and it renders over the grid, so its contrast and its names are audited in both themes.
+   * All seven chip editors, in one page load. The popovers are the densest interactive surfaces
+   * in the product — a search combobox with a listbox, city group rows with per-airport toggles,
+   * a two-month range calendar, checkbox lists, a switch and a select — and every one of them
+   * renders over the grid, so each is audited on its own rather than sampled.
    */
-  test("grid-chip-editor", async ({ page }) => {
-    await openGridWithResults(page);
-    await page.locator('[data-chip="origins"]').click();
-    await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
-    await audit(page, "grid-chip-editor");
+  test("grid-chip-editors", async ({ page }) => {
+    await openGridWithResults(page, "demo", CANONICAL_QUERY_EN);
+    for (const chip of CHIP_ORDER) {
+      await page.locator(`[data-chip="${chip}"]`).click();
+      await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
+      await audit(page, `grid-chip-${chip}`);
+      await page.keyboard.press("Escape");
+      await expect(page.locator('[data-slot="popover-content"]')).toBeHidden();
+    }
   });
 
   /**
-   * The grid with the cell drawer open (6.4). At the desktop viewport the drawer pushes rather
-   * than overlays, so the grid behind it is still in the accessibility tree: this audit covers
-   * the drawer's own headings, the freshness marks, the caveat line and the action buttons AND
-   * the page they sit beside, in both themes.
+   * The cell drawer (spec §3.5). At ≥ 1280 it pushes rather than overlays, so the grid beside it
+   * is still in the accessibility tree and this audit covers both; below 768 the same drawer is a
+   * full-height sheet with 40 px controls, which is why mobile-light runs it too.
    */
   test("grid-cell-drawer", async ({ page }) => {
-    await openGridWithResults(page);
+    await openGridWithResults(page, "demo", CANONICAL_QUERY_EN);
     await openCellDrawer(page);
     await audit(page, "grid-cell-drawer");
   });
 
-  /**
-   * The grid with the Ask drawer open (6.4): context pills, the suggestion buttons, the composer
-   * and the cost meter. The scripted stream is not involved — an empty, idle drawer is the state
-   * every other one is drawn on top of.
-   */
+  /** The Ask drawer (spec §3.6): context pills, the suggestions, the composer and the cost meter. */
   test("grid-ask-drawer", async ({ page }) => {
-    await openGridWithResults(page);
+    await openGridWithResults(page, "demo", CANONICAL_QUERY_EN);
     await openAskDrawer(page);
     await audit(page, "grid-ask-drawer");
   });
 
-  test("settings", async ({ page }) => {
-    await loginAs(page, "demo");
-    await page.goto("/settings");
-    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
-    await audit(page, "settings");
+  test("grid-quota", async ({ page }) => {
+    await loginAs(page, "quota");
+    await page.goto("/grid");
+    await submitQuery(page, CANONICAL_QUERY_EN);
+    await expect(page.getByTestId("quota-banner")).toBeVisible({ timeout: 60_000 });
+    await audit(page, "grid-quota");
   });
 
+  test("grid-no-key", async ({ page }) => {
+    await loginAs(page, "nokey");
+    await page.goto("/grid");
+    await expect(page.getByRole("alert").getByText(en["grid.empty.no_key"])).toBeVisible();
+    await audit(page, "grid-no-key");
+  });
+
+  test("grid-empty-results", async ({ page }) => {
+    await loginAs(page, "empty");
+    await page.goto("/grid");
+    await submitQuery(page, CANONICAL_QUERY_EN);
+    await expect(page.getByTestId("grid-empty-results")).toBeVisible({ timeout: 60_000 });
+    await audit(page, "grid-empty-results");
+  });
+
+  /**
+   * Parse failure (spec §3.7): the sentences naming what could not be read, plus the manual-mode
+   * chips "Build it with chips instead" opens — three of which are in their error state, which is
+   * where an aria-invalid or a missing description would show up.
+   */
+  test("grid-parse-failure", async ({ page }) => {
+    await loginAs(page, "demo");
+    await page.goto("/grid");
+    // Holiday words fall through to the language model, which is not configured in the harness.
+    await submitQuery(page, "国庆去东京");
+    await expect(page.getByTestId("parse-failure")).toBeVisible({ timeout: 60_000 });
+    await audit(page, "grid-parse-failure");
+
+    await page.getByTestId("build-with-chips").click();
+    await expect(page.getByTestId("chips-error").first()).toBeVisible();
+    await audit(page, "grid-manual-mode");
+  });
+
+  // ---- queries ----
+
+  /**
+   * Standing queries are a table at ≥ 768 px and a stacked card list below it, and the swap
+   * happens on hydration (`useDensity` reads matchMedia in an effect, defaulting to desktop on
+   * the server). Waiting for "a table" therefore passes on the server-rendered frame of a mobile
+   * run and audits markup that is one frame from being replaced; the wait is for the presentation
+   * this project is actually testing.
+   */
   test("queries", async ({ page }) => {
     await loginAs(page, "demo");
     await page.goto("/queries");
-    await expect(page.getByRole("table")).toBeVisible();
+    await expectQueriesReady(page);
     await audit(page, "queries");
   });
 
@@ -172,6 +266,7 @@ test.describe("axe", () => {
   test("queries-expanded", async ({ page }) => {
     await loginAs(page, "demo");
     await page.goto("/queries");
+    await expectQueriesReady(page);
     await page.locator('[data-testid^="details-"]').first().click();
     await expect(page.locator('[id^="query-details-"]').first()).toBeVisible();
     await audit(page, "queries-expanded");
@@ -184,11 +279,28 @@ test.describe("axe", () => {
   test("queries-edit-drawer", async ({ page }) => {
     await loginAs(page, "demo");
     await page.goto("/queries");
-    await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+    await expectQueriesReady(page);
+    await page.getByRole("button", { name: en["saved.edit"], exact: true }).first().click();
     const drawer = page.getByTestId("edit-query-drawer");
     await expect(drawer).toBeVisible();
     await drawer.locator('[data-chip="origins"]').click();
     await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
     await audit(page, "queries-edit-drawer");
+  });
+
+  test("queries-empty", async ({ page }) => {
+    await loginAs(page, "empty");
+    await page.goto("/queries");
+    await expect(page.getByTestId("queries-empty")).toBeVisible();
+    await audit(page, "queries-empty");
+  });
+
+  // ---- settings ----
+
+  test("settings", async ({ page }) => {
+    await loginAs(page, "demo");
+    await page.goto("/settings");
+    await expect(page.getByRole("heading", { name: en["settings.title"] })).toBeVisible();
+    await audit(page, "settings");
   });
 });
