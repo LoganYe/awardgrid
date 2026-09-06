@@ -15,7 +15,7 @@ import { applyTheme, AXE_SUMMARY_FILE, expect, loginAs, openGridWithResults, tes
 const AXE_STRICT = process.env.E2E_AXE_STRICT === "1";
 const SUMMARY_FILE = AXE_SUMMARY_FILE;
 /** Pages already held to the §8 floor (zero serious/critical) regardless of AXE_STRICT. */
-const STRICT_PAGES = new Set(["login", "register", "legal", "grid-results"]);
+const STRICT_PAGES = new Set(["login", "register", "legal", "grid-results", "grid-chip-editor"]);
 type Impact = "critical" | "serious" | "moderate" | "minor";
 
 interface PageSummary {
@@ -93,6 +93,18 @@ test.describe("axe", () => {
   test("grid-results", async ({ page }) => {
     await openGridWithResults(page);
     await audit(page, "grid-results");
+  });
+
+  /**
+   * The grid with a chip editor open (6.3): the popover is the densest interactive surface on the
+   * page — a search combobox, city group rows with per-airport toggles and the free-entry field —
+   * and it renders over the grid, so its contrast and its names are audited in both themes.
+   */
+  test("grid-chip-editor", async ({ page }) => {
+    await openGridWithResults(page);
+    await page.locator('[data-chip="origins"]').click();
+    await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
+    await audit(page, "grid-chip-editor");
   });
 
   test("settings", async ({ page }) => {

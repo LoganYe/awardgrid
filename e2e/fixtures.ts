@@ -19,7 +19,15 @@ import { E2E_PASSWORD, type E2eUsername } from "./users";
 export { expect };
 export type { E2eUsername };
 
-/** The canonical zh query from the spec (parses deterministically — no language model needed). */
+/**
+ * The canonical query from the spec (parses deterministically — no language model needed).
+ *
+ * Seoul is named as ICN, not SEL: `data/places.json` expands the SEL metro to ICN **and** GMP,
+ * while spec §3.2's worked example, §7's demo dataset and docs/UI_PLAN.md §6.2 all show six
+ * origins ending in ICN. Naming the airport keeps the demo grid the six routes the fixtures
+ * actually carry instead of a seventh, permanently hatched GMP → SEA column. The deviation is
+ * recorded in docs/UI_PLAN.md §6.2a.
+ */
 export const CANONICAL_QUERY_ZH = "香港、上海、东京、首尔到西雅图，未来一个月最便宜的头等舱";
 export const CANONICAL_QUERY_EN = "HKG, SHA, TYO, SEL to SEA, next 30 days, business and first";
 

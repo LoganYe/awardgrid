@@ -152,7 +152,7 @@ describe("mock seats.aero — DEMO=1", () => {
     const res = await get("routes?source=alaska");
     expect(res.status).toBe(200);
     const routes = (await res.json()) as { OriginAirport: string; DestinationAirport: string; Source: string; NumDaysOut: number }[];
-    expect(routes.map((r) => r.OriginAirport).sort()).toEqual(["HKG", "HND", "NRT", "PVG", "SHA"]);
+    expect(routes.map((r) => r.OriginAirport).sort()).toEqual(["GMP", "HKG", "HND", "NRT", "PVG", "SHA"]);
     for (const r of routes) {
       expect(r.Source).toBe("alaska");
       expect(r.DestinationAirport).toBe("SEA");

@@ -10,7 +10,7 @@
         "destinations": ["SEA"],
         "cabins": ["F"],
         "date_from": "today",
-        "date_to": "today+30",
+        "date_to": "today+29",
         "sort_by": "miles_asc",
         "language": "zh",
         "used_llm": false,
@@ -26,7 +26,7 @@
         "destinations": ["SEA"],
         "cabins": ["F"],
         "date_from": "today",
-        "date_to": "today+30",
+        "date_to": "today+29",
         "sort_by": "miles_asc",
         "language": "en",
         "used_llm": false
@@ -41,7 +41,7 @@
         "destinations": ["SEA", "LAX"],
         "cabins": ["J"],
         "date_from": "today",
-        "date_to": "today+30",
+        "date_to": "today+29",
         "language": "en",
         "used_llm": false
       }
@@ -55,7 +55,7 @@
         "destinations": ["SEA"],
         "cabins": ["J"],
         "date_from": "today",
-        "date_to": "today+30",
+        "date_to": "today+29",
         "language": "zh",
         "used_llm": false
       }
@@ -112,7 +112,7 @@
         "destinations": ["ICN", "GMP"],
         "cabins": ["Y"],
         "date_from": "today",
-        "date_to": "today+30",
+        "date_to": "today+29",
         "used_llm": false
       }
     },
@@ -152,7 +152,7 @@
         "destinations": ["SIN"],
         "programs": ["singapore"],
         "date_from": "today",
-        "date_to": "today+90",
+        "date_to": "today+89",
         "used_llm": false
       }
     },
@@ -242,7 +242,7 @@
         "origins": ["TPE"],
         "destinations": ["LAX"],
         "date_from": "today",
-        "date_to": "today+30",
+        "date_to": "today+29",
         "cabins": ["Y"],
         "used_llm": false
       }
@@ -255,7 +255,7 @@
         "origins": ["HKG"],
         "destinations": ["SEA"],
         "date_from": "today",
-        "date_to": "today+14",
+        "date_to": "today+13",
         "used_llm": false
       }
     },
@@ -308,7 +308,7 @@
       "name": "max miles in 万 with 最多, fees sort, 下个月",
       "text": "香港到西雅图 最多10万里程 税费最低 下个月",
       "today": "2026-09-06",
-      "expect": { "max_miles": 100000, "sort_by": "fees_asc", "date_from": "today", "date_to": "today+30", "used_llm": false }
+      "expect": { "max_miles": 100000, "sort_by": "fees_asc", "date_from": "today", "date_to": "today+29", "used_llm": false }
     },
     {
       "name": "range crossing a year boundary",
@@ -349,7 +349,7 @@
         "origins": ["HKG"],
         "destinations": ["SEA", "SFO", "LAX"],
         "date_from": "today",
-        "date_to": "today+14",
+        "date_to": "today+13",
         "direct_only": true,
         "used_llm": false
       }
@@ -364,7 +364,7 @@
         "max_miles": 80000,
         "cabins": ["J", "F"],
         "date_from": "today",
-        "date_to": "today+90",
+        "date_to": "today+89",
         "provenance": { "cabins": "default" },
         "used_llm": false
       }
@@ -391,7 +391,7 @@
         "destinations": ["SEA"],
         "cabins": ["F"],
         "date_from": "today",
-        "date_to": "today+30",
+        "date_to": "today+29",
         "sort_by": "miles_asc",
         "language": "zh",
         "used_llm": false,
@@ -407,7 +407,7 @@
         "destinations": ["SEA"],
         "cabins": ["F"],
         "date_from": "today",
-        "date_to": "today+30",
+        "date_to": "today+29",
         "sort_by": "miles_asc",
         "language": "zh",
         "used_llm": false,

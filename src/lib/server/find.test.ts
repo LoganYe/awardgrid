@@ -233,7 +233,8 @@ describe("parseForUser", () => {
     expect(result.query.destinations).toEqual(["SEA"]);
     expect(result.query.cabins).toEqual(["F"]);
     expect(result.query.date_from).toBe("2026-10-01");
-    expect(result.query.date_to).toBe("2026-10-31");
+    // "未来一个月" is 30 days counted inclusively, the spec's own "Oct 1 – Oct 30 (30 days)".
+    expect(result.query.date_to).toBe("2026-10-30");
     expect(result.query.sort_by).toBe("miles_asc");
     expect(result.query.language).toBe("zh");
     expect(result.provenance.origins).toBe("deterministic");

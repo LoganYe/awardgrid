@@ -421,7 +421,8 @@ test.describe("grid", () => {
     // No alert dialog: the banner is the state.
     await expect(page.getByRole("alert").filter({ hasText: /limit/ })).toHaveCount(0);
     // Run and Save are off (with the reason in their title); Export stays available.
-    const run = page.getByRole("button", { name: en["grid.search"], exact: true });
+    // The submit button is named grid.run ("Run"); grid.search names the field itself.
+    const run = page.getByTestId("query-run");
     await expect(run).toBeDisabled();
     await expect(run.locator("xpath=..")).toHaveAttribute("title", en["grid.toolbar.run_disabled_quota"]);
     const controls = await openControls(page);
@@ -436,7 +437,7 @@ test.describe("grid", () => {
     await expectResultsGrid(page);
     // The failed program never shows up in a cell.
     await expect(page.locator(".ag-program", { hasText: "Aeroplan" })).toHaveCount(0);
-    // Pairs no LOADED program monitors (ICN→SEA, GMP→SEA) may belong to the failed one: they are
+    // Pairs no LOADED program monitors (ICN→SEA) may belong to the failed one: they are
     // "not fetched" (dotted outline + reason), never "no availability" or "not monitored" — on
     // the live run and on the cached grid of a later project alike.
     const notFetched = cells(page, "not_fetched");

@@ -136,8 +136,10 @@ export interface GridEmptyResultsProps {
   now: number;
   /** Programs the run checked for these pairs (/api/find `programs_checked`); falls back to the query's list. */
   programsChecked?: number;
-  /** Opens the Dates chip editor (6.3). */
+  /** Opens the Dates chip editor (6.3). Omitted when the range is already the longest one. */
   onWidenDates?: () => void;
+  /** Shown in place of "Widen the dates" when the window is already at the 92-day cap. */
+  dateCapNote?: string;
   /** Opens the Cabins chip editor (6.3). */
   onAddCabin?: () => void;
   /** Focuses the first hatched cell (GridTableHandle.focusFirstUnmonitored). */
@@ -145,7 +147,7 @@ export interface GridEmptyResultsProps {
 }
 
 /** "No J or F availability on these 4 routes between Oct 1 and Oct 30. Checked 3 programs, 2 h ago." + three links. */
-export function GridEmptyResults({ grid, now, programsChecked, onWidenDates, onAddCabin, onReviewUnmonitored }: GridEmptyResultsProps) {
+export function GridEmptyResults({ grid, now, programsChecked, onWidenDates, dateCapNote, onAddCabin, onReviewUnmonitored }: GridEmptyResultsProps) {
   const t = useT();
   const locale = useLocale();
   const q = grid.query;
@@ -168,6 +170,11 @@ export function GridEmptyResults({ grid, now, programsChecked, onWidenDates, onA
           <button type="button" className="ag-link" onClick={onWidenDates}>
             {t("grid.empty.widen_dates")}
           </button>
+        )}
+        {!onWidenDates && dateCapNote && (
+          <span className="text-fg-muted" data-testid="empty-date-cap">
+            {dateCapNote}
+          </span>
         )}
         {onAddCabin && (
           <button type="button" className="ag-link" onClick={onAddCabin}>

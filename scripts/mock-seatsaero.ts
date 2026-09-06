@@ -210,6 +210,10 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
   const log = opts.log ?? ((line: string) => console.log(line));
   const slowMs = opts.slowMs ?? DEMO_SLOW_MS;
   const dataset = demo ? loadDemo(now()) : loadSynthetic(now());
+  // Freshness is relative to one instant per server, not per request: a row's UpdatedAt must be
+  // identical in /search and in /trips/{id} (the app pairs them), which a per-request Date.now()
+  // breaks by a few milliseconds.
+  const startedAt = now();
   const { rows } = dataset;
 
   const handle = (req: IncomingMessage, res: ServerResponse) => {
@@ -232,7 +236,7 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
       return send(200, { ok: true, demo, rows: rows.length, shiftDays: dataset.shiftDays });
     }
     if (!auth) return send(401, {});
-    const at = now();
+    const at = startedAt;
     const stamp = (r: Row): Row => (r._demo_updated_minutes_ago === undefined ? r : { ...r, UpdatedAt: new Date(at.getTime() - r._demo_updated_minutes_ago * 60_000).toISOString() });
 
     if (p === "/partnerapi/search" || p === "/partnerapi/availability") {

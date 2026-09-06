@@ -72,7 +72,7 @@ describe("pnpm run find (in-process)", () => {
     expect(chips).toContain("destinations: SEA");
     expect(chips).toContain("cabins: F");
     // The fixture starts on 2026-10-01, so "未来一个月" lands on the recorded window.
-    expect(chips).toContain("dates: 2026-10-01..2026-10-31");
+    expect(chips).toContain("dates: 2026-10-01..2026-10-30");
 
     // ASCII grid: at least one populated cell ("62k · — · 1 · american · 6小时*").
     expect(text).toContain("k ·");
@@ -123,7 +123,7 @@ describe("pnpm run find (in-process)", () => {
       h.io,
     );
     expect(code).toBe(EXIT_OK);
-    expect(h.stdout()).toContain("dates: 2026-10-10..2026-10-13");
+    expect(h.stdout()).toContain("dates: 2026-10-10..2026-10-12");
     expect(h.stdout()).toContain("日期");
   });
 
