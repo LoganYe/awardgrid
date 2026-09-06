@@ -25,7 +25,7 @@ export function ProgramsEditor({ programs, onChange }: ProgramsEditorProps) {
   const [search, setSearch] = useState("");
   // One definition of "All" for the editor, the chip summary and the modified diff.
   const all = isAllPrograms({ programs });
-  const rows = programsList({ search, selected: programs });
+  const rows = programsList({ search, selected: all ? SEATS_SOURCES : programs });
 
   return (
     <div className="flex flex-col gap-2">
@@ -52,7 +52,7 @@ export function ProgramsEditor({ programs, onChange }: ProgramsEditorProps) {
             <button
               type="button"
               aria-pressed={row.selected}
-              onClick={() => onChange(toggleProgram(programs.length === 0 ? null : programs, row.code))}
+              onClick={() => onChange(toggleProgram(all ? SEATS_SOURCES : programs, row.code))}
               className="flex h-8 w-full items-center gap-2 rounded-lg px-1.5 text-left text-grid hover:bg-bg"
             >
               <span

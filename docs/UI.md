@@ -201,7 +201,7 @@ Full rules and the en ↔ zh glossary are in `docs/COPY.md`. The short version:
 4. **Run the copy tests:** `pnpm exec vitest run src/lib/i18n`. `i18n.test.ts` checks that the key sets and the placeholders match; `copy-rules.test.ts` enforces the mechanical half of `COPY.md` §1 and names the offending key. It fails on ALL-CAPS tokens of 4+ letters, `→` / `->`, ` · `, `...` instead of `…`, "sorry" / "oops" / "please" (en) and 抱歉 / 对不起 / 不好意思 / 很遗憾 (zh), an em dash joining clauses (`—` in en, `——` in zh), trailing periods on control keys, Title Case in en, half-width punctuation touching a Chinese character in zh, a zh value with no Chinese in it, and `<i>` / `<em>` markup in zh.
 5. **If a proper noun trips a check**, add it to `src/lib/i18n/copy-allowlist.ts` with a reason. Program names come from `SOURCE_NAMES` automatically and are never translated.
 
-The **glossary** in `COPY.md` §2 is the tie-breaker for wording (grid → 表格, standing query → 定时查询, program → 里程计划, "Seen by seats.aero {age}" → "seats.aero 于{age}查看", Log in / Log out never Sign in / Sign out). Read it before inventing a term.
+The **glossary** in `COPY.md` §2 is the tie-breaker for wording (grid → 表格, standing query → 定时查询, program → 里程计划, "seats.aero last saw this: {age}" → 「seats.aero 查看时间：{age}」, schedule → 频率, this server → 此服务器, Log in / Log out never Sign in / Sign out). Read it before inventing a term.
 
 ---
 

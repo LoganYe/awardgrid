@@ -76,6 +76,12 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
+.agd-stats-tail {
+  display: inline-flex;
+  flex: none;
+  gap: 12px;
+  white-space: nowrap;
+}
 .agd-miles {
   font-weight: 600;
 }

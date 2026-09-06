@@ -44,8 +44,32 @@ export async function capture(page: Page, pageName: MatrixPage, state: string, o
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   // Bounded: the quota indicator keeps polling, so "networkidle" may never arrive.
   await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => undefined);
+  await settleDrawers(page);
   await page.screenshot({ path: file, fullPage: opts.fullPage ?? false, animations: "disabled", caret: "hide" });
   return file;
+}
+
+/**
+ * Wait for any open drawer to reach its resting position before the shutter opens.
+ *
+ * The panel mounts in its closed transform and slides in over 200 ms (drawer.css). Playwright's
+ * `animations: "disabled"` freezes a running CSS transition where it is rather than completing
+ * it, so a capture taken inside those 200 ms photographs the panel still off-screen — which is
+ * exactly what all four `queries/edit-drawer-*.png` were: a Queries page with no drawer on it.
+ * The cell and Ask drawers only escaped it because their helpers wait for streamed content
+ * first. `transform: none` is the settled-open state for every side and mode.
+ */
+export async function settleDrawers(page: Page): Promise<void> {
+  await page
+    .waitForFunction(
+      () =>
+        Array.from(document.querySelectorAll('[data-slot="drawer"][data-state="open"]')).every(
+          (el) => getComputedStyle(el).transform === "none",
+        ),
+      null,
+      { timeout: 2_000 },
+    )
+    .catch(() => undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -316,6 +340,7 @@ export async function openEditQueryDrawer(page: Page): Promise<Locator> {
   const panel = page.getByTestId("edit-query-drawer");
   await expect(panel).toBeVisible();
   await expect(panel.getByRole("region", { name: en["grid.chips.title"] })).toBeVisible();
+  await settleDrawers(page);
   return panel;
 }
 

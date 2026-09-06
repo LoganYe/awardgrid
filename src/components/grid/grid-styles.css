@@ -22,6 +22,9 @@
   --ag-row-h: var(--row-touch);
   --ag-rowhead-w: 72px;
 }
+/* In Routes orientation the sticky column holds a pair ("HKG → SEA"), not a date, so its width
+   comes from ROUTE_ROW_HEAD_WIDTH in grid-table.tsx — the inline --ag-rowhead-w on .ag-wrap is
+   the single source, and a rule here would be dead against it. `data-rows` says which it is. */
 
 /* The one scroll container: sticky header and first column stick inside it (both axes). */
 .ag-scroll {
@@ -54,7 +57,10 @@
   font-weight: 500;
   text-align: left;
   vertical-align: top;
-  background: var(--bg);
+  /* §2 assigns --bg-raised to "sticky header row + row headers". On --bg the header band and
+     the sticky date column were separated from the data by --line alone (1.35:1 in dark), and
+     content scrolling under the sticky column had no value separation from it at all. */
+  background: var(--bg-raised);
   border-bottom: 1px solid var(--line);
   border-right: 1px solid var(--line);
   padding: 4px 6px 0;
@@ -89,8 +95,13 @@
   border-left: 1px solid var(--line);
   font-weight: 400;
 }
+/* Hover/focus highlight: --bg-raised is now the resting ground, so the highlight is carried by
+   a --line-strong edge and full-contrast text instead (docs/UI_PLAN.md §7, amended — see
+   DECISIONS.md). */
 .ag-table th[data-hl="true"] {
-  background: var(--bg-raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--fg);
+  font-weight: 500;
 }
 .ag-head-sub {
   display: block;
@@ -498,7 +509,16 @@
 .ag-empty-links {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 16px;
+}
+/* Below 768 px every button is a 40 px touch box (globals.css), so a 16 px ROW gap on top of
+   that left the third link reading as an orphan 43 px below the first two. The touch boxes
+   provide the vertical rhythm; only the column gap is ours. */
+@media (max-width: 767px) {
+  .ag-empty-links {
+    gap: 0 16px;
+  }
 }
 .ag-link {
   color: var(--accent);

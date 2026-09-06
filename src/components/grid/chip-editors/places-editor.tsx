@@ -155,6 +155,15 @@ export function PlacesEditor({ codes, onChange, label }: PlacesEditorProps) {
             >
               {row.metro}
             </button>
+            {/*
+              The city name is on EVERY row, not just single-airport ones (docs/UI_PLAN.md §6.2a
+              draws the group row as "SHA  Shanghai  ▸ PVG ✓  SHA ✓  ×"). It used to survive only
+              in the title and the aria-label, so a sighted user scanning the list saw three bare
+              codes and could not tell that SEL is Seoul.
+            */}
+            <span className="truncate text-fg-muted">
+              {row.unknown ? t("grid.chips.unknown_code") : placeLabel(DEFAULT_PLACES_INDEX.byCode.get(row.metro), locale)}
+            </span>
             {row.airports.length > 1 && (
               <>
                 <span aria-hidden="true" className="text-fg-muted">
@@ -174,9 +183,6 @@ export function PlacesEditor({ codes, onChange, label }: PlacesEditorProps) {
                   </button>
                 ))}
               </>
-            )}
-            {row.airports.length <= 1 && (
-              <span className="truncate text-fg-muted">{row.unknown ? t("grid.chips.unknown_code") : placeLabel(DEFAULT_PLACES_INDEX.byCode.get(row.metro), locale)}</span>
             )}
             <button
               type="button"

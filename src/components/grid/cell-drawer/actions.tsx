@@ -11,7 +11,7 @@
  * has learned it, else the one program search builder that exists (American), else nothing —
  * the button is disabled and says so rather than inventing a URL (kickoff §4.4).
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { SaveQueryDialog } from "@/components/queries/SaveQueryDialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { buildCopyDetails, copyText } from "@/components/grid/cell-drawer/copy-details";
@@ -39,6 +39,7 @@ export interface CellActionsProps {
 export function CellActions({ row, query, now, onAsk }: CellActionsProps) {
   const t = useT();
   const locale = useLocale();
+  const id = useId();
   const [note, setNote] = useState<string>("");
   const timer = useRef<number | null>(null);
 
@@ -53,6 +54,7 @@ export function CellActions({ row, query, now, onAsk }: CellActionsProps) {
   }
 
   const link = resolveDeeplink(row);
+  const noLinkId = `${id}-no-link`;
   const label = t("grid.sheet.open_in", { program: programShortName(row.program) });
   const prefill = prefillFromCell({ origin: row.origin, dest: row.dest, date: row.date }, query, localToday());
 
@@ -81,9 +83,17 @@ export function CellActions({ row, query, now, onAsk }: CellActionsProps) {
             {label}
           </a>
         ) : (
-          <Button type="button" size="xs" disabled data-testid="drawer-open">
-            {label}
-          </Button>
+          <>
+            <Button type="button" size="xs" disabled aria-describedby={noLinkId} data-testid="drawer-open">
+              {label}
+            </Button>
+            {/* The note explains the button beside it, so it sits beside it: below the whole
+                block it read as a footnote about the block, one (desktop) or two (sheet) rows
+                away from the disabled button it is about. */}
+            <span id={noLinkId} className="agd-muted t-meta" data-testid="drawer-no-link">
+              {t("grid.drawer.no_link_yet")}
+            </span>
+          </>
         )}
         <Button type="button" size="xs" variant="outline" onClick={() => void onCopy()} data-testid="drawer-copy">
           {t("grid.sheet.copy_details")}
@@ -96,9 +106,10 @@ export function CellActions({ row, query, now, onAsk }: CellActionsProps) {
         )}
       </div>
 
-      {!link.url && <p className="agd-muted t-meta">{t("grid.drawer.no_link_yet")}</p>}
-
-      <p className="agd-muted t-meta" role="status" aria-live="polite" data-testid="drawer-toast">
+      {/* `min-h-[1lh]` keeps the line's box whether or not it has text: the toast used to
+          collapse to zero height, so clicking "Copy details" moved the whole action block
+          16 px up, directly under the pointer that had just clicked it. */}
+      <p className="agd-muted t-meta min-h-[1lh]" role="status" aria-live="polite" data-testid="drawer-toast">
         {note}
       </p>
     </>

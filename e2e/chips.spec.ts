@@ -205,9 +205,18 @@ test.describe("query bar and chips", () => {
 
     await chipsShot(page, "programs-editor-open");
 
+    // "All" is on, so every box in the list is ticked and the click UNTICKS this one: 25 of 26
+    // left. The editor used to draw 26 empty boxes under a chip reading "all 26", and a click
+    // selected only that program — the checkbox and what it did disagreed.
+    await expect(alaska).toHaveAttribute("aria-pressed", "true");
     await alaska.click();
-    await expect(chip(page, "programs")).toContainText("Alaska");
+    await expect(alaska).toHaveAttribute("aria-pressed", "false");
+    await expect(chip(page, "programs")).toContainText("25 of 26");
     await expect(chip(page, "programs")).toHaveAttribute("data-chip-state", "modified");
+    // Ticking it back is "all 26" again, and the chip goes back to its parsed state.
+    await alaska.click();
+    await expect(chip(page, "programs")).toContainText(en["grid.chips.programs_all_count"].replace("{n}", "26"));
+    await expect(chip(page, "programs")).toHaveAttribute("data-chip-state", "default");
   });
 
   test("modified: outline, Run affordance, disabled toolbar, dimmed grid, and ?q= only after Run", async ({ page }) => {

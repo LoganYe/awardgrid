@@ -31,6 +31,15 @@
   /* ---- selection: --fg at 15 % ---- */
   --selection: rgb(23 23 23 / 0.15);
 
+  /*
+   * ---- scrim: the veil behind a modal drawer or sheet ----
+   * Deliberately NOT derived from --fg (docs/UI_PLAN.md §6.3 said "40 % --fg", DECISIONS.md
+   * records the departure). In dark, --fg at 40 % over #111111 composites to #696969: the
+   * dimmed page ends up brighter than both the page it dims and the sheet in front of it, so
+   * elevation reads inverted. A scrim darkens in both themes or it is not a scrim.
+   */
+  --scrim: rgb(0 0 0 / 0.4);
+
   /* ---- hatch: the "not monitored" cell pattern, drawn in --line-strong on --bg-raised ---- */
   --hatch: repeating-linear-gradient(45deg, var(--line-strong) 0 1px, transparent 1px 6px);
 

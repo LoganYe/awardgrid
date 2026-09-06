@@ -104,7 +104,9 @@ test.describe("shell", () => {
     const quota = header.getByTestId("quota-indicator");
     await expect(quota).toBeVisible();
     await expect(quota).toHaveAttribute("data-quota-state", "ok");
-    await expect(quota).toHaveAccessibleName(/1,000/);
+    // The soft limit is the denominator on both surfaces now (the settings bar fills toward it);
+    // the 1,000 hard allowance is left to the tooltip and the settings caption.
+    await expect(quota).toHaveAccessibleName(/950/);
     if (!isMobile()) {
       await expect(header.getByRole("navigation").getByRole("link", { name: "Grid" })).toHaveAttribute("aria-current", "page");
     }

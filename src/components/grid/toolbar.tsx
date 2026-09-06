@@ -223,6 +223,8 @@ export interface QuotaBannerProps {
   used?: number;
   limit?: number;
   now: number;
+  /** True when a previously fetched grid is still on screen, i.e. the cached-results clause is true. */
+  cached?: boolean;
 }
 
 /** "5 h 12 m" / "5 小时 12 分钟"; "0 m" once the reset is due. */
@@ -234,10 +236,12 @@ export function formatDuration(ms: number, t: Translate): string {
 }
 
 /**
- * "seats.aero daily limit reached (950 of 1,000). Resets in 5 h 12 m. Cached results are still
- * shown." Used / limit come from the caller when known, otherwise from GET /api/usage.
+ * "seats.aero daily limit reached (950 of 1,000). Resets in 5 h 12 m." plus "Cached results are
+ * still shown." only when there actually are any: the limit can be hit on the first search of
+ * the day, and the banner must not describe a grid that is not there.
+ * Used / limit come from the caller when known, otherwise from GET /api/usage.
  */
-export function QuotaBanner({ resetAt, used, limit, now }: QuotaBannerProps) {
+export function QuotaBanner({ resetAt, used, limit, now, cached = false }: QuotaBannerProps) {
   const t = useT();
   const locale = useLocale();
   const [fetched, setFetched] = useState<{ used: number; limit: number; resetAt: string } | null>(null);
@@ -263,6 +267,7 @@ export function QuotaBanner({ resetAt, used, limit, now }: QuotaBannerProps) {
   return (
     <div className="ag-quota" role="status" aria-live="polite" data-testid="quota-banner">
       {t("grid.quota_banner", { used: formatCount(u, tag), limit: formatCount(l, tag), duration })}
+      {cached ? ` ${t("grid.quota_banner_cached")}` : ""}
     </div>
   );
 }

@@ -54,6 +54,10 @@ describe("demo switches", () => {
     expect(askDemoStreamUrl({ cap: false, err: null })).toBe("/api/ask/demo");
     expect(askDemoStreamUrl({ cap: true, err: null })).toBe("/api/ask/demo?cap=1");
     expect(askDemoStreamUrl({ cap: false, err: "no_key" })).toBe("/api/ask/demo?err=no_key");
+    // The locale travels with the stream so the zh screenshots carry a Chinese answer body.
+    expect(askDemoStreamUrl({ cap: false, err: null }, "zh")).toBe("/api/ask/demo?locale=zh");
+    expect(askDemoStreamUrl({ cap: true, err: null }, "zh")).toBe("/api/ask/demo?cap=1&locale=zh");
+    expect(askDemoStreamUrl({ cap: false, err: null }, "en")).toBe("/api/ask/demo");
     expect(askDemoUsageUrl(0, false)).toBe("/api/ask/demo?usage=1&after=0");
     expect(askDemoUsageUrl(2, true)).toBe("/api/ask/demo?usage=1&after=2&cap=1");
     expect(askDemoUsageUrl(-3, false)).toBe("/api/ask/demo?usage=1&after=0");

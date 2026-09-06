@@ -103,10 +103,13 @@ export function LanguageThemeSection({ locale }: LanguageThemeSectionProps) {
 
   return (
     <SettingsSection id="language" title={t("settings.language_theme.title")}>
-      <fieldset className="flex items-start gap-4" disabled={pending}>
+      {/* Below 768 px the 96 px label column plus its 16 px gap left ~262 px for three pills that
+          need ~260 plus gaps, so the third wrapped onto a line of its own and the group stopped
+          reading as one control. The label goes above the pills there instead. */}
+      <fieldset className="flex flex-col items-start gap-1 sm:flex-row sm:gap-4" disabled={pending}>
         <legend className="sr-only">{t("locale.label")}</legend>
         {/* The label is its own column; the options wrap inside theirs, never under the label. */}
-        <span className="t-body flex h-8 w-24 shrink-0 items-center text-fg-muted" aria-hidden="true">
+        <span className="t-body flex h-8 w-auto shrink-0 items-center text-fg-muted sm:w-24" aria-hidden="true">
           {t("locale.label")}
         </span>
         <div className="flex flex-wrap gap-2">
@@ -127,9 +130,9 @@ export function LanguageThemeSection({ locale }: LanguageThemeSectionProps) {
       </fieldset>
       {error && <SettingsNotice kind="error">{error}</SettingsNotice>}
 
-      <fieldset className="flex items-start gap-4">
+      <fieldset className="flex flex-col items-start gap-1 sm:flex-row sm:gap-4">
         <legend className="sr-only">{t("theme.label")}</legend>
-        <span className="t-body flex h-8 w-24 shrink-0 items-center text-fg-muted" aria-hidden="true">
+        <span className="t-body flex h-8 w-auto shrink-0 items-center text-fg-muted sm:w-24" aria-hidden="true">
           {t("theme.label")}
         </span>
         <div className="flex flex-wrap gap-2">

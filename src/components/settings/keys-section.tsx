@@ -118,13 +118,20 @@ function KeyRow({ provider, current }: { provider: KeyProvider; current: KeyRowD
   return (
     <li data-key-row={provider} className="flex flex-col gap-2 py-2">
       <div className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1">
-        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <span className="t-body font-medium">{label}</span>
+        {/*
+          Fixed tracks at >= 768 px, not a wrap flex (docs/UI_PLAN.md §6.8 draws this section as
+          a table). Each field used to start wherever the preceding variable-width provider name
+          ended, so "required" and "optional" landed at three different x positions down three
+          rows and nothing lined up into columns. Below 768 px there are no columns to line up
+          with, so the row goes back to wrapping rather than spending four lines on four fields.
+        */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-4 gap-y-0.5 sm:grid sm:grid-cols-[11rem_5rem_minmax(0,1fr)_auto]">
+          <span className="t-body truncate font-medium">{label}</span>
           <span className="t-meta text-fg-muted">{t(isSeats ? "settings.keys.required" : "settings.keys.optional")}</span>
-          <span className="t-meta text-fg-muted" data-key-status={current ? "set" : "unset"}>
+          <span className="t-meta truncate text-fg-muted" data-key-status={current ? "set" : "unset"}>
             {status}
           </span>
-          {current && <span className="t-meta text-fg">{current.masked}</span>}
+          {current && <span className="t-meta truncate text-fg">{current.masked}</span>}
         </div>
         {confirmRemove ? (
           // Shared with the Queries page (spec §11): Esc cancels, and dismissing puts focus

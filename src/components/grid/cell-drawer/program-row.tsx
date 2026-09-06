@@ -65,12 +65,21 @@ export function ProgramRow({ row, now, includeFiltered, onTripsLoaded }: Program
         <span className="agd-miles" data-testid="program-miles" data-miles={row.miles}>
           {formatMiles(row.miles, locale)} {t("grid.cell.miles")}
         </span>
+        {/*
+          里程 behaves like a unit after a number, so "70,000 里程" reads correctly; 税费 is a
+          category noun and has to precede its value, or "$169.70 税费" reads as "the $169.70
+          fee" rather than "fees: $169.70". The order is per language, not per string.
+        */}
         <span data-testid="program-fees">
-          {drawerFees(row, locale)} {t("grid.cell.fees")}
+          {locale === "zh" ? `${t("grid.cell.fees")} ${drawerFees(row, locale)}` : `${drawerFees(row, locale)} ${t("grid.cell.fees")}`}
         </span>
         <span>{formatSeats(row.seats_left, locale, t)}</span>
-        <span>{row.direct ? t("grid.cell.direct") : t("grid.drawer.with_stops")}</span>
-        <span>{cabinName(row.cabin, t)}</span>
+        {/* Stops and cabin wrap together: as five separate items the cabin word orphaned onto a
+            line of its own in every program block on the 390 px sheet. */}
+        <span className="agd-stats-tail">
+          <span>{row.direct ? t("grid.cell.direct") : t("grid.drawer.with_stops")}</span>
+          <span>{cabinName(row.cabin, t)}</span>
+        </span>
         {row.dynamic === true && <span className="agd-muted">{t("grid.cell.filtered")}</span>}
       </p>
 

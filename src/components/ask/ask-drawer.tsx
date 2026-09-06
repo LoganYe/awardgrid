@@ -113,7 +113,12 @@ function problemFromFailure(code: AskFailureCode): Problem {
 function Turn({ prompt, text, tools, streaming, defaultExpanded }: { prompt: string; text: string; tools: readonly string[]; streaming?: boolean; defaultExpanded?: boolean }) {
   const t = useT();
   return (
-    <article className="flex flex-col gap-1 border-b border-line pb-3 last:border-b-0 last:pb-0" data-testid="ask-turn">
+    /*
+      `last-of-type`, not `last`: the scroll sentinel is the transcript container's real last
+      child, so `last:` never matched a turn and the final answer was underlined by a rule that
+      separated it from nothing (docs/UI_PLAN.md §1.3).
+    */
+    <article className="flex flex-col gap-1 border-b border-line pb-3 last-of-type:border-b-0 last-of-type:pb-0" data-testid="ask-turn">
       <p className="t-meta text-fg-muted">{t("ask.turn.you")}</p>
       <p className="t-body">{prompt}</p>
       <p className="t-meta text-fg-muted">{t("ask.turn.answer")}</p>
@@ -295,7 +300,7 @@ export function AskDrawer({ open, onOpenChange, query, cell, hasKey }: AskDrawer
       context,
       signal: controller.signal,
       onEvent,
-      ...(demo.on ? { endpoint: askDemoStreamUrl(demo) } : {}),
+      ...(demo.on ? { endpoint: askDemoStreamUrl(demo, locale) } : {}),
     });
     if (inflight.current !== controller) return; // superseded
     inflight.current = null;

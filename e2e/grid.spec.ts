@@ -416,7 +416,11 @@ test.describe("grid", () => {
     await expect(searching(page)).toBeHidden({ timeout: 60_000 });
     const banner = page.getByTestId("quota-banner");
     await expect(banner).toBeVisible();
-    await expect(banner).toHaveText(/^seats\.aero daily limit reached \(950 of 1,000\)\. Resets in \d+ [hm]( \d+ m)?\. Cached results are still shown\.$/);
+    // The "Cached results are still shown" clause is conditional: this scenario hits the limit
+    // with nothing fetched, so the banner must not describe a grid that is not on the page.
+    await expect(banner).toHaveText(/^seats\.aero daily limit reached \(950 of 1,000\)\. Resets in \d+ [hm]( \d+ m)?\.$/);
+    await expect(banner).not.toContainText(en["grid.quota_banner_cached"]);
+    await expect(page.getByTestId("grid-quota-empty")).toBeVisible();
     await expect(banner).toHaveCSS("border-left-width", "1px");
     // No alert dialog: the banner is the state.
     await expect(page.getByRole("alert").filter({ hasText: /limit/ })).toHaveCount(0);

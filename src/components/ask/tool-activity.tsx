@@ -7,7 +7,7 @@
  * Only the tool *name* is ever shown, mapped to a human sentence by `labels.ts`; tool inputs are
  * never rendered (they can carry the user's query text and, in principle, key material).
  */
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { toolLabels } from "@/components/ask/labels";
 import { useT } from "@/lib/i18n/client";
 
@@ -22,6 +22,15 @@ export function ToolActivity({ tools, defaultExpanded = false }: ToolActivityPro
   const t = useT();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const id = useId();
+  const listRef = useRef<HTMLUListElement>(null);
+  /*
+    On the mobile bottom sheet the transcript is already scrolled to its end, so the list this
+    reveals lands below the fold and the tap looks like it did nothing. Same technique the
+    drawer already uses for its transcript sentinel.
+  */
+  useEffect(() => {
+    if (expanded) listRef.current?.scrollIntoView({ block: "nearest" });
+  }, [expanded]);
   if (tools.length === 0) return null;
   const labels = toolLabels(tools, t);
   return (
@@ -31,12 +40,13 @@ export function ToolActivity({ tools, defaultExpanded = false }: ToolActivityPro
         aria-expanded={expanded}
         aria-controls={id}
         onClick={() => setExpanded((v) => !v)}
-        className="t-meta self-start text-fg-muted underline-offset-2 hover:underline"
+        /* Underlined at rest, not on hover: on a touch viewport hover never fires, and the toggle read as a static caption. */
+        className="t-meta self-start text-fg-muted underline underline-offset-2"
         data-testid="ask-tools-toggle"
       >
         {t("ask.tools.toggle", { n: labels.length })}
       </button>
-      <ul id={id} hidden={!expanded} className="t-meta flex flex-col gap-0.5 pl-3 text-fg-muted">
+      <ul ref={listRef} id={id} hidden={!expanded} className="t-meta flex flex-col gap-0.5 pl-3 text-fg-muted">
         {labels.map((label, i) => (
           <li key={`${label}-${i}`}>{label}</li>
         ))}

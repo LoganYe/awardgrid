@@ -24,13 +24,13 @@ import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, us
 import { formatGridDate, formatRowDate } from "@/lib/grid/format";
 import { enumerateDates, enumeratePairs, transposeGrid } from "@/lib/grid/pivot";
 import type { Grid, GridCell, Orientation, RoutePair } from "@/lib/grid/types";
-import type { Locale, Translate } from "@/lib/i18n";
+import { hasKey, type Locale, type Translate } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/i18n/client";
 import type { QueryObject } from "@/lib/query/schema";
 import { SEATS_SOURCES } from "@/lib/seatsaero/types";
 import { Cell, uiCellStatus } from "@/components/grid/cell";
 import { CellTooltip } from "@/components/grid/cell-tooltip";
-import { COLUMN_MIN, ROW_HEAD_WIDTH, ROW_HEIGHT, useDensity, useRovingGrid, type Density, type GridPos } from "@/components/grid/use-roving-grid";
+import { COLUMN_MIN, ROUTE_ROW_HEAD_WIDTH, ROW_HEAD_WIDTH, ROW_HEIGHT, useDensity, useRovingGrid, type Density, type GridPos } from "@/components/grid/use-roving-grid";
 
 // Re-exported for src/components/grid/index.ts, which publishes these from here.
 export { Cell } from "@/components/grid/cell";
@@ -204,6 +204,12 @@ interface HeaderText {
 function useHeaderText(grid: Grid, loading: boolean, locale: Locale, t: Translate, programsByPair: Record<string, number> | undefined, density: Density) {
   const pairByKey = useMemo(() => new Map(grid.pairs.map((p) => [p.key, p])), [grid.pairs]);
   const unmonitored = useMemo(() => new Set(grid.meta.unmonitored_pairs.map((p) => p.key)), [grid.meta.unmonitored_pairs]);
+  // A pair whose fetch never completed: its cells all read "Not fetched", so its header says so
+  // too. Without this the one column that explains nothing was the one that most needed to.
+  const notFetched = useMemo(
+    () => new Map(grid.meta.not_fetched_pairs.map((p) => [`${p.pair.origin}-${p.pair.dest}`, p.reason])),
+    [grid.meta.not_fetched_pairs],
+  );
 
   // Programs per pair: the routes catalog's monitoring count when the caller knows it ("N
   // programs"); otherwise the distinct programs seen in the pair's cells, labelled as such ("N
@@ -234,6 +240,11 @@ function useHeaderText(grid: Grid, loading: boolean, locale: Locale, t: Translat
       const pair: RoutePair | undefined = pairByKey.get(label);
       const text = pair ? `${pair.origin} → ${pair.dest}` : label.replace("-", " → ");
       if (unmonitored.has(label)) return { label: text, sub: t("grid.cell.unmonitored_short"), title: t("grid.cell.not_monitored") };
+      const missed = notFetched.get(label);
+      if (missed !== undefined && !loading) {
+        const reason = hasKey(missed) ? t(missed) : t("grid.cell.not_fetched");
+        return { label: text, sub: t("grid.cell.not_fetched"), title: reason };
+      }
       const n = programsPerPair.get(label) ?? 0;
       const monitored = programsByPair !== undefined;
       const sub =
@@ -248,7 +259,7 @@ function useHeaderText(grid: Grid, loading: boolean, locale: Locale, t: Translat
               : t("grid.header.available_other", { n });
       return { label: text, sub, title: undefined };
     },
-    [locale, pairByKey, unmonitored, programsPerPair, programsByPair, loading, t, density],
+    [locale, pairByKey, unmonitored, notFetched, programsPerPair, programsByPair, loading, t, density],
   );
 }
 
@@ -257,7 +268,14 @@ export function GridTable({ grid, now, selected, onSelect, loading = false, dimm
   const locale = useLocale();
   const density = useDensity();
   const rowHeight = ROW_HEIGHT[density];
-  const rowHeadWidth = ROW_HEAD_WIDTH[density];
+  /*
+    The sticky row-header width follows what the row headers ARE, not only the density. 72 / 80 px
+    were sized for a date ("Sep 6"); in Routes orientation the same column holds a pair, and at
+    mobile density every header ellipsed to "HKG → …" — no row could be identified. 96 px is the
+    figure desktop already proves fits "HKG → SEA" (with a sub-line, which mobile drops).
+  */
+  const rowsAre: "pair" | "date" = grid.orientation === "dates" ? "date" : "pair";
+  const rowHeadWidth = rowsAre === "pair" ? Math.max(ROW_HEAD_WIDTH[density], ROUTE_ROW_HEAD_WIDTH) : ROW_HEAD_WIDTH[density];
   const tooltipId = useId();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -269,7 +287,7 @@ export function GridTable({ grid, now, selected, onSelect, loading = false, dimm
 
   const headerText = useHeaderText(grid, loading, locale, t, programsByPair, density);
   const colKind: "pair" | "date" = grid.orientation === "dates" ? "pair" : "date";
-  const rowKind: "pair" | "date" = grid.orientation === "dates" ? "date" : "pair";
+  const rowKind: "pair" | "date" = rowsAre;
 
   // ---- hover, focus, tooltip ----
   const [hover, setHover] = useState<GridPos | null>(null);
@@ -491,7 +509,7 @@ export function GridTable({ grid, now, selected, onSelect, loading = false, dimm
   const spacer = { padding: 0, border: 0 } as const;
 
   return (
-    <div className="ag-wrap" data-density={density} data-dimmed={dimmed ? "true" : undefined} data-virtualized={virtualize ? "true" : "false"} data-loading={loading ? "true" : undefined} style={style}>
+    <div className="ag-wrap" data-density={density} data-rows={rowKind} data-dimmed={dimmed ? "true" : undefined} data-virtualized={virtualize ? "true" : "false"} data-loading={loading ? "true" : undefined} style={style}>
       <p className="sr-only" id={`${tooltipId}-legend`}>
         {t("grid.legend")}
       </p>

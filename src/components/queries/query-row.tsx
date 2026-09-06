@@ -78,15 +78,23 @@ function nextRunText(row: QueryRowSummary, now: number, locale: Locale, t: Trans
 }
 
 /** Run now / Edit / Delete, or the inline confirmation once Delete is pressed. */
-function RowActions(props: Pick<QueryRowProps, "row" | "running" | "busy" | "confirmingDelete" | "onRun" | "onEdit" | "onAskDelete" | "onConfirmDelete" | "onCancelDelete">) {
+function RowActions(
+  props: Pick<QueryRowProps, "row" | "running" | "busy" | "confirmingDelete" | "onRun" | "onEdit" | "onAskDelete" | "onConfirmDelete" | "onCancelDelete"> & {
+    /** Where the confirmation sits: the table's Actions cell is right-aligned, the card is not. */
+    align?: "start" | "end";
+  },
+) {
   const t = useT();
-  const { row, running, busy, confirmingDelete } = props;
+  const { row, running, busy, confirmingDelete, align = "end" } = props;
   if (confirmingDelete) {
     return (
       <InlineConfirm
-        question={t("saved.confirm_delete")}
+        // The name, not "this query" (docs/UI_PLAN.md §6.7): with several rows "this" is not
+        // anchored to anything the eye can follow. "Keep" is the dismissal verb, not "Cancel".
+        question={t("saved.delete_title", { name: row.name })}
         confirmLabel={t("saved.delete")}
-        cancelLabel={t("common.cancel")}
+        cancelLabel={t("saved.keep")}
+        align={align}
         busy={busy}
         restoreFocusTo={`[data-testid="delete-${row.id}"]`}
         onConfirm={props.onConfirmDelete}
@@ -214,17 +222,19 @@ export function QueryCard(props: QueryRowProps) {
             {scheduleText(t, row.schedule_cron, row.schedule_label)}
           </span>
           {/* The table's "Notifies on" column: the card carries the same seven facts as the row. */}
-          <span className="aq-meta">{t(NOTIFY_KEY[row.notify_on])}</span>
+          {/* The card has no column headers, so "Both" and "due now" carry their own label —
+              without them the two lines are values with nothing to attach to. */}
+          <span className="aq-meta">{t("saved.card.notify_on", { value: t(NOTIFY_KEY[row.notify_on]) })}</span>
           <span className="aq-meta" title={last.title} suppressHydrationWarning>
             {last.result ? `${last.when}, ${last.result}` : last.when}
           </span>
           <span className="aq-meta" suppressHydrationWarning>
-            {nextRunText(row, now, locale, t)}
+            {t("saved.card.next_run", { value: nextRunText(row, now, locale, t) })}
           </span>
         </div>
         <EnabledSwitch row={row} busy={props.busy} onToggleEnabled={props.onToggleEnabled} />
       </div>
-      <RowActions {...props} />
+      <RowActions {...props} align="start" />
       <DetailsToggle id={row.id} expanded={expanded} onToggle={props.onToggleExpand} />
       {notice && <Notice notice={notice} />}
       {expanded && (

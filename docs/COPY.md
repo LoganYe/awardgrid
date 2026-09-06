@@ -47,7 +47,7 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
 | Fees | fees | 税费 | |
 | Miles | miles | 里程 | |
 | Freshness | Freshness | 数据时间 | Tiers: fresh 最新 · aging 较旧 · stale 过期 · unknown 未知 |
-| "Seen by seats.aero 2 h ago" | Seen by seats.aero {age} | seats.aero 于{age}查看 | Never "Updated" / 更新于 |
+| Freshness line | seats.aero last saw this: {age} | seats.aero 查看时间：{age} | Never "Updated" / 更新于. `{age}` can be 刚刚 or 未知 (en: "now" / "unknown"), so the frame must accept a bare noun — 「于{age}查看」 and "Seen by seats.aero {age}" both broke on those two values |
 | Award availability | availability | 里程票 | "No availability" 无里程票 |
 | Route | Route | 航线 | |
 | Origins / Destinations | Origins / Destinations | 出发地 / 目的地 | Chip labels; "origin airports" in errors is 出发机场 |
@@ -64,7 +64,10 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
 | Alert (Telegram message) | alert | 提醒 | The verb "notify" is 通知 |
 | Quiet hours | Quiet hours | 免打扰时段 | |
 | Ask (the assistant lane) | Ask | 提问 | Feature name; "Ask budget" 提问额度 |
-| Run (a query) | Run | 运行 | Button on the query bar; "Run now" 立即运行 |
+| Run (a query) | Run | 运行 | Button on the query bar; "Run now" 立即运行. Never 重跑 |
+| Schedule (a standing query's cadence) | Schedule | 频率 | Never 计划, which collides with 里程计划 |
+| This server / instance / deployment | this server | 此服务器 | One noun for the machine; the person who runs it is the server's operator / 本站管理员 |
+| Deep link to a program's site | link | 跳转链接 | Never 直达链接: 直达 reads as "nonstop" in a flight UI |
 | Log in / Log out | Log in / Log out | 登录 / 退出登录 | Never "Sign in" |
 | Settings | Settings | 设置 | "Open settings" 打开设置 |
 | Program's site | the program's site | 里程计划官网 | |

@@ -30,6 +30,19 @@ comment that points here).
 - **Per-program actions in the cell drawer.** The footer ("Open in …", "Copy details", "Save as standing query",
   "Ask about this cell") acts on the cheapest program in the cell. Acting on any other program needs a selection
   affordance the spec does not describe. (DECISIONS 6.4)
+- **The mobile grid page spends 56 % of the viewport before the first data row.** At 390 x 844 the query block runs to
+  y = 476: the top bar, a three-line textarea, "Parsed from", the `llm_off` hint, the seven chips wrapping to five rows,
+  then the Filters row — leaving about four 40 px data rows on first paint against §6.4's budget of two chip rows. The
+  v0.2 review's cheap half is done ("Parsed from" is one truncated line now); the rest is a layout decision, not a
+  polish edit: keeping Origins / Destinations / Dates inline and moving the other four chips into the Filters sheet
+  changes what §6.4 promises about the chips being the single visible source of truth, so it needs a plan amendment
+  first. (#30 finding 17)
+- **The demo generator can emit a one-minute final leg.** `fixtures/demo/generate.ts` clamps a date-line-crossing
+  arrival to `cursor + 1`, so every connecting itinerary in the published cell-drawer captures ends with an impossible
+  "NH914 ICN 13:06 → SEA 13:07". The renderer half is fixed (`flights-list.tsx` now dates each side of a leg
+  independently, so a real overnight or date-line leg carries its own day marker); the generator is outside the fixer
+  pass's edit scope (`src/**`, `e2e/**`, `docs/**`, `scripts/**`). One change: compute the true local arrival and let
+  the day marker explain it. (#30 finding 5)
 - **Fold the per-feature captures into the matrix, then run `screenshot-index --strict` in CI.** 6.6 declared the
   §9 matrix in `e2e/matrix.ts` but left the earlier per-feature screenshot code in `grid.spec.ts`, `chips.spec.ts`,
   `cell-drawer.spec.ts`, `ask-drawer.spec.ts`, `queries.spec.ts`, `settings.spec.ts` and `shell.spec.ts` alone —
