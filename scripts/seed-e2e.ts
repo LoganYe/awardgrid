@@ -121,10 +121,12 @@ function ensureSavedQuery(db: Db, userId: string, now: Date): void {
     snapshotCell(cellKeyOf("alaska", "HND", day(9), "F"), 90_000, 4980, 1, 5 * HOUR, now),
   ];
 
+  // `callsUsed` is what `query_runs.calls_used` records: 0 for the run the daily limit refused
+  // before a single request went out, and the real page count for the two that fetched.
   const runs = [
-    { agoMs: 6 * HOUR, cells: [] as CellSnapshot[], newCells: 0, droppedCells: 0, skippedReason: "quota" as string | null },
-    { agoMs: 4 * HOUR, cells: baseline, newCells: 2, droppedCells: 0, skippedReason: null },
-    { agoMs: 2 * HOUR, cells: current, newCells: 3, droppedCells: 1, skippedReason: null },
+    { agoMs: 6 * HOUR, cells: [] as CellSnapshot[], newCells: 0, droppedCells: 0, skippedReason: "quota" as string | null, callsUsed: 0 as number | null },
+    { agoMs: 4 * HOUR, cells: baseline, newCells: 2, droppedCells: 0, skippedReason: null, callsUsed: 27 },
+    { agoMs: 2 * HOUR, cells: current, newCells: 3, droppedCells: 1, skippedReason: null, callsUsed: 24 },
   ];
   let lastRunAt = "";
   for (const run of runs) {
@@ -140,6 +142,7 @@ function ensureSavedQuery(db: Db, userId: string, now: Date): void {
         droppedCells: run.droppedCells,
         notified: false,
         skippedReason: run.skippedReason,
+        callsUsed: run.callsUsed,
       })
       .run();
   }

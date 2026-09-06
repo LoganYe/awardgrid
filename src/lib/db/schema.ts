@@ -189,6 +189,13 @@ export const queryRuns = sqliteTable(
     droppedCells: integer("dropped_cells").notNull().default(0),
     notified: integer("notified", { mode: "boolean" }).notNull().default(false),
     skippedReason: text("skipped_reason"),
+    /**
+     * seats.aero calls this run spent. Nullable, and null means "not recorded" rather than zero:
+     * every row written before this column existed is null, and so is a run whose fetch threw —
+     * the facade may have spent calls before it failed and does not report how many. Recording 0
+     * there would understate the quota the run actually consumed.
+     */
+    callsUsed: integer("calls_used"),
   },
   (t) => [index("query_runs_saved_query_idx").on(t.savedQueryId, t.ranAt)],
 );

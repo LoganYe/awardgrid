@@ -2,9 +2,9 @@
  * GET /api/queries/[id]/runs → 200 { runs, diff } | 401 | 404
  *
  *   runs  the last 20 runs, newest first: { id, ran_at, new_cells, dropped_cells, notified,
- *         skipped_reason, calls_used } — `calls_used` is null for every run today (query_runs
- *         has no calls column and the schema is frozen this phase), so the UI says "not
- *         recorded" rather than inventing a number.
+ *         skipped_reason, calls_used } — `calls_used` comes from `query_runs.calls_used`; it is
+ *         null for runs recorded before that column existed and for a run whose fetch threw
+ *         part-way, and the UI says "not recorded" rather than inventing a number.
  *   diff  the LAST run's cells rebuilt from its stored snapshot: { new: [...], dropped: [...] }
  *         as grid rows, ready for the real cell component. Both arrays are empty when there is
  *         nothing to compare (no runs, a first run, or a run that fetched nothing); see

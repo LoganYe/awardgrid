@@ -179,7 +179,7 @@ Which file renders what. Anything ending in `.ts` next to a `.tsx` is the pure p
 
 ### Queries — `src/components/queries/`
 
-`queries-table.tsx` (the one table: name, schedule, notifies on, last run, next run, enabled, actions), `query-row.tsx` (the row and its expansion), `run-history.tsx` (the last 20 runs), `diff-cells.tsx` (new / dropped / cheaper cells rendered with the real grid-cell component), `inline-confirm.tsx` (delete confirms in the row, never in a modal, and returns focus), `edit-query-drawer.tsx` (the same seven chip editors in a drawer), `SaveQueryDialog.tsx`, `format.ts` (schedule labels, run summaries, `mergeRunCalls`).
+`queries-table.tsx` (the one table: name, schedule, notifies on, last run, next run, enabled, actions), `query-row.tsx` (the row and its expansion), `run-history.tsx` (the last 20 runs), `diff-cells.tsx` (new / dropped / cheaper cells rendered with the real grid-cell component), `inline-confirm.tsx` (delete confirms in the row, never in a modal, and returns focus), `edit-query-drawer.tsx` (the same seven chip editors in a drawer), `SaveQueryDialog.tsx`, `format.ts` (schedule labels, run summaries).
 
 ### Settings — `src/components/settings/`
 

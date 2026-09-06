@@ -18,7 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useDensity } from "@/components/grid/use-roving-grid";
 import { EditQueryDrawer } from "@/components/queries/edit-query-drawer";
 import { QueryCard, QueryRow, type RowNotice } from "@/components/queries/query-row";
-import { mergeRunCalls, nextRunFromCron, runResultText } from "@/components/queries/format";
+import { nextRunFromCron, runResultText } from "@/components/queries/format";
 import {
   apiDeleteQuery,
   apiListRuns,
@@ -104,13 +104,12 @@ export function QueriesTable({ initial, details, telegramLinked }: QueriesTableP
       return;
     }
     const fresh = normalizeDetails(res.data);
-    // Merge, never replace: `query_runs` has no call-count column, so the only place a run's
-    // `calls_used` ever exists is the POST /api/queries/[id]/run response this process just
-    // read. Overwriting the row with the server's null would throw that number away and the
-    // "Calls used" column would be an em dash even for the run the page itself just made.
+    // `query_runs.calls_used` carries the count now, so the server's rows are authoritative and
+    // replace what the page remembered. `rememberRun` still exists for the other half: showing a
+    // "run now" at the top of the history before this refetch lands.
     setDetailsMap((m) => ({
       ...m,
-      [id]: { runs: mergeRunCalls(m[id]?.runs ?? [], fresh.runs), diff: fresh.diff ?? m[id]?.diff ?? null },
+      [id]: { runs: fresh.runs, diff: fresh.diff ?? m[id]?.diff ?? null },
     }));
     setDetailsState((s) => ({ ...s, [id]: { loading: false, error: null } }));
   }, [t]);

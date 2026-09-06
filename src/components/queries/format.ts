@@ -291,22 +291,6 @@ export function runResultText(run: RunLike, t: Translate): string {
   return t("saved.result.changes", { new_cells: run.new_cells, dropped_cells: run.dropped_cells });
 }
 
-/**
- * Keep a call count the page already knows when a refetch comes back without one.
- *
- * `query_runs` has no call-count column, so `toRunSummary` reports `calls_used: null` for every
- * stored run and the only place a real number ever exists is the POST /api/queries/[id]/run
- * response the page just read. Replacing the row's history with the server's answer would throw
- * that away, and the "Calls used" column would be an em dash even for the run this page made.
- */
-export function mergeRunCalls<T extends { id: string; calls_used: number | null }>(previous: readonly T[], fresh: readonly T[]): T[] {
-  const known = new Map(previous.flatMap((r) => (typeof r.calls_used === "number" ? [[r.id, r.calls_used] as const] : [])));
-  return fresh.map((run) => {
-    const remembered = known.get(run.id);
-    return run.calls_used === null && typeof remembered === "number" ? { ...run, calls_used: remembered } : run;
-  });
-}
-
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;

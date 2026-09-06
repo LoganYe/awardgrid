@@ -67,10 +67,10 @@ export interface RunSummary {
   notified: boolean;
   skipped_reason: string | null;
   /**
-   * seats.aero calls this run spent, when it is known. `query_runs` has no calls column and the
-   * schema is frozen for Phase 6, so every run READ BACK from the database reports null (the UI
-   * says "calls not recorded"); only the response of a "run now" that this process just executed
-   * carries the real count, which the scheduler returns in QueryRunResult.apiCallsUsed.
+   * seats.aero calls this run spent, from `query_runs.calls_used`. Null means "not recorded",
+   * not zero: rows written before the column existed carry null, and so does a run whose fetch
+   * threw part-way (the facade does not report the calls it had already spent). The UI prints
+   * "calls not recorded" for null rather than inventing a number.
    */
   calls_used: number | null;
 }
@@ -104,7 +104,7 @@ export function toRunSummary(run: QueryRun): RunSummary {
     dropped_cells: run.droppedCells,
     notified: run.notified,
     skipped_reason: run.skippedReason ?? null,
-    calls_used: null,
+    calls_used: run.callsUsed ?? null,
   };
 }
 

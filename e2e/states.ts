@@ -363,7 +363,7 @@ export async function runNowStubbed(page: Page): Promise<void> {
           dropped_cells: 1,
           notified: false,
           skipped_reason: null,
-          calls_used: null,
+          calls_used: 9,
         },
       }),
     }),
