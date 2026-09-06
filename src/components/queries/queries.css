@@ -49,6 +49,20 @@
   min-width: 176px;
   white-space: normal;
 }
+/* The Last run and Next run columns keep ONE width whatever the clock says. Their text is a
+   relative time — "due now", "in 22 minutes", "in 2 hours", "55 seconds ago" — and those are
+   different widths, so without a floor the columns breathe as the clock moves, every header to
+   their left shifts, and a long query name wraps from one line to two. That is the same failure
+   the Actions rule above fixes for a different trigger; here it also made the `queries-expanded`
+   visual baseline fail on a schedule nobody controls, which is what kept the visual CI job from
+   becoming required (#33). 96 px holds the widest of those strings at 13 px. */
+.aq-table > thead > tr > th:nth-child(4),
+.aq-table > tbody > tr > td:nth-child(4),
+.aq-table > thead > tr > th:nth-child(5),
+.aq-table > tbody > tr > td:nth-child(5) {
+  min-width: 96px;
+}
+
 /* The two full-width rows (notice, expanded panel) are not part of that grid. */
 .aq-table > tbody > tr > td[colspan] {
   width: auto;

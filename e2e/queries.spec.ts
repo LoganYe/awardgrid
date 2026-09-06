@@ -75,6 +75,27 @@ test.describe("queries page", () => {
     }
   });
 
+  test("the table's columns do not move when the clock does", async ({ page, asUser }) => {
+    test.skip(isMobile(), "the stacked list has no columns to hold still");
+    await openQueries(page, asUser);
+    const table = page.getByTestId("queries-table");
+    await expect(table).toBeVisible();
+    // Last run and Next run read as relative times, and "due now" is much narrower than
+    // "in 22 minutes". Without a width floor the columns breathe as the clock moves, everything
+    // to their left shifts, and a long name wraps — which is how the `queries-expanded` visual
+    // baseline came to fail on a schedule nobody controls (#33). Replacing the reading must not
+    // move the Name column.
+    const nameWidth = () => table.getByRole("columnheader", { name: en["saved.name"], exact: true }).evaluate((el) => el.getBoundingClientRect().width);
+    const before = await nameWidth();
+    expect(before).toBeGreaterThan(0);
+    for (const reading of ["due now", "in 22 minutes", "in 3 hours"]) {
+      await table.locator("tbody tr td:nth-child(5)").first().evaluate((el, text) => {
+        el.textContent = text;
+      }, reading);
+      expect(await nameWidth(), `Name moved when Next run read "${reading}"`).toBe(before);
+    }
+  });
+
   test("row expand is a disclosure showing the last diff as real grid cells and the last runs", async ({ page, asUser }) => {
     await openQueries(page, asUser);
     const toggle = detailsButton(page);

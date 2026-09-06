@@ -414,3 +414,20 @@ captures plus the 52 frozen `before/` files, every one of them written by
 - **The failure paths record what is actually known.** A missing key and an exhausted quota are refused at reservation time, before a single request goes out (`src/lib/seatsaero/find.ts`, and `find.test.ts` asserts `fetch.calls` is empty for both), so those runs record an exact `0`. Any other throw happened after fetching had started and the facade does not report the pages it had already completed, so those record `null`. A run that merely *runs out* of headroom mid-way is not a throw at all — it returns a partial result and takes the success path with a real count.
 - **`mergeRunCalls` is deleted.** It existed only because the server could not answer the question; it now can, so the refetch replaces the row's history instead of merging into it. `rememberRun` stays: it still shows a just-finished "run now" at the top of the list before the refetch lands.
 - **The e2e seed carries real counts** (0 for the quota-refused run, 27 and 24 for the two that fetched), so the committed screenshots of the Queries page show the column doing its job rather than three en dashes.
+
+### #33 (prerequisite) The queries table's columns stopped following the clock
+
+- **Last run and Next run have a width floor.** Their text is a relative time — "due now",
+  "in 22 minutes", "in 2 hours", "55 seconds ago" — and those are different widths. `queries.css`
+  gives every column but the first `width: 1px`, so Name absorbs the slack: the columns breathed
+  as the wall clock moved, every header to their left shifted, and a long query name wrapped from
+  one line to two. It is the same failure the Actions rule already fixes for a different trigger.
+- **This is why the `visual` job could not be promoted.** Main run 34058508996 (commit `0f3aa75`)
+  failed `queries-expanded.png` on desktop-light and desktop-dark by 3 % of pixels, while the same
+  tree had passed on the PR branch an hour before. `timeMasks` already masks both cells — masking
+  paints over the READING, it cannot paint over the layout that reading produced, so the mask box
+  itself moved. A required job that goes red on a schedule nobody controls teaches people to
+  ignore it, which is worse than no gate.
+- **A regression test, not a baseline update.** `e2e/queries.spec.ts` replaces the Next run cell's
+  text with each of the three readings and asserts the Name column does not move. It fails without
+  the CSS floor (verified by reverting the rule) and passes with it.
