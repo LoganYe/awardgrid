@@ -159,15 +159,21 @@ test.describe("ask drawer", () => {
     const drawer = await openAskDrawer(page);
 
     await askAndStream(drawer, QUESTION);
-    await expect(drawer.getByTestId("ask-answer")).toContainText("cheapest", { timeout: 20_000 });
-    const partial = (await drawer.getByTestId("ask-answer").textContent()) ?? "";
+    const answer = drawer.getByTestId("ask-answer");
+    await expect(answer).toContainText("cheapest", { timeout: 20_000 });
     await drawer.getByTestId("ask-stop").click();
 
     await expect(drawer.getByTestId("ask-problem")).toHaveText(en["ask.aborted"]);
     await expect(drawer.getByTestId("ask-send")).toBeVisible();
-    // Nothing arrives after the abort: the text is exactly what was on screen when Stop was hit.
+    // The answer is sampled once the abort has LANDED, not before the click: the stream can
+    // still deliver a delta between reading the text and the click taking effect, which made
+    // this a race that only lost on a slow runner.
+    const atAbort = (await answer.textContent()) ?? "";
+    // It really was cut short — the script's last delta never arrived.
+    expect(atAbort).not.toContain("Nothing here was fetched");
+    // And nothing arrives after the abort.
     await page.waitForTimeout(1_000);
-    expect((await drawer.getByTestId("ask-answer").textContent()) ?? "").toBe(partial);
+    expect((await answer.textContent()) ?? "").toBe(atAbort);
     await askShot(page, "stopped");
   });
 
