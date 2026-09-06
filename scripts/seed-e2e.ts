@@ -1,0 +1,177 @@
+/**
+ * `pnpm exec tsx scripts/seed-e2e.ts --db <path> [--fresh]` — the Playwright suite's database.
+ *
+ * Creates the e2e users, each with a FAKE seats.aero key whose value selects a scenario on the
+ * DEMO=1 mock server (scripts/mock-seatsaero.ts); the app itself is never touched:
+ *
+ *   demo     demo-key-normal    full dataset; one saved standing query + one recorded run
+ *   nokey    (no key)           the "add your key" empty state
+ *   empty    demo-key-empty     /search answers with no rows
+ *   slow     demo-key-slow      every mock response delayed (loading states)
+ *   partial  demo-key-partial   one program not fetched
+ *   quota    demo-key-normal    api_usage row for today at the soft limit (950) → quota state
+ *
+ * Every user's password is E2E_PASSWORD. Idempotent: re-running keeps existing users and
+ * re-upserts keys, the quota row and the saved query. `--fresh` deletes the SQLite file (and its
+ * -wal/-shm siblings) first. Refuses the default runtime database path so it can never seed a
+ * real deployment. Prints usernames only — never a key, never a hash.
+ */
+import { randomUUID } from "node:crypto";
+import { rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { eq } from "drizzle-orm";
+import { createInvite } from "@/lib/auth/invites";
+import { getUserByUsername, registerWithInvite, type User } from "@/lib/auth/users";
+import { parseMasterKey } from "@/lib/crypto/aes";
+import { DEFAULT_DB_PATH, openDb, type Db } from "@/lib/db/client";
+import { apiUsage, queryRuns, savedQueries } from "@/lib/db/schema";
+import { SEATS_AERO_PROVIDER } from "@/lib/db/stores/quota";
+import { removeKey, setKey } from "@/lib/keys";
+import type { QueryObject } from "@/lib/query/schema";
+import { cellsHash } from "@/lib/scheduler/diff";
+import { utcDayKey } from "@/lib/seatsaero/quota";
+import { createSavedQuery, listSavedQueries } from "@/lib/server/queries";
+import { E2E_PASSWORD, E2E_SAVED_QUERY_NAME, E2E_USERS, type E2eUserSpec } from "../e2e/users";
+
+export { E2E_PASSWORD, E2E_QUOTA_CALLS, E2E_SAVED_QUERY_NAME, E2E_USERS, type E2eUsername, type E2eUserSpec } from "../e2e/users";
+/** Same trivial test-only master key playwright.config.ts hands to the app (64 hex chars). */
+export const E2E_MASTER_KEY_HEX = "e".repeat(64);
+
+/** The canonical Phase 6 query (HKG/PVG+SHA/NRT+HND/ICN → SEA, 30 days from `today`, J and F). */
+export function canonicalQuery(today: Date): QueryObject {
+  const from = today.toISOString().slice(0, 10);
+  const to = new Date(today.getTime() + 29 * 86_400_000).toISOString().slice(0, 10);
+  return {
+    origins: ["HKG", "PVG", "SHA", "NRT", "HND", "ICN"],
+    destinations: ["SEA"],
+    date_from: from,
+    date_to: to,
+    cabins: ["J", "F"],
+    direct_only: false,
+    include_filtered: false,
+    sort_by: "miles_asc",
+    raw_text: "HKG, SHA, TYO, SEL to SEA, next 30 days, business and first",
+    language: "en",
+  };
+}
+
+export interface SeedE2eOptions {
+  masterKey: Buffer;
+  now?: () => Date;
+  users?: readonly E2eUserSpec[];
+  password?: string;
+}
+
+export interface SeededE2eUser {
+  user: User;
+  created: boolean;
+  hasKey: boolean;
+}
+
+function upsertQuota(db: Db, userId: string, calls: number, day: string): void {
+  db.insert(apiUsage)
+    .values({ userId, provider: SEATS_AERO_PROVIDER, day, calls })
+    .onConflictDoUpdate({ target: [apiUsage.userId, apiUsage.provider, apiUsage.day], set: { calls } })
+    .run();
+}
+
+/** One saved query (every 3 h, the default) with one run two hours ago: "+3 new, −1 dropped". */
+function ensureSavedQuery(db: Db, userId: string, now: Date): void {
+  const existing = listSavedQueries(db, userId).find((q) => q.name === E2E_SAVED_QUERY_NAME);
+  const saved = existing ?? createSavedQuery(db, userId, { name: E2E_SAVED_QUERY_NAME, query: canonicalQuery(now) }, { now: () => now });
+  if (existing?.last_run) return;
+  const ranAt = new Date(now.getTime() - 2 * 60 * 60_000).toISOString();
+  db.insert(queryRuns)
+    .values({
+      id: randomUUID(),
+      savedQueryId: saved.id,
+      ranAt,
+      cellsHash: cellsHash([]),
+      cellsJson: "[]",
+      newCells: 3,
+      droppedCells: 1,
+      notified: false,
+      skippedReason: null,
+    })
+    .run();
+  db.update(savedQueries).set({ lastRunAt: ranAt }).where(eq(savedQueries.id, saved.id)).run();
+}
+
+/** Register (or reuse) every e2e user and bring keys, quota rows and saved queries to the spec. */
+export async function seedE2eDb(db: Db, opts: SeedE2eOptions): Promise<SeededE2eUser[]> {
+  const now = opts.now ?? (() => new Date());
+  const specs = opts.users ?? E2E_USERS;
+  const password = opts.password ?? E2E_PASSWORD;
+  const day = utcDayKey(now());
+  const out: SeededE2eUser[] = [];
+  for (const spec of specs) {
+    let user = getUserByUsername(db, spec.username);
+    let created = false;
+    if (!user) {
+      const { code } = createInvite(db, { createdBy: "seed-e2e", intendedFor: spec.username }, { now });
+      user = await registerWithInvite(db, { inviteCode: code, username: spec.username, password }, { now });
+      created = true;
+    }
+    if (spec.seatsAeroKey) setKey(db, user.id, "seats_aero", spec.seatsAeroKey, { masterKey: opts.masterKey, now });
+    else removeKey(db, user.id, "seats_aero");
+    upsertQuota(db, user.id, spec.quotaCalls ?? 0, day);
+    if (spec.savedQuery) ensureSavedQuery(db, user.id, now());
+    out.push({ user, created, hasKey: spec.seatsAeroKey !== null });
+  }
+  return out;
+}
+
+function parseArgs(argv: readonly string[]): { db?: string; fresh: boolean } {
+  const out: { db?: string; fresh: boolean } = { fresh: false };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--db") {
+      const v = argv[i + 1];
+      if (!v) throw new Error("--db requires a path");
+      out.db = v;
+      i++;
+    } else if (a?.startsWith("--db=")) {
+      out.db = a.slice("--db=".length);
+    } else if (a === "--fresh") {
+      out.fresh = true;
+    } else {
+      throw new Error(`unknown argument: ${a}`);
+    }
+  }
+  return out;
+}
+
+export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<number> {
+  const args = parseArgs(argv);
+  const dbPath = args.db ?? process.env.E2E_DB_PATH;
+  if (!dbPath) {
+    process.stderr.write("seed-e2e: pass --db <path> (or set E2E_DB_PATH); refusing to guess\n");
+    return 2;
+  }
+  if (resolve(dbPath) === resolve(DEFAULT_DB_PATH)) {
+    process.stderr.write("seed-e2e: refusing to seed the runtime database; use a throwaway path\n");
+    return 2;
+  }
+  if (args.fresh) for (const suffix of ["", "-wal", "-shm", "-journal"]) rmSync(`${dbPath}${suffix}`, { force: true });
+  const masterKey = parseMasterKey(process.env.MASTER_KEY ?? E2E_MASTER_KEY_HEX);
+  const db = openDb({ path: dbPath });
+  const seeded = await seedE2eDb(db, { masterKey });
+  process.stdout.write(`seed-e2e: database ${dbPath}${args.fresh ? " (fresh)" : ""}\n`);
+  for (const s of seeded) {
+    process.stdout.write(`  ${s.created ? "created" : "existing"} user ${s.user.username}  ${s.hasKey ? "seats.aero key on file" : "no key"}\n`);
+  }
+  return 0;
+}
+
+const isEntry = process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isEntry) {
+  main()
+    .then((code) => {
+      process.exitCode = code;
+    })
+    .catch((err: unknown) => {
+      process.stderr.write(`seed-e2e: ${err instanceof Error ? err.message : "unexpected error"}\n`);
+      process.exitCode = 1;
+    });
+}

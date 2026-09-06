@@ -58,6 +58,39 @@ jobs:
           fi
           echo "OK: no .env or SQLite files tracked"
 
+  e2e:
+    name: e2e (Playwright, demo mock)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: CJK fonts for zh screenshots
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk > /dev/null
+      - name: Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build the pruned toolkit plugin
+        run: pnpm build:plugin
+      - name: Build
+        run: pnpm build
+      - name: e2e (no network, no keys)
+        run: pnpm e2e
+      - name: Upload report and screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report
+          path: |
+            e2e-report
+            test-results
+          retention-days: 7
+
   secret-scan:
     name: gitleaks
     runs-on: ubuntu-latest
