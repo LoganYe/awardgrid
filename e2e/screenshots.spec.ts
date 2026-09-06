@@ -15,50 +15,71 @@
  *
  * Assertions here are deliberately thin — enough that a broken state fails loudly rather than
  * being photographed empty. The semantics of each state are asserted by the feature specs
- * (grid, chips, cell-drawer, ask-drawer, queries, settings, shell).
+ * (grid, chips, cell-drawer, ask-drawer, queries, settings, shell), which since #34 assert only:
+ * they no longer photograph anything, so no two writers race for the same file name and
+ * `scripts/screenshot-index.ts --strict --check` can be the CI guard.
  *
  * Everything is offline: the DEMO=1 mock, the seeded users, the scripted Ask stream. Nothing
- * here writes to the e2e database (see the interception note in e2e/states.ts).
+ * here leaves the e2e database changed (see the interception note in e2e/states.ts).
  */
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
+import { zh } from "../src/lib/i18n/dictionaries/zh";
 import { applyTheme, expect, projectSuffix, submitQuery, test } from "./fixtures";
 import { MATRIX, SHOT_ROOT, shotFile, type MatrixPage, type MatrixShot } from "./matrix";
 import {
+  askAnswered,
+  askNoKey,
+  askStopped,
   askStreaming,
   capture,
   cells,
   closeCellDrawer,
   closePopover,
   confirmDeleteInline,
+  copyDetails,
   delayFind,
+  emptyOrigins,
+  expandAskTools,
   expandFirstQuery,
+  finishAsk,
   focusRing,
   grid,
   hoverTooltip,
   isMobile,
+  loginError,
   makeModified,
   openAddKeyForm,
   openAsk,
+  openAskFromCell,
   openCellDrawer,
   openChipEditor,
   openEditQueryDrawer,
+  openExamples,
   openGrid,
   openGridWithCells,
+  openManualMode,
   openQueries,
   openSettings,
+  openSignedInShell,
   openTelegramInvite,
+  openTopbarMenu,
+  openUserMenu,
+  registerError,
   resetChips,
+  runNowFailed,
   runNowStubbed,
+  saveEditQueryDrawer,
   searching,
   setCabin,
   setRows,
   showFlights,
+  showFlightsError,
+  showFlightsLoading,
   showKeyError,
   showSettingsSection,
-  stopAsk,
   toggleDynamic,
 } from "./states";
 
@@ -75,7 +96,7 @@ async function shot(page: Page, pageName: MatrixPage, state: string, opts: { zh?
   expect(entry, `${key} is not in e2e/matrix.ts`).toBeTruthy();
   const viewport = projectSuffix(test.info().project.name).viewport;
   if (entry!.viewports && !entry!.viewports.includes(viewport)) return;
-  await capture(page, pageName, state, { zh: opts.zh, fullPage: entry!.fullPage });
+  await capture(page, pageName, state, { zh: opts.zh, fullPage: entry!.fullPage, clip: entry!.clip });
 }
 
 test.describe("screenshots", () => {
@@ -85,16 +106,35 @@ test.describe("screenshots", () => {
 
   // ---- shell (spec §2) ---------------------------------------------------
 
-  test("shell: the auth pages", async ({ page }) => {
+  test("shell: the top bar and the menus it opens", async ({ page }) => {
+    await openSignedInShell(page);
+    await shot(page, "shell", "topbar");
+
+    // The nav, the toggles and Log out: one panel below 768 px, a popover above it.
+    if (isMobile()) {
+      await openTopbarMenu(page);
+      await shot(page, "shell", "topbar-menu");
+    } else {
+      await openUserMenu(page);
+      await shot(page, "shell", "topbar-user-menu");
+    }
+    await page.keyboard.press("Escape");
+  });
+
+  test("shell: the auth pages, and what each one says when it fails", async ({ page }) => {
     await page.context().clearCookies();
 
     await page.goto("/login");
     await expect(page.getByRole("heading", { level: 1, name: en["auth.login.title"] })).toBeVisible();
     await shot(page, "shell", "login");
+    await loginError(page);
+    await shot(page, "shell", "login-error");
 
     await page.goto("/register?code=E2E-CODE");
     await expect(page.getByRole("heading", { level: 1, name: en["auth.register.title"] })).toBeVisible();
     await shot(page, "shell", "register");
+    await registerError(page);
+    await shot(page, "shell", "register-error");
   });
 
   test("shell: the legal page", async ({ page, asUser }) => {
@@ -157,14 +197,38 @@ test.describe("screenshots", () => {
     await shot(page, "grid", "dynamic-on");
   });
 
-  test("grid: the two drawers", async ({ page }) => {
+  test("grid: the cell drawer, and what Show flights does", async ({ page }) => {
     await openGridWithCells(page, { params: "askdemo=1" });
 
     const panel = await openCellDrawer(page);
     await shot(page, "grid", "cell-drawer");
-    await showFlights(page, panel);
-    await shot(page, "grid", "cell-drawer-flights");
+
+    // Get Trips: in flight, failed, then the flight rows. A fresh drawer each time, so no
+    // state photographs the leftovers of the one before it (the "Details copied" confirmation
+    // does not time out, and rode into the loading capture when copy came first).
+    const unrouteSlow = await showFlightsLoading(page, panel);
+    await shot(page, "grid", "cell-drawer-loading");
+    await unrouteSlow();
     await closeCellDrawer(page, panel);
+
+    const failing = await openCellDrawer(page);
+    const unrouteFail = await showFlightsError(page, failing);
+    await shot(page, "grid", "cell-drawer-error");
+    await unrouteFail();
+    await closeCellDrawer(page, failing);
+
+    const loaded = await openCellDrawer(page);
+    await showFlights(page, loaded);
+    await shot(page, "grid", "cell-drawer-flights");
+    await closeCellDrawer(page, loaded);
+
+    const copied = await openCellDrawer(page);
+    await copyDetails(page, copied);
+    await shot(page, "grid", "cell-drawer-copied");
+  });
+
+  test("grid: the Ask drawer, from empty to answered", async ({ page }) => {
+    await openGridWithCells(page, { params: "askdemo=1" });
 
     const ask = await openAsk(page);
     await expect(ask.getByTestId("ask-suggestions").getByRole("button")).toHaveCount(3);
@@ -172,7 +236,33 @@ test.describe("screenshots", () => {
 
     await askStreaming(page, ask);
     await shot(page, "grid", "ask-streaming");
-    await stopAsk(page, ask);
+
+    await finishAsk(page, ask);
+    await shot(page, "grid", "ask-answered");
+
+    await expandAskTools(page, ask);
+    await shot(page, "grid", "ask-tools");
+  });
+
+  test("grid: an answer stopped mid-sentence", async ({ page }) => {
+    await openGridWithCells(page, { params: "askdemo=1" });
+    const ask = await openAsk(page);
+    await askStopped(page, ask);
+    await shot(page, "grid", "ask-stopped");
+  });
+
+  test("grid: the Ask drawer carrying a selected cell", async ({ page }) => {
+    await openGridWithCells(page, { params: "askdemo=1" });
+    const ask = await openAskFromCell(page);
+    await expect(ask.getByTestId("ask-pill-grid")).toBeVisible();
+    await shot(page, "grid", "ask-with-cell");
+  });
+
+  test("grid: the Ask drawer with no key", async ({ page }) => {
+    await openGridWithCells(page, { params: "askdemo=1&askerr=no_key" });
+    const ask = await openAsk(page);
+    await askNoKey(page, ask);
+    await shot(page, "grid", "ask-no-key");
   });
 
   test("grid: the Ask drawer at the daily cap", async ({ page }) => {
@@ -182,11 +272,22 @@ test.describe("screenshots", () => {
     await shot(page, "grid", "ask-cap");
   });
 
-  test("grid: results in Chinese", async ({ page }) => {
-    test.skip(isMobile(), "spec §9 asks for the grid page in zh-CN; the desktop pair is the record");
-    await openGridWithCells(page, { locale: "zh" });
+  test("grid: results and both drawers in Chinese", async ({ page }) => {
+    await openGridWithCells(page, { locale: "zh", params: "askdemo=1" });
     await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
     await shot(page, "grid", "results", { zh: true });
+
+    const panel = await openCellDrawer(page);
+    await expect(panel.getByTestId("drawer-caveat")).toHaveText(zh["grid.deeplink_caveat"]);
+    await shot(page, "grid", "cell-drawer", { zh: true });
+    await closeCellDrawer(page, panel, "zh");
+
+    const ask = await openAsk(page, "zh");
+    await expect(ask.getByTestId("ask-pill-grid")).toContainText(zh["ask.context.query"]);
+    await shot(page, "grid", "ask-open", { zh: true });
+
+    await askAnswered(page, ask, "zh");
+    await shot(page, "grid", "ask-answered", { zh: true });
   });
 
   test("grid: no key", async ({ page }) => {
@@ -196,11 +297,26 @@ test.describe("screenshots", () => {
     await shot(page, "grid", "no-key");
   });
 
-  test("grid: parse failure", async ({ page }) => {
+  test("grid: the start state and its Examples popover", async ({ page }) => {
+    await openGrid(page, { run: false });
+    await openExamples(page);
+    await shot(page, "grid", "examples");
+  });
+
+  test("grid: a chip that blocks the run", async ({ page }) => {
+    await openGridWithCells(page);
+    await emptyOrigins(page);
+    await shot(page, "grid", "chips-error");
+  });
+
+  test("grid: parse failure, and the chips escape hatch", async ({ page }) => {
     await openGrid(page, { run: false });
     await submitQuery(page, "国庆去东京");
     await expect(page.getByTestId("parse-failure")).toBeVisible({ timeout: 60_000 });
     await shot(page, "grid", "parse-failure");
+
+    await openManualMode(page);
+    await shot(page, "grid", "chips-manual");
   });
 
   test("grid: the loading skeleton", async ({ page }) => {
@@ -250,11 +366,19 @@ test.describe("screenshots", () => {
 
     const drawer = await openEditQueryDrawer(page);
     await shot(page, "queries", "edit-drawer");
-    await page.keyboard.press("Escape");
-    await expect(drawer).toHaveCount(0);
+    await saveEditQueryDrawer(page, drawer);
+    await shot(page, "queries", "edit-saved");
+
+    // The "Standing query saved" toast lives 4 s (TOAST_MS in queries-table.tsx) and would ride
+    // into the next two captures, putting a confirmation on a state that does not produce one —
+    // the same leak already fixed for the cell drawer's "Details copied" below.
+    await expect(page.getByTestId("queries-toast")).toHaveCount(0, { timeout: 10_000 });
 
     await runNowStubbed(page);
     await shot(page, "queries", "run-now");
+
+    await runNowFailed(page);
+    await shot(page, "queries", "run-now-error");
   });
 
   test("queries: the empty state", async ({ page }) => {
@@ -281,6 +405,13 @@ test.describe("screenshots", () => {
 
     await showSettingsSection(page, "language");
     await shot(page, "settings", "language-theme");
+  });
+
+  test("settings: the page in Chinese", async ({ page }) => {
+    // Through the locale cookie, not the radio: setting the radio writes the account's language.
+    await openSettings(page, "demo", "zh");
+    await expect(page.getByRole("heading", { level: 2 }).first()).toHaveText(zh["settings.keys.title"]);
+    await shot(page, "settings", "language-theme", { zh: true });
   });
 
   test("settings: linking Telegram", async ({ page }) => {

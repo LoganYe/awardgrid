@@ -1,7 +1,6 @@
 /**
  * Phase 6.5 — the Settings page (spec §5, docs/UI_PLAN.md §6.8): four sections separated by a
- * heading and space, with no cards and no borders around them. Screenshots land in
- * docs/screenshots/v0.2/settings/<state>-<viewport>-<theme>.png (plain captures, not baselines).
+ * heading and space, with no cards and no borders around them.
  *
  * Everything is seeded demo data on the offline mock: the "demo" user has a seats.aero key and
  * the "linked" user has a fake Telegram chat id and quiet hours (scripts/seed-e2e.ts).
@@ -16,32 +15,19 @@
  * `{ deepLink: null, mock: true }` and there is nothing for the page to encode. The stub returns
  * a link of the shape the real bot hands out, so the component, the in-repo QR encoder and the
  * waiting state run exactly as they do in production.
+ *
+ * This spec asserts; it does not photograph. Every capture of these states is declared in
+ * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
-import { mkdirSync } from "node:fs";
-import path from "node:path";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { request as playwrightRequest } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
 import { zh } from "../src/lib/i18n/dictionaries/zh";
 import { applyTheme, expect, forgetLoginCookies, projectSuffix, test } from "./fixtures";
 import { E2E_PASSWORD } from "./users";
 
-const SETTINGS_DIR = path.resolve(import.meta.dirname, "..", "docs", "screenshots", "v0.2", "settings");
-
 /** A fake deep link of the shape the bot hands out (43-character one-time token). */
 const FAKE_DEEP_LINK = `https://t.me/awardgrid_demo_bot?start=${"Ab3xY".repeat(8)}zqk`;
-
-async function shot(page: Page, name: string, target?: Locator): Promise<string> {
-  const { viewport, theme } = projectSuffix(test.info().project.name);
-  mkdirSync(SETTINGS_DIR, { recursive: true });
-  const file = path.join(SETTINGS_DIR, `${name}-${viewport}-${theme}.png`);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  // Bounded: the quota indicator keeps polling, so "networkidle" may never arrive.
-  await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => undefined);
-  if (target) await target.screenshot({ path: file, animations: "disabled", caret: "hide" });
-  else await page.screenshot({ path: file, fullPage: true, animations: "disabled", caret: "hide" });
-  return file;
-}
 
 const sections = (page: Page) => page.locator("[data-settings-section]");
 const keyRow = (page: Page, provider: string) => page.locator(`[data-key-row="${provider}"]`);
@@ -128,7 +114,6 @@ test.describe("settings", () => {
     await expect(keyRow(page, "ignav")).toContainText(en["settings.keys.not_set"]);
     await expect(page.getByRole("progressbar", { name: en["settings.quota.title"] })).toBeVisible();
 
-    await shot(page, "default");
   });
 
   test("adding a key: the form, both failures, then the checked line", async ({ page, asUser }) => {
@@ -140,7 +125,6 @@ test.describe("settings", () => {
     const duffelInput = keyRow(page, "duffel").getByLabel(en["settings.keys.input_label"]);
     await expect(duffelInput).toBeVisible();
     await expect(duffelInput).toHaveAttribute("type", "password");
-    await shot(page, "keys-add-form");
     await keyRow(page, "duffel").getByRole("button", { name: en["common.cancel"] }).click();
 
     const seats = keyRow(page, "seats_aero");
@@ -159,7 +143,6 @@ test.describe("settings", () => {
     await paste("demo-key-invalid");
     await expect(seats.getByRole("alert")).toHaveText(en["error.invalid_key"]);
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await shot(page, "keys-validating-error");
 
     // 2. A key seats.aero cannot be asked about: the mock answers 500 to the probe.
     await paste("demo-key-error");
@@ -202,7 +185,6 @@ test.describe("settings", () => {
     await expect(invite.getByText(en["settings.telegram.qr_alt"])).toBeVisible();
     await expect(page.locator("[data-telegram-waiting]")).toContainText(en["settings.telegram.waiting_start"]);
 
-    await shot(page, "telegram-unlinked-qr");
   });
 
   test("telegram: a linked account, its quiet hours and the detected zone", async ({ page, asUser }) => {
@@ -218,7 +200,6 @@ test.describe("settings", () => {
     await expect(zoneLine).toHaveAttribute("data-account-zone", "Asia/Shanghai");
     await expect(zoneLine).toContainText(en["settings.timezone_account"].replace("{tz}", "Asia/Shanghai"));
     await expect(timezoneSelect(page)).toHaveCount(0);
-    await shot(page, "telegram-linked");
 
     // The override is still reachable: disclose it, take the browser's own zone (UTC here), save.
     await openZoneEditor(page);
@@ -286,13 +267,11 @@ test.describe("settings", () => {
     const { theme } = projectSuffix(test.info().project.name);
     await page.getByRole("radio", { name: en[theme === "dark" ? "theme.dark" : "theme.light"] }).check();
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-    await shot(page, "language-theme");
 
     // Chinese: the whole page re-renders from the server on the next request.
     await page.getByRole("radio", { name: "中文（简体）" }).check();
     await expect(page.getByRole("heading", { level: 1, name: zh["settings.title"] })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2 }).first()).toHaveText(zh["settings.keys.title"]);
-    await shot(page, "language-theme-zh");
 
     // Back to the defaults so the next test starts from English and the system theme.
     await page.getByRole("radio", { name: "English" }).check();
@@ -310,7 +289,6 @@ test.describe("settings", () => {
     const account = page.locator('[data-settings-section="account"]');
     await expect(account.getByText("linked", { exact: true })).toBeVisible();
     await expect(account.getByText(en["auth.password_hint"])).toBeVisible();
-    await shot(page, "account-change-password", account);
 
     try {
       // The wrong current password fails inline, under the fields, never in a modal.

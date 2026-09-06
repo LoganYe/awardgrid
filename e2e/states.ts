@@ -11,7 +11,9 @@
  *
  * These helpers never leave a mutation behind. Where a state needs a write — Run now, minting a
  * Telegram deep link — the request is intercepted and answered here, so `/queries`, `/settings`
- * and the e2e database look the same after a capture run as before it.
+ * and the e2e database look the same after a capture run as before it. The one real write is
+ * `saveEditQueryDrawer`, which saves the drawer untouched: the PATCH carries the values it just
+ * read, so the row is byte-for-byte the seeded one afterwards (see the note there).
  */
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -34,9 +36,15 @@ export const isMobile = (): boolean => projectSuffix(test.info().project.name).v
  *
  * Viewport-sized by default. `fullPage` is only for states with no overlay: a fixed-position
  * backdrop paints over the first viewport height and nothing below it, so a full-page capture of
- * an open drawer photographs that artefact instead of the drawer.
+ * an open drawer photographs that artefact instead of the drawer. `clip` takes the top N px at
+ * full width instead, for the top-bar details whose subject is a strip of chrome.
  */
-export async function capture(page: Page, pageName: MatrixPage, state: string, opts: { zh?: boolean; fullPage?: boolean } = {}): Promise<string> {
+export async function capture(
+  page: Page,
+  pageName: MatrixPage,
+  state: string,
+  opts: { zh?: boolean; fullPage?: boolean; clip?: number } = {},
+): Promise<string> {
   const { viewport, theme } = projectSuffix(test.info().project.name);
   const dir = path.join(ROOT, pageName);
   mkdirSync(dir, { recursive: true });
@@ -45,27 +53,38 @@ export async function capture(page: Page, pageName: MatrixPage, state: string, o
   // Bounded: the quota indicator keeps polling, so "networkidle" may never arrive.
   await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => undefined);
   await settleDrawers(page);
-  await page.screenshot({ path: file, fullPage: opts.fullPage ?? false, animations: "disabled", caret: "hide" });
+  const clip = opts.clip ? { x: 0, y: 0, width: page.viewportSize()?.width ?? 1440, height: opts.clip } : undefined;
+  await page.screenshot({ path: file, fullPage: opts.fullPage ?? false, clip, animations: "disabled", caret: "hide" });
   return file;
 }
 
 /**
- * Wait for any open drawer to reach its resting position before the shutter opens.
+ * Wait for every drawer on the page to reach a resting position before the shutter opens.
  *
  * The panel mounts in its closed transform and slides in over 200 ms (drawer.css). Playwright's
  * `animations: "disabled"` freezes a running CSS transition where it is rather than completing
  * it, so a capture taken inside those 200 ms photographs the panel still off-screen — which is
  * exactly what all four `queries/edit-drawer-*.png` were: a Queries page with no drawer on it.
- * The cell and Ask drawers only escaped it because their helpers wait for streamed content
- * first. `transform: none` is the settled-open state for every side and mode.
+ *
+ * Two shapes of unsettled, and the first version of this only knew the second, so it went on
+ * answering "settled" for the whole window the defect actually lives in:
+ *
+ *  - **Mid-entry.** `DrawerShell` renders the panel `data-state="closed"` for two frames before
+ *    it flips to `open`, so there is a moment with no `[data-state="open"]` element at all — and
+ *    `every()` over nothing is true. An entering panel is told apart from a leaving one by
+ *    `inert`: `inert={!open}`, so the panel on its way in is closed and NOT inert.
+ *  - **Mid-slide.** Open, but the 200 ms transform transition has not finished. `transform: none`
+ *    is the settled-open state for every side and mode.
  */
 export async function settleDrawers(page: Page): Promise<void> {
   await page
     .waitForFunction(
       () =>
-        Array.from(document.querySelectorAll('[data-slot="drawer"][data-state="open"]')).every(
-          (el) => getComputedStyle(el).transform === "none",
-        ),
+        Array.from(document.querySelectorAll('[data-slot="drawer"]')).every((el) => {
+          const entering = el.getAttribute("data-state") !== "open" && !el.hasAttribute("inert");
+          const sliding = el.getAttribute("data-state") === "open" && getComputedStyle(el).transform !== "none";
+          return !entering && !sliding;
+        }),
       null,
       { timeout: 2_000 },
     )
@@ -128,10 +147,7 @@ export interface GridOptions {
 export async function openGrid(page: Page, opts: GridOptions = {}): Promise<void> {
   const { user = "demo", locale = "en", params = "", run = true } = opts;
   await loginAs(page, user);
-  if (locale === "zh") {
-    const baseURL = new URL(test.info().project.use.baseURL ?? "http://127.0.0.1:3400");
-    await page.context().addCookies([{ name: "ag_locale", value: "zh", domain: baseURL.hostname, path: "/" }]);
-  }
+  if (locale === "zh") await setLocaleCookie(page);
   await page.goto(params ? `/grid?${params}` : "/grid");
   if (!run) return;
   if (locale === "zh") {
@@ -158,11 +174,82 @@ export async function openQueries(page: Page, user: E2eUsername = "demo"): Promi
   if (user !== "empty") await expect(firstQueryRow(page)).toBeVisible();
 }
 
-/** Log in and open /settings. */
-export async function openSettings(page: Page, user: E2eUsername = "demo"): Promise<void> {
+/** Log in and open /settings, optionally with the UI in Chinese. */
+export async function openSettings(page: Page, user: E2eUsername = "demo", locale: "en" | "zh" = "en"): Promise<void> {
   await loginAs(page, user);
+  if (locale === "zh") await setLocaleCookie(page);
   await page.goto("/settings");
-  await expect(page.getByRole("heading", { level: 1, name: en["settings.title"] })).toBeVisible();
+  const dict = locale === "zh" ? zh : en;
+  await expect(page.getByRole("heading", { level: 1, name: dict["settings.title"] })).toBeVisible();
+}
+
+/**
+ * Put the UI in Chinese for this browser context. The cookie is how the app is asked for a
+ * language without touching the account (`PUT /api/settings` would outlive the capture run).
+ */
+async function setLocaleCookie(page: Page): Promise<void> {
+  const baseURL = new URL(test.info().project.use.baseURL ?? "http://127.0.0.1:3400");
+  await page.context().addCookies([{ name: "ag_locale", value: "zh", domain: baseURL.hostname, path: "/" }]);
+}
+
+// ---------------------------------------------------------------------------
+// Shell states (spec §2)
+// ---------------------------------------------------------------------------
+
+export const banner = (page: Page): Locator => page.getByRole("banner");
+const menuButton = (page: Page): Locator =>
+  banner(page).getByRole("button", { name: new RegExp(`^(${en["nav.menu"]}|${en["nav.menu_close"]})$`) });
+
+/**
+ * Log in and open /grid: the signed-in top bar, with one nav item current.
+ *
+ * /grid rather than /queries because the deleted `shell/topbar-grid` stem was the one that showed
+ * Grid underlined, and `shell/topbar` is now the only record of the current-item treatment (#34).
+ */
+export async function openSignedInShell(page: Page): Promise<Locator> {
+  await loginAs(page, "demo");
+  await page.goto("/grid");
+  const header = banner(page);
+  await expect(header).toHaveCSS("height", "48px");
+  await expect(header.getByRole("link", { name: "awardgrid" })).toBeVisible();
+  return header;
+}
+
+/** Below 768 px: the panel the menu button drops out, holding nav, toggles and Log out. */
+export async function openTopbarMenu(page: Page): Promise<void> {
+  await menuButton(page).click();
+  await expect(menuButton(page)).toHaveAttribute("aria-expanded", "true");
+  await expect(banner(page).getByRole("navigation")).toBeVisible();
+  await expect(page.getByRole("button", { name: en["nav.logout"] })).toBeVisible();
+}
+
+/** Desktop: the account menu under the username button. */
+export async function openUserMenu(page: Page): Promise<void> {
+  await banner(page).getByRole("button", { name: /demo/ }).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: en["nav.logout"] })).toBeVisible();
+}
+
+/**
+ * Fail a log in: the inline error under the password field. The username is one nobody owns, so
+ * the per-username login throttle for the seeded users is never touched.
+ */
+export async function loginError(page: Page): Promise<void> {
+  await page.getByLabel(en["auth.username"]).fill("nobody-e2e");
+  await page.getByLabel(en["auth.password"]).fill("not-the-password");
+  await page.getByRole("button", { name: en["auth.login.submit"] }).click();
+  await expect(page.getByRole("alert").filter({ hasText: en["error.invalid_credentials"] })).toBeVisible();
+  await expect(page.getByLabel(en["auth.password"])).toHaveAttribute("aria-invalid", "true");
+}
+
+/** Fail a registration on the invite code, with the password rule in its satisfied state. */
+export async function registerError(page: Page): Promise<void> {
+  await page.getByLabel(en["auth.username"]).fill("nobody-e2e");
+  await page.getByLabel(en["auth.password"]).fill("eight-chars-long");
+  await expect(page.getByText(en["auth.password_hint"])).toHaveAttribute("data-satisfied", "true");
+  await page.getByRole("button", { name: en["auth.register.submit"] }).click();
+  await expect(page.getByRole("alert").filter({ hasText: en["error.invalid_invite"] })).toBeVisible();
+  await expect(page.getByLabel(en["auth.invite_code"])).toHaveAttribute("aria-invalid", "true");
 }
 
 // ---------------------------------------------------------------------------
@@ -224,6 +311,35 @@ export async function resetChips(page: Page): Promise<void> {
   await expect(page.getByTestId("chips-run")).toBeHidden();
 }
 
+/**
+ * Empty the Origins chip: it turns error-coloured, the reason moves under the chip row and Run
+ * is disabled. The blocking-error state of a chip, which `modified` (editable, runnable) is not.
+ */
+export async function emptyOrigins(page: Page): Promise<void> {
+  const editor = await openChipEditor(page, "origins");
+  const remove = editor.getByRole("button", { name: new RegExp(`^${en["grid.chips.remove"]}`) });
+  for (let i = await remove.count(); i > 0; i -= 1) await remove.first().click();
+  await closePopover(page);
+  await expect(chip(page, "origins")).toHaveAttribute("data-chip-state", "error");
+  await expect(page.getByTestId("chips-error")).toHaveText(en["grid.chips.at_least_one_airport"]);
+  await expect(page.getByTestId("chips-run")).toBeDisabled();
+}
+
+/** The Examples popover on an empty query bar (it fills the bar; it must not cover it). */
+export async function openExamples(page: Page): Promise<void> {
+  await page.getByTestId("examples-trigger").click();
+  await expect(popover(page)).toBeVisible();
+  await expect(popover(page).getByRole("button")).toHaveCount(3);
+}
+
+/** From a parse failure, take the escape hatch: seven chips, three of them blocking. */
+export async function openManualMode(page: Page): Promise<void> {
+  await page.getByTestId("build-with-chips").click();
+  await expect(popover(page)).toBeVisible();
+  await expect(page.getByTestId("parse-failure")).toBeHidden();
+  await expect(page.getByTestId("chips-error")).toHaveCount(3);
+}
+
 /** Flip the rows toggle to Routes (or back to Dates). */
 export async function setRows(page: Page, rows: "dates" | "routes"): Promise<void> {
   const controls = await openControls(page);
@@ -263,9 +379,11 @@ export async function openCellDrawer(page: Page): Promise<Locator> {
 }
 
 /** Close the cell drawer through its header button: after Show flights the re-rendered row may
- *  have taken focus out of the panel, and the Esc handler lives on the panel. */
-export async function closeCellDrawer(page: Page, panel: Locator): Promise<void> {
-  await panel.getByRole("button", { name: en["common.close"], exact: true }).click();
+ *  have taken focus out of the panel, and the Esc handler lives on the panel. The button is
+ *  named in the UI language, so the locale has to be told. */
+export async function closeCellDrawer(page: Page, panel: Locator, locale: "en" | "zh" = "en"): Promise<void> {
+  const dict = locale === "zh" ? zh : en;
+  await panel.getByRole("button", { name: dict["common.close"], exact: true }).click();
   await expect(panel).toBeHidden();
 }
 
@@ -274,6 +392,49 @@ export async function showFlights(page: Page, panel: Locator): Promise<void> {
   const program = panel.getByTestId("program-row").first();
   await program.getByTestId("show-flights").click();
   await expect(program.getByTestId("flights-list")).toBeVisible({ timeout: 30_000 });
+}
+
+/**
+ * Hold the Get Trips answer open so the in-flight state can be photographed. Intercepting the
+ * browser's own request needs no seed user: every "slow" user is claimed by another spec, and a
+ * shared one would be warm by the time this suite ran.
+ */
+export async function showFlightsLoading(page: Page, panel: Locator, ms = 5_000): Promise<() => Promise<void>> {
+  await page.route("**/api/trips/**", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    await route.continue();
+  });
+  const program = panel.getByTestId("program-row").first();
+  await program.getByTestId("show-flights").click();
+  await expect(program.getByTestId("flights-skeleton")).toBeVisible();
+  return () => page.unroute("**/api/trips/**");
+}
+
+/** Fail Get Trips: the reason on the program row, with Retry. Returns the un-route function. */
+export async function showFlightsError(page: Page, panel: Locator): Promise<() => Promise<void>> {
+  await page.route("**/api/trips/**", (route) =>
+    route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ error: "seatsaero", kind: "upstream" }) }),
+  );
+  const program = panel.getByTestId("program-row").first();
+  await program.getByTestId("show-flights").click();
+  await expect(program.getByTestId("flights-error")).toContainText(en["grid.drawer.flights_error"]);
+  return () => page.unroute("**/api/trips/**");
+}
+
+/** Copy the drawer's details: the confirmation under the action block. */
+export async function copyDetails(page: Page, panel: Locator): Promise<void> {
+  await panel.getByTestId("drawer-copy").click();
+  await expect(panel.getByTestId("drawer-toast")).toHaveText(en["grid.sheet.copied"]);
+}
+
+/** Open the Ask drawer from a cell, so the selected cell travels with it as a second pill. */
+export async function openAskFromCell(page: Page): Promise<Locator> {
+  const panel = await openCellDrawer(page);
+  await panel.getByTestId("drawer-ask").click();
+  const ask = askDrawer(page);
+  await expect(ask).toBeVisible();
+  await expect(ask.getByTestId("ask-pill-cell")).toBeVisible();
+  return ask;
 }
 
 /** Open the Ask drawer from the toolbar (inside the Filters sheet below 768 px). */
@@ -288,18 +449,55 @@ export async function openAsk(page: Page, locale: "en" | "zh" = "en"): Promise<L
 }
 
 /** Send the first suggested question on the scripted stream and stop at "mid-answer". */
-export async function askStreaming(page: Page, panel: Locator): Promise<void> {
-  await panel.getByTestId("ask-prompt").fill(en["ask.suggestion.cheapest_program"]);
+export async function askStreaming(page: Page, panel: Locator, locale: "en" | "zh" = "en"): Promise<void> {
+  const dict = locale === "zh" ? zh : en;
+  await panel.getByTestId("ask-prompt").fill(dict["ask.suggestion.cheapest_program"]);
   await panel.getByTestId("ask-send").click();
   await expect(panel.getByTestId("ask-stop")).toBeVisible();
-  await expect(panel.getByTestId("ask-answer")).toContainText("cheapest", { timeout: 20_000 });
+  // The zh script has its own body, so wait on the answer having text rather than on a word.
+  if (locale === "zh") await expect(panel.getByTestId("ask-answer")).not.toBeEmpty({ timeout: 20_000 });
+  else await expect(panel.getByTestId("ask-answer")).toContainText("cheapest", { timeout: 20_000 });
 }
 
-/** Stop a running answer, so no stream outlives the test that started it. */
-export async function stopAsk(page: Page, panel: Locator): Promise<void> {
-  const stop = panel.getByTestId("ask-stop");
-  if (await stop.isVisible().catch(() => false)) await stop.click();
+/** Wait out the running stream: Stop is gone and the tool list is collapsed under the answer. */
+export async function finishAsk(page: Page, panel: Locator): Promise<void> {
   await expect(panel.getByTestId("ask-stop")).toHaveCount(0, { timeout: 30_000 });
+  await expect(panel.getByTestId("ask-tools-toggle")).toHaveAttribute("aria-expanded", "false");
+}
+
+/** One complete question and answer, for callers that do not need the mid-stream frame. */
+export async function askAnswered(page: Page, panel: Locator, locale: "en" | "zh" = "en"): Promise<void> {
+  await askStreaming(page, panel, locale);
+  await finishAsk(page, panel);
+}
+
+/** Open the tool-activity disclosure on a finished answer. */
+export async function expandAskTools(page: Page, panel: Locator): Promise<void> {
+  const toggle = panel.getByTestId("ask-tools-toggle");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(panel.getByTestId("ask-tool-activity").locator("li")).toHaveCount(2);
+}
+
+/** Abort mid-answer through Stop: the answer stops where it is and the reason is above the prompt. */
+export async function askStopped(page: Page, panel: Locator): Promise<void> {
+  await askStreaming(page, panel);
+  await panel.getByTestId("ask-stop").click();
+  await expect(panel.getByTestId("ask-problem")).toHaveText(en["ask.aborted"]);
+  await expect(panel.getByTestId("ask-send")).toBeVisible();
+}
+
+/**
+ * The keyless answer. `nokey` cannot reach this drawer at all — the toolbar only renders once a
+ * query has run on a key — so the state is reached through the scripted failure, which produces
+ * exactly the drawer copy and the Settings link a keyless answer would (`?askerr=no_key`).
+ */
+export async function askNoKey(page: Page, panel: Locator): Promise<void> {
+  await panel.getByTestId("ask-prompt").fill(en["ask.suggestion.cheapest_program"]);
+  await panel.getByTestId("ask-send").click();
+  const problem = panel.getByTestId("ask-problem");
+  await expect(problem).toContainText(en["ask.no_key"]);
+  await expect(problem.getByRole("link", { name: en["ask.no_key_link"] })).toHaveAttribute("href", "/settings");
 }
 
 /**
@@ -371,6 +569,28 @@ export async function runNowStubbed(page: Page): Promise<void> {
   await firstQueryRow(page).getByRole("button", { name: en["saved.run_now"], exact: true }).click();
   await expect(page.getByTestId("row-notice")).toContainText("+2 new");
   await page.unroute("**/api/queries/*/run");
+}
+
+/** "Run now" answered 409: the failure lands in the same row the result would have. */
+export async function runNowFailed(page: Page): Promise<void> {
+  await page.route("**/api/queries/*/run", (route) =>
+    route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: "run_in_progress" }) }),
+  );
+  await firstQueryRow(page).getByRole("button", { name: en["saved.run_now"], exact: true }).click();
+  await expect(page.getByTestId("row-notice")).toContainText(en["error.run_in_progress"]);
+  await page.unroute("**/api/queries/*/run");
+}
+
+/**
+ * Save the edit drawer untouched, for the confirmation toast. This one write is real rather than
+ * intercepted, and it is still a no-op: `EditQueryDrawer.onSave` sends the chips only when they
+ * actually moved, so an untouched save PATCHes the form's own values back and the stored
+ * `QueryObject` keeps its JSON byte for byte — the row the next spec reads is the seeded one.
+ */
+export async function saveEditQueryDrawer(page: Page, panel: Locator): Promise<void> {
+  await panel.getByTestId("edit-query-save").click();
+  await expect(panel).toHaveCount(0);
+  await expect(page.getByTestId("queries-toast")).toHaveText(en["saved.updated"]);
 }
 
 // ---------------------------------------------------------------------------

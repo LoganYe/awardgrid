@@ -1,8 +1,7 @@
 /**
  * Phase 6.5 — the Queries page (spec §4, §6, §8; docs/UI_PLAN.md §6.7). One test per state,
- * each capturing docs/screenshots/v0.2/queries/<state>-<viewport>-<theme>.png and asserting the
- * semantics the spec pins: the delete confirmation is inline in the row and NOT a dialog, the
- * row expand is a real aria-expanded/aria-controls disclosure, the Enabled switch actually
+ * asserting the semantics the spec pins: the delete confirmation is inline in the row and NOT
+ * a dialog, the row expand is a real aria-expanded/aria-controls disclosure, the switch actually
  * PATCHes, the edit drawer carries the grid's own chips, and "Run now" leaves its result — or
  * its error — in the row rather than in a modal.
  *
@@ -11,27 +10,16 @@
  * that baseline is "+3 new, −1 dropped". The two "Run now" outcomes are driven by intercepting
  * POST /api/queries/*&#47;run so the states are deterministic and cost the mock nothing; every
  * other interaction hits the real routes.
+ *
+ * This spec asserts; it does not photograph. Every capture of these states is declared in
+ * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
 import { applyTheme, expect, projectSuffix, test } from "./fixtures";
 import { E2E_SAVED_QUERY_NAME } from "./users";
 
-const DIR = path.resolve(import.meta.dirname, "..", "docs", "screenshots", "v0.2", "queries");
-
 const isMobile = () => projectSuffix(test.info().project.name).viewport === "mobile";
-
-/** Viewport PNG at docs/screenshots/v0.2/queries/<state>-<viewport>-<theme>.png. */
-async function shot(page: Page, state: string): Promise<string> {
-  const { viewport, theme } = projectSuffix(test.info().project.name);
-  mkdirSync(DIR, { recursive: true });
-  const file = path.join(DIR, `${state}-${viewport}-${theme}.png`);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  await page.screenshot({ path: file, animations: "disabled", caret: "hide" });
-  return file;
-}
 
 const firstRow = (page: Page): Locator => page.locator('[data-testid^="query-row-"]').first();
 const detailsButton = (page: Page) => firstRow(page).getByRole("button", { name: en["saved.details"], exact: true });
@@ -85,7 +73,6 @@ test.describe("queries page", () => {
         await expect(table.getByRole("columnheader", { name: head, exact: true })).toBeVisible();
       }
     }
-    await shot(page, "list");
   });
 
   test("row expand is a disclosure showing the last diff as real grid cells and the last runs", async ({ page, asUser }) => {
@@ -127,7 +114,6 @@ test.describe("queries page", () => {
     await expect(runs.nth(0)).toContainText("24");
     await expect(runs.nth(1)).toContainText("27");
     await expect(runs.nth(2)).toContainText("0");
-    await shot(page, "expanded");
 
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -149,7 +135,6 @@ test.describe("queries page", () => {
     await expect(page.locator("[aria-modal='true']")).toHaveCount(0);
     // The row it belongs to is still on screen and still readable behind the decision.
     await expect(firstRow(page)).toContainText(E2E_SAVED_QUERY_NAME);
-    await shot(page, "delete-confirm-inline");
 
     // Focus went to the destructive button (the thing just asked for).
     await expect(confirm.getByRole("button", { name: en["saved.delete"], exact: true })).toBeFocused();
@@ -205,7 +190,6 @@ test.describe("queries page", () => {
     for (const chip of [en["grid.chips.origins"], en["grid.chips.destinations"], en["grid.chips.dates"], en["grid.chips.cabins"], en["grid.chips.programs"], en["grid.chips.direct_only"], en["grid.chips.sort"]]) {
       await expect(chips.getByRole("button", { name: new RegExp(`^${chip}`) }).first()).toBeVisible();
     }
-    await shot(page, "edit-drawer");
 
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
@@ -227,7 +211,6 @@ test.describe("queries page", () => {
     // One toast, one line, and it uses the verb the button used (docs/UI_PLAN.md §7, §8).
     const toast = page.getByTestId("queries-toast");
     await expect(toast).toHaveText(en["saved.updated"]);
-    await shot(page, "edit-saved");
 
     // Put the threshold back, so the seeded query is what the next test finds.
     await editButton(page).click();
@@ -304,7 +287,6 @@ test.describe("queries page", () => {
     // due: the row says when it runs next instead of standing on "due now" until a reload.
     await expect(firstRow(page)).not.toContainText(en["saved.due_now"]);
     await expect(firstRow(page)).toContainText(/3 hours|hours/);
-    await shot(page, "run-now-result");
 
     // 409: another run is already in progress. Inline in the row, with what to do about it.
     await page.unroute("**/api/queries/*/run");
@@ -313,7 +295,6 @@ test.describe("queries page", () => {
     );
     await runButton(page).click();
     await expect(notice).toContainText(en["error.run_in_progress"]);
-    await shot(page, "run-now-error");
     await page.unroute("**/api/queries/*/run");
   });
 
@@ -335,6 +316,5 @@ test.describe("queries page", () => {
     expect(style.decoration).toContain("underline");
     expect(style.color).not.toBe("");
     expect(style.accent).not.toBe("");
-    await shot(page, "empty");
   });
 });

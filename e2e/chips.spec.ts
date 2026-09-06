@@ -1,7 +1,6 @@
 /**
  * Phase 6.3 — the query bar and the seven chip editors (spec §3.1, §3.2, §3.7; docs/UI_PLAN.md
- * §6.2 and §6.2a). One test per state, each capturing
- * docs/screenshots/v0.2/chips/<state>-<viewport>-<theme>[-zh].png and asserting the semantics:
+ * §6.2 and §6.2a). One test per state, asserting the semantics:
  * the chip order, the value summaries, the popover keyboard contract (Enter opens, Esc closes
  * and returns focus), the modified state (accent outline, Run affordance, disabled toolbar,
  * dimmed grid), "Reset to parsed", the empty-origins error, the parse failure and its
@@ -9,30 +8,18 @@
  *
  * The URL rule from spec §3.2 is asserted here too: ?q= follows the query the grid was produced
  * from, so editing a chip must not change the link until the user runs it.
+ *
+ * This spec asserts; it does not photograph. Every capture of these states is declared in
+ * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
 import { zh } from "../src/lib/i18n/dictionaries/zh";
-import { applyTheme, CANONICAL_QUERY_EN, CANONICAL_QUERY_ZH, expect, loginAs, projectIndex, projectSuffix, submitQuery, test, type E2eUsername } from "./fixtures";
+import { applyTheme, CANONICAL_QUERY_EN, CANONICAL_QUERY_ZH, expect, loginAs, projectIndex, submitQuery, test, type E2eUsername } from "./fixtures";
 import { E2E_CHIP_SLOW_USERS } from "./users";
-
-const CHIPS_DIR = path.resolve(import.meta.dirname, "..", "docs", "screenshots", "v0.2", "chips");
 
 /** The seven chips, in the order spec §3.2 pins. */
 const CHIP_ORDER = ["origins", "destinations", "dates", "cabins", "programs", "direct_only", "sort"];
-
-/** Viewport PNG at docs/screenshots/v0.2/chips/<state>-<viewport>-<theme>[-zh].png. */
-async function chipsShot(page: Page, state: string, opts: { zh?: boolean } = {}): Promise<string> {
-  const { viewport, theme } = projectSuffix(test.info().project.name);
-  mkdirSync(CHIPS_DIR, { recursive: true });
-  const file = path.join(CHIPS_DIR, `${state}-${viewport}-${theme}${opts.zh ? "-zh" : ""}.png`);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => undefined);
-  await page.screenshot({ path: file, animations: "disabled", caret: "hide" });
-  return file;
-}
 
 const chips = (page: Page) => page.locator("[data-chip]");
 const chip = (page: Page, id: string) => page.locator(`[data-chip="${id}"]`);
@@ -98,7 +85,6 @@ test.describe("query bar and chips", () => {
     // Nothing is modified yet: no Run affordance in the row.
     await expect(page.getByTestId("chips-run")).toBeHidden();
 
-    await chipsShot(page, "parsed");
   });
 
   test("parsed in Chinese: the chips and the parsed-from line read in the UI language", async ({ page }) => {
@@ -106,7 +92,6 @@ test.describe("query bar and chips", () => {
     await expect(chip(page, "origins")).toContainText("NRT/HND");
     await expect(chip(page, "direct_only")).toContainText(zh["grid.chips.off"]);
     await expect(page.getByTestId("parsed-from")).toContainText(CANONICAL_QUERY_ZH);
-    await chipsShot(page, "parsed", { zh: true });
   });
 
   test("origins editor: opens from the keyboard, searches, and returns focus on Escape", async ({ page }) => {
@@ -129,7 +114,6 @@ test.describe("query bar and chips", () => {
     await editor.getByRole("combobox", { name: en["grid.chips.search_places"] }).fill("osaka");
     await expect(editor.getByRole("option").first()).toContainText("OSA");
 
-    await chipsShot(page, "origins-editor-open");
 
     await page.keyboard.press("Escape"); // clears the search
     await page.keyboard.press("Escape"); // closes the popover
@@ -152,7 +136,6 @@ test.describe("query bar and chips", () => {
     await expect(chip(page, "dates")).toContainText(`(${en["grid.chips.days"].replace("{n}", "30")})`);
     await expect(editor.getByTestId("dates-summary")).toContainText(en["grid.chips.days"].replace("{n}", "30"));
 
-    await chipsShot(page, "dates-editor-open");
 
     // Clicking the preset the query already describes changes nothing: the chip stays default.
     await editor.getByTestId("preset-30").click();
@@ -203,7 +186,6 @@ test.describe("query bar and chips", () => {
     const alaska = editor.getByRole("button", { name: /Alaska/ });
     await expect(alaska).toHaveCount(1);
 
-    await chipsShot(page, "programs-editor-open");
 
     // "All" is on, so every box in the list is ticked and the click UNTICKS this one: 25 of 26
     // left. The editor used to draw 26 empty boxes under a chip reading "all 26", and a click
@@ -239,7 +221,6 @@ test.describe("query bar and chips", () => {
     // The link still points at the grid on screen (spec §3.2: the URL updates on run).
     expect(page.url()).toBe(before);
 
-    await chipsShot(page, "modified");
 
     await page.getByTestId("chips-run").click();
     await settled(page);
@@ -263,7 +244,6 @@ test.describe("query bar and chips", () => {
     await expect(page.getByTestId("chips-run")).toBeHidden();
     await expect(page.getByRole("toolbar")).not.toHaveAttribute("aria-disabled", "true");
 
-    await chipsShot(page, "reset");
   });
 
   test("error: an empty Origins chip turns error-colored and says what to do", async ({ page }) => {
@@ -280,7 +260,6 @@ test.describe("query bar and chips", () => {
     await expect(page.getByTestId("chips-error")).toHaveText(en["grid.chips.at_least_one_airport"]);
     await expect(page.getByTestId("chips-run")).toBeDisabled();
 
-    await chipsShot(page, "error-empty-origins");
   });
 
   test("parse failure: names what it could not read and keeps the text", async ({ page }) => {
@@ -297,7 +276,6 @@ test.describe("query bar and chips", () => {
     await expect(queryBar(page)).toHaveValue("国庆去东京");
     await expect(chips(page)).toHaveCount(0);
 
-    await chipsShot(page, "parse-failure");
   });
 
   test("manual mode: 'Build it with chips instead' opens all seven chips with the first editor", async ({ page }) => {
@@ -323,7 +301,6 @@ test.describe("query bar and chips", () => {
     }
     await expect(page.getByTestId("chips-error")).toHaveCount(3);
 
-    await chipsShot(page, "manual-mode");
   });
 
   test("manual mode after a successful run: 'Build it with chips instead' still opens Origins", async ({ page }) => {
@@ -355,7 +332,6 @@ test.describe("query bar and chips", () => {
     });
     expect(covered).toBe("field");
 
-    await chipsShot(page, "examples-popover");
 
     await list.getByRole("button", { name: en["grid.example.three"] }).click();
     await expect(queryBar(page)).toHaveValue(en["grid.example.three"]);
@@ -378,6 +354,5 @@ test.describe("query bar and chips", () => {
     expect(Number(await table.getAttribute("aria-colcount"))).toBeGreaterThanOrEqual(7);
     await expect(chips(page).first()).toBeVisible();
 
-    await chipsShot(page, "loading-skeleton");
   });
 });

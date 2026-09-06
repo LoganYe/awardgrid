@@ -191,7 +191,7 @@ Every non-trivial choice, one line each, newest at the bottom. Format:
 - **Ask history ends at log-out** (`clearAskSession()`): `sessionStorage` survives the same-tab navigation to `/login`, so on a shared machine the next user opened Ask and read the previous one's questions and answers. Cleared on log-out and again on a successful log-in, together with the `?askdemo=1` switch.
 - **40 px touch targets in the mobile drawers**: every `xs` control inside a `sheet` or `bottom-sheet` presentation grows to 40 px (spec §3.4), keyed on the presentation rather than `pointer: coarse` — the presentation is what the rule is about. The two drawer axe audits now also run on the mobile projects, which previously audited neither presentation.
 - **Skeleton widths use `nth-of-type`**: the sr-only "Loading flights…" span is the container's first child, so `nth-child` shifted every bar by one and left the third with no width rule at all (a full-width slab).
-- **zh-CN drawer captures**: both `shot()` helpers gained a language dimension; `cell-drawer/open-*-zh.png` and `ask-drawer/{open-empty,answered}-*-zh.png` join the matrix, asserting no horizontal overflow in either panel.
+- **zh-CN drawer captures**: both `shot()` helpers gained a language dimension; `cell-drawer/open-*-zh.png` and `ask-drawer/{open-empty,answered}-*-zh.png` join the matrix, asserting no horizontal overflow in either panel. (#34 renamed these to `grid/cell-drawer-*-zh.png` and `grid/ask-{open,answered}-*-zh.png` and declared them properly; the helpers are gone.)
 - **`summarizeQuery` / `summarizeCell` / `ASK_EXAMPLE_PROMPT` deleted**: nothing outside their own test referenced them (the pills render `labels.ts`, the request sends the structured objects), so the assertions were pinning English fragments no user or model ever saw.
 
 ### 6.4 Drawers
@@ -240,10 +240,10 @@ Decisions and fixes made while integrating:
 
 - **The `visual` CI job is non-blocking until five consecutive green runs.** It runs the `toHaveScreenshot` assertions on every push (`VISUAL=1 pnpm e2e -g visual`) and uploads the expected/actual/diff images as the `visual-snapshots` artifact — or, when no baselines are committed yet, generates the Linux set and uploads it as `visual-baselines` for a human to commit once — but `continue-on-error: true` keeps it out of the merge gate; it is promoted to required — and the promotion recorded here with the five run ids — only after five consecutive green runs on `main`. _Why:_ spec §11 pins the policy. A pixel suite that has never been observed across five runs cannot tell a real regression from font-rendering noise, and a gate that cries wolf on its first week gets ignored or disabled, which is worse than no gate. Non-blocking is not "ignorable": a red `visual` run is read before merging, and the diff artifact is the evidence.
 - **Baselines are Linux-only, and the path has no platform suffix.** `snapshotPathTemplate` is `e2e/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}` (`playwright.config.ts`), so there is exactly one baseline per project and it is the Ubuntu/Chromium rendering committed from CI. macOS runs compare against those same files with the config's tolerance and are for iteration only; `pnpm e2e:update` on a Mac must never be committed. Every baseline update carries its reason in the commit message ("baseline: …"), never "update snapshots". _Why:_ font rasterisation, hinting and the CJK fallback all differ between macOS and Ubuntu, so a Mac baseline fails on CI for reasons that are not the UI; a platform suffix would instead invite two baselines per capture, one of which nothing ever checks. CI installs `fonts-noto-cjk` so the zh captures render the same faces on every run.
-- **Screenshot naming: `docs/screenshots/v0.2/<page>/<state>-<viewport>-<theme>[-zh].png`.** `<page>` is one directory per surface (`shell`, `grid`, `chips`, `cell-drawer`, `ask-drawer`, `queries`, `settings`, plus the frozen `before/`); `<state>` is the page state from spec §3.7/§4/§5; `<viewport>` is `desktop` (1440 × 900) or `mobile` (390 × 844); `<theme>` is `light` or `dark`; `-zh` marks the Chinese capture. Each spec owns a small `shot()` helper that composes the name from the Playwright project name, rather than a central screenshot script. _Why:_ the file name is the state matrix, so a missing combination is visible in a directory listing, and a sort groups a state's four (or six) images together. Deriving viewport and theme from the project name makes it impossible for a capture to be labelled `-light` while the page is dark — exactly the defect found in the 6.5 settings captures.
+- **Screenshot naming: `docs/screenshots/v0.2/<page>/<state>-<viewport>-<theme>[-zh].png`.** `<page>` is one directory per surface; `<state>` is the page state from spec §3.7/§4/§5; `<viewport>` is `desktop` (1440 × 900) or `mobile` (390 × 844); `<theme>` is `light` or `dark`; `-zh` marks the Chinese capture. _Why:_ the file name is the state matrix, so a missing combination is visible in a directory listing, and a sort groups a state's four (or six) images together. Deriving viewport and theme from the project name makes it impossible for a capture to be labelled `-light` while the page is dark — exactly the defect found in the 6.5 settings captures. **Amended by #34:** the four page folders are `shell`, `grid`, `queries`, `settings` plus the frozen `before/` — the `chips/`, `cell-drawer/` and `ask-drawer/` detail folders are gone — and the per-spec `shot()` helpers are gone with them; `e2e/states.ts`'s `capture()` composes every name.
 - **The captures under `docs/screenshots/v0.2/**` are for human review, not assertions.** They are plain `page.screenshot()` images regenerated by every `pnpm e2e` run; the pixel assertions are the separate `toHaveScreenshot` baselines under `e2e/__screenshots__/`. _Why:_ committing the review images as baselines would make every intentional UI change a 300-file diff and would fail the suite on any host with different fonts.
 - **`LEGAL.md` stays English-only, and the page says so in markup.** The legal text is not translated; `/legal` keeps its localized `h1` (above) but wraps the rendered document in `lang="en"`, so a screen reader in the Chinese UI switches voice for it (WCAG 3.1.2) instead of reading English with a Chinese synthesiser. _Why:_ translating a legal notice is a legal act, not a string task, and it is outside this phase's scope; marking the language honestly is the accessible half that *is* in scope. A translated `LEGAL.zh.md` would be a content decision for the owner.
-- **The `--strict` half of `scripts/screenshot-index.ts` is not wired into CI yet.** `--check` (missing or misnamed captures) is the promise the docs make; `--strict` additionally fails on a capture the matrix does not declare, and it currently exits 1 because the per-feature screenshot code in `grid.spec.ts`, `chips.spec.ts`, `cell-drawer.spec.ts`, `ask-drawer.spec.ts`, `queries.spec.ts`, `settings.spec.ts` and `shell.spec.ts` predates the matrix and was left alone: those files belong to other sub-phases and were being edited in the same working tree while 6.6 was captured. _Why:_ a guard that is red on the day it lands teaches people to skip it. The cleanup and the CI wiring are one `BACKLOG.md` item under "UI (deferred by Phase 6)", to be done in a pass that owns all seven specs at once.
+- ~~**The `--strict` half of `scripts/screenshot-index.ts` is not wired into CI yet.**~~ **Superseded by #34 below**, which folded the per-feature captures into the matrix and wired `--strict --check` into the `checks` job. The original entry, for the record: `--check` (missing or misnamed captures) is the promise the docs make; `--strict` additionally fails on a capture the matrix does not declare, and it currently exits 1 because the per-feature screenshot code in `grid.spec.ts`, `chips.spec.ts`, `cell-drawer.spec.ts`, `ask-drawer.spec.ts`, `queries.spec.ts`, `settings.spec.ts` and `shell.spec.ts` predates the matrix and was left alone: those files belong to other sub-phases and were being edited in the same working tree while 6.6 was captured. _Why:_ a guard that is red on the day it lands teaches people to skip it. The cleanup and the CI wiring are one `BACKLOG.md` item under "UI (deferred by Phase 6)", to be done in a pass that owns all seven specs at once.
 
 ### v0.2 screenshot review (#30) and Chinese copy review (#31)
 
@@ -309,6 +309,104 @@ Long-pressing a cell raises no iOS selection callout: `user-select: none` alread
 - **Not changed:** the cell drawer leaves a large empty band between a single program row and the
   action block on a phone. `docs/UI_PLAN.md` §6.5 specifies a full-height sheet below 768 px, so
   this is the plan working, not a defect; sizing the sheet to its content would be a plan change.
+
+### #34 One owner per capture, and the guard in CI
+
+The §9 matrix and the seven feature specs had been photographing the same UI in parallel since
+6.6. 394 PNGs sat under `docs/screenshots/v0.2/**` where the matrix declared 152, and
+`screenshot-index.ts --strict --check` exited 1, so it was not wired into CI. Now: 238 declared
+captures plus the 52 frozen `before/` files, every one of them written by
+`e2e/screenshots.spec.ts`, and `--strict --check` runs in the `checks` job.
+
+- **The feature specs assert; they no longer photograph.** Every `shot()`/`gridShot()`/`chipsShot()`
+  helper is gone from `grid`, `chips`, `cell-drawer`, `ask-drawer`, `queries`, `settings` and
+  `shell`; not one assertion moved. `e2e/matrix.ts` is the only place a capture is declared and
+  `e2e/screenshots.spec.ts` the only place one is taken, so `--strict` can be a gate rather than a
+  report. _Why:_ 21 of the 39 declared stems were being written by two specs to the same file name.
+  Playwright runs them in the same worker but in an arbitrary order, so which writer's bytes
+  survived was a race — and the two writers disagreed about `fullPage`, which is how
+  `shell/legal-*.png` came to be viewport-sized (cut off mid-sentence on mobile) although the
+  matrix declares it full-page. Deduplicating without picking a single owner would have left the
+  race in place.
+- **`settleDrawers` was answering "settled" for the exact window the defect lives in.** #30 fixed
+  the four driverless `queries/edit-drawer-*.png` by waiting for every `[data-state="open"]` drawer
+  to reach `transform: none` — but `DrawerShell` renders the panel `data-state="closed"` for two
+  frames before it flips to `open`, so during entry there is no open drawer to check and `every()`
+  over an empty list is `true`. The capture went back to being a Queries page with no drawer on it
+  as soon as this pass made `screenshots.spec.ts` the only writer and the timing shifted. An
+  entering panel is told apart from a leaving one by `inert` (`inert={!open}`), so the predicate
+  now rejects both shapes of unsettled: closed-and-not-inert (mid-entry) and open-with-a-transform
+  (mid-slide).
+- **Detail folders are not a category, they are undeclared states.** `DETAIL_PAGES` existed so
+  `chips/`, `cell-drawer/` and `ask-drawer/` could hold captures the completeness check skipped.
+  Of the 27 stems in them, 13 photographed a state the matrix already declared — the drawer pixels
+  in `cell-drawer/open-*` and `grid/cell-drawer-*` are byte-identical; only the grid behind them
+  differed — and 14 were real states nobody owned. The 14 are declared on the page they belong to
+  (`grid/ask-answered`, `grid/cell-drawer-error`, `grid/chips-manual`, …), the 13 are deleted, and
+  `DETAIL_PAGES` is gone from `matrix.ts` and `screenshot-index.ts`. _Why:_ an exemption from the
+  check is where undeclared states accumulate; there is no longer a folder that is allowed to hold
+  one.
+- **Three things the review caught after the consolidation, all fixed here.** `before/` was the
+  one folder `--strict` did not police: `MATRIX_PAGES` drove the extras check, so a new state
+  parked in the frozen record passed. `e2e/matrix.ts` now carries `BEFORE_FILES` (the 52 names,
+  frozen), and `--strict` fails on anything else there — proved by copying a PNG in and watching
+  it exit 1. `shell/topbar` was captured on `/queries`, so deleting `shell/topbar-grid` really did
+  lose the state it showed; the capture moved to `/grid`, which is what that stem documented. And
+  the four-second "Standing query saved" toast from `queries/edit-saved` was still on screen for
+  `queries/run-now` and `queries/run-now-error` — eight files showing a confirmation the state
+  does not produce — so the sequence waits it out, the same fix the cell drawer's "Details copied"
+  already had.
+- **The explicit theme choice is no longer photographed, and that is accepted.** The settings
+  captures used to show Theme = Light because `settings.spec.ts` clicked the radio before shooting;
+  a matrix helper must leave no mutation behind, so they now show Theme = System. The radio's
+  behaviour is still asserted in `settings.spec.ts`; what is lost is a picture of a chosen radio,
+  which the radio-indicator work in 6.5 already has a decision entry for. Declaring a
+  `settings/theme-chosen` state would mean a helper that writes to the account, which is the one
+  thing the capture helpers are not allowed to do.
+- **The matrix learned a `clip`, because the top bar is a strip and not a page.** `shell/topbar`,
+  `shell/topbar-menu` and `shell/topbar-user-menu` are the §2 furniture no page-level capture has
+  as its subject. A viewport shot of the top bar is a photograph of whatever page is under it, so
+  `MatrixShot.clip` takes the top N px at full width (48 for the bar, 160 for the account menu).
+  `shell/topbar-grid` and `shell/theme-system` are deleted: on mobile `topbar-grid` is
+  byte-identical to `topbar`, on desktop it differs only in which nav link is underlined, and
+  `theme-system` differs from `topbar` by one hover colour on the button the test just clicked.
+- **Two deliberate scope reversals, both because the record would otherwise be lost.** The zh grid
+  was declared desktop-only ("the desktop pair is the record"); the mobile zh pair is now declared
+  too, because it is the only capture in the tree that shows CJK wrapping in the query box and the
+  Chinese chip row at 390 px — the desktop zh and the English mobile capture each show half of it.
+  And the Chinese settings page, previously written by `settings.spec.ts` as
+  `language-theme-zh-<viewport>-<theme>.png` — `-zh` before the viewport, which breaks the §9 order
+  even though `FILE_RE` accepts it — is now `language-theme-<viewport>-<theme>-zh.png`, reached
+  through the `ag_locale` cookie rather than by clicking the radio, so the capture no longer writes
+  the account's language.
+- **One capture makes a real write, and says so.** `saveEditQueryDrawer` (for `queries/edit-saved`,
+  the "says so once" toast) saves the drawer untouched. `EditQueryDrawer.onSave` sends the chips
+  only when they actually moved, so an untouched save PATCHes the form's own values back and the
+  stored `QueryObject` keeps its JSON byte for byte. _Why not intercept it, like Run now:_ the
+  drawer feeds `res.data.query` straight back into the row, so a stub would have to fabricate a
+  `SavedQuerySummary` — a fake shape that could drift from the real one and photograph a row that
+  the server would never produce.
+- **Deleted, with the file that documents each state instead.** `chips/`: `parsed`, `reset` →
+  `grid/results`; `origins-editor-open`, `dates-editor-open`, `programs-editor-open` →
+  `grid/origins`, `grid/dates`, `grid/programs`; `modified` → `grid/modified`; `parse-failure` →
+  `grid/parse-failure` (127 px apart, all of it the quota counter); `loading-skeleton` →
+  `grid/loading`. `cell-drawer/`: `flights-loaded` → `grid/cell-drawer-flights`; `mobile-sheet` →
+  `grid/cell-drawer-mobile-*` (0 px apart); `ask-from-cell` → `grid/ask-with-cell`. `ask-drawer/`:
+  `streaming` → `grid/ask-streaming`; `cap` → `grid/ask-cap`; `mobile-bottom-sheet`, `open-empty` →
+  `grid/ask-open`. In the matrix pages: `grid/partial-not-fetched` → `grid/not-fetched` (same
+  state; the extra pixels are a collapsed "Notes (1)" row shifting the grid down 28 px);
+  `grid/dynamic-off-filtered` → `grid/results` (5,878 px apart out of 1.3 M, all of it clock text —
+  the declared `grid/results` already carries the `dyn`-tagged filtered cells with the toggle off);
+  `queries/delete-confirm-inline` → `queries/delete-confirm` (50 px, one digit);
+  `queries/run-now-result` → `queries/run-now`; `settings/keys-add-form`,
+  `keys-validating-error`, `telegram-unlinked-qr`, `account-change-password` →
+  `settings/keys-add`, `keys-error`, `telegram-unlinked`, `change-password` (same state, the
+  feature spec shot it `fullPage` or element-clipped and the matrix entry is viewport-sized).
+- **Not changed:** `grid/results` shows `dyn`-tagged cells while its own dynamic-pricing toggle
+  reads off. That is what the state legitimately looks like once an earlier project has warmed the
+  dynamic scope in the shared cache — the toggle governs fetching, the tag marks what came back —
+  but the page does read as claiming two things at once, and it is a §3.4 question rather than a
+  capture-ownership one.
 
 ### #37 Persist `calls_used` on query runs
 

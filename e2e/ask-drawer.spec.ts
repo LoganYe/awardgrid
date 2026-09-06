@@ -5,29 +5,17 @@
  * The app runs with no ANTHROPIC_API_KEY, so the real ask lane can never stream here. Every
  * streaming state below comes from `/api/ask/demo` — a scripted SSE stream framed exactly like
  * POST /api/ask, served only because e2e/start-app.sh exports ASK_DEMO_STREAM=1, and used only
- * by a page opened with `?askdemo=1`. Nothing on these screenshots was fetched from anywhere.
+ * by a page opened with `?askdemo=1`. Nothing here was fetched from anywhere.
  *
- * Captures land in docs/screenshots/v0.2/ask-drawer/<state>-<viewport>-<theme>[-zh].png.
+ * This spec asserts; it does not photograph. Every capture of these states is declared in
+ * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
 import { zh } from "../src/lib/i18n/dictionaries/zh";
 import { applyTheme, availableCells, CANONICAL_QUERY_EN, CANONICAL_QUERY_ZH, expect, forgetLoginCookies, openAskDrawer, projectSuffix, submitQuery, test } from "./fixtures";
 
-const ASK_DIR = path.resolve(import.meta.dirname, "..", "docs", "screenshots", "v0.2", "ask-drawer");
-
 const isMobile = () => projectSuffix(test.info().project.name).viewport === "mobile";
-
-async function askShot(page: Page, name: string, opts: { zh?: boolean } = {}): Promise<string> {
-  const { viewport, theme } = projectSuffix(test.info().project.name);
-  mkdirSync(ASK_DIR, { recursive: true });
-  const file = path.join(ASK_DIR, `${name}-${viewport}-${theme}${opts.zh ? "-zh" : ""}.png`);
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  await page.screenshot({ path: file, animations: "disabled", caret: "hide" });
-  return file;
-}
 
 /** Open /grid with the demo switch on, run the canonical query, and wait for cells. */
 async function openDemoGrid(page: Page, params = "askdemo=1", opts: { zh?: boolean } = {}): Promise<void> {
@@ -92,7 +80,6 @@ test.describe("ask drawer", () => {
     const suggestions = drawer.getByTestId("ask-suggestions").getByRole("button");
     await expect(suggestions).toHaveCount(3);
     await expect(suggestions.first()).toHaveText(QUESTION);
-    await askShot(page, "open-empty");
 
     // Switching a pill off is what stops it being sent as context.
     await gridPill.click();
@@ -119,7 +106,6 @@ test.describe("ask drawer", () => {
     // Mid-stream: some answer text, the caret, and Stop instead of Send.
     await expect(drawer.getByTestId("ask-answer")).toContainText("cheapest", { timeout: 20_000 });
     await expect(drawer.getByTestId("ask-send")).toHaveCount(0);
-    await askShot(page, "streaming");
 
     // Finished: Stop is gone, the tool list is collapsed, the meter has moved.
     await expect(drawer.getByTestId("ask-stop")).toHaveCount(0, { timeout: 30_000 });
@@ -133,7 +119,6 @@ test.describe("ask drawer", () => {
     await expect(drawer.getByTestId("ask-tool-activity").locator("ul")).toBeHidden();
     await expect(meter).not.toHaveText(before, { timeout: 20_000 });
     await expect(meter).toHaveText("Today $0.42 of $2.00");
-    await askShot(page, "answered");
 
     // Expanding shows the human labels, never a tool input.
     await tools.click();
@@ -142,7 +127,6 @@ test.describe("ask drawer", () => {
     await expect(steps).toHaveCount(2);
     await expect(steps.nth(0)).toHaveText(en["ask.tool.cached_search"]);
     await expect(steps.nth(1)).toHaveText("Read transfer-partners");
-    await askShot(page, "tools-expanded");
 
     // One muted line promises the history is per session, and it really is.
     await expect(drawer.getByText(en["ask.history_note"])).toBeVisible();
@@ -174,7 +158,6 @@ test.describe("ask drawer", () => {
     // And nothing arrives after the abort.
     await page.waitForTimeout(1_000);
     expect((await answer.textContent()) ?? "").toBe(atAbort);
-    await askShot(page, "stopped");
   });
 
   /**
@@ -190,7 +173,6 @@ test.describe("ask drawer", () => {
     await ask(drawer, QUESTION); // the scripted failure arrives before Stop is worth waiting for
     await expect(drawer.getByTestId("ask-problem")).toContainText(en["ask.no_key"]);
     await expect(drawer.getByTestId("ask-problem").getByRole("link", { name: en["ask.no_key_link"] })).toHaveAttribute("href", "/settings");
-    await askShot(page, "no-key");
   });
 
   test("at the cap: the input is disabled with the reason and the reset time", async ({ page, asUser }) => {
@@ -206,7 +188,6 @@ test.describe("ask drawer", () => {
     await expect(meter).toContainText("UTC");
     await expect(meter).not.toContainText("Today $2.00 of $2.00");
     await expect(drawer.getByTestId("ask-prompt")).toBeDisabled();
-    await askShot(page, "cap");
   });
 
   /**
@@ -226,7 +207,6 @@ test.describe("ask drawer", () => {
     await expect(cellPill).toHaveAttribute("aria-pressed", "true");
     // Both pills at once: the grid the question is about, and the cell inside it.
     await expect(drawer.getByTestId("ask-pill-grid")).toBeVisible();
-    await askShot(page, "with-cell");
 
     await cellPill.click();
     await expect(cellPill).toHaveAttribute("aria-pressed", "false");
@@ -301,11 +281,9 @@ test.describe("ask drawer", () => {
     // The 420 px panel (or the bottom sheet) holds the Chinese copy without scrolling sideways.
     const overflow = await drawer.evaluate((el) => el.scrollWidth - el.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
-    await askShot(page, "open-empty", { zh: true });
 
     await askAndStream(drawer, zh["ask.suggestion.cheapest_program"]);
     await expect(drawer.getByTestId("ask-stop")).toHaveCount(0, { timeout: 30_000 });
-    await askShot(page, "answered", { zh: true });
   });
 
   test("mobile: the drawer is a bottom sheet with a drag handle", async ({ page, asUser }) => {
@@ -315,7 +293,6 @@ test.describe("ask drawer", () => {
     const drawer = await openAskDrawer(page);
     await expect(drawer).toHaveAttribute("data-mode", "bottom-sheet");
     await expect(drawer.getByRole("button", { name: en["drawer.handle"] })).toBeVisible();
-    await askShot(page, "mobile-bottom-sheet");
 
     // Esc closes, as everywhere else (spec §3.4).
     await page.keyboard.press("Escape");

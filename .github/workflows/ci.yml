@@ -42,6 +42,13 @@ jobs:
       - name: Test (fixtures only, no network)
         run: pnpm test
 
+      # One owner per capture (#34): every PNG under docs/screenshots/v0.2/** outside the frozen
+      # before/ is declared in e2e/matrix.ts and written by e2e/screenshots.spec.ts. This reads
+      # the COMMITTED tree only — no browser, no build — and fails on a capture the matrix does
+      # not declare, a name that breaks the §9 rule, or a declared state with no PNG on disk.
+      - name: Screenshots — every capture is declared in the matrix
+        run: pnpm exec tsx scripts/screenshot-index.ts --strict --check
+
       # Kickoff §9 Phase-2 self-acceptance: no key material in client bundles — build the app and grep
       # the whole .next/ output (client chunks + standalone server tree) for the fixture/seed key strings.
       - name: Build + no fixture keys in .next output
