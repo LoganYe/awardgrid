@@ -170,6 +170,8 @@ interface RecordInput {
   droppedCells: number;
   notified: boolean;
   skippedReason: SkippedReason | null;
+  /** seats.aero calls this run spent, or null when the number is not knowable (see below). */
+  callsUsed: number | null;
 }
 
 /** Insert the query_runs row, bump saved_queries.last_run_at and apply retention in one transaction. */
@@ -187,6 +189,7 @@ function record(db: Db, input: RecordInput): string {
         droppedCells: input.droppedCells,
         notified: input.notified,
         skippedReason: input.skippedReason,
+        callsUsed: input.callsUsed,
       })
       .run();
     tx.update(savedQueries).set({ lastRunAt: input.ranAt }).where(eq(savedQueries.id, input.savedQueryId)).run();
@@ -223,7 +226,13 @@ export async function runSavedQuery(db: Db, savedQuery: SavedQuery, deps: RunDep
     return result;
   };
 
-  const skip = (reason: SkippedReason, error: RunError | null): QueryRunResult => {
+  /**
+   * Record a run that produced no cells. `callsUsed` is 0 for the skips that happen before the
+   * facade is called at all, and null for a fetch that threw: the facade may have spent calls on
+   * the pages it did complete and does not report how many, so 0 there would understate the
+   * quota the run consumed. Null reads back as "not recorded".
+   */
+  const skip = (reason: SkippedReason, error: RunError | null, callsUsed: number | null = 0): QueryRunResult => {
     const runId = record(db, {
       savedQueryId: savedQuery.id,
       ranAt,
@@ -233,6 +242,7 @@ export async function runSavedQuery(db: Db, savedQuery: SavedQuery, deps: RunDep
       droppedCells: 0,
       notified: false,
       skippedReason: reason,
+      callsUsed,
     });
     return finish(runId, { notified: false, skippedReason: reason, cells: 0, diff: null, apiCallsUsed: 0, servedFromCache: false, error });
   };
@@ -273,7 +283,12 @@ export async function runSavedQuery(db: Db, savedQuery: SavedQuery, deps: RunDep
     cells = snapshot(res.grid.cells.flat().flatMap((c) => c.all));
   } catch (err) {
     const { reason, error } = classifyFetchError(err);
-    return skip(reason, error);
+    // A missing key and an exhausted quota are both refused at reservation time, before a single
+    // request goes out (src/lib/seatsaero/find.ts), so 0 is exact. Anything else threw after the
+    // facade had started fetching and does not report the pages it had already completed — and a
+    // run that merely RUNS OUT of headroom mid-way returns a partial result rather than throwing,
+    // so it takes the success path with a real count.
+    return skip(reason, error, reason === "no_key" || reason === "quota" ? 0 : null);
   }
   const hash = cellsHash(cells);
 
@@ -289,6 +304,7 @@ export async function runSavedQuery(db: Db, savedQuery: SavedQuery, deps: RunDep
       droppedCells: diff?.dropped.length ?? 0,
       notified,
       skippedReason,
+      callsUsed: apiCallsUsed,
     });
     return finish(runId, { notified, skippedReason, cells: cells.length, diff: diff ? counts(diff) : null, apiCallsUsed, servedFromCache, error });
   };

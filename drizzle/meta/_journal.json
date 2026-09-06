@@ -15,6 +15,13 @@
       "when": 1788661637774,
       "tag": "0001_users_theme",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788720311041,
+      "tag": "0002_query_runs_calls_used",
+      "breakpoints": true
     }
   ]
 }

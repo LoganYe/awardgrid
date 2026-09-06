@@ -137,7 +137,7 @@ describe("POST + GET /api/queries", () => {
       dropped_cells: 0,
       notified: false,
       skipped_reason: "quota",
-      calls_used: null, // query_runs stores no per-run call count (see RunSummary)
+      calls_used: null, // inserted without a count: "not recorded", never a fabricated 0
     });
   });
 
@@ -378,14 +378,15 @@ describe("GET /api/queries/[id]/runs: the last run's diff cells", () => {
     db.insert(queryRuns)
       .values([
         { id: "r1", savedQueryId: created.id, ranAt: "2026-10-01T09:00:00.000Z", cellsHash: "a", cellsJson: snapshot([KEY_KEPT, KEY_GONE]), newCells: 2, droppedCells: 0, notified: true, skippedReason: null },
-        { id: "r2", savedQueryId: created.id, ranAt: "2026-10-01T12:00:00.000Z", cellsHash: "b", cellsJson: snapshot([KEY_KEPT, KEY_NEW]), newCells: 1, droppedCells: 1, notified: true, skippedReason: null },
+        { id: "r2", savedQueryId: created.id, ranAt: "2026-10-01T12:00:00.000Z", cellsHash: "b", cellsJson: snapshot([KEY_KEPT, KEY_NEW]), newCells: 1, droppedCells: 1, notified: true, skippedReason: null, callsUsed: 27 },
       ])
       .run();
     const res = await runsRoute(req(`/api/queries/${created.id}/runs`, { token: alice.token }), ctx(created.id));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { runs: RunSummary[]; diff: { new: Array<{ program: string }>; dropped: Array<{ program: string }> } };
     expect(body.runs[0]!.id).toBe("r2");
-    expect(body.runs[0]!.calls_used).toBeNull();
+    expect(body.runs[0]!.calls_used).toBe(27); // query_runs.calls_used, read straight back
+    expect(body.runs[1]!.calls_used).toBeNull(); // recorded before the column existed
     expect(body.diff.new.map((r) => r.program)).toEqual(["aeroplan"]);
     expect(body.diff.dropped.map((r) => r.program)).toEqual(["american"]);
     // The counts the run recorded and the rebuilt cells agree.

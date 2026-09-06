@@ -122,6 +122,11 @@ test.describe("queries page", () => {
     await expect(runs).toHaveCount(3);
     await expect(panel).toContainText(`skipped: ${en["saved.skip.quota"]}`);
     await expect(panel.getByRole("columnheader", { name: en["saved.runs.calls_used"] })).toBeVisible();
+    // `query_runs.calls_used` (drizzle/0002): the column prints the seeded counts, not an en dash.
+    // The quota-refused run is an exact 0 — it never reached the network.
+    await expect(runs.nth(0)).toContainText("24");
+    await expect(runs.nth(1)).toContainText("27");
+    await expect(runs.nth(2)).toContainText("0");
     await shot(page, "expanded");
 
     await toggle.click();
@@ -285,7 +290,7 @@ test.describe("queries page", () => {
             dropped_cells: 1,
             notified: false,
             skipped_reason: null,
-            calls_used: null,
+            calls_used: 9,
           },
         }),
       }),

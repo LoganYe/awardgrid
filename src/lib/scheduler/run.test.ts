@@ -151,6 +151,8 @@ describe("runSavedQuery", () => {
     const runs1 = runsFor(db, sq.id);
     expect(runs1).toHaveLength(1);
     expect(runs1[0]).toMatchObject({ id: first.runId, ranAt: T0.toISOString(), notified: false, skippedReason: "first_run", newCells: 0, droppedCells: 0 });
+    // The stored row carries the same count the result reported — this is what the Queries page reads back.
+    expect(runs1[0]!.callsUsed).toBe(first.apiCallsUsed);
     expect(runs1[0]!.cellsHash).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.parse(runs1[0]!.cellsJson)).toHaveLength(first.cells);
     expect(reload(db, sq.id).lastRunAt).toBe(T0.toISOString());
@@ -275,7 +277,7 @@ describe("runSavedQuery", () => {
     expect(fetch.calls).toHaveLength(0);
     expect(transport.sent).toEqual([]);
     expect(runsFor(db, sq.id)).toHaveLength(1);
-    expect(runsFor(db, sq.id)[0]).toMatchObject({ skippedReason: "quota", cellsHash: "", cellsJson: "[]" });
+    expect(runsFor(db, sq.id)[0]).toMatchObject({ skippedReason: "quota", cellsHash: "", cellsJson: "[]", callsUsed: 0 });
     expect(reload(db, sq.id).lastRunAt).toBe(T0.toISOString());
   });
 
@@ -285,6 +287,7 @@ describe("runSavedQuery", () => {
     const r = await runSavedQuery(db, sq, deps(T0));
     expect(r).toMatchObject({ skippedReason: "no_key", error: { code: "no_key", detail: "NoKeyError" } });
     expect(fetch.calls).toHaveLength(0);
+    expect(runsFor(db, sq.id)[0]!.callsUsed).toBe(0);
     expect(JSON.stringify(r)).not.toContain("700800900");
   });
 
@@ -295,6 +298,9 @@ describe("runSavedQuery", () => {
     const r = await runSavedQuery(db, sq, deps(T0));
     expect(r).toMatchObject({ skippedReason: "upstream_error", error: { code: "upstream_error", detail: "unavailable" } });
     expect(JSON.stringify(r)).not.toContain("upstream sad");
+    // The facade may have spent calls on the pages it completed and does not say how many, so the
+    // row records "not recorded" rather than claiming zero.
+    expect(runsFor(db, sq.id)[0]!.callsUsed).toBeNull();
   });
 
   it("invalid query_json → 'invalid_query' without touching the key or upstream", async () => {
@@ -303,6 +309,7 @@ describe("runSavedQuery", () => {
     const r = await runSavedQuery(db, sq, deps(T0));
     expect(r).toMatchObject({ skippedReason: "invalid_query", error: { code: "invalid_query" } });
     expect(fetch.calls).toHaveLength(0);
+    expect(runsFor(db, sq.id)[0]!.callsUsed).toBe(0);
   });
 
   it("a failing transport records send_failed and the change is retried on the next run", async () => {

@@ -10,7 +10,6 @@ import {
   formToBody,
   initialFormState,
   looksLikeValidCron,
-  mergeRunCalls,
   nextRunFromCron,
   presetForCron,
   queryFormReducer,
@@ -180,23 +179,6 @@ describe("runResultText", () => {
   });
 });
 
-describe("mergeRunCalls", () => {
-  const run = (id: string, calls_used: number | null) => ({ id, calls_used });
-
-  it("keeps a call count the refetch could not carry", () => {
-    // The run the page just made knows its count; GET /api/queries/[id]/runs never does.
-    const merged = mergeRunCalls([run("r3", 12)], [run("r3", null), run("r2", null)]);
-    expect(merged).toEqual([run("r3", 12), run("r2", null)]);
-  });
-
-  it("prefers the server's number when it has one, and invents nothing", () => {
-    expect(mergeRunCalls([run("r3", 12)], [run("r3", 4)])).toEqual([run("r3", 4)]);
-    expect(mergeRunCalls([run("r9", 7)], [run("r3", null)])).toEqual([run("r3", null)]);
-    expect(mergeRunCalls([], [run("r3", null)])).toEqual([run("r3", null)]);
-    // The fresh list is authoritative about WHICH runs exist; merging only fills in counts.
-    expect(mergeRunCalls([run("r3", 12)], [])).toEqual([]);
-  });
-});
 
 describe("relativeTime", () => {
   const now = Date.parse("2026-10-15T12:00:00.000Z");
