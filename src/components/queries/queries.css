@@ -41,6 +41,14 @@
   text-align: right;
   padding-right: 0;
 }
+/* The Actions column keeps ONE width in both states: swapping the three buttons for the wider
+   confirmation group used to grow this column and shrink Name, moving every header between them
+   (docs/UI_PLAN.md §6.7 — the confirm replaces the Actions cell, it does not resize the row).
+   The confirmation wraps inside the reserved width instead of pushing it wider. */
+.aq-table > tbody > tr > td:last-child {
+  min-width: 176px;
+  white-space: normal;
+}
 /* The two full-width rows (notice, expanded panel) are not part of that grid. */
 .aq-table > tbody > tr > td[colspan] {
   width: auto;
@@ -92,11 +100,14 @@
   padding: 0;
   list-style: none;
 }
+/* The width belongs to the cell preview, not to the caption under it: capped at 112 px the
+   "−15% from 60,000" tag wrapped and its second line sat on its own 1 px outline. */
 .aq-diff-item {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: var(--column-min);
+  width: max-content;
+  min-width: var(--column-min);
 }
 .aq-diff-item .ag-table {
   border-top: 1px solid var(--line);
@@ -117,6 +128,10 @@
   border-radius: var(--radius-control);
   padding: 0 4px;
   color: var(--fg-muted);
+  /* The pill sizes to its own text: wrapped, its second line sat on the bottom border. */
+  width: max-content;
+  max-width: 100%;
+  white-space: nowrap;
 }
 /* A dropped cell is NOT dimmed. Fading the whole cell (opacity: .7) pushed --fg-muted to 3.31:1
    and --stale to 3.24:1 on both grounds — a serious axe finding and a WCAG AA failure, for a

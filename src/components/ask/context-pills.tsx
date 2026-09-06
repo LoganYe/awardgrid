@@ -35,7 +35,8 @@ function Pill({ label, pressed, onToggle, disabled, testId }: { label: string; p
       className={cn(
         "t-meta max-w-full truncate rounded-[var(--radius-control)] border px-2 py-1 text-left",
         pressed ? "border-line-strong bg-bg-raised text-fg" : "border-dashed border-line text-fg-muted line-through",
-        disabled && "opacity-60",
+        // docs/UI_PLAN.md §2: "Disabled = --fg-muted on --bg-raised, no opacity fades."
+        disabled && "border-line bg-bg-raised text-fg-muted",
       )}
       title={label}
     >

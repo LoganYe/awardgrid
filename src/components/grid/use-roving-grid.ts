@@ -55,6 +55,8 @@ export const ROW_HEIGHT: Record<Density, number> = { desktop: 48, tablet: 32, mo
 export const COLUMN_MIN = 112;
 /** Sticky row-header column width per density (docs/UI_PLAN.md §4). */
 export const ROW_HEAD_WIDTH: Record<Density, number> = { desktop: 96, tablet: 80, mobile: 72 };
+/** Floor for the sticky row header when the rows are route pairs ("HKG → SEA"), not dates. */
+export const ROUTE_ROW_HEAD_WIDTH = 96;
 
 // ---------------------------------------------------------------------------
 // Hook

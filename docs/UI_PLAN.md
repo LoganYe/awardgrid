@@ -103,7 +103,7 @@ Constants in `src/lib/grid/freshness.ts` (existing thresholds kept: fresh `< 2 h
 | stale | 1.25 px stroke ring, no fill | `--stale` | 600 `--fg-muted` | `1d` |
 | unknown | 1.25 px stroke ring, no fill | `--fg-muted` | 600 `--fg-muted` | `?` |
 
-Age text format (existing `formatAgeCompact`): under 1 min `now` / `刚刚`; minutes `45m` / `45分钟`; hours `2h` / `2小时`; days `1d` / `1天`; unparseable `?`. Age is always rendered, in the tier color, 12/16, right-aligned on the cell's last line, mark 4 px to its left. The text alone conveys the tier, so the encoding survives grayscale, and the shapes differ so it survives color blindness. Tooltip on the mark: "Seen by seats.aero 2 h ago" / "seats.aero 于 2 小时前查看".
+Age text format (existing `formatAgeCompact`): under 1 min `now` / `刚刚`; minutes `45m` / `45分钟`; hours `2h` / `2小时`; days `1d` / `1天`; unparseable `?`. Age is always rendered, in the tier color, 12/16, right-aligned on the cell's last line, mark 4 px to its left. The text alone conveys the tier, so the encoding survives grayscale, and the shapes differ so it survives color blindness. Tooltip on the mark: "seats.aero last saw this: 2 h ago" / 「seats.aero 查看时间：2 小时前」. The frame has to take a bare noun, because `formatAge` also returns "unknown" / 「未知」 and 「刚刚」.
 
 Aria wording (cell `aria-label`, en): `SEA to NRT, October 15, business, 60,000 miles, $5.60 fees, 2 seats, Alaska, seen 2 hours ago.` Stale adds `, stale` after the age; unknown reads `freshness unknown`. zh: `SEA 到 NRT，10 月 15 日，商务舱，60,000 里程，税费 $5.60，2 个座位，Alaska，2 小时前查看。`
 
@@ -199,7 +199,7 @@ A city group is one row (`SHA  Shanghai`) whose `▸` expands the member airport
 │ │        │ American○1d│ ┈┈┈┈┈┈┈┈┈ │ United●20m│ Alaska ○? │ ▒▒▒▒▒▒▒ │
 │ │  80 px │  ≥112 px  │ 
 ```
-Fees and seats move to the tooltip and the drawer. Chips show counts when their value would exceed 160 px. The drawer overlays the grid (no push) with a 40 % `--fg` scrim.
+Fees and seats move to the tooltip and the drawer. Chips show counts when their value would exceed 160 px. The drawer overlays the grid (no push) with a `--scrim` veil (black at 40 %, the same in both themes — see the revision log).
 
 ### 6.4 Grid page, < 768 (one-line cells, 40 px rows, Filters sheet)
 
@@ -239,18 +239,18 @@ Cabin tag stays (`J 60,000`) when both cabins are shown; the program name moves 
 │ HKG → SEA                                  × │ 20/28 600
 │ Wednesday, October 15, J and F               │ 14 muted, localized date, comma not dot
 ├──────────────────────────────────────────────┤
-│ Alaska               ●  Seen by seats.aero 45 m ago
+│ Alaska               ●  seats.aero last saw this: 45 m ago
 │ 60,000 miles   $5.60   2 seats   Direct      │ 14; miles 600
 │ Operated by Alaska (AS)                      │ 12 muted
 │ Show flights                                 │ link button
 │   ┌ skeleton rows while loading ┐            │
 │   AS 24   HKG 08:05 → SEA 06:40   nonstop   A330 │ 13/16 tabular
 │ ──────────────────────────────────────────── │ --line
-│ Aeroplan             ◐  Seen by seats.aero 3 h ago
+│ Aeroplan             ◐  seats.aero last saw this: 3 h ago
 │ 75,000 miles   $112.30   1 seat   1 stop     │
 │ Show flights                                 │
 │ ──────────────────────────────────────────── │
-│ American             ○  Seen by seats.aero 1 d ago   (miles in --fg-muted)
+│ American             ○  seats.aero last saw this: 1 d ago  (miles in --fg-muted)
 │ 80,000 miles   $31.10   4 seats   Direct     │
 ├──────────────────────────────────────────────┤
 │ Confirm on the program's site before         │ 14 body, --fg
@@ -354,12 +354,12 @@ Sections are separated by the 16/24 heading and 24 px of space only. Rows inside
                   └──────────────────────┘
                   No account? Create one        12 muted, link in --accent
 ```
-Register adds Invite code above Username and the hint "At least 12 characters" under Password (turns `--fg` when satisfied; no meter). No card, no border, no shadow.
+Register adds Invite code above Username and the hint "At least 8 characters" under Password (turns `--fg` when satisfied; no meter). No card, no border, no shadow.
 
 ## 7. Interaction rules
 
 - **Chip modified state:** editing any chip sets `modified`; the edited chip gets a 1 px `--accent` outline (replacing its `--line-strong` border), a `Run` button appears at the row end, the toolbar disables, the grid dims to 80 % with the "Run to refresh" strip. Enter in the query bar or the Run button re-runs; `Reset to parsed` restores the parser output and clears the state. Chips are the single source of truth; the URL `?q=` updates on run, not on every edit.
-- **Grid keyboard model:** `role="grid"`, one tab stop (roving `tabindex`, the focused cell has `tabindex=0`, all others `-1`; initial focus is the first available cell). Arrow keys move one cell and scroll it into view; Home/End go to the first/last cell of the row; Ctrl+Home/End to the grid corners; PageUp/PageDown move 7 rows; Enter or Space opens the cell drawer; Esc closes whichever drawer is open and returns focus to the cell that opened it. Column and row headers are not focusable; their text is announced through `aria-colindex`/`aria-rowindex` and the cell label. Hover and focus highlight the row header and column header with `--bg-raised`.
+- **Grid keyboard model:** `role="grid"`, one tab stop (roving `tabindex`, the focused cell has `tabindex=0`, all others `-1`; initial focus is the first available cell). Arrow keys move one cell and scroll it into view; Home/End go to the first/last cell of the row; Ctrl+Home/End to the grid corners; PageUp/PageDown move 7 rows; Enter or Space opens the cell drawer; Esc closes whichever drawer is open and returns focus to the cell that opened it. Column and row headers are not focusable; their text is announced through `aria-colindex`/`aria-rowindex` and the cell label. Hover and focus highlight the row header and column header with a 1 px inset `--line-strong` edge (the resting header ground is already `--bg-raised`, per §2 — see the revision log).
 - **Focus ring:** 2 px solid `--accent`, offset 1 px, `:focus-visible` only; inset inside grid cells and inside the sticky header.
 - **Drawers:** cell drawer and Ask drawer are mutually exclusive; opening one closes the other in the same frame. At ≥ 1280 the drawer pushes the grid (the grid container shrinks); at 768–1279 it overlays with a scrim; below 768 it is a full-height sheet (cell) or a bottom sheet with a drag handle (Ask). Focus is trapped inside an overlaying drawer, not inside a pushing one.
 - **Motion:** only on user actions — drawer slide 200 ms `ease-out`, popover 150 ms opacity + 4 px translate, result landing 150 ms opacity from the skeleton. No hover transitions, no entrance animation, no shimmer loop by default (the skeleton is static bars; a single 1.2 s shimmer runs only while `prefers-reduced-motion: no-preference`). Under `prefers-reduced-motion: reduce` every duration becomes 0 ms and the shimmer is static.
@@ -491,3 +491,12 @@ Every change made to this document by the review, with the reason.
 - **§6.2a Examples anchor pinned** (6.3 review): to the query-bar row, not the link, after the popover was measured covering the textarea at 390 px and clipping the Run button at 1440 px.
 - **§6.2a SEL/GMP deviation logged** (6.3 review), with the decision to name `ICN` in the e2e canonical query rather than edit the places seed.
 - Not changed, checked and confirmed: 48 px bar, 360 px auth column, 880 px max content, 480/420 px drawers, 112 px minimum column, seven chips in the spec's order, toolbar contents, footer vertical rule, cell anatomy (fees left / seats right, mark + age right), six cell states, four freshness tiers with shape + text, all six page-level states, Queries columns and inline delete, Settings section order, the 156-PNG screenshot matrix arithmetic, sentence case and full-width zh punctuation in every "After" string.
+
+### Revisions from the v0.2 screenshot review (issues #30 / #31)
+
+- **Sticky headers sit on `--bg-raised`, and the hover/focus highlight moved to an edge.** §2 has always assigned `--bg-raised` to "sticky header row + row headers", but `.ag-table th` painted `--bg` and only `th[data-hl="true"]` raised it, so in dark the header band and the sticky date column were separated from the data by `--line` alone (1.35:1) and content scrolling under the sticky column had no value separation from it. The resting ground is now `--bg-raised`; the highlight §7 describes is a 1 px inset `--line-strong` edge, because two states cannot both be the same ground. §7 amended above.
+- **The scrim is its own token, not 40 % `--fg`.** §6.3's literal reading gave dark mode a veil that composites to `#696969` over `#111111` — brighter than both the page it dims and the sheet in front of it, so elevation read inverted. `--scrim` (black at 40 %) is theme-stable and darkens in both themes; in light it is pixel-identical to what §6.3 asked for. §6.3 amended above.
+- **The password hint was always 8 characters.** §6.9 said 12; the validator, both dictionaries and three test files say 8. The plan was the stale side, so the plan changed and nothing in the app did.
+- **The Run button has three labels, not two.** §6.2 shows one busy label; parsing and searching are two phases and the status line 20 px below the button already distinguished them, so the button reads Run / Parsing… / Running… and reserves the widest of the three so it cannot resize mid-submit.
+- **The quota banner's third sentence is conditional.** §6.2's "Cached results are still shown" is only true when a previously fetched grid is on screen; hitting the limit on the first search of the day left the sentence describing a blank page. It is a separate string now, and the no-cache case gets the left-aligned empty state §6.2 gives every other page-level state.
+- Not changed, re-checked: the eleven colour tokens, the three radii, the 112 px minimum column, the seven chips and their order, the six cell states, the four freshness tiers, the drawer widths and the four presentations, the Queries columns, the Settings section order.

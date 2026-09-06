@@ -55,7 +55,9 @@ test.describe("before: current UI", () => {
   test("grid-nokey", async ({ page, asUser }) => {
     await asUser("nokey");
     await page.goto("/grid");
-    await expect(page.getByRole("alert").getByText(en["grid.empty.no_key"])).toBeVisible();
+    // v0.1 boxed this in an alert; since the v0.2 review it is the same boxless sentence +
+    // link button every other page-level state uses (docs/UI_PLAN.md §6.2).
+    await expect(page.getByTestId("grid-no-key")).toContainText(en["grid.empty.no_key"]);
     await beforeShot(page, "grid-nokey");
   });
 

@@ -125,9 +125,12 @@ function CellBody({ cell, status, now, density, showCabinTag, t, locale }: Pick<
   if (status === "loading") return <Skeleton density={density} />;
   if (status === "unmonitored") return <div className="ag-cell-in" />;
   if (status === "not_fetched") {
+    // The label is drawn at every density. Blanking it below 768 px left a run of cells whose
+    // only marking was a 1 px dotted outline, with no hover tooltip on a touch device to
+    // recover the reason — the pattern-only case docs/UI_PLAN.md §1.4 rules out.
     return (
       <div className="ag-cell-in">
-        <span aria-hidden="true">{density === "mobile" ? "" : t("grid.cell.not_fetched")}</span>
+        <span aria-hidden="true">{t("grid.cell.not_fetched")}</span>
       </div>
     );
   }

@@ -55,7 +55,7 @@ describe("buildCopyDetails", () => {
       "60,000 miles",
       "$5.60 fees",
       "2 seats",
-      "Seen by seats.aero 2h ago",
+      "seats.aero last saw this: 2h ago",
       "https://example.test/award",
       t("grid.deeplink_caveat"),
     ]);

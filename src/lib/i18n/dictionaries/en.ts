@@ -53,7 +53,7 @@ export const en = {
   "auth.login.no_account": "No account?",
   "auth.login.register_link": "Create one",
   "auth.register.title": "Create account",
-  "auth.register.subtitle": "Creating an account needs an invite code from whoever runs this instance.",
+  "auth.register.subtitle": "Creating an account needs an invite code from the server's operator.",
   "auth.register.submit": "Create account",
   "auth.register.have_account": "Already have an account?",
   "auth.register.login_link": "Log in",
@@ -90,6 +90,7 @@ export const en = {
   "grid.search": "Search awards",
   "grid.run": "Run",
   "grid.parsing": "Parsing…",
+  "grid.running": "Running…",
   "grid.parsed_from": "Parsed from:",
   "grid.loading": "Loading availability…",
   "grid.chips.origins": "Origins",
@@ -146,15 +147,17 @@ export const en = {
   "grid.empty.widen_dates": "Widen the dates",
   "grid.empty.add_cabin": "Add a cabin",
   "grid.empty.review_unmonitored": "Review the not-monitored cells",
+  "grid.empty.quota_blank": "Nothing was fetched before the daily limit was reached. Run again after it resets.",
   "grid.freshness.fresh": "fresh",
   "grid.freshness.aging": "aging",
   "grid.freshness.stale": "stale",
   "grid.freshness.unknown": "unknown",
-  "grid.freshness.updated": "Seen by seats.aero {age}",
+  "grid.freshness.updated": "seats.aero last saw this: {age}",
   "grid.quota": "{used} / {limit} seats.aero calls today",
   "grid.quota_reset": "Resets {resetAt}",
-  "grid.quota_banner":
-    "seats.aero daily limit reached ({used} of {limit}). Resets in {duration}. Cached results are still shown.",
+  "grid.quota_banner": "seats.aero daily limit reached ({used} of {limit}). Resets in {duration}.",
+  // Only appended when a previously fetched grid is actually on screen (toolbar.tsx).
+  "grid.quota_banner_cached": "Cached results are still shown.",
   "grid.run_to_refresh": "Run to refresh",
   "grid.reset_to_parsed": "Reset to parsed",
   "grid.save_query": "Save as standing query",
@@ -204,6 +207,9 @@ export const en = {
   "saved.enabled": "Enabled",
   "saved.last_run": "Last run",
   "saved.next_run": "Next run",
+  // The mobile card has no column headers, so the two ambiguous facts carry their own label.
+  "saved.card.notify_on": "Notifies on {value}",
+  "saved.card.next_run": "Next run {value}",
   "saved.never_run": "Never",
   "saved.run_now": "Run now",
   "saved.delete": "Delete",
@@ -220,7 +226,7 @@ export const en = {
 
   // ---- legal page ----
   "legal.title": "Legal",
-  "legal.missing": "The legal notice file is missing from this deployment.",
+  "legal.missing": "The legal notice file is missing from this server.",
 
   // ---- common ----
   "common.save": "Save",
@@ -318,7 +324,7 @@ export const en = {
   "grid.chips.programs_clear": "All",
   "grid.chips.programs_total": "{n} programs",
   "grid.chips.select_city": "{city}, every airport",
-  "grid.header.calls": "{n} calls this render",
+  "grid.header.calls": "{n} calls this search",
   "grid.header.from_cache": "served from cache",
   "grid.header.fresh_pull": "fetched now",
   "grid.header.oldest": "oldest {age}",
@@ -488,7 +494,7 @@ export const en = {
   "settings.telegram.status.linked": "Linked",
   "settings.telegram.status.not_linked": "Not linked",
   "settings.telegram.mock_explain":
-    "No Telegram bot token is set on this server, so linking is unavailable and alerts are only logged. Ask whoever runs this instance to set TELEGRAM_BOT_TOKEN.",
+    "No Telegram bot token is set on this server, so linking is unavailable and alerts are only logged. Ask the server's operator to set TELEGRAM_BOT_TOKEN.",
   "settings.telegram.open_link": "Open in Telegram",
   "settings.telegram.qr_hint": "Or scan this code with Telegram.",
   "settings.telegram.instruction": "Press Start in Telegram. This link works once and expires in 15 minutes.",
@@ -527,7 +533,7 @@ export const en = {
   "ask.budget": "Today's Ask budget ({cap}) is used up. It resets at {resetAt}.",
   "ask.timeout": "The answer timed out after 120 s. Try a narrower question.",
   "ask.plugin_missing":
-    "The toolkit plugin isn't built on this server. Whoever runs it should run `pnpm build:plugin` and restart.",
+    "The toolkit plugin isn't built on this server. The server's operator should run `pnpm build:plugin` and restart.",
   "ask.aborted": "Stopped.",
   "ask.error.unauthorized": "Your session has expired. Log in again.",
   "ask.error.network": "Couldn't reach awardgrid. Check your connection and retry.",
@@ -546,7 +552,7 @@ export const en = {
   // ---- grid table and toolbar (6.2: spec §3.3, §3.4, §3.7) ----
   "grid.grid_label": "Award availability grid",
   "grid.legend":
-    "How to read the grid: the freshness mark next to each age is a filled dot when seen under 2 hours ago, a half dot between 2 and 6 hours, and a hollow ring when older than 6 hours or unknown. A dash means no availability, diagonal stripes mean seats.aero does not monitor the route, a dotted outline means the cell was not fetched, and the word dynamic marks a dynamically priced award that the toggle hides.",
+    "How to read the grid: the freshness mark next to each age is a filled dot when seen under 2 hours ago, a half dot between 2 and 6 hours, and a hollow ring when older than 6 hours or unknown. A dash means no availability, diagonal stripes mean seats.aero does not monitor the route, a dotted outline means the cell was not fetched, and the tag dyn marks a dynamically priced award that the toggle hides.",
   "grid.header.programs_one": "1 program",
   "grid.header.programs_other": "{n} programs",
   "grid.unit.m": "m",
@@ -597,7 +603,7 @@ export const en = {
   "grid.drawer.route": "{origin} to {dest}",
   "grid.drawer.operated_by": "Operated by {airlines}",
   "grid.drawer.with_stops": "with stops",
-  "grid.drawer.no_link_yet": "No direct link for this program yet",
+  "grid.drawer.no_link_yet": "Show flights to get a link to this program",
   "grid.drawer.flights_error": "Couldn't load flights from seats.aero. Try again.",
   "grid.drawer.copy_failed": "Couldn't copy the details. Select the text and copy it manually.",
   "grid.drawer.ask_about": "Ask about this cell",

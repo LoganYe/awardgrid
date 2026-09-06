@@ -39,10 +39,12 @@ function Blocks({ blocks }: { blocks: Block[] }) {
       {blocks.map((b, i) => {
         switch (b.kind) {
           case "heading":
+            /* A real heading element so a screen reader can navigate a long answer; the
+               typography stays 14/20 so the drawer remains flat (docs/UI_PLAN.md §1.2). */
             return (
-              <p key={i} className="mt-2 font-medium first:mt-0">
+              <h3 key={i} className="t-body mt-2 font-medium first:mt-0">
                 <Spans spans={b.spans} />
-              </p>
+              </h3>
             );
           case "list": {
             const cls = cn("my-1 flex flex-col gap-0.5 pl-5", b.ordered ? "list-decimal" : "list-disc");
@@ -66,7 +68,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
           }
           case "code":
             return (
-              <pre key={i} className="my-1 overflow-x-auto rounded-sm bg-bg-raised p-2 font-mono text-[11px] leading-snug">
+              <pre key={i} className="t-meta my-1 overflow-x-auto rounded-sm bg-bg-raised p-2 font-mono">
                 {b.text}
               </pre>
             );

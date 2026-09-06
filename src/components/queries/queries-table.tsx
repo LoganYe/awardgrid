@@ -31,10 +31,8 @@ import {
   type SavedQuerySummary,
 } from "@/components/queries/api";
 import { formatDate } from "@/components/settings/api";
-import { buttonVariants } from "@/components/ui/button";
 import { errorText } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/i18n/client";
-import { cn } from "@/lib/utils";
 import "@/components/queries/queries.css";
 
 export interface QueriesTableProps {
@@ -215,8 +213,9 @@ export function QueriesTable({ initial, details, telegramLinked }: QueriesTableP
     return (
       <div className="flex flex-col items-start gap-3" data-testid="queries-empty">
         <p className="t-body">{t("saved.empty")}</p>
-        {/* A real anchor: the empty state's call to action is navigation, so it must be a link. */}
-        <Link href="/grid" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+        {/* A real anchor: the empty state's call to action is navigation, so it must be a link —
+            and a link BUTTON, not a boxed one (docs/UI_PLAN.md §6.7: "left-aligned, no box"). */}
+        <Link href="/grid" className="link">
           {t("saved.empty_cta")}
         </Link>
       </div>

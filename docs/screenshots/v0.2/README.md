@@ -15,7 +15,7 @@ File names follow spec §9: `<page>/<state>-<viewport>-<theme>[-zh].png` — des
 mobile 390×844, themes light and dark. The matrix is declared once, in `e2e/matrix.ts`, and
 captured by `e2e/screenshots.spec.ts`.
 
-394 PNGs, 35.5 MB in total; largest 295 KB.
+394 PNGs, 35.9 MB in total; largest 295 KB.
 
 ## Contents
 

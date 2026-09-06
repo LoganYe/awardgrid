@@ -26,8 +26,12 @@ export interface RunHistoryProps {
   now: number;
 }
 
-/** No value recorded, as opposed to a recorded zero. */
-const NO_VALUE = "–";
+/**
+ * No value recorded, as opposed to a recorded zero. "?" and not an en dash: docs/UI.md §1.5
+ * fixes the en dash as "no availability" everywhere else in the app, so a column of them read
+ * as "zero calls" rather than "not recorded".
+ */
+const NO_VALUE = "?";
 
 export function RunHistory({ id, details, loading, error, now }: RunHistoryProps) {
   const t = useT();

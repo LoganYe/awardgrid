@@ -28,6 +28,11 @@ export interface QueryBarProps {
   /** Enter or the Run button, with the trimmed text. */
   onRun: (text: string) => void;
   busy: boolean;
+  /**
+   * Which half of `busy` we are in. The button used to read "Parsing…" for both, so it
+   * contradicted the "Searching seats.aero…" status line 20 px below it.
+   */
+  phase?: "idle" | "parsing" | "loading" | "ready";
   /** Running is off (the seats.aero daily limit): Enter and Run do nothing, the reason is in the title. */
   disabled?: boolean;
   disabledTitle?: string;
@@ -39,7 +44,7 @@ export interface QueryBarProps {
   llmAvailable?: boolean;
 }
 
-export function QueryBar({ value, onValueChange, onRun, busy, disabled = false, disabledTitle, parsedFrom = null, guessed = false, llmAvailable = true }: QueryBarProps) {
+export function QueryBar({ value, onValueChange, onRun, busy, phase = "idle", disabled = false, disabledTitle, parsedFrom = null, guessed = false, llmAvailable = true }: QueryBarProps) {
   const t = useT();
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -89,14 +94,25 @@ export function QueryBar({ value, onValueChange, onRun, busy, disabled = false, 
         />
         <span title={disabled ? disabledTitle : undefined}>
           <Button type="submit" disabled={busy || disabled || value.trim().length === 0} data-testid="query-run">
-            {busy ? t("grid.parsing") : t("grid.run")}
+            {/*
+              The LABEL reserves the width of the widest of the three ("Parsing…" / "Running…" /
+              「解析中…」), so the button cannot resize mid-submit: it is a flex sibling of a
+              flex-1 textarea, and a growing button re-wrapped the query the user had just sent.
+              On the span rather than the button, because globals.css's unlayered 40 px touch
+              minimum below 768 px beats a `min-w-*` utility on the button itself.
+            */}
+            <span className="inline-block min-w-16 text-center">
+              {phase === "loading" ? t("grid.running") : busy ? t("grid.parsing") : t("grid.run")}
+            </span>
           </Button>
         </span>
         <ExamplesPopover disabled={busy || disabled} onPick={(text) => onValueChange(text)} />
       </form>
 
       {parsedFrom && (
-        <p className="text-grid text-fg-muted" data-testid="parsed-from">
+        // One line whatever the query's length: below 768 px a three-line echo of the query
+        // pushed the grid off the first screen (docs/UI_PLAN.md §6.4).
+        <p className="truncate text-grid text-fg-muted" title={parsedFrom} data-testid="parsed-from">
           {t("grid.parsed_from")} {parsedFrom}
           {guessed && <span className="ml-2 t-meta">{t("grid.provenance.llm")}</span>}
         </p>

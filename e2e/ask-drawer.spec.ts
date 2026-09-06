@@ -192,10 +192,13 @@ test.describe("ask drawer", () => {
     await openDemoGrid(page, "askdemo=1&askcap=1");
     const drawer = await openAskDrawer(page);
 
+    // At the cap the budget line REPLACES the meter (one line, docs/UI_PLAN.md §6.6): the
+    // "Today $X of $Y" figure is already inside it, so it is not also stacked above.
     const meter = drawer.getByTestId("ask-cost-meter");
-    await expect(meter).toContainText("Today $2.00 of $2.00");
     await expect(meter).toContainText("Today's Ask budget");
+    await expect(meter).toContainText("$2.00");
     await expect(meter).toContainText("UTC");
+    await expect(meter).not.toContainText("Today $2.00 of $2.00");
     await expect(drawer.getByTestId("ask-prompt")).toBeDisabled();
     await askShot(page, "cap");
   });

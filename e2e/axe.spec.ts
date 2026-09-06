@@ -212,7 +212,8 @@ test.describe("axe", () => {
   test("grid-no-key", async ({ page }) => {
     await loginAs(page, "nokey");
     await page.goto("/grid");
-    await expect(page.getByRole("alert").getByText(en["grid.empty.no_key"])).toBeVisible();
+    // The state is a left-aligned sentence plus a link button, not an alert box (§6.2).
+    await expect(page.getByTestId("grid-no-key")).toContainText(en["grid.empty.no_key"]);
     await audit(page, "grid-no-key");
   });
 

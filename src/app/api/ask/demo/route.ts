@@ -33,8 +33,14 @@ export const DEMO_CAP_USD = 2;
 /**
  * The scripted answer, split the way a model streams it. Every number here is invented: it
  * matches fixtures/demo, not any real award (e2e/README.md: nothing on a screenshot is real).
+ *
+ * It deliberately exercises every block `components/ask/answer.tsx` can draw — heading, bold,
+ * bullet list, ordered list, link, inline code and a fenced code block — because the screenshot
+ * matrix is the record of how those render, and a script with only paragraphs and bullets left
+ * four of them undocumented.
  */
 export const DEMO_DELTAS: readonly string[] = [
+  "## Cheapest first class on this grid\n\n",
   "The cheapest **F** cell on this grid is ",
   "SEA→NRT on Oct 15: 80,000 miles ",
   "plus $5.60 in fees, 2 seats, Alaska.\n\n",
@@ -45,17 +51,52 @@ export const DEMO_DELTAS: readonly string[] = [
   "Aeroplan wants 90,000 for the same seat, ",
   "so the 10,000-mile gap only pays off ",
   "if you already hold Aeroplan miles.\n\n",
-  "Hold the seat before you transfer. ",
+  "What to do next:\n\n",
+  "1. Hold the seat with the program by phone\n",
+  "2. Transfer only after the hold is confirmed\n",
+  "3. Re-check the fees on the booking page\n\n",
   "Ratios move: check `transfer-partners` for today's numbers, ",
-  "and confirm on the program's own site.\n\n",
+  "and confirm the rules on [seats.aero](https://seats.aero/terms).\n\n",
+  "```\npnpm grid \"SEA to NRT, Oct 15, first\"\n```\n\n",
   "Demo answer from a scripted stream. Nothing here was fetched.",
+];
+
+/**
+ * The same answer in Chinese. Without it every answered zh screenshot showed an English answer
+ * body under Chinese chrome, so the record proved nothing about CJK line-breaking, CJK line
+ * height on the 20 px body grid, or zh list and inline-code rendering.
+ */
+export const DEMO_DELTAS_ZH: readonly string[] = [
+  "## 本表格中最便宜的头等舱\n\n",
+  "本表格中最便宜的**头等舱**是 ",
+  "10 月 15 日的 SEA→NRT：80,000 里程，",
+  "税费 $5.60，2 个座位，阿拉斯加航空。\n\n",
+  "可以转入该里程计划的积分：\n\n",
+  "- Bilt Rewards，1:1，通常实时到账\n",
+  "- 万豪旅享家，3:1，最多两天\n",
+  "- Capital One，目前不是合作伙伴\n\n",
+  "同一个座位，枫叶积分需要 90,000 里程，",
+  "因此这 10,000 里程的差距只有在你本来就持有枫叶积分时才划算。\n\n",
+  "接下来该做的事：\n\n",
+  "1. 先致电里程计划锁定座位\n",
+  "2. 确认锁定成功后再转入积分\n",
+  "3. 在出票页面再核对一次税费\n\n",
+  "兑换比例会变动：今天的数字请查 `transfer-partners`，",
+  "规则请以 [seats.aero](https://seats.aero/terms) 为准。\n\n",
+  "```\npnpm grid \"SEA to NRT, Oct 15, first\"\n```\n\n",
+  "这是脚本生成的演示回答，没有真实获取任何数据。",
 ];
 
 /** Tool events, keyed to the delta index they follow. */
 const DEMO_TOOLS: readonly { at: number; name: string }[] = [
-  { at: 1, name: "seats-aero-cached-search" },
-  { at: 4, name: "travel-hacker:transfer-partners" },
+  { at: 2, name: "seats-aero-cached-search" },
+  { at: 5, name: "travel-hacker:transfer-partners" },
 ];
+
+/** The script for a locale; anything that is not "zh" gets the English one. */
+export function demoDeltas(locale: string | null): readonly string[] {
+  return locale === "zh" ? DEMO_DELTAS_ZH : DEMO_DELTAS;
+}
 
 function enabled(): boolean {
   return process.env.ASK_DEMO_STREAM === "1";
@@ -84,7 +125,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 /** The failure states the scripted stream can act out (`?err=no_key`), mirrored in demo.ts. */
 const DEMO_ERRORS: readonly string[] = ["no_key", "timeout", "plugin_missing", "budget", "sdk"];
 
-function stream(request: NextRequest, cap: boolean, err: string | null): Response {
+function stream(request: NextRequest, cap: boolean, err: string | null, locale: string | null): Response {
   const encoder = new TextEncoder();
   const ac = new AbortController();
   request.signal.addEventListener("abort", () => ac.abort(), { once: true });
@@ -106,13 +147,14 @@ function stream(request: NextRequest, cap: boolean, err: string | null): Respons
         controller.close();
         return;
       }
-      for (const [i, delta] of DEMO_DELTAS.entries()) {
+      const deltas = demoDeltas(locale);
+      for (const [i, delta] of deltas.entries()) {
         await sleep(DEMO_DELTA_MS, ac.signal);
         if (ac.signal.aborted) break;
         for (const tool of DEMO_TOOLS) if (tool.at === i) send("tool", { name: tool.name });
         send("text", { text: delta });
       }
-      if (!ac.signal.aborted) send("result", { costUsd: DEMO_ANSWER_USD, numTurns: 3, durationMs: DEMO_DELTA_MS * DEMO_DELTAS.length, subtype: "success" });
+      if (!ac.signal.aborted) send("result", { costUsd: DEMO_ANSWER_USD, numTurns: 3, durationMs: DEMO_DELTA_MS * deltas.length, subtype: "success" });
       try {
         controller.close();
       } catch {
@@ -140,7 +182,7 @@ function handle(request: NextRequest): Response {
   }
   const requested = params.get("err");
   const err = requested !== null && DEMO_ERRORS.includes(requested) ? requested : null;
-  return stream(request, cap, err);
+  return stream(request, cap, err, params.get("locale"));
 }
 
 export function GET(request: NextRequest): Response {

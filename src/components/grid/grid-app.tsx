@@ -21,7 +21,7 @@ import { apiExport, apiFind, apiParse, uiNotices, type ApiFailure, type UiNotice
 import { CellDrawer } from "@/components/grid/cell-drawer/cell-drawer";
 import { ChipRow } from "@/components/grid/chip-row";
 import { isModified, resetToParsed, type ChipId } from "@/components/grid/chips-model";
-import { FailureState, NoKeyState, StartState } from "@/components/grid/empty-states";
+import { FailureState, NoKeyState, QuotaNoResultsState, StartState } from "@/components/grid/empty-states";
 import { GridEmptyResults, GridTable, type GridTableHandle } from "@/components/grid/grid-table";
 import { GridSkeleton } from "@/components/grid/grid-skeleton";
 import { ParseFailure } from "@/components/grid/parse-failure";
@@ -310,6 +310,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
         value={text}
         onValueChange={setText}
         busy={busy}
+        phase={phase}
         llmAvailable={llmAvailable}
         parsedFrom={parsedQuery?.raw_text ?? null}
         guessed={Object.values(provenance).some((p) => p === "llm")}
@@ -355,8 +356,11 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
 
       {!hasKey && <NoKeyState />}
 
-      {/* The daily limit is a persistent banner above the toolbar (spec §3.7), not an alert. */}
-      {quotaExceeded && <QuotaBanner resetAt={failure?.error === "quota" ? failure.resetAt : quota?.resetAt} now={now} />}
+      {/* The daily limit is a persistent banner above the toolbar (spec §3.7), not an alert.
+          `cached` is what makes the banner truthful: with no grid behind it, "Cached results are
+          still shown" would be an assertion the blank page below it contradicts. */}
+      {quotaExceeded && <QuotaBanner resetAt={failure?.error === "quota" ? failure.resetAt : quota?.resetAt} now={now} cached={grid !== null} />}
+      {quotaExceeded && grid === null && <QuotaNoResultsState />}
 
       {failure && failure.error !== "quota" && failure.error !== "parse" && (
         <FailureState failure={failure} onRetry={query && hasKey ? () => void runFind(query) : undefined} />

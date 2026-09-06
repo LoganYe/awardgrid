@@ -29,8 +29,9 @@ main {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: var(--fg);
-  opacity: 0.4;
+  /* --scrim, not --fg at 40 %: see src/styles/tokens.css and DECISIONS.md. */
+  background: var(--scrim);
+  opacity: 1;
   /* A touch drag on the scrim must not chain to the grid behind a modal dialog. */
   overscroll-behavior: contain;
   touch-action: none;
@@ -83,6 +84,9 @@ main {
 
 .ag-drawer[data-mode="sheet"] {
   width: 100vw;
+  /* At 100vw the desktop drawer's page-facing edge separates nothing: it just pins a 1 px rule
+     to the left edge of the screen (docs/UI_PLAN.md §1.3). */
+  border-left: 0;
 }
 
 /* Bottom sheet: the Ask drawer below 768 px. */

@@ -118,13 +118,19 @@ export function QuotaIndicator({ className, initial }: QuotaIndicatorProps) {
   const { seats_aero: seats, ask } = usage;
   const state = stateFor(seats.used, seats.soft_limit, seats.limit);
   const reset = resetLabel(seats.reset_at, tag);
-  const full = t("quota.today", { count: format(seats.used, seats.limit, tag) });
-  const compact = format(seats.used, seats.limit, tag, { compact: true });
+  /*
+    The SOFT limit, not the hard allowance: the settings quota bar fills toward soft_limit and
+    reads "32 of 950 used", so a top bar counting against 1,000 made the app disagree with
+    itself about how much budget exists. The hard allowance stays in the tooltip and in the
+    settings caption, which is where it is explained.
+  */
+  const full = t("quota.today", { count: format(seats.used, seats.soft_limit, tag) });
+  const compact = format(seats.used, seats.soft_limit, tag, { compact: true });
   // Full-width comma in Chinese (UI plan §8: zh punctuation is full-width).
   const joiner = locale === "zh" ? "，" : ", ";
   const stateSuffix = state === "ok" ? "" : `${joiner}${t(state === "warn" ? "quota.state.warn" : "quota.state.exceeded")}`;
   const label =
-    t("quota.aria", { used: formatCount(seats.used, tag), limit: formatCount(seats.limit, tag), reset }) + stateSuffix;
+    t("quota.aria", { used: formatCount(seats.used, tag), limit: formatCount(seats.soft_limit, tag), reset }) + stateSuffix;
 
   return (
     <TooltipProvider delay={300}>

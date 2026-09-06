@@ -135,7 +135,10 @@ test.describe("queries page", () => {
 
     const confirm = page.getByTestId(/^delete-confirm-/);
     await expect(confirm).toBeVisible();
-    await expect(confirm).toContainText(en["saved.confirm_delete"]);
+    // The question names the query (docs/UI_PLAN.md §6.7), so "this" is never left unanchored.
+    await expect(confirm).toContainText(E2E_SAVED_QUERY_NAME);
+    await expect(confirm).toContainText("Delete");
+    await expect(confirm.getByRole("button", { name: en["saved.keep"], exact: true })).toBeVisible();
     // Spec §11: inline, never modal. Nothing on the page claims to be a dialog.
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.locator("[aria-modal='true']")).toHaveCount(0);
@@ -152,10 +155,10 @@ test.describe("queries page", () => {
     await expect(confirm).toHaveCount(0);
     await expect(deleteButton(page)).toBeFocused();
 
-    // Cancel does the same, and keeps the query: the suite's other tests still need it.
+    // Keep does the same, and keeps the query: the suite's other tests still need it.
     await deleteButton(page).click();
     await expect(confirm).toBeVisible();
-    await confirm.getByRole("button", { name: en["common.cancel"], exact: true }).click();
+    await confirm.getByRole("button", { name: en["saved.keep"], exact: true }).click();
     await expect(confirm).toHaveCount(0);
     await expect(deleteButton(page)).toBeFocused();
     await expect(firstRow(page)).toBeVisible();
@@ -316,15 +319,17 @@ test.describe("queries page", () => {
     await expect(empty).toContainText(en["saved.empty"]);
     const cta = empty.getByRole("link", { name: en["saved.empty_cta"] });
     await expect(cta).toHaveAttribute("href", "/grid");
-    // The only call to action on the page must not read as body text: cva emits both the base
-    // `border-transparent` and the variant's `border-line-strong`, so the class list has to go
-    // through tailwind-merge or the transparent border wins on cascade order.
-    const border = await cta.evaluate((el) => {
+    // docs/UI_PLAN.md §6.7: "`Go to grid` link button, left-aligned, no box". It must still not
+    // read as body text, so it carries the accent and the underline every link on the page has —
+    // and it must NOT carry a border, which is what §4 reserves for controls.
+    const style = await cta.evaluate((el) => {
       const s = getComputedStyle(el);
-      return { width: s.borderTopWidth, color: s.borderTopColor };
+      return { border: s.borderTopWidth, color: s.color, decoration: s.textDecorationLine, accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() };
     });
-    expect(parseFloat(border.width)).toBeGreaterThanOrEqual(1);
-    expect(border.color).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+    expect(parseFloat(style.border)).toBe(0);
+    expect(style.decoration).toContain("underline");
+    expect(style.color).not.toBe("");
+    expect(style.accent).not.toBe("");
     await shot(page, "empty");
   });
 });

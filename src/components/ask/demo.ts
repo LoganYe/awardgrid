@@ -91,10 +91,15 @@ export function resolveAskDemo(search: string, storage: Storage | null): AskDemo
   }
 }
 
-/** Scripted stream URL (POST, same body as /api/ask). */
-export function askDemoStreamUrl({ cap, err }: Pick<AskDemoState, "cap" | "err">): string {
-  if (err) return `${ASK_DEMO_ENDPOINT}?err=${err}`;
-  return cap ? `${ASK_DEMO_ENDPOINT}?cap=1` : ASK_DEMO_ENDPOINT;
+/**
+ * Scripted stream URL (POST, same body as /api/ask). The locale travels with it: the scripted
+ * answer has a Chinese script too, so an answered zh screenshot is not an English answer body
+ * under Chinese chrome.
+ */
+export function askDemoStreamUrl({ cap, err }: Pick<AskDemoState, "cap" | "err">, locale?: string): string {
+  const suffix = locale === "zh" ? "locale=zh" : "";
+  const query = [err ? `err=${err}` : cap ? "cap=1" : "", suffix].filter(Boolean).join("&");
+  return query.length > 0 ? `${ASK_DEMO_ENDPOINT}?${query}` : ASK_DEMO_ENDPOINT;
 }
 
 /**

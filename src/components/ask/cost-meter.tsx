@@ -43,11 +43,13 @@ export function CostMeter({ usage, className, id }: CostMeterProps) {
   if (!usage) return null;
   const capped = atCap(usage);
   return (
-    // At the cap the reason is its own line: run on to the meter and the two sentences read as
-    // one ("Today $2.00 of $2.00 Today's Ask budget…").
+    // At the cap the budget line REPLACES the meter rather than stacking under it: docs/UI_PLAN.md
+    // §6.6 specifies one line there, and "Today $2.00 of $2.00" over "Today's Ask budget ($2.00)
+    // is used up" was the same fact twice, in red, three rendered lines deep.
     <p id={id} className={cn("t-meta", capped ? "text-error" : "text-fg-muted", className)} data-testid="ask-cost-meter">
-      <span className="block">{t("ask.footer.today", { spent: formatUsd(usage.spentUsd), cap: formatUsd(usage.capUsd) })}</span>
-      {capped && <span className="block">{t("ask.budget", { cap: formatUsd(usage.capUsd), resetAt: formatReset(usage.resetAt, locale) })}</span>}
+      {capped
+        ? t("ask.budget", { cap: formatUsd(usage.capUsd), resetAt: formatReset(usage.resetAt, locale) })
+        : t("ask.footer.today", { spent: formatUsd(usage.spentUsd), cap: formatUsd(usage.capUsd) })}
     </p>
   );
 }

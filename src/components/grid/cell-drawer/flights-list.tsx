@@ -53,16 +53,22 @@ function Skeleton() {
 
 function Segment({ segment, departDate }: { segment: TripSegmentSummary; departDate: string }) {
   const locale = useLocale();
-  const arrivesLater = localDate(segment.arrives_at) !== departDate;
+  // Each side carries its own date. Comparing only the arrival against the trip's departure day
+  // printed one date at the END of the leg for a segment that had DEPARTED on a later day, so an
+  // overnight connection read as leaving on the trip's first morning.
+  const legDeparts = localDate(segment.departs_at);
+  const departsLater = legDeparts !== departDate;
+  const arrivesLater = localDate(segment.arrives_at) !== legDeparts;
   return (
     <span className="agd-leg">
       <span>{segment.flight_number}</span>
       <span>
         {segment.origin} {localTime(segment.departs_at)}
+        {departsLater && <span className="agd-airlines"> {formatGridDate(legDeparts, locale)}</span>}
         <span aria-hidden="true"> → </span>
         {segment.dest} {localTime(segment.arrives_at)}
+        {arrivesLater && <span className="agd-airlines"> {formatGridDate(localDate(segment.arrives_at), locale)}</span>}
       </span>
-      {arrivesLater && <span className="agd-airlines">{formatGridDate(localDate(segment.arrives_at), locale)}</span>}
       {segment.aircraft && <span className="agd-airlines">{segment.aircraft}</span>}
     </span>
   );

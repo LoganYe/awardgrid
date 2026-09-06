@@ -68,7 +68,7 @@ export function FailureState({ failure, onRetry }: { failure: ApiFailure; onRetr
       {detail && <AlertDescription>{detail}</AlertDescription>}
       {failure.error === "unauthorized" && (
         <AlertDescription>
-          <Link href="/login" className="underline underline-offset-2">
+          <Link href="/login" className="link">
             {t("nav.login")}
           </Link>
         </AlertDescription>
@@ -84,26 +84,50 @@ export function FailureState({ failure, onRetry }: { failure: ApiFailure; onRetr
   );
 }
 
+/**
+ * The three page-level states that replace the grid area share GridEmptyResults' treatment
+ * (docs/UI_PLAN.md §6.2: "a 14 px sentence + link button, left-aligned, no box"; §4: nothing
+ * gets a border for looking like a component). They used to be shadcn <Alert>s and dashed
+ * centred boxes, which made the four states that replace the grid disagree with each other.
+ */
 export function NoKeyState() {
   const t = useT();
   return (
-    <Alert aria-live="polite">
-      <AlertTitle>{t("grid.empty.no_key")}</AlertTitle>
-      <AlertDescription>
-        <Link href="/settings" className="underline underline-offset-2">
+    <div className="ag-empty" role="status" aria-live="polite" data-testid="grid-no-key">
+      <p>{t("grid.empty.no_key")}</p>
+      <p>
+        <Link href="/settings" className="ag-link">
           {t("grid.empty.no_key_cta")}
         </Link>
-      </AlertDescription>
-    </Alert>
+      </p>
+    </div>
   );
 }
 
 export function StartState() {
   const t = useT();
-  return <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">{t("grid.empty.start")}</p>;
+  return (
+    <div className="ag-empty" role="status">
+      <p>{t("grid.empty.start")}</p>
+    </div>
+  );
 }
 
 export function NoResultsState() {
   const t = useT();
-  return <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">{t("grid.empty.no_results")}</p>;
+  return (
+    <div className="ag-empty" role="status">
+      <p>{t("grid.empty.no_results")}</p>
+    </div>
+  );
+}
+
+/** Quota reached with nothing cached to fall back on: the banner says it, this says what is missing. */
+export function QuotaNoResultsState() {
+  const t = useT();
+  return (
+    <div className="ag-empty" role="status" data-testid="grid-quota-empty">
+      <p>{t("grid.empty.quota_blank")}</p>
+    </div>
+  );
 }
