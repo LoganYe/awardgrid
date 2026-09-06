@@ -11,6 +11,7 @@ export const E2E_PASSWORD = "demo-password-1";
 
 export type E2eUsername =
   | "demo"
+  | "linked"
   | "nokey"
   | "empty"
   | "slow"
@@ -45,6 +46,14 @@ export interface E2eUserSpec {
   quotaCalls?: number;
   /** Seed one standing query with a recorded run. */
   savedQuery?: boolean;
+  /**
+   * Fake Telegram chat id, so the Settings page renders its "linked" state (e2e/settings.spec.ts).
+   * Nothing is ever sent: the app runs with an empty TELEGRAM_BOT_TOKEN, so the transport is the
+   * mock one.
+   */
+  telegramChatId?: string;
+  /** Quiet hours to seed on the account, as "HH:MM" (both or neither). */
+  quietHours?: { start: string; end: string; timezone: string };
 }
 
 /** Calls recorded for the "quota" user today: the default soft limit, so the next search is refused. */
@@ -54,6 +63,13 @@ export const E2E_SAVED_QUERY_NAME = "Asia to Seattle, business and first";
 /** Mirrors DEMO_KEYS in scripts/mock-seatsaero.ts (kept literal so this file stays import-free). */
 export const E2E_USERS: readonly E2eUserSpec[] = [
   { username: "demo", seatsAeroKey: "demo-key-normal", savedQuery: true },
+  // Telegram already linked, with quiet hours set: the second Settings state (§5.2).
+  {
+    username: "linked",
+    seatsAeroKey: "demo-key-normal",
+    telegramChatId: "5550000001",
+    quietHours: { start: "22:00", end: "07:00", timezone: "Asia/Shanghai" },
+  },
   { username: "nokey", seatsAeroKey: null },
   { username: "empty", seatsAeroKey: "demo-key-empty" },
   { username: "slow", seatsAeroKey: "demo-key-slow" },

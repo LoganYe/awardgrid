@@ -59,6 +59,9 @@ export const PatchBody = z
   .object({
     enabled: z.boolean().optional(),
     name: Name.optional(),
+    // The edit drawer's chip editors send the whole QueryObject back, the same shape CreateBody
+    // takes; omitting it leaves the stored chips untouched.
+    query: QueryObject.optional(),
     schedule_cron: Cron.optional(),
     notify_on: Notify.optional(),
     drop_threshold_pct: Threshold.optional(),

@@ -58,6 +58,19 @@ export function createInvite(db: Db, input: CreateInviteInput, opts: ClockOption
 }
 
 /**
+ * Can `code` still be redeemed? A cheap, NON-consuming read used to reject a bad invite before
+ * the caller spends argon2 time on the password (src/lib/auth/users.ts). It is deliberately
+ * advisory: `consumeInvite` inside the registration transaction stays the single-use gate, so
+ * two requests racing on one code still cannot both win.
+ */
+export function isInviteRedeemable(db: Db, code: string): boolean {
+  const trimmed = code.trim();
+  if (!isInviteCodeShape(trimmed)) return false;
+  const row = db.select({ usedBy: inviteCodes.usedBy }).from(inviteCodes).where(eq(inviteCodes.code, trimmed)).get();
+  return row !== undefined && row.usedBy === null;
+}
+
+/**
  * Mark `code` as used by `userId`. Atomic: one UPDATE guarded by `used_by IS NULL`, so two
  * concurrent registrations with the same code cannot both succeed. Throws
  * AuthError("invalid_invite") when the code is unknown or already consumed.

@@ -130,7 +130,15 @@ describe("POST + GET /api/queries", () => {
       ])
       .run();
     const body = (await (await listRoute(req("/api/queries", { token: alice.token }))).json()) as { queries: SavedQuerySummary[] };
-    expect(body.queries[0]!.last_run).toEqual({ id: "r2", ran_at: "2026-09-06T04:00:00.000Z", new_cells: 0, dropped_cells: 0, notified: false, skipped_reason: "quota" });
+    expect(body.queries[0]!.last_run).toEqual({
+      id: "r2",
+      ran_at: "2026-09-06T04:00:00.000Z",
+      new_cells: 0,
+      dropped_cells: 0,
+      notified: false,
+      skipped_reason: "quota",
+      calls_used: null, // query_runs stores no per-run call count (see RunSummary)
+    });
   });
 
   it.each([
@@ -196,9 +204,26 @@ describe("PATCH /api/queries/[id]", () => {
     await bad({ schedule_cron: "*/5 * * * *" }, "cron_too_frequent");
     await bad({ drop_threshold_pct: 100 }, "invalid_threshold");
     await bad({ name: "" }, "invalid_name");
-    await bad({ query: QUERY }, "invalid_body");
+    // `query` is accepted (the edit drawer sends the chips back) but still validated.
+    await bad({ query: { ...QUERY, origins: [] } }, "invalid_query");
     const row = db.select().from(savedQueries).get()!;
     expect(row.scheduleCron).toBe("0 */3 * * *");
+  });
+
+  it("replaces the stored chips when the edit drawer sends a query", async () => {
+    const alice = seedUser("alice");
+    const created = await create(alice.token);
+    const next: QueryObject = { ...QUERY, destinations: ["SEA", "SFO"], cabins: ["J", "F"] };
+    const res = await patchRoute(
+      req(`/api/queries/${created.id}`, { method: "PATCH", token: alice.token, body: { query: next, name: "renamed" } }),
+      ctx(created.id),
+    );
+    expect(res.status).toBe(200);
+    const { query: q } = (await res.json()) as { query: SavedQuerySummary };
+    expect(q.query).toEqual(next);
+    expect(q.name).toBe("renamed");
+    // Persisted, not just echoed back.
+    expect(JSON.parse(db.select().from(savedQueries).get()!.queryJson)).toEqual(next);
   });
 });
 
@@ -246,6 +271,22 @@ describe("two users", () => {
   });
 });
 
+describe("GET /api/queries: next run and schedule shape (Phase 6 §4)", () => {
+  it("gives every query a next_run_at and a schedule_label the UI can translate", async () => {
+    const alice = seedUser("alice");
+    await create(alice.token, { name: "every 3 h" });
+    await create(alice.token, { name: "daily", schedule_cron: "0 8 * * *" });
+    const body = (await (await listRoute(req("/api/queries", { token: alice.token }))).json()) as { queries: SavedQuerySummary[] };
+    const byName = new Map(body.queries.map((q) => [q.name, q]));
+    expect(byName.get("every 3 h")!.schedule_label).toEqual({ kind: "every_hours", n: 3 });
+    expect(byName.get("daily")!.schedule_label).toEqual({ kind: "daily", hh: 8, mm: 0 });
+    for (const q of body.queries) {
+      // Never run yet → the next slot is ahead of now.
+      expect(Date.parse(q.next_run_at!)).toBeGreaterThan(Date.now());
+    }
+  });
+});
+
 describe("GET /api/queries/[id]/runs", () => {
   it("returns the last 20 runs newest first", async () => {
     const alice = seedUser("alice");
@@ -265,7 +306,15 @@ describe("GET /api/queries/[id]/runs", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { runs: RunSummary[] };
     expect(body.runs).toHaveLength(20);
-    expect(body.runs[0]).toEqual({ id: "r24", ran_at: "2026-09-02T00:00:00.000Z", new_cells: 24, dropped_cells: 0, notified: true, skipped_reason: null });
+    expect(body.runs[0]).toEqual({
+      id: "r24",
+      ran_at: "2026-09-02T00:00:00.000Z",
+      new_cells: 24,
+      dropped_cells: 0,
+      notified: true,
+      skipped_reason: null,
+      calls_used: null,
+    });
     expect(body.runs[19]!.id).toBe("r5");
   });
 });
@@ -274,7 +323,7 @@ describe("POST /api/queries/[id]/run", () => {
   it("calls runNow for the user's own query and returns the run summary", async () => {
     const alice = seedUser("alice");
     const created = await create(alice.token);
-    const summary: RunSummary = { id: "run-1", ran_at: "2026-09-06T05:00:00.000Z", new_cells: 2, dropped_cells: 1, notified: true, skipped_reason: null };
+    const summary: RunSummary = { id: "run-1", ran_at: "2026-09-06T05:00:00.000Z", new_cells: 2, dropped_cells: 1, notified: true, skipped_reason: null, calls_used: 4 };
     runNowMock.mockResolvedValueOnce(summary);
     const res = await runRoute(req(`/api/queries/${created.id}/run`, { method: "POST", token: alice.token }), ctx(created.id));
     expect(res.status).toBe(200);
@@ -311,5 +360,43 @@ describe("POST /api/queries/[id]/run", () => {
     const text = JSON.stringify(await res.json());
     expect(text).not.toContain("KEY123");
     expect(JSON.stringify(errorSpy.mock.calls)).not.toContain("KEY123");
+  });
+});
+
+describe("GET /api/queries/[id]/runs: the last run's diff cells", () => {
+  const KEY_KEPT = "alaska|HKG|SEA|2026-10-05|J";
+  const KEY_GONE = "american|PVG|SEA|2026-10-06|F";
+  const KEY_NEW = "aeroplan|NRT|SEA|2026-10-07|J";
+
+  function snapshot(keys: string[]): string {
+    return JSON.stringify(keys.map((key) => ({ key, miles: 60000, fees_cents: 560, seats_left: 2, computed_last_seen: "2026-10-01T10:00:00.000Z" })));
+  }
+
+  it("returns new and dropped cells as grid rows next to the run list", async () => {
+    const alice = seedUser("alice");
+    const created = await create(alice.token);
+    db.insert(queryRuns)
+      .values([
+        { id: "r1", savedQueryId: created.id, ranAt: "2026-10-01T09:00:00.000Z", cellsHash: "a", cellsJson: snapshot([KEY_KEPT, KEY_GONE]), newCells: 2, droppedCells: 0, notified: true, skippedReason: null },
+        { id: "r2", savedQueryId: created.id, ranAt: "2026-10-01T12:00:00.000Z", cellsHash: "b", cellsJson: snapshot([KEY_KEPT, KEY_NEW]), newCells: 1, droppedCells: 1, notified: true, skippedReason: null },
+      ])
+      .run();
+    const res = await runsRoute(req(`/api/queries/${created.id}/runs`, { token: alice.token }), ctx(created.id));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { runs: RunSummary[]; diff: { new: Array<{ program: string }>; dropped: Array<{ program: string }> } };
+    expect(body.runs[0]!.id).toBe("r2");
+    expect(body.runs[0]!.calls_used).toBeNull();
+    expect(body.diff.new.map((r) => r.program)).toEqual(["aeroplan"]);
+    expect(body.diff.dropped.map((r) => r.program)).toEqual(["american"]);
+    // The counts the run recorded and the rebuilt cells agree.
+    expect(body.diff.new).toHaveLength(body.runs[0]!.new_cells);
+    expect(body.diff.dropped).toHaveLength(body.runs[0]!.dropped_cells);
+  });
+
+  it("returns an empty diff when the query has never run", async () => {
+    const alice = seedUser("alice");
+    const created = await create(alice.token);
+    const res = await runsRoute(req(`/api/queries/${created.id}/runs`, { token: alice.token }), ctx(created.id));
+    expect(await res.json()).toEqual({ runs: [], diff: { new: [], dropped: [], price_drops: [] } });
   });
 });

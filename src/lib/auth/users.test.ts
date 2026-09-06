@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import {
   DUMMY_PASSWORD_HASH,
   authenticate,
+  changePassword,
   getUserById,
   getUserByUsername,
   isValidHHMM,
@@ -182,5 +183,44 @@ describe("updateUserSettings", () => {
     expect(getUserById(db, user.id)).toMatchObject({ locale: "zh", timezone: "Asia/Shanghai" });
     // An empty patch is a no-op that still returns the user.
     expect(updateUserSettings(db, user.id, {})).toEqual(getUserById(db, user.id));
+  });
+});
+
+describe("changePassword", () => {
+  const NEW = "a much better passphrase";
+
+  it("re-hashes: the new password authenticates, the old one no longer does, and no hash escapes", async () => {
+    const { db, user } = await seed();
+    const returned = await changePassword(db, user.id, { current: PASSWORD, next: NEW });
+    expect(returned).toEqual(getUserById(db, user.id));
+    expect("passwordHash" in returned).toBe(false);
+
+    await expect(authenticate(db, { username: "alice", password: NEW })).resolves.toMatchObject({ id: user.id });
+    await expect(authenticate(db, { username: "alice", password: PASSWORD })).rejects.toMatchObject({ code: "invalid_credentials" });
+  });
+
+  it("rejects a wrong current password and leaves the stored hash untouched", async () => {
+    const { db, user } = await seed();
+    const before = await hashPassword(PASSWORD); // shape check only; the stored hash is random-salted
+    expect(before).toMatch(/^\$argon2id\$/);
+    await expect(changePassword(db, user.id, { current: "wrong", next: NEW })).rejects.toBeInstanceOf(AuthError);
+    await expect(changePassword(db, user.id, { current: "", next: NEW })).rejects.toMatchObject({ code: "invalid_credentials" });
+    await expect(authenticate(db, { username: "alice", password: PASSWORD })).resolves.toMatchObject({ id: user.id });
+  });
+
+  it("rejects a new password shorter than 8 characters, after checking the current one", async () => {
+    const { db, user } = await seed();
+    await expect(changePassword(db, user.id, { current: PASSWORD, next: "short" })).rejects.toMatchObject({ code: "weak_password" });
+    await expect(authenticate(db, { username: "alice", password: PASSWORD })).resolves.toMatchObject({ id: user.id });
+  });
+
+  it("costs one verification against the dummy hash when the id is unknown (same shape as a wrong password)", async () => {
+    const { db } = await seed();
+    const verify = vi.fn(async (password: string, hash: string) => verifyPassword(password, hash));
+    await expect(changePassword(db, "nobody", { current: PASSWORD, next: NEW }, { verify })).rejects.toMatchObject({
+      code: "invalid_credentials",
+    });
+    expect(verify).toHaveBeenCalledTimes(1);
+    expect(verify.mock.calls[0]![1]).toBe(DUMMY_PASSWORD_HASH);
   });
 });

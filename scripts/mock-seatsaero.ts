@@ -17,6 +17,7 @@
  *   demo-key-normal   full dataset (as does any other non-empty value)
  *   demo-key-empty    /search and /availability answer 200 with no rows
  *   demo-key-error    /search answers HTTP 500 {}
+ *   demo-key-invalid  every endpoint answers HTTP 401 {} (a key seats.aero rejects)
  *   demo-key-slow     normal, but every response is delayed 1 500 ms (loading screenshots)
  *   demo-key-partial  /search omits every "aeroplan" row; /routes?source=aeroplan (and
  *                     /availability?source=aeroplan) answer 500 — "one program not fetched"
@@ -35,6 +36,7 @@ export const DEMO_KEYS = {
   normal: "demo-key-normal",
   empty: "demo-key-empty",
   error: "demo-key-error",
+  invalid: "demo-key-invalid",
   slow: "demo-key-slow",
   partial: "demo-key-partial",
 } as const;
@@ -236,6 +238,9 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
       return send(200, { ok: true, demo, rows: rows.length, shiftDays: dataset.shiftDays });
     }
     if (!auth) return send(401, {});
+    // A key seats.aero rejects: 401 on every endpoint, which is what /api/keys reports as
+    // "seats.aero rejected this key" when someone pastes a bad one (e2e/settings.spec.ts).
+    if (scenario === "invalid") return send(401, {});
     const at = startedAt;
     const stamp = (r: Row): Row => (r._demo_updated_minutes_ago === undefined ? r : { ...r, UpdatedAt: new Date(at.getTime() - r._demo_updated_minutes_ago * 60_000).toISOString() });
 
@@ -317,7 +322,7 @@ if (invokedDirectly) {
   const demo = process.env.DEMO === "1" || process.argv.includes("--demo");
   const port = Number(process.env.MOCK_SEATS_PORT ?? DEFAULT_PORT);
   createMockServer({ demo, port }).then((h) => {
-    const source = demo ? "fixtures/demo (DEMO mode, scenario keys demo-key-normal|empty|error|slow|partial)" : "test/fixtures/seatsaero/synthetic-example-query.json";
+    const source = demo ? "fixtures/demo (DEMO mode, scenario keys demo-key-normal|empty|error|invalid|slow|partial)" : "test/fixtures/seatsaero/synthetic-example-query.json";
     console.log(`mock seats.aero on ${h.baseUrl} — ${source}; dates shifted by ${h.shiftDays} days; ${h.rowCount} rows`);
   });
 }

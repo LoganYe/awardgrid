@@ -26,6 +26,7 @@ import {
 import { Quota, QuotaExceededError, softLimitFromEnv } from "@/lib/seatsaero/quota";
 import { getServerDb } from "@/lib/server/db";
 import { BodyError, jsonError, readJson } from "@/lib/server/http";
+import { seatsFetchFromEnv } from "@/lib/server/seats-fetch";
 import { userFromRequest } from "./session";
 
 export const runtime = "nodejs";
@@ -97,9 +98,13 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       }
       throw err;
     }
-    // Exactly one HTTP request; `fetch` resolves to globalThis.fetch at call time so tests can stub it.
+    // Exactly one HTTP request. `seatsFetchFromEnv()` is undefined unless SEATS_AERO_BASE_URL is
+    // set, so in production (and in route tests) `fetch` still resolves to globalThis.fetch at
+    // call time and can be stubbed; under the e2e/dev mock it routes the probe to the mock server
+    // instead of leaving the machine, which is what spec §0.2 promises about the offline harness.
     let requests = 0;
     const result = await validateSeatsAeroKey(secret, {
+      fetch: seatsFetchFromEnv(),
       timeoutMs: 15_000,
       onCall: () => {
         requests += 1;

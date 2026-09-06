@@ -6,7 +6,7 @@ import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createInvite, getSessionUser, SESSION_COOKIE } from "@/lib/auth";
 import { openTestDb, type Db } from "@/lib/db/client";
-import { clearLoginLimiters, TRUST_PROXY_ENV } from "@/lib/server/rate-limit";
+import { clearAuthLimiters, registerLimiter, TRUST_PROXY_ENV } from "@/lib/server/rate-limit";
 
 let db: Db;
 vi.mock("@/lib/server/db", () => ({ getServerDb: () => db }));
@@ -64,7 +64,7 @@ async function registerUser(username = "alice"): Promise<{ token: string; id: st
 
 beforeEach(() => {
   db = openTestDb();
-  clearLoginLimiters();
+  clearAuthLimiters();
   verifyCalls.n = 0;
 });
 
@@ -121,6 +121,22 @@ describe("POST /api/auth/register", () => {
     expect(await res1.json()).toEqual({ error: "invalid_body" });
     const res2 = await register(post("/api/auth/register", { username: "x" }));
     expect(await res2.json()).toEqual({ error: "invalid_body" });
+  });
+
+  it("throttles unauthenticated attempts with 429 and Retry-After", async () => {
+    // The route hashes with argon2id (64 MiB), so an unauthenticated flood is a CPU and memory
+    // DoS. The per-IP layer is the visible one here; the process-wide layer sits above it.
+    for (let i = 0; i < registerLimiter.limit; i++) {
+      const res = await register(post("/api/auth/register", { inviteCode: "ZZZZZZZZZZZZ", username: "bob", password: PASSWORD }));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "invalid_invite" });
+    }
+    const { code } = createInvite(db, { createdBy: "admin" });
+    const blocked = await register(post("/api/auth/register", { inviteCode: code, username: "bob", password: PASSWORD }));
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toEqual({ error: "rate_limited" });
+    expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(blocked.headers.get("set-cookie")).toBeNull();
   });
 
   it("never echoes the password or invite code in responses or logs", async () => {

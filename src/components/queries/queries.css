@@ -1,0 +1,231 @@
+/*
+ * Queries page (spec §4, docs/UI_PLAN.md §6.7). Plain CSS on the tokens in src/styles/tokens.css,
+ * imported once from queries-table.tsx. Everything is prefixed `aq-`. No cards, no shadows: the
+ * table's rules are the structure, and the expanded panel is a --bg-raised ground.
+ */
+
+.aq-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--type-grid);
+  line-height: var(--leading-grid);
+  font-variant-numeric: tabular-nums;
+}
+/* Child combinators throughout: the expanded row nests another table inside a <td>, and these
+   rules must not reach it. */
+.aq-table > thead > tr > th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--fg-muted);
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+  padding: 0 12px 4px 0;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.aq-table > tbody > tr > td {
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+/* The name column absorbs the slack; every other column hugs its content, so the switch and the
+   actions sit together at the right edge instead of drifting apart. */
+.aq-table > thead > tr > th:not(:first-child),
+.aq-table > tbody > tr > td:not(:first-child) {
+  width: 1px;
+  white-space: nowrap;
+}
+.aq-table > thead > tr > th:last-child,
+.aq-table > tbody > tr > td:last-child {
+  text-align: right;
+  padding-right: 0;
+}
+/* The two full-width rows (notice, expanded panel) are not part of that grid. */
+.aq-table > tbody > tr > td[colspan] {
+  width: auto;
+  white-space: normal;
+  text-align: left;
+}
+.aq-row[data-enabled="false"] .aq-name,
+.aq-row[data-enabled="false"] .aq-meta {
+  color: var(--fg-muted);
+}
+.aq-name {
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  font-weight: 500;
+  color: var(--fg);
+}
+.aq-meta {
+  color: var(--fg-muted);
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+}
+.aq-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* Expanded row: one --bg-raised panel spanning every column. */
+.aq-details {
+  background: var(--bg-raised);
+  padding: 12px 8px 16px;
+}
+.aq-section-title {
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+  font-weight: 600;
+  color: var(--fg-muted);
+  margin: 0 0 6px;
+}
+
+/* Diff cells: the real grid cell, one single-cell grid each, wrapped in a caption. */
+.aq-diff-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.aq-diff-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: var(--column-min);
+}
+.aq-diff-item .ag-table {
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  width: var(--column-min);
+}
+.aq-diff-caption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: var(--fg-muted);
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+}
+/* "dropped" reads as a tag, not a color: an outlined word in the muted foreground. */
+.aq-dropped-tag {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  padding: 0 4px;
+  color: var(--fg-muted);
+}
+/* A dropped cell is NOT dimmed. Fading the whole cell (opacity: .7) pushed --fg-muted to 3.31:1
+   and --stale to 3.24:1 on both grounds — a serious axe finding and a WCAG AA failure, for a
+   distinction the "Dropped cells" heading and the outlined tag already carry (spec §8: nothing
+   by color alone, and nothing below AA). */
+
+/* Run history: time, calls used, result. */
+/* A table is a flex item here; without align-self it would stretch to the panel and scatter its
+   three columns across 880 px. */
+.aq-runs {
+  width: auto;
+  align-self: flex-start;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.aq-runs th,
+.aq-runs td {
+  text-align: left;
+  padding: 2px 24px 2px 0;
+  font-weight: 400;
+  border: 0;
+  white-space: nowrap;
+}
+.aq-runs th {
+  color: var(--fg-muted);
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+}
+
+/* Mobile: the table becomes a stacked list; every target is at least 40 px. */
+.aq-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.aq-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.aq-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.aq-card .aq-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.aq-card .aq-actions button {
+  min-height: 40px;
+}
+.aq-toast {
+  position: fixed;
+  left: var(--gutter);
+  bottom: calc(var(--footer-height) + 12px);
+  z-index: 40;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-surface);
+  padding: 6px 12px;
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  color: var(--fg);
+}
+
+/* Route-level loading: bars in the row's shape. Static under reduced motion (spec §1.1). */
+.aq-skel-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 48px;
+  border-bottom: 1px solid var(--line);
+}
+.aq-skel-bar {
+  height: 8px;
+  background: var(--bg-raised);
+  border-radius: 0;
+}
+.aq-skel-bar:nth-child(1) {
+  width: 28%;
+}
+.aq-skel-bar:nth-child(2) {
+  width: 18%;
+}
+.aq-skel-bar:nth-child(3) {
+  width: 22%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes aq-shimmer {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+  .aq-skel-bar {
+    animation: aq-shimmer 1.2s ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aq-skel-bar {
+    animation: none;
+  }
+}

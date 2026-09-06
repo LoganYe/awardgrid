@@ -1,5 +1,6 @@
 /**
- * Small in-memory fixed-window rate limiters for POST /api/auth/login.
+ * Small in-memory fixed-window rate limiters for the three routes that spend argon2 time:
+ * POST /api/auth/login, POST /api/auth/register and POST /api/auth/password.
  *
  * Three layers, checked in this order, so that no header a client controls can unlock more
  * argon2 work than the per-username and global budgets allow:
@@ -196,14 +197,7 @@ export interface LoginThrottleResult {
  * longest Retry-After among the layers that blocked.
  */
 export function throttleLogin(username: string, ip: string): LoginThrottleResult {
-  const results = [
-    globalLoginLimiter.hit(GLOBAL_LOGIN_KEY),
-    usernameLimiter.hit(username),
-    loginLimiter.hit(loginRateKey(username, ip)),
-  ];
-  const blocked = results.filter((r) => !r.ok);
-  if (blocked.length === 0) return { ok: true, retryAfterSec: 0 };
-  return { ok: false, retryAfterSec: Math.max(...blocked.map((r) => r.retryAfterSec)) };
+  return worstOf([globalLoginLimiter.hit(GLOBAL_LOGIN_KEY), usernameLimiter.hit(username), loginLimiter.hit(loginRateKey(username, ip))]);
 }
 
 /**
@@ -215,9 +209,62 @@ export function resetLoginThrottle(username: string, ip: string): void {
   usernameLimiter.reset(username);
 }
 
-/** Test helper: forget every login bucket. */
-export function clearLoginLimiters(): void {
+/** Test helper: forget every auth bucket (login, register and password change). */
+export function clearAuthLimiters(): void {
   loginLimiter.clear();
   usernameLimiter.clear();
   globalLoginLimiter.clear();
+  registerLimiter.clear();
+  globalRegisterLimiter.clear();
+  passwordLimiter.clear();
+  globalPasswordLimiter.clear();
+}
+
+// ---------------------------------------------------------------------------
+// Registration (POST /api/auth/register)
+// ---------------------------------------------------------------------------
+
+/**
+ * Registration is unauthenticated and hashes a password with argon2id (64 MiB, timeCost 3), so
+ * it needs the same coarse brake login has. The invite is checked before the hash
+ * (src/lib/auth/users.ts), which stops the cheap flood; these buckets bound the rest — a
+ * flood of requests carrying a VALID invite code, and the 64 MiB allocation per attempt.
+ */
+export const globalRegisterLimiter = new RateLimiter({ limit: 60, windowMs: WINDOW_15_MIN, maxKeys: 1 });
+/** Per client IP: only distinguishing behind a trusted proxy, and harmless otherwise. */
+export const registerLimiter = new RateLimiter({ limit: 20, windowMs: WINDOW_15_MIN });
+export const GLOBAL_REGISTER_KEY = "*";
+
+export function throttleRegister(ip: string): LoginThrottleResult {
+  return worstOf([globalRegisterLimiter.hit(GLOBAL_REGISTER_KEY), registerLimiter.hit(ip)]);
+}
+
+// ---------------------------------------------------------------------------
+// Password change (POST /api/auth/password)
+// ---------------------------------------------------------------------------
+
+/**
+ * Two argon2id operations per request (verify the current password, hash the new one) behind a
+ * session. Keyed on the user id, so a stolen session cannot be used as an unthrottled oracle
+ * for guessing the account's current password, plus a process-wide CPU brake.
+ */
+export const globalPasswordLimiter = new RateLimiter({ limit: 60, windowMs: WINDOW_15_MIN, maxKeys: 1 });
+/** Per signed-in user: 10 attempts / 15 min — well above honest use, far below a guessing run. */
+export const passwordLimiter = new RateLimiter({ limit: 10, windowMs: WINDOW_15_MIN });
+export const GLOBAL_PASSWORD_KEY = "*";
+
+export function throttlePasswordChange(userId: string): LoginThrottleResult {
+  return worstOf([globalPasswordLimiter.hit(GLOBAL_PASSWORD_KEY), passwordLimiter.hit(userId)]);
+}
+
+/** A successful change proves the caller knew the password; forget that user's bucket. */
+export function resetPasswordThrottle(userId: string): void {
+  passwordLimiter.reset(userId);
+}
+
+/** Every layer counts the hit; the longest Retry-After among the blocked ones is returned. */
+function worstOf(results: readonly RateLimitResult[]): LoginThrottleResult {
+  const blocked = results.filter((r) => !r.ok);
+  if (blocked.length === 0) return { ok: true, retryAfterSec: 0 };
+  return { ok: false, retryAfterSec: Math.max(...blocked.map((r) => r.retryAfterSec)) };
 }

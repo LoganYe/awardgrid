@@ -3,16 +3,23 @@ import {
   cabinSummary,
   defaultQueryName,
   describeCron,
+  diffGridCell,
   formCron,
   formProblems,
   formStateFrom,
   formToBody,
   initialFormState,
   looksLikeValidCron,
+  mergeRunCalls,
+  nextRunFromCron,
   presetForCron,
   queryFormReducer,
   queryScopeSummary,
+  relativeTime,
   routeSummary,
+  runResultText,
+  scheduleText,
+  toDiffRow,
   type QueryFormState,
 } from "./format";
 import { translator } from "@/lib/i18n";
@@ -114,5 +121,148 @@ describe("form reducer", () => {
     s = queryFormReducer(s, { type: "set_notify", value: "new_cells" });
     expect(formProblems(s)).toEqual([]);
     expect(formToBody(s)).toEqual({ name: "ok", schedule_cron: "0 */4 * * *", notify_on: "new_cells", drop_threshold_pct: 1 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Queries page (spec §4): schedule label, run result, relative times, next run, diff rows
+// ---------------------------------------------------------------------------
+
+describe("scheduleText", () => {
+  const t = translator("en");
+  const zh = translator("zh");
+
+  it("prefers the API's schedule label over re-parsing the expression", () => {
+    expect(scheduleText(t, "0 */3 * * *", { kind: "every_hours", n: 3 })).toBe("every 3 hours");
+    expect(scheduleText(t, "0 * * * *", { kind: "every_hours", n: 1 })).toBe("hourly");
+    expect(scheduleText(t, "30 8 * * *", { kind: "daily", hh: 8, mm: 30 })).toBe("daily at 08:30");
+    expect(scheduleText(zh, "0 */3 * * *", { kind: "every_hours", n: 3 })).toBe("每 3 小时");
+  });
+
+  it("shows a custom expression verbatim, in both languages", () => {
+    expect(scheduleText(t, "0 8,20 * * *", { kind: "custom", expr: "0 8,20 * * *" })).toBe("0 8,20 * * *");
+    expect(scheduleText(zh, "0 8,20 * * *", { kind: "custom", expr: "0 8,20 * * *" })).toBe("0 8,20 * * *");
+  });
+
+  it("falls back to its own parser when no label is supplied", () => {
+    expect(scheduleText(t, "0 */6 * * *")).toBe("every 6 hours");
+    expect(scheduleText(t, "0 8 * * *")).toBe("daily at 08:00");
+    expect(scheduleText(t, "0 8,20 * * *")).toBe("0 8,20 * * *");
+  });
+});
+
+describe("runResultText", () => {
+  const t = translator("en");
+  const run = (over: Partial<Parameters<typeof runResultText>[0]> = {}) => ({ new_cells: 0, dropped_cells: 0, skipped_reason: null, ...over });
+
+  it("counts what changed, says so when nothing did", () => {
+    expect(runResultText(run({ new_cells: 2, dropped_cells: 1 }), t)).toBe("+2 new, −1 dropped");
+    expect(runResultText(run(), t)).toBe("no change");
+  });
+
+  it("names the skip reason, and calls the first run a baseline", () => {
+    expect(runResultText(run({ skipped_reason: "quota" }), t)).toBe("skipped: daily limit");
+    expect(runResultText(run({ skipped_reason: "first_run", new_cells: 12 }), t)).toBe("baseline");
+  });
+
+  it("shows an unknown reason code rather than swallowing it", () => {
+    expect(runResultText(run({ skipped_reason: "moon_phase" }), t)).toBe("skipped: moon_phase");
+  });
+
+  it("does not call a delivered price drop 'no change'", () => {
+    // query_runs counts new and dropped cells but not price drops, and shouldNotify fires on
+    // price drops too — so a run that sent a digest with no cell movement changed prices.
+    expect(runResultText(run({ notified: true }), t)).toBe("prices dropped");
+    // A run that found nothing and sent nothing still reads as no change.
+    expect(runResultText(run({ notified: false }), t)).toBe("no change");
+    // Cell movement always wins: the counts are the more specific fact.
+    expect(runResultText(run({ new_cells: 1, notified: true }), t)).toBe("+1 new, −0 dropped");
+  });
+});
+
+describe("mergeRunCalls", () => {
+  const run = (id: string, calls_used: number | null) => ({ id, calls_used });
+
+  it("keeps a call count the refetch could not carry", () => {
+    // The run the page just made knows its count; GET /api/queries/[id]/runs never does.
+    const merged = mergeRunCalls([run("r3", 12)], [run("r3", null), run("r2", null)]);
+    expect(merged).toEqual([run("r3", 12), run("r2", null)]);
+  });
+
+  it("prefers the server's number when it has one, and invents nothing", () => {
+    expect(mergeRunCalls([run("r3", 12)], [run("r3", 4)])).toEqual([run("r3", 4)]);
+    expect(mergeRunCalls([run("r9", 7)], [run("r3", null)])).toEqual([run("r3", null)]);
+    expect(mergeRunCalls([], [run("r3", null)])).toEqual([run("r3", null)]);
+    // The fresh list is authoritative about WHICH runs exist; merging only fills in counts.
+    expect(mergeRunCalls([run("r3", 12)], [])).toEqual([]);
+  });
+});
+
+describe("relativeTime", () => {
+  const now = Date.parse("2026-10-15T12:00:00.000Z");
+
+  it("picks the unit the reader would use", () => {
+    expect(relativeTime("2026-10-15T11:58:00.000Z", now, "en")).toBe("2 minutes ago");
+    expect(relativeTime("2026-10-15T10:00:00.000Z", now, "en")).toBe("2 hours ago");
+    expect(relativeTime("2026-10-13T12:00:00.000Z", now, "en")).toBe("2 days ago");
+    expect(relativeTime("2026-10-15T12:58:00.000Z", now, "en")).toBe("in 58 minutes");
+  });
+
+  it("translates through Intl", () => {
+    expect(relativeTime("2026-10-15T10:00:00.000Z", now, "zh")).toContain("小时");
+  });
+
+  it("returns nothing for a missing or unparseable timestamp", () => {
+    expect(relativeTime(null, now, "en")).toBe("");
+    expect(relativeTime("not a date", now, "en")).toBe("");
+  });
+});
+
+describe("nextRunFromCron", () => {
+  const now = Date.parse("2026-10-15T12:10:00.000Z");
+
+  it("finds the next matching minute in UTC", () => {
+    expect(nextRunFromCron("0 */3 * * *", now)).toBe("2026-10-15T15:00:00.000Z");
+    expect(nextRunFromCron("0 * * * *", now)).toBe("2026-10-15T13:00:00.000Z");
+    expect(nextRunFromCron("30 8 * * *", now)).toBe("2026-10-16T08:30:00.000Z");
+  });
+
+  it("rolls a daily time that is still ahead today", () => {
+    expect(nextRunFromCron("0 20 * * *", now)).toBe("2026-10-15T20:00:00.000Z");
+  });
+
+  it("declines an expression it cannot read rather than guessing", () => {
+    expect(nextRunFromCron("0 8,20 * * *", now)).toBeNull();
+    expect(nextRunFromCron("nonsense", now)).toBeNull();
+  });
+});
+
+describe("toDiffRow", () => {
+  const seen = "2026-10-15T10:00:00.000Z";
+
+  it("expands a stored snapshot into a row the grid cell can render", () => {
+    const row = toDiffRow({ key: "alaska|HKG|SEA|2026-10-18|J", miles: 60000, fees_cents: 560, seats_left: 2, computed_last_seen: seen }, "x");
+    expect(row).toMatchObject({ program: "alaska", origin: "HKG", dest: "SEA", date: "2026-10-18", cabin: "J", miles: 60000, fees_cents: 560, seats_left: 2 });
+    expect(row?.computed_last_seen).toBe(seen);
+    // A snapshot carries no currency, airlines or booking link: they stay empty, never invented.
+    expect(row).toMatchObject({ currency: null, airlines: [], booking_url: null, direct: false });
+  });
+
+  it("accepts an already-expanded row", () => {
+    const row = toDiffRow({ program: "united", origin: "ICN", dest: "SEA", date: "2026-10-20", cabin: "F", miles: 90000, currency: "USD" }, seen);
+    expect(row).toMatchObject({ program: "united", cabin: "F", miles: 90000, currency: "USD" });
+    expect(row?.fetched_at).toBe(seen);
+  });
+
+  it("rejects anything that is not a five-part key with miles", () => {
+    expect(toDiffRow({ key: "alaska|HKG|SEA|2026-10-18", miles: 1 }, seen)).toBeNull();
+    expect(toDiffRow({ key: "alaska|HKG|SEA|2026-10-18|Z", miles: 1 }, seen)).toBeNull();
+    expect(toDiffRow({ key: "alaska|HKG|SEA|2026-10-18|J", miles: 0 }, seen)).toBeNull();
+    expect(toDiffRow(null, seen)).toBeNull();
+  });
+
+  it("wraps a row as a one-row grid cell", () => {
+    const row = toDiffRow({ key: "alaska|HKG|SEA|2026-10-18|J", miles: 60000, fees_cents: null, seats_left: 0, computed_last_seen: seen }, seen)!;
+    expect(diffGridCell(row)).toMatchObject({ origin: "HKG", dest: "SEA", date: "2026-10-18", status: "ok", best: row, all: [row] });
   });
 });

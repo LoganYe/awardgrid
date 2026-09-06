@@ -6,7 +6,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { openTestDb, type Db } from "@/lib/db/client";
-import { apiUsage, queryRuns } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { apiUsage, queryRuns, savedQueries } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
 import { setKey } from "@/lib/keys";
 import { QueryObject } from "@/lib/query/schema";
@@ -15,6 +16,8 @@ import { fakeFetch, jsonResponse, textResponse } from "../../../test/fixtures/se
 import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "../../../test/fixtures/seatsaero/generate-synthetic";
 import {
   createSavedQuery,
+  lastRunDiff,
+  rowFromSnapshot,
   createTelegramLinkToken,
   deleteSavedQuery,
   getSavedQuery,
@@ -167,5 +170,132 @@ describe("runNow (through the scheduler)", () => {
     const runs = db.select().from(queryRuns).all();
     expect(runs).toHaveLength(1);
     expect(runs[0]!.skippedReason).toBe("no_key");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6 §4 additions: next run, schedule shape, last-run diff cells
+// ---------------------------------------------------------------------------
+
+/** A stored cell snapshot ("program|origin|dest|date|cabin"). */
+function cell(key: string, miles: number, seen = "2026-10-01T10:00:00.000Z") {
+  return { key, miles, fees_cents: 560, seats_left: 2, computed_last_seen: seen };
+}
+
+function seedRun(
+  db: Db,
+  savedQueryId: string,
+  row: { id: string; ranAt: string; cells: ReturnType<typeof cell>[]; notified?: boolean; skippedReason?: string | null },
+): void {
+  db.insert(queryRuns)
+    .values({
+      id: row.id,
+      savedQueryId,
+      ranAt: row.ranAt,
+      cellsHash: row.id,
+      cellsJson: JSON.stringify(row.cells),
+      newCells: 0,
+      droppedCells: 0,
+      notified: row.notified ?? false,
+      skippedReason: row.skippedReason ?? null,
+    })
+    .run();
+}
+
+describe("next_run_at and schedule_label", () => {
+  it("computes the next slot from the last run, or from now when it has never run", () => {
+    const { db } = harness();
+    const q = createSavedQuery(db, "alice", { name: "n", query: QUERY }, { now });
+    expect(q.next_run_at).toBe("2026-10-01T15:00:00.000Z"); // never run → next slot after NOW (12:00)
+    expect(q.schedule_label).toEqual({ kind: "every_hours", n: 3 });
+
+    db.insert(queryRuns)
+      .values({ id: "r1", savedQueryId: q.id, ranAt: "2026-10-01T15:00:00.000Z", cellsHash: "h", newCells: 0, droppedCells: 0, notified: false, skippedReason: null })
+      .run();
+    db.update(savedQueries).set({ lastRunAt: "2026-10-01T15:00:00.000Z" }).where(eq(savedQueries.id, q.id)).run();
+    expect(getSavedQuery(db, "alice", q.id, { now })!.next_run_at).toBe("2026-10-01T18:00:00.000Z");
+  });
+
+  it("labels a daily schedule and leaves an unusual one custom", () => {
+    const { db } = harness();
+    const daily = createSavedQuery(db, "alice", { name: "d", query: QUERY, schedule_cron: "0 8 * * *" }, { now });
+    expect(daily.schedule_label).toEqual({ kind: "daily", hh: 8, mm: 0 });
+    const odd = createSavedQuery(db, "alice", { name: "o", query: QUERY, schedule_cron: "30 9 * * 1-5" }, { now });
+    expect(odd.schedule_label).toEqual({ kind: "custom", expr: "30 9 * * 1-5" });
+    expect(listSavedQueries(db, "alice", { now }).every((q) => typeof q.next_run_at === "string")).toBe(true);
+  });
+});
+
+describe("lastRunDiff", () => {
+  const K1 = "alaska|HKG|SEA|2026-10-05|J";
+  const K2 = "american|PVG|SEA|2026-10-06|F";
+  const K3 = "aeroplan|NRT|SEA|2026-10-07|J";
+
+  it("rebuilds the last run's new and dropped cells as grid rows", () => {
+    const { db } = harness();
+    const q = createSavedQuery(db, "alice", { name: "n", query: QUERY }, { now });
+    seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000), cell(K2, 80000)], notified: true });
+    seedRun(db, q.id, { id: "r2", ranAt: "2026-10-01T12:00:00.000Z", cells: [cell(K1, 60000), cell(K3, 57500)], notified: true });
+
+    const diff = lastRunDiff(db, "alice", q.id)!;
+    expect(diff.new.map((r) => [r.program, r.origin, r.dest, r.date, r.cabin, r.miles])).toEqual([["aeroplan", "NRT", "SEA", "2026-10-07", "J", 57500]]);
+    expect(diff.dropped.map((r) => r.program)).toEqual(["american"]);
+    // Enough for the cell component; the fields a snapshot cannot carry are honest blanks.
+    expect(diff.new[0]).toMatchObject({ fees_cents: 560, seats_left: 2, currency: null, airlines: [], booking_url: null, source_id: "" });
+    expect(diff.new[0]!.fetched_at).toBe(diff.new[0]!.computed_last_seen);
+  });
+
+  it("steps over a quiet-hours run to the last delivered baseline, exactly like the scheduler", () => {
+    const { db } = harness();
+    const q = createSavedQuery(db, "alice", { name: "n", query: QUERY }, { now });
+    seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T03:00:00.000Z", cells: [cell(K1, 60000)], notified: true });
+    seedRun(db, q.id, { id: "r2", ranAt: "2026-10-01T06:00:00.000Z", cells: [cell(K1, 60000), cell(K2, 80000)], skippedReason: "quiet_hours" });
+    seedRun(db, q.id, { id: "r3", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000), cell(K2, 80000), cell(K3, 57500)], notified: true });
+
+    const diff = lastRunDiff(db, "alice", q.id)!;
+    expect(diff.new.map((r) => r.program).sort()).toEqual(["aeroplan", "american"]);
+    expect(diff.dropped).toEqual([]);
+  });
+
+  it("is empty when there is nothing to compare, and never invents dropped cells for a failed run", () => {
+    const { db } = harness();
+    const q = createSavedQuery(db, "alice", { name: "n", query: QUERY }, { now });
+    expect(lastRunDiff(db, "alice", q.id)).toEqual({ new: [], dropped: [], price_drops: [] }); // no runs
+
+    seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000)], skippedReason: "first_run" });
+    expect(lastRunDiff(db, "alice", q.id)).toEqual({ new: [], dropped: [], price_drops: [] }); // first run: no baseline
+
+    seedRun(db, q.id, { id: "r2", ranAt: "2026-10-01T12:00:00.000Z", cells: [], skippedReason: "quota" });
+    expect(lastRunDiff(db, "alice", q.id)).toEqual({ new: [], dropped: [], price_drops: [] }); // fetched nothing, so nothing dropped
+  });
+
+  it("carries the price drops the scheduler notifies on, not only new and dropped cells", () => {
+    const { db } = harness();
+    const q = createSavedQuery(db, "alice", { name: "n", query: QUERY }, { now });
+    // Same cell, 20 % cheaper: no cell appeared and none went away, so without this the run
+    // would read as "no change" while the Telegram digest said prices fell.
+    seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000)], notified: true });
+    seedRun(db, q.id, { id: "r2", ranAt: "2026-10-01T12:00:00.000Z", cells: [cell(K1, 48000)], notified: true });
+
+    const diff = lastRunDiff(db, "alice", q.id)!;
+    expect(diff.new).toEqual([]);
+    expect(diff.dropped).toEqual([]);
+    expect(diff.price_drops).toHaveLength(1);
+    expect(diff.price_drops[0]).toMatchObject({ before_miles: 60000, pct: 20 });
+    expect(diff.price_drops[0]!.row).toMatchObject({ program: "alaska", origin: "HKG", dest: "SEA", miles: 48000 });
+  });
+
+  it("is scoped to the owner: another user's id is null, like every other read here", () => {
+    const { db } = harness();
+    const q = createSavedQuery(db, "alice", { name: "n", query: QUERY }, { now });
+    seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000)], notified: true });
+    expect(lastRunDiff(db, "bob", q.id)).toBeNull();
+    expect(lastRunDiff(db, "alice", "missing")).toBeNull();
+  });
+
+  it("drops a corrupted key instead of throwing", () => {
+    expect(rowFromSnapshot(cell("only|three|parts", 1000))).toBeNull();
+    expect(rowFromSnapshot(cell("alaska|HKG|SEA|2026-10-05|X", 1000))).toBeNull(); // X is not a cabin
+    expect(rowFromSnapshot(cell(K1, 1000))).toMatchObject({ program: "alaska", cabin: "J" });
   });
 });
