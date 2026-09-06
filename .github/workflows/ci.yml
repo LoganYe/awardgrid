@@ -39,6 +39,13 @@ jobs:
       - name: Test (fixtures only, no network)
         run: pnpm test
 
+      # Kickoff §9 Phase-2 self-acceptance: no key material in client bundles — build the app and grep
+      # the whole .next/ output (client chunks + standalone server tree) for the fixture/seed key strings.
+      - name: Build + no fixture keys in .next output
+        run: |
+          pnpm exec next build
+          bash scripts/check-no-secrets-in-bundle.sh
+
       - name: No secrets or databases tracked
         run: |
           set -euo pipefail
@@ -58,3 +65,52 @@ jobs:
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-smoke:
+    name: docker smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true   # build:plugin reads vendor/travel-hacking-toolkit
+
+      - name: Throwaway .env (parser / ask lanes are never called by this smoke)
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          sed -i "s|^MASTER_KEY=.*|MASTER_KEY=$(openssl rand -hex 32)|" .env
+          sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=ci-placeholder|" .env
+          grep -q '^MASTER_KEY=[0-9a-f]\{64\}$' .env
+          grep -q '^ANTHROPIC_API_KEY=ci-placeholder$' .env
+
+      - name: docker compose build
+        run: docker compose build
+
+      - name: docker compose up -d app
+        run: docker compose up -d app
+
+      - name: Wait for /api/health (up to 60 s)
+        run: |
+          set -uo pipefail
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/health || true)
+            if [ "$code" = "200" ]; then echo "healthy after ${i}s"; exit 0; fi
+            sleep 1
+          done
+          echo "app did not become healthy within 60 s (last status: ${code:-none})"
+          exit 1
+
+      - name: /login renders (HTTP 200)
+        run: |
+          set -euo pipefail
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/login)
+          echo "/login -> $code"
+          [ "$code" = "200" ]
+
+      - name: App logs (on failure)
+        if: failure()
+        run: docker compose logs app --tail 50
+
+      - name: docker compose down -v
+        if: always()
+        run: docker compose down -v

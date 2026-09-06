@@ -1,0 +1,46 @@
+# awardgrid — private deployment (kickoff §2: app + worker + one SQLite volume).
+# Put this behind Tailscale or Cloudflare Access; port 3000 is bound to loopback only.
+#
+# 1. git clone --recurse-submodules …   (build:plugin needs vendor/travel-hacking-toolkit)
+# 2. cp .env.example .env               (set MASTER_KEY, ANTHROPIC_API_KEY, APP_URL; optional TELEGRAM_*)
+# 3. docker compose build && docker compose up -d
+#
+# Both services share one image; the worker only overrides the command. Values set under
+# `environment` win over .env, so DATABASE_PATH etc. always point at the volume.
+services:
+  app:
+    build: .
+    image: awardgrid:local
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/awardgrid.db
+      AWARDGRID_DATA_DIR: /data
+      AWARDGRID_CACHE_DIR: /data/cache
+      AWARDGRID_PLUGIN_ROOT: /app/build/plugin
+    volumes:
+      - awardgrid-data:/data
+    ports:
+      - "127.0.0.1:3000:3000"   # loopback only; reach it through Tailscale / Cloudflare Access
+    restart: unless-stopped
+
+  worker:
+    image: awardgrid:local
+    depends_on:
+      app:
+        condition: service_healthy   # app runs the migrations first
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/awardgrid.db
+      AWARDGRID_DATA_DIR: /data
+      AWARDGRID_CACHE_DIR: /data/cache
+      AWARDGRID_PLUGIN_ROOT: /app/build/plugin
+    volumes:
+      - awardgrid-data:/data
+    # tsx is a devDependency; it is available because the image keeps the full node_modules.
+    command: ["node_modules/.bin/tsx", "src/cli/worker.ts"]
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
+volumes:
+  awardgrid-data:
