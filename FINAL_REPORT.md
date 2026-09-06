@@ -1,6 +1,6 @@
-# FINAL REPORT — awardgrid v0.1.0
+# FINAL REPORT — awardgrid
 
-> Written during the unattended run (Phases 0–5, 2026-09-05/06). §1 is the precondition check as found; §2–§8 reflect the tree at v0.1.0.
+> Written during the unattended run (Phases 0–5, 2026-09-05/06). §1 is the precondition check as found; §2–§8 reflect the tree at **v0.1.0**. §9 covers the UI phase (Phase 6) and the tree at **v0.2.0**; where §9 and §2–§8 disagree about the interface, §9 is the current one.
 
 ## 1. Precondition check (§0.4) — 2026-09-06
 
@@ -119,3 +119,68 @@ Offline sanity check without any of the above: `pnpm test` and
 - **Deferred items → issues**: #11 Docker local smoke · #12 live Ask smoke · #13 real seats.aero fixtures · #14 parser model live check · #15 non-AA deeplinks · #16 cpp_desc sort · #17 release-window mode · #18 min_cabin_pct setting · #19 node:sqlite revisit · #20 Telegram real-bot check (labels `deferred` / `needs-human`).
 - **Secrets**: gitleaks passed on every `main` run since #5; no `.env*` or SQLite file has ever been tracked (CI step +
   `git ls-files` check); the only Anthropic credential seen was never written to disk or printed.
+
+## 9. UI phase (v0.2.0)
+
+Phase 6 was frontend-only and fully offline: no key, no network, no seats.aero call and no model turn anywhere in it.
+Everything below reproduces from a fresh clone with `export PATH="$HOME/.local/node-arm64/bin:$PATH"` and no `.env`.
+The design record is `docs/UI_PLAN.md`, the working manual is `docs/UI.md`, the copy contract is `docs/COPY.md`.
+
+### 9.1 What changed, per sub-phase
+
+| Sub-phase | PR | Delivered |
+|---|---|---|
+| 6.0 Audit and plan | #23 | "Before" screenshots of the v0.1 UI (52 PNGs, frozen); `docs/UI_PLAN.md` — eleven colour tokens per theme with computed WCAG ratios, type roles and the CJK fallback stack, spacing/density/radii, freshness encoding, wireframes for every page and both drawers, interaction and copy rules, and an adversarial review against spec §1.2 with the log of what it changed; `fixtures/demo/` (deterministic generator, every value invented) and the `DEMO=1` mode of the mock seats.aero; the Playwright + axe harness (four projects, throwaway SQLite, seeded scenario users) |
+| 6.1 Design system and shell | #24 | `src/styles/tokens.css` and the Tailwind/shadcn mapping; self-hosted Inter with `unicode-range` and tabular figures; light and dark with `ag_theme` + `users.theme` persistence and no flash; the 48 px top bar (nav, quota indicator from the new `GET /api/usage`, language and theme toggles, user menu, mobile menu) and the one-line footer with "Data: seats.aero"; auth pages restyled; the copy audit applied to both dictionaries |
+| 6.2 Grid | #25 | Cell anatomy and the six states (each with a pattern and a label), the freshness module as one source of truth with the fourth `unknown` tier, sticky header and first column, roving-tabindex keyboard model, hover tooltip, virtualization, per-cell `aria-label`, rows toggle, cabin tag, the dynamic-pricing state derived from the cached scope at zero API cost |
+| 6.3 Query bar and chips | #26 | The growing query bar with "Parsed from" and the Examples popover; the seven chips in spec order with a popover editor each (including a hand-written two-month calendar with the 92-day clamp); the modified state, Reset to parsed, the URL-encoded `QueryObject`, the parse-failure state and the loading skeleton in the query's real shape |
+| 6.4 Drawers | #27 | One drawer shell for both (push / overlay / sheet / bottom sheet by breakpoint, focus trapped only where the page is really inert), one slot so "mutually exclusive" is structural; the cell drawer with Get Trips, the caveat line above the action, Copy details, Save as standing query and Ask about this cell; the Ask drawer with context pills, suggestions, streaming markdown, tool activity, Stop, the cost meter and the cap state — plus the review fixes (closing Ask aborts the stream, one live region, history cleared at log-out, `safeHref` hardened) |
+| 6.5 Queries and Settings | #28 | The standing-queries table with human schedules, next run, inline delete confirmation, the expanded row rendering the last diff with the real grid-cell component, and the edit drawer with the grid's own chips (`PATCH …{query}` made it actually save); Settings' four sections — keys with offline validation, Telegram with the dependency-free QR and two-field quiet hours, Account with change-password, Language and theme — plus the second review pass (price drops reach the page, drawn radio indicators, focus returned by inline confirmations, registration throttled before argon2) |
+| 6.6 Responsive, a11y, visual suite, docs | this PR | The three responsive bands pinned by `e2e/responsive.spec.ts` (cells, rows, drawers, the Filters sheet, chip wrapping, 40 px touch targets, no sideways scroll, reduced motion, zh completeness); the axe floor asserted by default across every page and state on three projects; the capture matrix declared once (`e2e/matrix.ts` + `e2e/states.ts` + `e2e/screenshots.spec.ts`) with the contact sheet generated by `scripts/screenshot-index.ts`; `e2e/visual.spec.ts` and the non-blocking `visual` CI job; `docs/UI.md`, this section, the README UI section, `BACKLOG.md` and the `DECISIONS.md` § 6.6 entries |
+
+### 9.2 Evidence
+
+| Claim | How to see it |
+|---|---|
+| Unit tests | `pnpm build:plugin && pnpm test` → **104 files, 1,046 passed, 2 skipped** in ~9 s (the two skips are the live-gated Ask tests, §3) |
+| End-to-end | `pnpm build && pnpm e2e` → **14 spec files, 600 tests: 484 passed, 116 skipped** in ~11 min across the four projects (desktop and mobile × light and dark), offline against the `DEMO=1` mock. The skips are deliberate project gates, not failures: the keyboard walk and the responsive sweep are contracts walked once on desktop-light, the hover tooltip and the zh grid captures are desktop-only, and every `visual` assertion is inert without `VISUAL=1` |
+| Accessibility | `e2e/axe.spec.ts` audits every page and state — login, register, legal, grid results, the seven chip editors, both drawers, quota, no key, empty results, parse failure, queries (list, expanded, edit drawer, empty), settings — on desktop-light, desktop-dark and mobile-light, and since 6.6 the §8 floor is **asserted by default** (`E2E_AXE_STRICT=0` downgrades it to a report). The last recorded summary, `docs/screenshots/v0.2/axe-summary.json`, is **69 page audits (23 states × 3 projects), zero violations at every impact** — not just zero serious/critical. Each entry carries the time it was audited, and an entry the suite can no longer produce (a project it stopped auditing, a renamed state) is dropped on the next run rather than left behind as a stale zero. The 6.0 baseline in `before/axe-summary.json` had one serious `color-contrast` violation with 84 nodes on the grid; that is the one the design system removed |
+| Keyboard | The model is pure and unit-tested (`src/lib/grid/keyboard.ts`, `keyboard.test.ts`: arrows, Home/End, Ctrl/Cmd+Home/End, PageUp/PageDown by 7 rows); the mouse-free walk from the query bar to an opened booking link is written out in `docs/UI.md` § 8, and `e2e/keyboard-walk.spec.ts` performs exactly those steps — asserting `document.activeElement` after each key press, and never clicking anything |
+| Responsive | `e2e/responsive.spec.ts` — the three §6 bands in one pass (1440 / 1024 / 390): the cell at three, two and one line; the drawer pushing, overlaying and becoming a sheet; the Filters sheet; chip wrapping; the reduced top bar; the sticky date column under sideways scroll; 40 px touch targets; no sideways overflow on any route; and "nothing animates" under `prefers-reduced-motion` |
+| Screenshots | `docs/screenshots/v0.2/` — the matrix is **39 states → 152 PNGs** (4 pages × states × 2 viewports × 2 themes, grid also in zh), plus the per-feature detail folders (`chips` 48, `cell-drawer` 30, `ask-drawer` 42) and the frozen `before/` 52. `pnpm exec tsx scripts/screenshot-index.ts --check` fails on a missing or misnamed file and writes nothing; adding `--strict` also fails on a capture the matrix does not declare (the per-feature detail folders and the feature specs' own extra captures still make that non-zero, so `--strict` is not wired into CI yet — `BACKLOG.md`) |
+| Visual regression | `e2e/visual.spec.ts` — 8 states × 3 projects = 24 `toHaveScreenshot` comparisons, clock readings masked, inert without `VISUAL=1`. **No baseline is committed yet**: they are Linux-only by decision (`DECISIONS.md` § 6.6), so the first CI run of the `visual` job generates them for a human to commit (§ 9.4). Until then a plain `pnpm e2e` proves only that the eight states are still reachable, and the `visual` job is non-blocking |
+| No brand colours | `src/styles/tokens.test.ts` fails if an airline or program name appears in the token file; program names are text from `SOURCE_NAMES` everywhere else |
+| Both languages complete | `src/lib/i18n/i18n.test.ts` — **569 keys in each dictionary**, identical key sets and placeholders; `copy-rules.test.ts` enforces `docs/COPY.md` § 1; `e2e/responsive.spec.ts` checks no English string leaks through in Chinese |
+
+### 9.3 What is mocked in this phase
+
+- **The demo dataset.** Every number on every screenshot comes from `fixtures/demo/` — a deterministic generator whose values are plausible and **invented** (`fixtures/demo/README.md` says so). The `DEMO=1` mock seats.aero serves it, and the seeded user's fake key selects the scenario (full dataset, empty, slow, one program not fetched, quota exhausted), so every page state is reachable with zero API calls. Nothing on a capture was fetched from seats.aero.
+- **The Ask stream.** The e2e app runs with no `ANTHROPIC_API_KEY`, so the streaming UI could not otherwise be exercised or photographed. `src/app/api/ask/demo` replays a fixed, obviously synthetic SSE script framed exactly like `POST /api/ask`; it is gated by **both** `ASK_DEMO_STREAM=1` on the server and `?askdemo=1` on the page, reaches no model, and is off in every real deployment. Extra switches (`&askcap=1`, `&askerr=<code>`) produce the cap and failure states.
+- **Telegram.** Mock transport as in v0.1; the capture of the linking state intercepts the one POST that would mint a deep link (the route needs a bot token), so no state is written.
+- **Not mocked, and worth saying:** the parser, the grid pivot, the freshness module, the CSV export, the QR encoder, the quota accounting and every API route are the real ones. Only the upstream data and the model turn are fixtures.
+
+### 9.4 Needs human action
+
+- **Merge 6.6, then cut v0.2.0.** The sub-phase engineers may not touch `package.json` and may not run a git write
+  command, so the last three steps of §10 are the orchestrator's. In order: open and squash-merge the 6.6 PR (before/after
+  screenshot links and the §9 review checklist in the description) and put its number into § 9.1 where the table still
+  says "this PR"; wait for `main` to go green; then
+  `npm version 0.2.0 --no-git-tag-version` (or edit `"version"` by hand), commit, `git tag v0.2.0` and
+  `gh release create v0.2.0 --generate-notes`. Until that bump lands the footer renders **v0.1.0** — it reads
+  `package.json` rather than a literal, so nothing else needs editing, but the committed PNGs were captured before the
+  bump and show the old string. Re-run `pnpm build && pnpm e2e -g screenshots && pnpm exec tsx scripts/screenshot-index.ts`
+  after the bump (≈ 2 min, idempotent) so the matrix shows the released version.
+- **Commit the Linux `toHaveScreenshot` baselines.** `e2e/__screenshots__/` is deliberately empty: baselines rasterise
+  differently on macOS and a Mac-generated set would fail on CI, so nothing was committed from this machine. The first CI
+  run of the `visual` job therefore takes its `Generate Linux baselines` branch and uploads the artifact
+  **`visual-baselines`**; download it, unzip into `e2e/__screenshots__/`, and commit it with the reason in the message
+  ("visual: first Linux baselines, generated by run <id>"). Until then the 24 `visual` assertions are inert
+  (`ignoreSnapshots` unless `VISUAL=1`) and prove only that the eight states are still reachable.
+- **Look at the screenshots.** Automation proves the states exist, are named correctly, are keyboard-reachable and pass axe; it cannot tell you the UI looks right. Run `pnpm build && pnpm e2e`, then `pnpm exec tsx scripts/screenshot-index.ts`, and read `docs/screenshots/v0.2/README.md` — both themes, both viewports, and the Chinese grid captures in particular (line breaks and truncation are what a lint cannot see).
+- **Promote the `visual` job to required after five consecutive green runs.** It ships non-blocking on purpose (spec §11). Watch five `main` runs; if they are green, make the job required in the branch protection and record the five run ids in `DECISIONS.md` § 6.6. If it is flaky, fix the flake or narrow the baselined set — do not raise the tolerance.
+- **Native-speaker pass on the Chinese copy.** `copy-rules.test.ts` enforces the mechanical half (full-width punctuation, no half-width comma against a Chinese character, no italics, one term per concept, no missing translation) and the glossary in `docs/COPY.md` § 2 fixes the vocabulary — but no test can judge whether 「保存为定时查询」 or 「seats.aero 于 2 小时前查看」 reads naturally to someone who speaks the language. Read `src/lib/i18n/dictionaries/zh.ts` end to end against the glossary, and check the zh captures for strings that overflow their control.
+- **Try the grid on a real phone.** 390 × 844 is emulated in a desktop browser; momentum scrolling, the sticky column under a real touch scroll and the 40 px targets under a real thumb have never been checked on hardware (`BACKLOG.md`).
+
+### 9.5 §1.2 self-check
+
+Checked against the spec's list of generic-template tells before this PR: no cream + serif + terracotta and no near-black + acid accent (neutrals are strictly achromatic, `#FFFFFF` / `#111111`); no hairline "broadsheet" zero-radius everywhere (three radii by role — 4 px controls, 6 px surfaces, 0 only for the grid, which is a table); no SaaS card kit (no cards, no shadows anywhere, borders only between different kinds of information); no tracked-out ALL-CAPS eyebrows (the `DET`/`LLM`/`required` badges are gone, provenance is one sentence-case word); no middle-dot meta strings (the copy lint fails on `" · "`); no "WORD — fragment" labels (the lint fails on `—` in en and `——` in zh); no tinted near-black standing in for black; no `→` appended to a control label (the arrow appears only as route data in a column header); no 01/02/03 markers; no accented word in a heading (and the accent is never a fill at all) — **pass**.

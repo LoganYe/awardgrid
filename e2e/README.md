@@ -11,9 +11,16 @@ pnpm build                 # once; the suite needs a production build (.next/BUI
 pnpm e2e                   # all projects: desktop-light, desktop-dark, mobile-light, mobile-dark
 pnpm e2e -g before         # only the "before" screenshots (docs/screenshots/v0.2/before/)
 pnpm e2e -g axe            # only the axe baseline (desktop projects)
-pnpm e2e:update            # refresh toHaveScreenshot baselines — put the reason in the commit message
+pnpm e2e -g screenshots    # only the §9 capture matrix (docs/screenshots/v0.2/)
+pnpm e2e -g responsive     # only the three width bands + reduced motion + the i18n floor
+pnpm e2e -g "keyboard walk" # only the mouse-free walk of docs/UI.md §8
+VISUAL=1 pnpm e2e -g visual         # compare against the committed Linux baselines
+VISUAL=1 pnpm e2e:update -g visual  # rewrite them — put the reason in the commit message
 pnpm e2e:ui                # Playwright UI mode
 pnpm exec playwright show-report e2e-report
+
+pnpm exec tsx scripts/screenshot-index.ts          # rebuild the contact sheet
+pnpm exec tsx scripts/screenshot-index.ts --check  # check names only, write nothing
 ```
 
 If `.next/BUILD_ID` is missing, `e2e/start-app.sh` runs `next build` itself (Playwright starts
@@ -76,8 +83,10 @@ selector** for the mock (`DEMO_KEYS` in `scripts/mock-seatsaero.ts`) — the app
 | `demo` | `demo-key-normal` | full demo dataset; one saved standing query ("Asia to Seattle, business and first", every 3 h) with one recorded run (+3 new, −1 dropped) |
 | `nokey` | — | "Add your seats.aero key" empty state; the Ask drawer's no-key state |
 | `empty` | `demo-key-empty` | `/search` answers with no rows → "No award seats found"; `/queries` empty state |
+| `linked` | `demo-key-normal` | Telegram already linked, quiet hours set → the second Settings state |
 | `slow` | `demo-key-slow` | every mock response delayed 1 500 ms → loading states |
-| `slow2`, `slow3`, `slow4` | `demo-key-slow` | the same, one per Playwright project (`E2E_SLOW_USERS`): the cache is per user, and a project must not be served the previous project's answer |
+| `slow2`, `slow3`, `slow4` | `demo-key-slow` | the same, one per Playwright project (`E2E_SLOW_USERS`): the availability cache is keyed by user, and a project must not be served the previous project's answer |
+| `slow5`–`slow8` | `demo-key-slow` | a second set of four (`E2E_CHIP_SLOW_USERS`) for `chips.spec.ts`, which runs the same query: sharing one set would let whichever spec ran first warm the cache |
 | `partial` | `demo-key-partial` | `aeroplan` rows omitted; `/routes?source=aeroplan` → 500 ("one program not fetched") |
 | `quota` | `demo-key-normal` | `api_usage` row for today at 950 calls → quota banner, search refused |
 
@@ -105,12 +114,27 @@ loader, so it must not import Next.js or the database).
   backdrop covers only the first viewport height (fixed-position overlay); the drawer itself is
   intact. The PNGs are the record of the v0.1 UI and are never regenerated: to prove the spec
   still passes against a newer UI it writes to `test-results/before/` (gitignored) by default; the committed record under `docs/screenshots/v0.2/before/` was captured once in 6.0 and is never regenerated (set `E2E_BEFORE_DIR` explicitly to write elsewhere).
-- `axe.spec.ts` — `@axe-core/playwright` (WCAG 2.x A/AA tags) on login, register, legal,
-  grid-results, settings, queries for the two desktop projects. Writes counts per impact to
+- `axe.spec.ts` — `@axe-core/playwright` (WCAG 2.x A/AA tags) on login, register, legal, grid
+  results, the seven chip editors, the cell drawer, the Ask drawer, quota, no key, empty results,
+  parse failure, manual mode, queries (list, expanded row, edit drawer, empty) and settings, on
+  **desktop-light, desktop-dark and mobile-light** (dark is audited too because contrast is the
+  point). Since 6.6 the §8 floor — zero serious/critical — is enforced **by default**;
+  `E2E_AXE_STRICT=0` downgrades the run to report-only. Writes counts per impact to
   `docs/screenshots/v0.2/axe-summary.json` (the 6.0 baseline stays in `before/axe-summary.json`)
-  and logs serious/critical ids. Login, register and legal are held to the §8 floor (zero
-  serious/critical) already; set `E2E_AXE_STRICT=1` (or flip `AXE_STRICT`) once 6.6 lands to
-  enforce it on every page. 6.0 baseline: one serious `color-contrast` violation on grid-results.
+  and logs serious/critical ids. 6.0 baseline: one serious `color-contrast` violation on
+  grid-results; the design system removed it.
+- `responsive.spec.ts` — Phase 6.6 (spec §6, §8): the three width bands in one pass. The viewport
+  is set per test (1440 / 1024 / 390) rather than by the project, because density is width-driven,
+  so the spec runs on **desktop-light only**. It pins the cell losing a line at each step down,
+  the drawer going push → overlay → sheet (and the Ask drawer's bottom sheet with its drag
+  handle), the toolbar collapsing into the Filters sheet, chip wrapping, the reduced top bar, the
+  sticky date column under sideways scroll, 40 px touch targets, no sideways page overflow on any
+  route, "nothing animates" under `prefers-reduced-motion`, and the i18n floor (no English string
+  leaks through in zh-CN).
+- `keyboard-walk.spec.ts` — Phase 6.6 (spec §8): the mouse-free walk written out in `docs/UI.md`
+  §8, step for step, asserting `document.activeElement` after each key press. **Nothing in it
+  clicks.** It runs on **desktop-light only** — it is a focus-order contract, not a rendering
+  check. If a step changes in `docs/UI.md` §8 it changes here, and the reverse.
 - `shell.spec.ts` — Phase 6.1: top bar, footer, theme and language toggles, user and mobile
   menus, login/register/legal. Captures land in `docs/screenshots/v0.2/shell/`.
 - `ask-drawer.spec.ts` — Phase 6.4 (spec §3.6): context pills and their `aria-pressed` toggle,
@@ -119,14 +143,81 @@ loader, so it must not import Next.js or the database).
   in `docs/screenshots/v0.2/ask-drawer/`. Every stream here is the scripted one above. The
   keyless drawer is captured through `&askerr=no_key`, not the `nokey` user: the "Ask" button
   lives in the toolbar, which only renders once a query has run on a key.
+- `screenshots.spec.ts` — Phase 6.6: the whole §9 capture matrix (see below), and nothing else.
+  It never writes to the e2e database: "Run now" and the Telegram deep link are intercepted and
+  answered in `e2e/states.ts`, and the invalid-key paste is rejected by the mock before any write.
+  The loading skeleton is reached by delaying the browser's own `/api/find` call rather than by
+  borrowing a `slow` seed user — all eight are claimed by `grid.spec.ts` and `chips.spec.ts`, and
+  the availability cache is per user.
+- `visual.spec.ts` — Phase 6.6: the curated `toHaveScreenshot` subset (see below). Inert without
+  `VISUAL=1`.
+
+## The capture matrix (spec §9)
+
+One declaration, one spec, one generated index:
+
+| File | Role |
+|---|---|
+| `e2e/matrix.ts` | the matrix itself — page, state, what it shows, viewports, full-page or not. Dependency-free, so `tsx` can import it outside Playwright. |
+| `e2e/states.ts` | how to *reach* each state (log in, run the query, open the drawer, stub the one write). Shared with `visual.spec.ts`, so the two suites can never mean different things by "the Ask drawer mid-stream". |
+| `e2e/screenshots.spec.ts` | walks the matrix and captures it. Its last test fails if any declared PNG is missing for that project. |
+| `scripts/screenshot-index.ts` | builds `docs/screenshots/v0.2/README.md` (the contact sheet) and checks the tree. |
+
+**Naming rule**, enforced by `FILE_RE` in `e2e/matrix.ts` and by the index script:
+
+```
+docs/screenshots/v0.2/<page>/<state>-<viewport>-<theme>[-zh].png
+        page      shell · grid · queries · settings   (before/ keeps the v0.1 record)
+        viewport  desktop (1440×900) · mobile (390×844)
+        theme     light · dark
+        -zh       the grid page in zh-CN (spec §8), desktop only
+```
+
+Pages are captured full-page; drawer, popover and sheet states are captured at viewport size —
+`fullPage` paints a fixed-position backdrop over the first viewport height and nothing below it,
+which photographs an artefact instead of the drawer. Two deliberate gaps, both declared in the
+matrix: `grid/hover-tooltip` is desktop-only (a tooltip never opens on touch — the tap opens the
+drawer) and `grid/results-…-zh` is desktop-only, which is the pair spec §9 asks for.
+
+The index script exits 1 on a folder that is not a known page, a file that breaks the naming
+rule, or a matrix entry with no PNG on disk; `--strict` also fails on a capture the matrix does
+not declare. It reports any PNG over 400 KB and prints the total size of the tree.
+
+`grid/`, `queries/` and `settings/` also hold a few captures written by the feature specs
+(`grid.spec.ts`, `queries.spec.ts`, `settings.spec.ts`) beside the matrix's own; the contact
+sheet lists them under each page as "written by the feature specs rather than the matrix".
+`ask-drawer/`, `cell-drawer/` and `chips/` are those specs' per-feature detail folders and get
+their own section.
 
 ## Visual-regression baselines (Linux plan)
 
+`e2e/visual.spec.ts` holds a curated subset — eight states × three projects (desktop light and
+dark, mobile light) = 24 `toHaveScreenshot` comparisons — at `maxDiffPixelRatio: 0.01` with
+animations disabled. Everything whose text is a clock reading is masked (`timeMasks()` in
+`e2e/states.ts`): freshness ages, the quota counters and "resets in", the grid's date row headers
+and Dates chip (the demo dataset is shifted so day one is *today*, so every date label moves
+overnight), relative run times, and the key row's "added <date>". The masked box is still
+compared; only the reading inside it is exempt.
+
 `snapshotPathTemplate` is `e2e/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}` —
-**no platform suffix**. Baselines are generated and committed from Linux CI (the `visual` job,
-non-blocking at first, §11), never from a Mac: font rasterisation differs, and a macOS baseline
-would fail on CI. `toHaveScreenshot` runs with `maxDiffPixelRatio: 0.01` and animations disabled.
-No `toHaveScreenshot` assertions exist yet (6.0 only ships the harness and the "before" PNGs).
+**no platform suffix**. Baselines are generated and committed from Linux CI, never from a Mac:
+font rasterisation differs and a macOS baseline would fail on CI. So the projects set
+`ignoreSnapshots` unless `VISUAL=1`, and a plain `pnpm e2e` runs the visual tests (proving the
+states are still reachable) without ever failing on a missing or foreign baseline.
+
+**Updating the baselines** — they only exist for Linux, so they come from CI:
+
+1. Push the branch. The `visual` job runs `VISUAL=1 pnpm e2e -g visual` with
+   `continue-on-error: true` (spec §11: non-blocking until five consecutive green runs, then
+   promote to required and record it in `DECISIONS.md`) and uploads `e2e/__screenshots__` plus
+   `test-results` — the expected/actual/diff triples — as the artifact **`visual-snapshots`**.
+2. When no baseline is committed yet, the job instead runs `VISUAL=1 pnpm e2e:update -g visual`
+   and uploads the generated set as the artifact **`visual-baselines`**.
+3. Download that artifact, unzip it into `e2e/__screenshots__/`, and commit it **with the reason
+   in the commit message** ("visual: rebaseline — cell line height changed in <PR>").
+
+Locally, `VISUAL=1 pnpm e2e:update -g visual` writes macOS baselines: useful for a quick look,
+never for committing.
 
 ## Rules
 
@@ -135,3 +226,7 @@ No `toHaveScreenshot` assertions exist yet (6.0 only ships the harness and the "
 - Nothing here is a secret: the master key is 64 × `e`, passwords and keys are the literal
   strings above. Keep it that way so gitleaks stays quiet (no hex blobs, no `sk-` prefixes).
 - Output folders (`e2e-report/`, `test-results/`, `playwright/.cache/`) are gitignored.
+  `e2e/__screenshots__/` deliberately is **not**: those are the committed Linux baselines.
+- One suite at a time per checkout. Every run seeds the same SQLite file, binds the same two
+  ports and clears `test-results/`, so two `pnpm e2e` runs in one working tree take each other's
+  app server down mid-test.

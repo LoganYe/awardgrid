@@ -31,6 +31,17 @@ const built = existsSync(path.join(root, ".next", "BUILD_ID"));
 const DESKTOP = { viewport: { width: 1440, height: 900 } } as const;
 const MOBILE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } as const;
 
+/**
+ * `toHaveScreenshot` baselines (e2e/visual.spec.ts) are generated on Linux CI and carry no
+ * platform suffix, so on any other machine they would fail on font rasterisation alone — and on a
+ * fresh clone they may not exist at all. Off by default, so a routine `pnpm e2e` never fails on
+ * them; the `visual` CI job and anyone comparing deliberately set VISUAL=1:
+ *
+ *     VISUAL=1 pnpm e2e -g visual           # compare
+ *     VISUAL=1 pnpm e2e:update -g visual    # rewrite the baselines (reason in the commit message)
+ */
+const ignoreSnapshots = process.env.VISUAL !== "1";
+
 /** Environment for the production app process. Nothing here is a real secret. */
 export const appEnv: Record<string, string> = {
   E2E_DB_PATH,
@@ -97,10 +108,10 @@ export default defineConfig({
     deviceScaleFactor: 1,
   },
   projects: [
-    { name: "desktop-light", use: { ...DESKTOP, colorScheme: "light" } },
-    { name: "desktop-dark", use: { ...DESKTOP, colorScheme: "dark" } },
-    { name: "mobile-light", use: { ...MOBILE, colorScheme: "light" } },
-    { name: "mobile-dark", use: { ...MOBILE, colorScheme: "dark" } },
+    { name: "desktop-light", ignoreSnapshots, use: { ...DESKTOP, colorScheme: "light" } },
+    { name: "desktop-dark", ignoreSnapshots, use: { ...DESKTOP, colorScheme: "dark" } },
+    { name: "mobile-light", ignoreSnapshots, use: { ...MOBILE, colorScheme: "light" } },
+    { name: "mobile-dark", ignoreSnapshots, use: { ...MOBILE, colorScheme: "dark" } },
   ],
   webServer,
 });

@@ -24,7 +24,12 @@ export default async function LegalPage() {
     <PageColumn>
       <article className="t-body text-fg">
         <h1 className="t-title">{t("legal.title")}</h1>
-        <Markdown source={source} />
+        {/* LEGAL.md is written in English and is not translated: the document declares its own
+            language so a screen reader in the Chinese UI switches voice for it (WCAG 3.1.2),
+            and e2e/responsive.spec.ts does not read it as English leaking into the zh UI. */}
+        <div lang="en">
+          <Markdown source={source} />
+        </div>
       </article>
     </PageColumn>
   );
