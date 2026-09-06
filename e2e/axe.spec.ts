@@ -15,7 +15,19 @@ import { applyTheme, AXE_SUMMARY_FILE, expect, loginAs, openAskDrawer, openCellD
 const AXE_STRICT = process.env.E2E_AXE_STRICT === "1";
 const SUMMARY_FILE = AXE_SUMMARY_FILE;
 /** Pages already held to the §8 floor (zero serious/critical) regardless of AXE_STRICT. */
-const STRICT_PAGES = new Set(["login", "register", "legal", "grid-results", "grid-chip-editor", "grid-cell-drawer", "grid-ask-drawer"]);
+const STRICT_PAGES = new Set([
+  "login",
+  "register",
+  "legal",
+  "grid-results",
+  "grid-chip-editor",
+  "grid-cell-drawer",
+  "grid-ask-drawer",
+  "queries",
+  "queries-expanded",
+  "queries-edit-drawer",
+  "settings",
+]);
 type Impact = "critical" | "serious" | "moderate" | "minor";
 
 interface PageSummary {
@@ -150,5 +162,33 @@ test.describe("axe", () => {
     await page.goto("/queries");
     await expect(page.getByRole("table")).toBeVisible();
     await audit(page, "queries");
+  });
+
+  /**
+   * The expanded row (6.5): a disclosure holding the last diff as real grid cells — each in its
+   * own one-cell grid with a caption — plus the run-history table. Two nested tabular structures
+   * inside a row of a third is the densest markup on the page, so it is audited on its own.
+   */
+  test("queries-expanded", async ({ page }) => {
+    await loginAs(page, "demo");
+    await page.goto("/queries");
+    await page.locator('[data-testid^="details-"]').first().click();
+    await expect(page.locator('[id^="query-details-"]').first()).toBeVisible();
+    await audit(page, "queries-expanded");
+  });
+
+  /**
+   * The edit drawer (6.5) with a chip editor open over it: the drawer's own form plus the grid's
+   * popover, which is where a focus-order or a name mistake would show up first.
+   */
+  test("queries-edit-drawer", async ({ page }) => {
+    await loginAs(page, "demo");
+    await page.goto("/queries");
+    await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+    const drawer = page.getByTestId("edit-query-drawer");
+    await expect(drawer).toBeVisible();
+    await drawer.locator('[data-chip="origins"]').click();
+    await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
+    await audit(page, "queries-edit-drawer");
   });
 });

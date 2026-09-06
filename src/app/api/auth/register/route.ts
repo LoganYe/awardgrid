@@ -2,6 +2,12 @@
  * POST /api/auth/register { inviteCode, username, password }
  *   201 { user: { id, username } } + session cookie
  *   400 { error: invalid_body | invalid_invite | invalid_username | weak_password | username_taken | registration_failed }
+ *   429 { error: rate_limited } (Retry-After set) — 60 attempts / 15 min per process, 20 per IP
+ *
+ * This route is unauthenticated and spends argon2id (64 MiB, timeCost 3) on the submitted
+ * password, so it gets the same coarse brake login has. `registerWithInvite` additionally
+ * rejects an unusable invite code BEFORE hashing, so a request with no valid code costs
+ * nothing but a SELECT.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
@@ -9,6 +15,7 @@ import { createSession, isAuthError, registerWithInvite, USERNAME_MAX } from "@/
 import { withSessionCookie } from "@/lib/auth/next";
 import { getServerDb } from "@/lib/server/db";
 import { BodyError, jsonError, readJson, type ApiErrorCode } from "@/lib/server/http";
+import { clientIp, throttleRegister } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -37,6 +44,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (err) {
     if (err instanceof BodyError) return jsonError(400, "invalid_body");
     throw err;
+  }
+
+  const limit = throttleRegister(clientIp(request.headers));
+  if (!limit.ok) {
+    return jsonError(429, "rate_limited", { headers: { "retry-after": String(limit.retryAfterSec) } });
   }
 
   const db = getServerDb();

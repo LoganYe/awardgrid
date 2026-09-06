@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { type ClockOptions, type DbConn as Db, resolveNow } from "@/lib/auth/clock";
 import { AuthError, SettingsValidationError } from "@/lib/auth/errors";
-import { consumeInvite } from "@/lib/auth/invites";
+import { consumeInvite, isInviteRedeemable } from "@/lib/auth/invites";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { userKeys, users, type User as DbUser } from "@/lib/db/schema";
 
@@ -56,9 +56,16 @@ export interface RegisterInput {
 }
 
 /**
- * Register a new user with an invite code. Order: validate → hash (slow, outside the
- * transaction) → transaction { username free? → consume invite → insert }. Any failure inside
- * the transaction rolls everything back, so a rejected username never burns an invite.
+ * Register a new user with an invite code. Order: validate → peek at the invite → hash (slow,
+ * outside the transaction) → transaction { username free? → consume invite → insert }. Any
+ * failure inside the transaction rolls everything back, so a rejected username never burns an
+ * invite.
+ *
+ * The invite is peeked at BEFORE argon2 runs. Hashing first would let anyone with no invite
+ * code at all drive unlimited 64 MiB / timeCost-3 hashes through the unauthenticated register
+ * route — each one holding a libuv threadpool slot until it finished, only to be thrown away
+ * when the code turned out to be garbage. The peek does not consume anything: `consumeInvite`
+ * inside the transaction is still the authoritative single-use gate.
  */
 export async function registerWithInvite(db: Db, input: RegisterInput, opts: ClockOptions = {}): Promise<User> {
   const username = normalizeUsername(input.username);
@@ -66,6 +73,7 @@ export async function registerWithInvite(db: Db, input: RegisterInput, opts: Clo
   if (typeof input.password !== "string" || input.password.length < PASSWORD_MIN) {
     throw new AuthError("weak_password");
   }
+  if (!isInviteRedeemable(db, input.inviteCode)) throw new AuthError("invalid_invite");
   const passwordHash = await hashPassword(input.password);
   const now = resolveNow(opts);
   const id = randomUUID();
@@ -224,4 +232,48 @@ export function updateUserSettings(db: Db, userId: string, patch: UserSettingsPa
   const row = db.update(users).set(set).where(eq(users.id, userId)).returning().get();
   if (!row) throw new Error("user not found");
   return toPublicUser(row);
+}
+
+// ---------------------------------------------------------------------------
+// Password change (Phase 6 §5 "Account"; POST /api/auth/password)
+// ---------------------------------------------------------------------------
+
+export interface ChangePasswordInput {
+  /** The password the user is signing in with today. */
+  current: string;
+  /** The replacement; at least PASSWORD_MIN characters. */
+  next: string;
+}
+
+export interface ChangePasswordDeps {
+  /** Injectable for tests (argon2 is deliberately slow). */
+  verify?: typeof verifyPassword;
+  hash?: typeof hashPassword;
+}
+
+/**
+ * Re-hash a user's password after checking the current one.
+ *
+ * Order: one argon2 verification of `current` ALWAYS runs (against a dummy hash when the id is
+ * unknown, so a stale session costs the same as a wrong password), then the length rule, then
+ * the re-hash outside any transaction. Failures are AuthError("invalid_credentials") for a
+ * wrong current password and AuthError("weak_password") for a short new one — the same two
+ * codes login and registration already use, so nothing new leaks into error bodies.
+ *
+ * Sessions are NOT touched here: the route decides which ones to revoke (it keeps the caller's
+ * own cookie alive and drops the others).
+ */
+export async function changePassword(db: Db, userId: string, input: ChangePasswordInput, deps: ChangePasswordDeps = {}): Promise<User> {
+  const verify = deps.verify ?? verifyPassword;
+  const hashFn = deps.hash ?? hashPassword;
+  const current = typeof input.current === "string" ? input.current : "";
+  const next = typeof input.next === "string" ? input.next : "";
+  const row = db.select().from(users).where(eq(users.id, userId)).get();
+  const ok = await verify(current, row?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  if (!row || !ok) throw new AuthError("invalid_credentials");
+  if (next.length < PASSWORD_MIN) throw new AuthError("weak_password");
+  const passwordHash = await hashFn(next);
+  const updated = db.update(users).set({ passwordHash }).where(eq(users.id, userId)).returning().get();
+  if (!updated) throw new Error("user not found");
+  return toPublicUser(updated);
 }

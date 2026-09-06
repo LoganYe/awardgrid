@@ -1,5 +1,5 @@
 /**
- * PATCH  /api/queries/[id] { enabled?, name?, schedule_cron?, notify_on?, drop_threshold_pct? }
+ * PATCH  /api/queries/[id] { enabled?, name?, query?, schedule_cron?, notify_on?, drop_threshold_pct? }
  *        → 200 { query } | 400 (validation codes) | 401 | 404 { error: "not_found" }
  * DELETE /api/queries/[id] → 204 | 401 | 404
  * Another user's id is a 404 — identical to a missing one, so ids cannot be enumerated.

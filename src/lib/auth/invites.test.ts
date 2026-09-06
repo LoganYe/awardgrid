@@ -6,6 +6,7 @@ import {
   createInvite,
   generateInviteCode,
   isInviteCodeShape,
+  isInviteRedeemable,
   listInvites,
   listUnusedInvites,
 } from "@/lib/auth/invites";
@@ -57,6 +58,22 @@ describe("invite codes", () => {
     expect(() => consumeInvite(db, "ZZZZZZZZZZZZ", "u", { now: T0 })).toThrow(/invalid or has already been used/);
     expect(() => consumeInvite(db, "' OR 1=1 --", "u", { now: T0 })).toThrow(AuthError);
     expect(listUnusedInvites(db)).toHaveLength(1);
+  });
+
+  it("peeks at redeemability without consuming anything", () => {
+    // registerWithInvite calls this BEFORE argon2 so a request with no usable code cannot
+    // make the server spend 64 MiB and a threadpool slot on a hash it will throw away.
+    const db = openTestDb();
+    const { code } = createInvite(db, { createdBy: "admin" }, { now: T0 });
+    expect(isInviteRedeemable(db, code)).toBe(true);
+    expect(isInviteRedeemable(db, ` ${code} `)).toBe(true);
+    expect(isInviteRedeemable(db, "ZZZZZZZZZZZZ")).toBe(false); // right shape, unknown code
+    expect(isInviteRedeemable(db, "nope")).toBe(false); // wrong shape, never reaches the table
+    expect(isInviteRedeemable(db, "' OR 1=1 --")).toBe(false);
+    // The peek left it redeemable; consuming it is what spends it.
+    expect(listUnusedInvites(db).map((i) => i.code)).toEqual([code]);
+    consumeInvite(db, code, "user-1", { now: T0 });
+    expect(isInviteRedeemable(db, code)).toBe(false);
   });
 
   it("trims the intendedFor hint and stores null when blank", () => {

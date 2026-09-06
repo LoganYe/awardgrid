@@ -12,6 +12,7 @@
  */
 import { en } from "../src/lib/i18n/dictionaries/en";
 import { applyTheme, beforeShot, closeDrawer, expect, openAskDrawer, openCellDrawer, openGridWithResults, queryBox, submitQuery, test } from "./fixtures";
+import { E2E_SAVED_QUERY_NAME } from "./users";
 
 test.describe("before: current UI", () => {
   test.beforeEach(async ({ page }) => {
@@ -79,8 +80,11 @@ test.describe("before: current UI", () => {
   test("queries", async ({ page, asUser }) => {
     await asUser("demo");
     await page.goto("/queries");
-    await expect(page.getByRole("table")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Asia to Seattle, business and first" })).toBeVisible();
+    // v0.1 was a table at every width whose name cell was a link to /grid; since 6.5 the name is
+    // plain text and the table becomes a stacked list under 768 px (spec §6), so assert the row
+    // itself rather than the old table/link roles.
+    await expect(page.getByRole("heading", { name: en["saved.title"] })).toBeVisible();
+    await expect(page.locator('[data-testid^="query-row-"]').first()).toContainText(E2E_SAVED_QUERY_NAME);
     await beforeShot(page, "queries");
   });
 

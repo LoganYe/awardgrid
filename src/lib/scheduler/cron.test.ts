@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CRON, isDue, matchesMinute, nextMatch, parseCron, validateCron } from "./cron";
+import { DEFAULT_CRON, describeCron, isDue, matchesMinute, nextMatch, nextRunAt, parseCron, validateCron } from "./cron";
 
 describe("parseCron / validateCron", () => {
   it("accepts the default every-3-hours expression (kickoff §12) and node-cron agrees", () => {
@@ -112,5 +112,52 @@ describe("nextMatch", () => {
   it("finds the next 3-hour slot", () => {
     expect(nextMatch(DEFAULT_CRON, new Date("2026-10-01T12:00:00Z"))?.toISOString()).toBe("2026-10-01T15:00:00.000Z");
     expect(nextMatch(DEFAULT_CRON, new Date("2026-10-01T14:59:00Z"))?.toISOString()).toBe("2026-10-01T15:00:00.000Z");
+  });
+});
+
+describe("nextRunAt (Phase 6 §4: the queries table's next-run column)", () => {
+  it("returns the next slot after the given instant, as an ISO string", () => {
+    expect(nextRunAt(DEFAULT_CRON, "2026-10-01T12:00:00Z")).toBe("2026-10-01T15:00:00.000Z");
+    expect(nextRunAt(DEFAULT_CRON, "2026-10-01T15:00:00Z")).toBe("2026-10-01T18:00:00.000Z");
+    expect(nextRunAt("0 9 * * 1-5", "2026-10-02T09:00:00Z")).toBe("2026-10-05T09:00:00.000Z"); // Friday → Monday
+  });
+
+  it("is strictly after: a run inside the matching minute does not return that same minute", () => {
+    expect(nextRunAt("* * * * *", "2026-10-01T15:00:30Z")).toBe("2026-10-01T15:01:00.000Z");
+  });
+
+  it("returns null for an invalid expression or timestamp instead of throwing", () => {
+    expect(nextRunAt("nope", "2026-10-01T12:00:00Z")).toBeNull();
+    expect(nextRunAt(DEFAULT_CRON, "not-a-date")).toBeNull();
+    expect(nextRunAt("0 0 30 2 *", "2026-10-01T12:00:00Z")).toBeNull(); // February 30th never comes
+  });
+});
+
+describe("describeCron", () => {
+  it("recognises the every-n-hours shape (n divides 24, starting at midnight)", () => {
+    expect(describeCron(DEFAULT_CRON)).toEqual({ kind: "every_hours", n: 3 });
+    expect(describeCron("0 */6 * * *")).toEqual({ kind: "every_hours", n: 6 });
+    expect(describeCron("0 0,12 * * *")).toEqual({ kind: "every_hours", n: 12 });
+    expect(describeCron("0 * * * *")).toEqual({ kind: "every_hours", n: 1 });
+    expect(describeCron("  0   */4   *  *  * ")).toEqual({ kind: "every_hours", n: 4 });
+  });
+
+  it("recognises a daily schedule with its hour and minute", () => {
+    expect(describeCron("0 8 * * *")).toEqual({ kind: "daily", hh: 8, mm: 0 });
+    expect(describeCron("30 23 * * *")).toEqual({ kind: "daily", hh: 23, mm: 30 });
+  });
+
+  it("falls back to custom rather than describing a schedule inaccurately", () => {
+    expect(describeCron("0 8,20 * * *")).toEqual({ kind: "custom", expr: "0 8,20 * * *" }); // twice a day, not from midnight
+    expect(describeCron("0 9 * * 1-5")).toEqual({ kind: "custom", expr: "0 9 * * 1-5" }); // weekdays only
+    expect(describeCron("0 3 1 * *")).toEqual({ kind: "custom", expr: "0 3 1 * *" }); // monthly
+    expect(describeCron("0 0 * 6 *")).toEqual({ kind: "custom", expr: "0 0 * 6 *" }); // June only
+    expect(describeCron("0,30 * * * *")).toEqual({ kind: "custom", expr: "0,30 * * * *" }); // two minutes
+    expect(describeCron("0 */5 * * *")).toEqual({ kind: "custom", expr: "0 */5 * * *" }); // 0,5,10,15,20 — not a full day
+  });
+
+  it("never throws on garbage: it comes back as custom with the trimmed text", () => {
+    expect(describeCron("nope")).toEqual({ kind: "custom", expr: "nope" });
+    expect(describeCron("  ")).toEqual({ kind: "custom", expr: "" });
   });
 });

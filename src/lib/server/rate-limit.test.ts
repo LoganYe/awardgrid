@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  clearLoginLimiters,
+  clearAuthLimiters,
   clientIp,
   DIRECT_CLIENT,
   globalLoginLimiter,
@@ -128,7 +128,7 @@ describe("bucket cap", () => {
 });
 
 describe("throttleLogin (three layers)", () => {
-  beforeEach(() => clearLoginLimiters());
+  beforeEach(() => clearAuthLimiters());
 
   it("blocks after 10 per username+ip, 20 per username and 200 overall", () => {
     for (let i = 0; i < 10; i++) expect(throttleLogin("alice", "direct").ok).toBe(true);

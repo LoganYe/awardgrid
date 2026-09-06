@@ -12,15 +12,32 @@
  * `unlinkTelegram`, `createTransportFromEnv`) so the routes depend on one module.
  */
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 import { parse as parseCron, validate as validateCronExpr } from "node-cron";
 import type { Db } from "@/lib/db/client";
 import { NOTIFY_ON, queryRuns, savedQueries, users, type NotifyOn, type QueryRun, type SavedQuery } from "@/lib/db/schema";
 import { createSqliteQuotaStore } from "@/lib/db/stores/quota";
+import type { AvailabilityRow } from "@/lib/grid/types";
 import { NoKeyError } from "@/lib/keys";
 import { TelegramTransport, createTelegramLinkToken, createTransportFromEnv as notifyTransportFromEnv, unlinkTelegram } from "@/lib/notify";
-import { QueryObject } from "@/lib/query/schema";
-import { DEFAULT_CRON, notifyFormatDigest, runNow as schedulerRunNow, validateCron as schedulerValidateCron, type RunDeps } from "@/lib/scheduler";
+import { Cabin, QueryObject } from "@/lib/query/schema";
+import {
+  DEFAULT_CRON,
+  FETCH_FAILURE_REASONS,
+  PENDING_REASONS,
+  describeCron,
+  diffSnapshots,
+  nextRunAt,
+  parseCellKey,
+  parseSnapshot,
+  notifyFormatDigest,
+  runNow as schedulerRunNow,
+  validateCron as schedulerValidateCron,
+  type CellSnapshot,
+  type CronDescription,
+  type RunDeps,
+  type SkippedReason,
+} from "@/lib/scheduler";
 import { Quota, softLimitFromEnv } from "@/lib/seatsaero/quota";
 
 export { NOTIFY_ON, type NotifyOn };
@@ -49,6 +66,13 @@ export interface RunSummary {
   dropped_cells: number;
   notified: boolean;
   skipped_reason: string | null;
+  /**
+   * seats.aero calls this run spent, when it is known. `query_runs` has no calls column and the
+   * schema is frozen for Phase 6, so every run READ BACK from the database reports null (the UI
+   * says "calls not recorded"); only the response of a "run now" that this process just executed
+   * carries the real count, which the scheduler returns in QueryRunResult.apiCallsUsed.
+   */
+  calls_used: number | null;
 }
 
 export interface SavedQuerySummary {
@@ -62,6 +86,14 @@ export interface SavedQuerySummary {
   created_at: string;
   last_run_at: string | null;
   last_run: RunSummary | null;
+  /**
+   * When this query is next due, as ISO — `nextRunAt(schedule_cron, last_run_at ?? now)`. It is
+   * in the past when a query is overdue (the worker was down, or the query is paused); the UI
+   * renders that as "due now". Null when the expression matches nothing in the next year.
+   */
+  next_run_at: string | null;
+  /** Shape of the schedule for the human label; the UI picks the i18n key (never English here). */
+  schedule_label: CronDescription;
 }
 
 export function toRunSummary(run: QueryRun): RunSummary {
@@ -72,6 +104,7 @@ export function toRunSummary(run: QueryRun): RunSummary {
     dropped_cells: run.droppedCells,
     notified: run.notified,
     skipped_reason: run.skippedReason ?? null,
+    calls_used: null,
   };
 }
 
@@ -101,7 +134,7 @@ function parseStoredQuery(json: string): QueryObject {
   };
 }
 
-function toSummary(row: SavedQuery, lastRun: QueryRun | null): SavedQuerySummary {
+function toSummary(row: SavedQuery, lastRun: QueryRun | null, now: Date = new Date()): SavedQuerySummary {
   return {
     id: row.id,
     name: row.name,
@@ -113,6 +146,8 @@ function toSummary(row: SavedQuery, lastRun: QueryRun | null): SavedQuerySummary
     created_at: row.createdAt,
     last_run_at: row.lastRunAt,
     last_run: lastRun ? toRunSummary(lastRun) : null,
+    next_run_at: nextRunAt(row.scheduleCron, row.lastRunAt ?? now.toISOString()),
+    schedule_label: describeCron(row.scheduleCron),
   };
 }
 
@@ -137,19 +172,20 @@ function latestRun(db: Db, savedQueryId: string): QueryRun | null {
 }
 
 /** The user's saved queries, newest first, each with its most recent run (or null). */
-export function listSavedQueries(db: Db, userId: string): SavedQuerySummary[] {
+export function listSavedQueries(db: Db, userId: string, opts: ClockOpts = {}): SavedQuerySummary[] {
+  const now = (opts.now ?? (() => new Date()))();
   const rows = db.select().from(savedQueries).where(eq(savedQueries.userId, userId)).orderBy(desc(savedQueries.createdAt)).all();
-  return rows.map((row) => toSummary(row, latestRun(db, row.id)));
+  return rows.map((row) => toSummary(row, latestRun(db, row.id), now));
 }
 
 /** One saved query when it belongs to `userId`; null otherwise (the route answers 404). */
-export function getSavedQuery(db: Db, userId: string, id: string): SavedQuerySummary | null {
+export function getSavedQuery(db: Db, userId: string, id: string, opts: ClockOpts = {}): SavedQuerySummary | null {
   const row = db
     .select()
     .from(savedQueries)
     .where(and(eq(savedQueries.id, id), eq(savedQueries.userId, userId)))
     .get();
-  return row ? toSummary(row, latestRun(db, row.id)) : null;
+  return row ? toSummary(row, latestRun(db, row.id), (opts.now ?? (() => new Date()))()) : null;
 }
 
 export interface CreateSavedQueryInput {
@@ -178,12 +214,14 @@ export function createSavedQuery(db: Db, userId: string, input: CreateSavedQuery
       lastRunAt: null,
     })
     .run();
-  return getSavedQuery(db, userId, id)!;
+  return getSavedQuery(db, userId, id, opts)!;
 }
 
 export interface UpdateSavedQueryInput {
   enabled?: boolean;
   name?: string;
+  /** The parsed chips. Replaces `query_json` wholesale — the edit drawer sends the whole object. */
+  query?: QueryObject;
   schedule_cron?: string;
   notify_on?: NotifyOn;
   drop_threshold_pct?: number;
@@ -195,6 +233,7 @@ export function updateSavedQuery(db: Db, userId: string, id: string, patch: Upda
   const set: Partial<typeof savedQueries.$inferInsert> = {};
   if (patch.enabled !== undefined) set.enabled = patch.enabled;
   if (patch.name !== undefined) set.name = patch.name;
+  if (patch.query !== undefined) set.queryJson = JSON.stringify(patch.query);
   if (patch.schedule_cron !== undefined) set.scheduleCron = patch.schedule_cron;
   if (patch.notify_on !== undefined) set.notifyOn = patch.notify_on;
   if (patch.drop_threshold_pct !== undefined) set.dropThresholdPct = patch.drop_threshold_pct;
@@ -227,6 +266,129 @@ export function listRuns(db: Db, userId: string, id: string, limit = RUNS_LIMIT)
     .limit(limit)
     .all();
   return rows.map(toRunSummary);
+}
+
+// ---------------------------------------------------------------------------
+// Last-run diff (Phase 6 §4: the expanded row renders new / dropped cells with the real
+// grid-cell component)
+// ---------------------------------------------------------------------------
+
+/**
+ * Rows rebuilt from `query_runs.cells_json`. The snapshot the scheduler stores is deliberately
+ * small — key ("program|origin|dest|date|cabin"), miles, fees, seats and the freshness
+ * timestamp — so the fields a live grid row also carries are filled with honest blanks:
+ *   currency null, direct false, airlines [], source_id "", booking_url null,
+ *   fetched_at = computed_last_seen.
+ * That is enough for the cell component (miles, fees, seats, program name, freshness mark and
+ * age); "show flights" and the booking link are NOT available for a historical diff cell, and
+ * a dropped cell no longer exists upstream at all. Extending the snapshot means a schema
+ * change, which Phase 6 does not take.
+ */
+export type RunDiffRow = AvailabilityRow;
+
+/** One cell that got cheaper between the baseline and the last run. */
+export interface RunDiffPriceDrop {
+  /** The cell as the last run sees it, i.e. at the NEW (lower) price. */
+  row: RunDiffRow;
+  /** What the baseline asked for the same cell, in miles. */
+  before_miles: number;
+  /** How far it fell, as a percentage of the baseline miles (2 decimals). */
+  pct: number;
+}
+
+export interface RunDiffRows {
+  /** Cells the last run saw that the baseline did not. */
+  new: RunDiffRow[];
+  /** Cells the baseline had that the last run no longer sees. */
+  dropped: RunDiffRow[];
+  /**
+   * Cells present in both, at least `drop_threshold_pct` cheaper than the baseline. The
+   * scheduler notifies on these (src/lib/scheduler/run.ts `shouldNotify`), so the page has to
+   * show them: a run whose only change is a price drop is not "no change".
+   */
+  price_drops: RunDiffPriceDrop[];
+}
+
+/** Reasons whose run row may NOT serve as the diff baseline (mirrors src/lib/scheduler/run.ts). */
+const NON_BASELINE_REASONS: SkippedReason[] = [...FETCH_FAILURE_REASONS, ...PENDING_REASONS];
+
+/** One stored cell → a grid row, or null when the key is not the five-part shape. */
+export function rowFromSnapshot(cell: CellSnapshot): RunDiffRow | null {
+  const parts = parseCellKey(cell.key);
+  if (!parts) return null;
+  const cabin = Cabin.safeParse(parts.cabin);
+  if (!cabin.success) return null;
+  return {
+    program: parts.program,
+    origin: parts.origin,
+    dest: parts.dest,
+    date: parts.date,
+    cabin: cabin.data,
+    miles: cell.miles,
+    fees_cents: cell.fees_cents,
+    currency: null,
+    seats_left: cell.seats_left,
+    direct: false,
+    airlines: [],
+    computed_last_seen: cell.computed_last_seen,
+    source_id: "",
+    booking_url: null,
+    fetched_at: cell.computed_last_seen,
+  };
+}
+
+function rowsFromSnapshot(cells: readonly CellSnapshot[]): RunDiffRow[] {
+  return cells.map(rowFromSnapshot).filter((row): row is RunDiffRow => row !== null);
+}
+
+/**
+ * The new / dropped cells of the MOST RECENT run of the user's own query, rebuilt from the
+ * stored snapshots; null when the query is not theirs (or does not exist), so the route answers
+ * 404 exactly as it does for the rest of /api/queries/[id].
+ *
+ * The baseline is picked the way the scheduler picks it (src/lib/scheduler/run.ts): the newest
+ * earlier run that is not a fetch failure and not still pending delivery. Both arrays are empty
+ * when there is nothing to compare — no runs, a first run, or a run that took no snapshot
+ * (quota, no key, upstream error) — never a full list of "dropped" cells that never dropped.
+ */
+export function lastRunDiff(db: Db, userId: string, id: string): RunDiffRows | null {
+  const saved = getSavedQuery(db, userId, id);
+  if (!saved) return null;
+  const empty: RunDiffRows = { new: [], dropped: [], price_drops: [] };
+  const last = latestRun(db, id);
+  if (!last) return empty;
+  const reason = last.skippedReason as SkippedReason | null;
+  if (reason !== null && FETCH_FAILURE_REASONS.has(reason)) return empty;
+
+  const baseline =
+    db
+      .select()
+      .from(queryRuns)
+      .where(
+        and(
+          eq(queryRuns.savedQueryId, id),
+          lt(queryRuns.ranAt, last.ranAt),
+          or(eq(queryRuns.notified, true), isNull(queryRuns.skippedReason), notInArray(queryRuns.skippedReason, NON_BASELINE_REASONS)),
+        ),
+      )
+      .orderBy(desc(queryRuns.ranAt), desc(sql`rowid`))
+      .limit(1)
+      .get() ?? null;
+  if (!baseline) return empty;
+
+  const diff = diffSnapshots(parseSnapshot(baseline.cellsJson), parseSnapshot(last.cellsJson), {
+    dropThresholdPct: saved.drop_threshold_pct,
+  });
+  return {
+    new: rowsFromSnapshot(diff.new),
+    dropped: rowsFromSnapshot(diff.dropped),
+    price_drops: diff.price_drops
+      .map((drop) => {
+        const row = rowFromSnapshot(drop.after);
+        return row ? { row, before_miles: drop.before.miles, pct: drop.pct } : null;
+      })
+      .filter((d): d is RunDiffPriceDrop => d !== null),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -371,9 +533,11 @@ export async function runNow(db: Db, savedQueryId: string, deps: RunNowDeps = {}
     const quota = new Quota({ store: createSqliteQuotaStore(db), now, softLimit: softLimitFromEnv() });
     throw new RunQuotaError(quota.resetAt());
   }
+  // This process just ran the query, so the call count IS known here (it is not persisted).
   const row = db.select().from(queryRuns).where(eq(queryRuns.id, result.runId)).get();
-  if (row) return toRunSummary(row);
+  if (row) return { ...toRunSummary(row), calls_used: result.apiCallsUsed };
   return {
+    calls_used: result.apiCallsUsed,
     id: result.runId,
     ran_at: result.ranAt,
     new_cells: result.diff?.new ?? 0,

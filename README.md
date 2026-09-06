@@ -119,7 +119,7 @@ worker ever borrows another user's key. Caches and daily quotas are per user.
   each user clicks **Link Telegram** in Settings and presses Start on the one-time `t.me` deep link (15-minute expiry).
   Messages go only to that chat. `/unlink` in the chat, or Unlink in Settings, stops them.
 - With no token the worker uses a **mock transport**: messages are appended to `AWARDGRID_DATA_DIR/notify-mock.jsonl` (chat ids hashed)
-  and Settings shows "Mock mode".
+  and Settings keeps the account's real status ("Not linked") with a line saying this server does not send alerts.
 
 ## The Ask lane
 

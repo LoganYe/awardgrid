@@ -194,3 +194,65 @@ export function nextMatch(expr: string, from: Date): Date | null {
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// UI helpers (Phase 6 §4: the queries table shows "every 3 hours" and a next-run time)
+// ---------------------------------------------------------------------------
+
+/**
+ * The next run time strictly after `afterIso`, as an ISO string; null when the expression or
+ * the timestamp is unusable, or when nothing matches within a year. Pure — the caller decides
+ * what "after" means (the queries API passes `last_run_at ?? now`, so a query that has already
+ * run this slot shows its NEXT slot, and one that has never run shows the upcoming one).
+ */
+export function nextRunAt(expr: string, afterIso: string): string | null {
+  const ms = Date.parse(afterIso);
+  if (Number.isNaN(ms)) return null;
+  try {
+    return nextMatch(expr, new Date(ms))?.toISOString() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Classify an expression for the human schedule label. The UI renders the shape with its own
+ * i18n keys (`saved.schedule.hourly` / `.every_hours` / `.daily` / `.custom`) so both languages
+ * read naturally; this function never returns English.
+ *
+ *   "0 * * * *"     → { kind: "every_hours", n: 1 }
+ *   "0 * / 3 …"     → { kind: "every_hours", n: 3 }   (every 3 h from 00:00, minute fixed)
+ *   "30 8 * * *"    → { kind: "daily", hh: 8, mm: 30 }
+ *   anything else   → { kind: "custom", expr }        (trimmed; the UI shows it verbatim)
+ *
+ * "every n hours" requires the hour set to be the arithmetic run 0, n, 2n… that divides 24 —
+ * `0 8,20 * * *` is twice a day but not "every 12 hours from midnight", so it stays custom
+ * rather than being described inaccurately.
+ */
+export type CronDescription =
+  | { kind: "every_hours"; n: number }
+  | { kind: "daily"; hh: number; mm: number }
+  | { kind: "custom"; expr: string };
+
+export function describeCron(expr: string): CronDescription {
+  const trimmed = typeof expr === "string" ? expr.trim() : "";
+  const custom: CronDescription = { kind: "custom", expr: trimmed };
+  let fields: CronFields;
+  try {
+    fields = parseCron(trimmed);
+  } catch {
+    return custom;
+  }
+  // Every day, every month, every weekday — otherwise the label would hide a restriction.
+  if (fields.dom.size !== 31 || fields.dow.size !== 7 || fields.month.size !== 12) return custom;
+  if (fields.minute.size !== 1) return custom;
+  const mm = [...fields.minute][0]!;
+  const hours = [...fields.hour].sort((a, b) => a - b);
+  if (hours.length === 1) return { kind: "daily", hh: hours[0]!, mm };
+  if (hours.length === 0 || hours[0] !== 0 || 24 % hours.length !== 0) return custom;
+  const step = 24 / hours.length;
+  for (let i = 0; i < hours.length; i += 1) {
+    if (hours[i] !== i * step) return custom;
+  }
+  return { kind: "every_hours", n: step };
+}

@@ -1,289 +1,298 @@
 "use client";
 
 /**
- * /queries — dense table of the user's standing queries: name · route · cabins · schedule
- * ("every 3 h") · notify rule · threshold · enabled switch · last run (status badge) · actions
- * (run now with spinner + result notice, edit dialog, delete with confirm). The server page
- * hands over the initial list; every mutation goes through /api/queries and patches local state.
+ * /queries — the single table spec §4 asks for, in one 880 px column: name · schedule ·
+ * notifies on · last run · next run · enabled · actions. Below 768 px the same rows become a
+ * stacked list (spec §6); above it they are a real `<table>` so the columns line up and the
+ * numbers stay in tabular figures.
+ *
+ * Everything the page shows arrives with the server render (the rows, each one's next run, its
+ * last 20 runs and its last diff), so expanding a row costs no round trip. Mutations go through
+ * /api/queries and patch local state: the Enabled switch PATCHes optimistically and rolls back
+ * on failure, "Run now" POSTs and leaves its result or its error in the row, and "Delete"
+ * confirms inline in the row (spec §11 — never a modal). One toast, bottom-left, says what
+ * happened after a save or a delete.
  */
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Loader2Icon, PencilIcon, PlayIcon, Trash2Icon } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useDensity } from "@/components/grid/use-roving-grid";
+import { EditQueryDrawer } from "@/components/queries/edit-query-drawer";
+import { QueryCard, QueryRow, type RowNotice } from "@/components/queries/query-row";
+import { mergeRunCalls, nextRunFromCron, runResultText } from "@/components/queries/format";
+import {
+  apiDeleteQuery,
+  apiListRuns,
+  apiPatchQuery,
+  apiRunQuery,
+  normalizeDetails,
+  type QueryDetails,
+  type QueryRowSummary,
+  type RunSummary,
+  type SavedQuerySummary,
+} from "@/components/queries/api";
 import { formatDate } from "@/components/settings/api";
-import { gridHref } from "@/components/grid/state";
-import { errorText, hasKey, type I18nKey, type Locale, type Translate } from "@/lib/i18n";
+import { buttonVariants } from "@/components/ui/button";
+import { errorText } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/i18n/client";
-import { apiDeleteQuery, apiPatchQuery, apiRunQuery, type RunSummary, type SavedQuerySummary } from "./api";
-import { cabinSummary, dateSummary, describeCron, routeSummary, type NotifyRule } from "./format";
-import { QueryFormDialog } from "./SaveQueryDialog";
+import { cn } from "@/lib/utils";
+import "@/components/queries/queries.css";
 
 export interface QueriesTableProps {
-  initial: SavedQuerySummary[];
+  initial: QueryRowSummary[];
+  /** Saved-query id → its last 20 runs and last diff, read on the server. */
+  details: Record<string, QueryDetails>;
   telegramLinked: boolean;
 }
 
-const NOTIFY_KEY: Record<NotifyRule, I18nKey> = {
-  new_cells: "saved.notify.new_cells",
-  price_drop: "saved.notify.price_drop",
-  both: "saved.notify.both",
-};
+/** How long the toast stays (docs/UI_PLAN.md §7: one line, 4 s, one at a time). */
+const TOAST_MS = 4000;
 
-/** "every 3 h" / "daily 08:00" / raw cron. */
-export function scheduleText(t: Translate, cron: string): string {
-  const d = describeCron(cron);
-  switch (d.kind) {
-    case "every_hours":
-      return t("saved.schedule.every_hours", { hours: d.hours });
-    case "hourly":
-      return t("saved.schedule.hourly");
-    case "daily":
-      return t("saved.schedule.daily", { time: d.time });
-    default:
-      return d.cron;
-  }
-}
+type DetailsState = { loading: boolean; error: string | null };
 
-/** Translate a skipped_reason when a key exists for it, else show the raw code. */
-export function skipReasonText(t: Translate, reason: string): string {
-  const key = `saved.skip.${reason}`;
-  return hasKey(key) ? t(key) : reason;
-}
-
-function formatRanAt(iso: string, locale: Locale): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  try {
-    return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
-  } catch {
-    return formatDate(iso, locale);
-  }
-}
-
-function RunBadge({ run }: { run: RunSummary | null }) {
-  const t = useT();
-  if (!run) return <Badge variant="outline">{t("saved.status.never")}</Badge>;
-  if (run.skipped_reason === "first_run") return <Badge variant="outline">{t("saved.skip.first_run")}</Badge>;
-  if (run.skipped_reason) return <Badge variant="secondary">{t("saved.status.skipped", { reason: skipReasonText(t, run.skipped_reason) })}</Badge>;
-  if (run.notified) return <Badge className="bg-fresh/15 text-fresh">{t("saved.status.notified")}</Badge>;
-  return <Badge variant="outline">{t("saved.status.no_change")}</Badge>;
-}
-
-type Notice = { kind: "ok" | "error"; text: string };
-
-export function QueriesTable({ initial, telegramLinked }: QueriesTableProps) {
+export function QueriesTable({ initial, details, telegramLinked }: QueriesTableProps) {
   const t = useT();
   const locale = useLocale();
-  const [rows, setRows] = useState<SavedQuerySummary[]>(initial);
-  const [running, setRunning] = useState<Set<string>>(() => new Set());
+  const density = useDensity();
+  const [rows, setRows] = useState<QueryRowSummary[]>(initial);
+  const [detailsMap, setDetailsMap] = useState<Record<string, QueryDetails>>(details);
+  const [detailsState, setDetailsState] = useState<Record<string, DetailsState>>({});
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [running, setRunning] = useState<ReadonlySet<string>>(() => new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<SavedQuerySummary | null>(null);
-  const [deleting, setDeleting] = useState<SavedQuerySummary | null>(null);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notices, setNotices] = useState<Record<string, RowNotice | null>>({});
+  const [editing, setEditing] = useState<QueryRowSummary | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
-  // Transient "toast": auto-dismiss after a few seconds.
+  // Relative times age while the page is open. The server's clock and the browser's are a few
+  // milliseconds apart, so every element that prints one carries suppressHydrationWarning.
   useEffect(() => {
-    if (!notice) return;
-    const id = window.setTimeout(() => setNotice(null), 6000);
-    return () => window.clearTimeout(id);
-  }, [notice]);
-
-  const replaceRow = useCallback((next: SavedQuerySummary) => {
-    setRows((rs) => rs.map((r) => (r.id === next.id ? next : r)));
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
   }, []);
 
-  function failText(error: string, resetAt?: string): string {
-    return errorText(locale, error, resetAt ? { resetAt: formatDate(resetAt, locale) } : undefined);
-  }
+  useEffect(() => {
+    if (toast === null) return;
+    const id = window.setTimeout(() => setToast(null), TOAST_MS);
+    return () => window.clearTimeout(id);
+  }, [toast]);
 
-  async function onToggle(row: SavedQuerySummary, enabled: boolean) {
+  const failText = useCallback(
+    (error: string, resetAt?: string) => errorText(locale, error, resetAt ? { resetAt: formatDate(resetAt, locale) } : undefined),
+    [locale],
+  );
+
+  const setNotice = useCallback((id: string, notice: RowNotice | null) => {
+    setNotices((n) => ({ ...n, [id]: notice }));
+  }, []);
+
+  /** Merge an API row back in, keeping a `next_run_at` the server did not send. */
+  const replaceRow = useCallback((next: SavedQuerySummary) => {
+    setRows((rs) =>
+      rs.map((r) => {
+        if (r.id !== next.id) return r;
+        const supplied = (next as QueryRowSummary).next_run_at;
+        return { ...r, ...next, next_run_at: supplied ?? nextRunFromCron(next.schedule_cron, Date.now()) };
+      }),
+    );
+  }, []);
+
+  const refreshDetails = useCallback(async (id: string) => {
+    setDetailsState((s) => ({ ...s, [id]: { loading: true, error: null } }));
+    const res = await apiListRuns(id);
+    if (!res.ok) {
+      setDetailsState((s) => ({ ...s, [id]: { loading: false, error: t("saved.runs.load_failed") } }));
+      return;
+    }
+    const fresh = normalizeDetails(res.data);
+    // Merge, never replace: `query_runs` has no call-count column, so the only place a run's
+    // `calls_used` ever exists is the POST /api/queries/[id]/run response this process just
+    // read. Overwriting the row with the server's null would throw that number away and the
+    // "Calls used" column would be an em dash even for the run the page itself just made.
+    setDetailsMap((m) => ({
+      ...m,
+      [id]: { runs: mergeRunCalls(m[id]?.runs ?? [], fresh.runs), diff: fresh.diff ?? m[id]?.diff ?? null },
+    }));
+    setDetailsState((s) => ({ ...s, [id]: { loading: false, error: null } }));
+  }, [t]);
+
+  /** Put a just-finished run at the top of the row's history, with the call count only it knows. */
+  const rememberRun = useCallback((id: string, run: RunSummary) => {
+    setDetailsMap((m) => {
+      const prev = m[id];
+      const runs = [run, ...(prev?.runs ?? []).filter((r) => r.id !== run.id)];
+      return { ...m, [id]: { runs, diff: prev?.diff ?? null } };
+    });
+  }, []);
+
+  async function onToggleEnabled(row: QueryRowSummary, enabled: boolean) {
     setBusyId(row.id);
-    replaceRow({ ...row, enabled }); // optimistic
+    setNotice(row.id, null);
+    setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, enabled } : r))); // optimistic
     const res = await apiPatchQuery(row.id, { enabled });
     setBusyId(null);
     if (res.ok) replaceRow(res.data.query);
     else {
-      replaceRow(row);
-      setNotice({ kind: "error", text: failText(res.error, res.resetAt) });
+      setRows((rs) => rs.map((r) => (r.id === row.id ? row : r)));
+      setNotice(row.id, { kind: "error", text: failText(res.error, res.resetAt) });
     }
   }
 
-  async function onRun(row: SavedQuerySummary) {
+  async function onRun(row: QueryRowSummary) {
     setRunning((s) => new Set(s).add(row.id));
-    setNotice(null);
+    setNotice(row.id, null);
     const res = await apiRunQuery(row.id);
     setRunning((s) => {
-      const n = new Set(s);
-      n.delete(row.id);
-      return n;
+      const next = new Set(s);
+      next.delete(row.id);
+      return next;
     });
     if (!res.ok) {
-      setNotice({ kind: "error", text: failText(res.error, res.resetAt) });
+      setNotice(row.id, { kind: "error", text: failText(res.error, res.resetAt) });
       return;
     }
     const run = res.data.run;
-    replaceRow({ ...row, last_run: run, last_run_at: run.ran_at });
-    const summary = t("saved.run.cells", { new_cells: run.new_cells, dropped_cells: run.dropped_cells });
-    setNotice({
-      kind: "ok",
-      text: run.skipped_reason ? `${t("saved.run_skipped", { reason: skipReasonText(t, run.skipped_reason) })} · ${summary}` : t("saved.run_done", { summary }),
-    });
+    // The server derives the next run from the last one, so a row that just ran is no longer
+    // due: recompute it here the way replaceRow does for a PATCH, or an overdue query keeps
+    // saying "due now" until the page is reloaded.
+    const ranAtMs = Date.parse(run.ran_at);
+    setRows((rs) =>
+      rs.map((r) =>
+        r.id === row.id
+          ? {
+              ...r,
+              last_run: run,
+              last_run_at: run.ran_at,
+              // An unparseable timestamp leaves the old next run alone rather than inventing one.
+              ...(Number.isNaN(ranAtMs) ? {} : { next_run_at: nextRunFromCron(r.schedule_cron, ranAtMs) }),
+            }
+          : r,
+      ),
+    );
+    rememberRun(row.id, run);
+    setNotice(row.id, { kind: "ok", text: t("saved.run_done", { summary: runResultText(run, t) }) });
+    await refreshDetails(row.id);
   }
 
-  async function onDelete() {
-    if (!deleting) return;
-    const target = deleting;
-    setBusyId(target.id);
-    const res = await apiDeleteQuery(target.id);
+  async function onDelete(row: QueryRowSummary) {
+    setBusyId(row.id);
+    const res = await apiDeleteQuery(row.id);
     setBusyId(null);
-    setDeleting(null);
+    setConfirming(null);
     if (res.ok || res.status === 404) {
-      setRows((rs) => rs.filter((r) => r.id !== target.id));
-      setNotice({ kind: "ok", text: t("saved.deleted") });
+      setRows((rs) => rs.filter((r) => r.id !== row.id));
+      setToast(t("saved.deleted"));
     } else {
-      setNotice({ kind: "error", text: failText(res.error, res.resetAt) });
+      setNotice(row.id, { kind: "error", text: failText(res.error, res.resetAt) });
     }
+  }
+
+  function rowProps(row: QueryRowSummary) {
+    const state = detailsState[row.id];
+    return {
+      row,
+      now,
+      expanded: expanded === row.id,
+      confirmingDelete: confirming === row.id,
+      running: running.has(row.id),
+      busy: busyId === row.id,
+      notice: notices[row.id] ?? null,
+      details: detailsMap[row.id] ?? null,
+      detailsLoading: state?.loading ?? false,
+      detailsError: state?.error ?? null,
+      onToggleExpand: () => setExpanded((id) => (id === row.id ? null : row.id)),
+      onToggleEnabled: (enabled: boolean) => void onToggleEnabled(row, enabled),
+      onRun: () => void onRun(row),
+      onEdit: () => setEditing(row),
+      onAskDelete: () => setConfirming(row.id),
+      onConfirmDelete: () => void onDelete(row),
+      onCancelDelete: () => setConfirming(null),
+    };
   }
 
   if (rows.length === 0) {
     return (
-      <Alert>
-        <AlertDescription className="flex flex-wrap items-center gap-2">
-          <span>{t("saved.empty")}</span>
-          <Button size="xs" variant="outline" nativeButton={false} render={<Link href="/grid" />}>
-            {t("saved.empty_cta")}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <div className="flex flex-col items-start gap-3" data-testid="queries-empty">
+        <p className="t-body">{t("saved.empty")}</p>
+        {/* A real anchor: the empty state's call to action is navigation, so it must be a link. */}
+        <Link href="/grid" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+          {t("saved.empty_cta")}
+        </Link>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
       {!telegramLinked && (
-        <p className="text-xs text-muted-foreground">
+        <p className="t-meta text-fg-muted">
           {t("saved.telegram_hint")}{" "}
-          <Link href="/settings#telegram" className="underline underline-offset-2 hover:text-foreground">
+          <Link href="/settings#telegram" className="link">
             {t("saved.telegram_hint_cta")}
           </Link>
         </p>
       )}
 
-      {notice && (
-        <Alert variant={notice.kind === "error" ? "destructive" : "default"} aria-live="polite">
-          <AlertDescription>{notice.text}</AlertDescription>
-        </Alert>
+      {density === "mobile" ? (
+        <ul className="aq-list" data-testid="queries-list">
+          {rows.map((row) => (
+            <QueryCard key={row.id} {...rowProps(row)} />
+          ))}
+        </ul>
+      ) : (
+        <table className="aq-table" data-testid="queries-table">
+          <thead>
+            <tr>
+              <th scope="col">{t("saved.name")}</th>
+              <th scope="col">{t("saved.schedule")}</th>
+              <th scope="col">{t("saved.notify_on")}</th>
+              <th scope="col">{t("saved.last_run")}</th>
+              <th scope="col">{t("saved.next_run")}</th>
+              <th scope="col">{t("saved.enabled")}</th>
+              <th scope="col">{t("saved.actions")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <QueryRow key={row.id} {...rowProps(row)} />
+            ))}
+          </tbody>
+        </table>
       )}
 
-      <div className="overflow-x-auto rounded-lg border">
-        <Table className="text-xs">
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("saved.name")}</TableHead>
-              <TableHead>{t("saved.route")}</TableHead>
-              <TableHead>{t("saved.cabins")}</TableHead>
-              <TableHead>{t("saved.schedule")}</TableHead>
-              <TableHead>{t("saved.notify_on")}</TableHead>
-              <TableHead>{t("saved.drop_threshold")}</TableHead>
-              <TableHead>{t("saved.enabled")}</TableHead>
-              <TableHead>{t("saved.last_run")}</TableHead>
-              <TableHead className="text-right">{t("saved.actions")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => {
-              const isRunning = running.has(row.id);
-              const isBusy = busyId === row.id;
-              return (
-                <TableRow key={row.id} className={row.enabled ? undefined : "opacity-70"}>
-                  <TableCell className="max-w-[16rem]">
-                    <div className="flex flex-col gap-0.5">
-                      <Link href={gridHref(row.query)} className="truncate font-medium hover:underline" title={t("saved.open_grid")}>
-                        {row.name}
-                      </Link>
-                      <span className="num text-[11px] text-muted-foreground">{dateSummary(row.query)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="num whitespace-nowrap">{routeSummary(row.query)}</TableCell>
-                  <TableCell className="num">{cabinSummary(row.query)}</TableCell>
-                  <TableCell className="num whitespace-nowrap" title={row.schedule_cron}>
-                    {scheduleText(t, row.schedule_cron)}
-                  </TableCell>
-                  <TableCell>{t(NOTIFY_KEY[row.notify_on])}</TableCell>
-                  <TableCell className="num whitespace-nowrap">{row.notify_on === "new_cells" ? "—" : t("saved.threshold_value", { pct: row.drop_threshold_pct })}</TableCell>
-                  <TableCell>
-                    <Switch
-                      size="sm"
-                      checked={row.enabled}
-                      disabled={isBusy}
-                      aria-label={t("saved.enable_aria", { name: row.name })}
-                      onCheckedChange={(checked) => void onToggle(row, checked)}
-                    />
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <div className="flex flex-col gap-0.5">
-                      <RunBadge run={row.last_run} />
-                      {row.last_run && (
-                        <span className="num text-[11px] text-muted-foreground" title={row.last_run.ran_at}>
-                          {formatRanAt(row.last_run.ran_at, locale)} · {t("saved.run.cells", { new_cells: row.last_run.new_cells, dropped_cells: row.last_run.dropped_cells })}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button type="button" variant="outline" size="xs" disabled={isRunning || isBusy} onClick={() => void onRun(row)} aria-busy={isRunning}>
-                        {isRunning ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <PlayIcon data-icon="inline-start" />}
-                        {isRunning ? t("saved.running") : t("saved.run_now")}
-                      </Button>
-                      <Button type="button" variant="ghost" size="icon-xs" aria-label={t("saved.edit")} disabled={isBusy} onClick={() => setEditing(row)}>
-                        <PencilIcon />
-                      </Button>
-                      <Button type="button" variant="ghost" size="icon-xs" aria-label={t("saved.delete")} disabled={isBusy} onClick={() => setDeleting(row)}>
-                        <Trash2Icon />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-
       {editing && (
-        <QueryFormDialog
-          mode={{ kind: "edit", saved: editing }}
-          open={editing !== null}
-          onOpenChange={(open) => {
-            if (!open) setEditing(null);
-          }}
+        <EditQueryDrawer
+          saved={editing}
+          open
+          onClose={() => setEditing(null)}
           onSaved={(saved) => {
             replaceRow(saved);
-            setNotice({ kind: "ok", text: t("saved.updated") });
+            setToast(t("saved.updated"));
           }}
         />
       )}
 
-      <Dialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("saved.delete_title", { name: deleting?.name ?? "" })}</DialogTitle>
-            <DialogDescription>{t("saved.delete_body")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" size="sm" />}>{t("common.cancel")}</DialogClose>
-            <Button variant="destructive" size="sm" onClick={() => void onDelete()} disabled={busyId !== null}>
-              {t("saved.delete")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {toast && (
+        <p className="aq-toast" role="status" data-testid="queries-toast">
+          {toast}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Route-level loading shape (src/app/queries/loading.tsx): static bars under reduced motion. */
+export function QueriesSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="flex flex-col gap-2" aria-hidden="true" data-testid="queries-skeleton">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="aq-skel-row">
+          <span className="aq-skel-bar" />
+          <span className="aq-skel-bar" />
+          <span className="aq-skel-bar" />
+        </div>
+      ))}
     </div>
   );
 }

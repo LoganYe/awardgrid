@@ -39,12 +39,60 @@ export async function apiJson<T>(path: string, init: { method: string; body?: un
   return { ok: false, status: res.status, error: code, ...(resetAt ? { resetAt } : {}) };
 }
 
+// ---------------------------------------------------------------------------
+// Endpoints the settings page uses
+// ---------------------------------------------------------------------------
+
+export interface TelegramLinkResult {
+  deepLink: string | null;
+  mock: boolean;
+  expiresAt?: string;
+}
+export interface TelegramStatusResult {
+  linked: boolean;
+  mock: boolean;
+}
+
+export const apiTelegramLink = (): Promise<ApiResult<TelegramLinkResult>> => apiJson("/api/telegram/link", { method: "POST" });
+export const apiTelegramUnlink = (): Promise<ApiResult<undefined>> => apiJson("/api/telegram/link", { method: "DELETE" });
+export const apiTelegramStatus = (): Promise<ApiResult<TelegramStatusResult>> => apiJson("/api/telegram/status");
+
+/**
+ * POST /api/auth/password — 200 `{ ok: true }` with a rotated session cookie, or
+ * `{ error: "invalid_current" | "weak_password" | "invalid_body" }`. Changing the password logs
+ * out every other device (the route revokes the other sessions).
+ */
+export const apiChangePassword = (current: string, next: string): Promise<ApiResult<{ ok: true }>> =>
+  apiJson("/api/auth/password", { method: "POST", body: { current, next } });
+
+// ---------------------------------------------------------------------------
+// Formatting (Intl only; the locale is the UI language)
+// ---------------------------------------------------------------------------
+
+const intlLocale = (locale: string): string => (locale === "zh" ? "zh-CN" : "en-US");
+
 /** "2026-09-06T12:34:56.000Z" → locale date string; falls back to the raw value. */
 export function formatDate(iso: string, locale: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   try {
-    return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { dateStyle: "medium" }).format(d);
+    return new Intl.DateTimeFormat(intlLocale(locale), { dateStyle: "medium" }).format(d);
+  } catch {
+    return d.toISOString().slice(0, 10);
+  }
+}
+
+/**
+ * Day and month for a status line ("Sep 6" / "9月6日"), with the year only when it is not the
+ * current one — a key added this year needs no year to be understood.
+ */
+export function formatDayMonth(iso: string, locale: string, now: Date = new Date()): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const options: Intl.DateTimeFormatOptions =
+    d.getFullYear() === now.getFullYear() ? { month: "short", day: "numeric" } : { year: "numeric", month: "short", day: "numeric" };
+  try {
+    return new Intl.DateTimeFormat(intlLocale(locale), options).format(d);
   } catch {
     return d.toISOString().slice(0, 10);
   }

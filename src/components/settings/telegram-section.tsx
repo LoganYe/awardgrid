@@ -1,24 +1,30 @@
 "use client";
 
 /**
- * Telegram card: live linking UI (deep link + status polling, see
- * components/queries/telegram-link.tsx) plus quiet hours + time zone, which save via
- * PUT /api/settings.
- * Time zone options come from Intl.supportedValuesOf("timeZone") on the client via
- * useSyncExternalStore (server snapshot = short fallback list, so hydration agrees).
+ * Telegram (spec §5.2): the linking state (see ./telegram-link.tsx) and quiet hours — "two time
+ * fields with the detected timezone shown", exactly that and no more. docs/UI_PLAN.md §12.11
+ * names "quiet hours as a three-field row with a timezone select" as a generic-template tell to
+ * remove, so the zone is a fact on one muted line (`Asia/Shanghai (detected)`), not a third
+ * control competing with the two that matter.
+ *
+ * The override still exists, behind "Change time zone": an account read in a zone the browser
+ * is not in is real (travel, a shared machine), and dropping the select outright would lose it.
+ * It is disclosure, not furniture — closed until asked for. Saving goes through PUT /api/settings.
+ *
+ * The zone list comes from Intl.supportedValuesOf("timeZone") on the client through
+ * useSyncExternalStore (server snapshot = a short fallback list), so hydration always agrees.
  */
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
-import { TelegramLink } from "@/components/queries/telegram-link";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { errorText } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/i18n/client";
 import { apiJson } from "./api";
-import { SettingsSection } from "./section";
 import { NativeSelect } from "./native-select";
+import { SettingsNotice, SettingsSection } from "./section";
+import { TelegramLink } from "./telegram-link";
 
 export interface TelegramSectionProps {
   timezone: string;
@@ -66,14 +72,26 @@ export function supportedTimeZones(): string[] {
   return FALLBACK_ZONES;
 }
 
+/** The browser's own zone, or "" where it cannot be read (and on the server). */
+export function detectTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  } catch {
+    return "";
+  }
+}
+
 const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-// Hydration-safe zone list: the server (and the first client render) use the short fallback,
-// the client then swaps in the full IANA list without a setState-in-effect.
+// Hydration-safe client-only values: the server (and the first client render) see the fallback
+// list and no detected zone; the client swaps both in without a setState-in-effect.
 const subscribeNever = () => () => {};
 let clientZones: string[] | null = null;
 const getClientZones = () => (clientZones ??= supportedTimeZones());
 const getServerZones = () => FALLBACK_ZONES;
+let clientZone: string | null = null;
+const getClientZone = () => (clientZone ??= detectTimeZone());
+const getServerZone = () => "";
 
 export function TelegramSection({ timezone, quietHoursStart, quietHoursEnd, telegramLinked, telegramMock }: TelegramSectionProps) {
   const t = useT();
@@ -84,8 +102,13 @@ export function TelegramSection({ timezone, quietHoursStart, quietHoursEnd, tele
   const [start, setStart] = useState(quietHoursStart ?? "");
   const [end, setEnd] = useState(quietHoursEnd ?? "");
   const allZones = useSyncExternalStore(subscribeNever, getClientZones, getServerZones);
-  const zones = useMemo(() => (allZones.includes(timezone) ? allZones : [timezone, ...allZones]), [allZones, timezone]);
+  const detected = useSyncExternalStore(subscribeNever, getClientZone, getServerZone);
+  const zones = useMemo(() => {
+    const extra = [timezone, detected].filter((z) => z && !allZones.includes(z));
+    return extra.length > 0 ? [...extra, ...allZones] : allZones;
+  }, [allZones, timezone, detected]);
   const [busy, setBusy] = useState(false);
+  const [editingZone, setEditingZone] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   const dirty = tz !== timezone || start !== (quietHoursStart ?? "") || end !== (quietHoursEnd ?? "");
@@ -104,11 +127,7 @@ export function TelegramSection({ timezone, quietHoursStart, quietHoursEnd, tele
     setNotice(null);
     const res = await apiJson<SettingsResponse>("/api/settings", {
       method: "PUT",
-      body: {
-        timezone: tz,
-        quietHoursStart: start === "" ? null : start,
-        quietHoursEnd: end === "" ? null : end,
-      },
+      body: { timezone: tz, quietHoursStart: start === "" ? null : start, quietHoursEnd: end === "" ? null : end },
     });
     setBusy(false);
     if (res.ok) {
@@ -120,16 +139,14 @@ export function TelegramSection({ timezone, quietHoursStart, quietHoursEnd, tele
   }
 
   return (
-    <SettingsSection id="telegram" title={t("settings.telegram.title")} description={t("settings.telegram.live_subtitle")}>
+    <SettingsSection id="telegram" title={t("settings.telegram.title")}>
       <TelegramLink linked={telegramLinked} mock={telegramMock} />
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
-        <div className="flex flex-col gap-0.5">
-          <h3 className="text-sm font-medium">{t("settings.quiet_hours.title")}</h3>
-          <p className="text-xs text-muted-foreground">{t("settings.quiet_hours.subtitle")}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[8rem_8rem_minmax(0,1fr)]">
-          <div className="flex flex-col gap-1.5">
+        <h3 className="t-body font-medium">{t("settings.quiet_hours.title")}</h3>
+        <p className="t-meta text-fg-muted">{t("settings.quiet_hours.subtitle")}</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex w-32 flex-col gap-1">
             <Label htmlFor={`${ids}-start`}>{t("settings.quiet_hours.from")}</Label>
             <Input
               id={`${ids}-start`}
@@ -138,12 +155,11 @@ export function TelegramSection({ timezone, quietHoursStart, quietHoursEnd, tele
               value={start}
               onChange={(e) => setStart(e.target.value)}
               placeholder="22:00"
-              className="num"
               disabled={busy}
               aria-invalid={halfSet || badFormat ? true : undefined}
             />
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex w-32 flex-col gap-1">
             <Label htmlFor={`${ids}-end`}>{t("settings.quiet_hours.to")}</Label>
             <Input
               id={`${ids}-end`}
@@ -152,31 +168,51 @@ export function TelegramSection({ timezone, quietHoursStart, quietHoursEnd, tele
               value={end}
               onChange={(e) => setEnd(e.target.value)}
               placeholder="07:00"
-              className="num"
               disabled={busy}
               aria-invalid={halfSet || badFormat ? true : undefined}
             />
           </div>
-          <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-1">
-            <Label htmlFor={`${ids}-tz`}>{t("settings.timezone")}</Label>
-            <NativeSelect id={`${ids}-tz`} value={tz} onChange={(e) => setTz(e.target.value)} disabled={busy}>
-              {zones.map((z) => (
-                <option key={z} value={z}>
-                  {z}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {start === "" && end === "" ? t("settings.quiet_hours.disabled") : overnight ? t("settings.quiet_hours.overnight_hint") : null}
+        {/* The zone the two fields are read in, as a fact rather than a control. */}
+        <p className="flex flex-wrap items-center gap-3 t-meta text-fg-muted" data-detected-zone={detected} data-account-zone={tz}>
+          <span>{t(tz === detected ? "settings.timezone_detected" : "settings.timezone_account", { tz })}</span>
+          <button
+            type="button"
+            className="link"
+            aria-expanded={editingZone}
+            aria-controls={`${ids}-tz-editor`}
+            disabled={busy}
+            onClick={() => setEditingZone((o) => !o)}
+          >
+            {t(editingZone ? "settings.timezone.done" : "settings.timezone.change")}
+          </button>
         </p>
-        {notice && (
-          <Alert variant={notice.kind === "error" ? "destructive" : "default"} aria-live="polite">
-            <AlertDescription>{notice.text}</AlertDescription>
-          </Alert>
+        {editingZone && (
+          <div id={`${ids}-tz-editor`} className="flex flex-wrap items-end gap-3">
+            <div className="flex min-w-56 flex-col gap-1">
+              <Label htmlFor={`${ids}-tz`}>{t("settings.timezone")}</Label>
+              <NativeSelect id={`${ids}-tz`} value={tz} onChange={(e) => setTz(e.target.value)} disabled={busy}>
+                {zones.map((z) => (
+                  <option key={z} value={z}>
+                    {z}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+            {detected !== "" && detected !== tz && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setTz(detected)} disabled={busy}>
+                {t("settings.timezone.use_detected")}
+              </Button>
+            )}
+          </div>
         )}
-        <div className="flex items-center gap-1.5">
+        {(start === "" && end === "") || overnight ? (
+          <p className="t-meta text-fg-muted">
+            {start === "" && end === "" ? t("settings.quiet_hours.disabled") : t("settings.quiet_hours.overnight_hint")}
+          </p>
+        ) : null}
+        {notice && <SettingsNotice kind={notice.kind}>{notice.text}</SettingsNotice>}
+        <div className="flex items-center gap-2">
           <Button type="submit" size="sm" disabled={busy || !dirty}>
             {busy ? t("auth.submitting") : t("common.save")}
           </Button>
