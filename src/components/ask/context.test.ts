@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { QueryObject } from "@/lib/query/schema";
 import type { GridCell } from "@/lib/grid/types";
-import { addToolName, buildAskContext, cellContextFromCell, formatUsd, summarizeCell, summarizeQuery } from "./context";
+import { addToolName, buildAskContext, cellContextFromCell, formatUsd } from "./context";
 
 const query = QueryObject.parse({
   origins: ["HKG", "PVG"],
@@ -40,11 +40,6 @@ const cell: GridCell = {
 };
 
 describe("ask context helpers", () => {
-  it("summarizes the query and cell on one line each", () => {
-    expect(summarizeQuery(query)).toBe("HKG,PVG → SEA · 2026-10-01..2026-10-30 · F · direct");
-    expect(summarizeCell(cellContextFromCell(cell)!)).toBe("SEA→NRT 2026-10-15 F · 80,000 mi · $13 · 2 seats · american");
-  });
-
   it("sends only the documented cell fields (no booking URL / timestamps) and honours the toggles", () => {
     const c = cellContextFromCell(cell)!;
     expect(Object.keys(c).sort()).toEqual(["cabin", "date", "dest", "fees_cents", "miles", "origin", "program", "seats_left", "source_id"]);

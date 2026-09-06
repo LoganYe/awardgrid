@@ -1,11 +1,31 @@
 /**
  * Minimal markdown for the streamed answer — pure, no HTML. Supports exactly what the drawer
  * renders: paragraphs, headings (rendered as bold lines), bullet / numbered lists, fenced code
- * blocks, and inline **bold** / `code`. Everything else is literal text, so model output can
- * never inject markup (the React renderer emits text nodes only).
+ * blocks, and inline **bold** / `code` / [links](https://…). Everything else is literal text, so
+ * model output can never inject markup (the React renderer emits text nodes and one <a> whose
+ * href passed `safeHref`).
  */
 
-export type Inline = { kind: "text"; text: string } | { kind: "bold"; text: string } | { kind: "code"; text: string };
+export type Inline =
+  | { kind: "text"; text: string }
+  | { kind: "bold"; text: string }
+  | { kind: "code"; text: string }
+  | { kind: "link"; text: string; href: string };
+
+/**
+ * Only http(s) and same-origin paths become links; everything else (javascript:, data:, a bare
+ * word) stays literal text, so a model answer can never produce an executable href.
+ *
+ * The backslash is rejected outright: WHATWG URL parsing treats "\" as "/" for http(s), so
+ * `/\evil.invalid` would pass a naive "starts with one slash" test and then resolve to
+ * https://evil.invalid/ in the browser. Same-origin means same origin.
+ */
+export function safeHref(raw: string): string | null {
+  const href = raw.trim();
+  if (href.length === 0 || /[\s<>"'\\]/.test(href)) return null;
+  if (href.startsWith("/") && !href.startsWith("//")) return href;
+  return /^https?:\/\/[^/]+/i.test(href) ? href : null;
+}
 
 export type Block =
   | { kind: "paragraph"; spans: Inline[] }
@@ -35,6 +55,22 @@ export function parseInline(text: string): Inline[] {
         out.push({ kind: "code", text: text.slice(i + 1, end) });
         i = end + 1;
         continue;
+      }
+    }
+    if (text[i] === "[") {
+      const close = text.indexOf("]", i + 1);
+      if (close > i && text[close + 1] === "(") {
+        const end = text.indexOf(")", close + 2);
+        if (end > close + 1) {
+          const href = safeHref(text.slice(close + 2, end));
+          const label = text.slice(i + 1, close);
+          if (href && label.length > 0) {
+            flush();
+            out.push({ kind: "link", text: label, href });
+            i = end + 1;
+            continue;
+          }
+        }
       }
     }
     if (text.startsWith("**", i)) {

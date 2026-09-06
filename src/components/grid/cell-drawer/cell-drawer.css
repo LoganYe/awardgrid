@@ -1,0 +1,175 @@
+/*
+ * Cell-drawer content styles (Phase 6.4, spec §3.5; docs/UI_PLAN.md §6.5). Plain CSS on the
+ * tokens in src/styles/tokens.css, imported once from cell-drawer.tsx, prefixed `agd-`.
+ *
+ * The panel itself — width (480 px), the four responsive presentations, the header, the
+ * scrolling body and the fixed footer — belongs to DrawerShell (components/drawers/drawer.css).
+ * Everything here is what goes inside it: one block per program, the flight rows a Get Trips
+ * call fills in, and the action block's layout.
+ *
+ * Unlayered on purpose: Tailwind v4 puts its utilities in @layer, so these rules win over
+ * utility classes on the same element without an !important.
+ */
+
+/* ---- header's second line: date and cabins ---- */
+.agd-when {
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.agd-empty {
+  color: var(--fg-muted);
+}
+
+/* ---- one program ---- */
+.agd-prog {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+}
+.agd-prog:first-child {
+  padding-top: 0;
+}
+.agd-prog + .agd-prog {
+  border-top: 1px solid var(--line);
+}
+.agd-prog-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.agd-prog-name {
+  margin: 0;
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  font-weight: 500;
+}
+
+/* Freshness mark + "Seen by seats.aero 45 m ago". Shape comes from FreshnessMark, color from
+   the tier token here; the age text repeats the tier in words, so nothing is color-only. */
+.agd-age {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  color: var(--fg-muted);
+}
+.agd-age[data-tier="fresh"] {
+  color: var(--fresh);
+}
+.agd-age[data-tier="aging"] {
+  color: var(--aging);
+}
+.agd-age[data-tier="stale"] {
+  color: var(--stale);
+}
+.agd-age .ag-mark {
+  flex: none;
+}
+
+.agd-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.agd-miles {
+  font-weight: 600;
+}
+/* Stale and unknown rows drop the miles one contrast step, exactly as the cell does
+   (FRESHNESS_SPEC.milesContrastStep). */
+.agd-prog[data-tier="stale"] .agd-miles,
+.agd-prog[data-tier="unknown"] .agd-miles {
+  color: var(--fg-muted);
+}
+.agd-muted {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+/* ---- flights ---- */
+.agd-flights {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.agd-flight {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.agd-flight + .agd-flight {
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+}
+.agd-leg,
+.agd-flight-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+.agd-flight-meta {
+  color: var(--fg-muted);
+}
+
+/* Skeleton rows while a Get Trips call is in flight; static under reduced motion. */
+.agd-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+.agd-skel-bar {
+  height: 8px;
+  background: var(--bg-raised);
+}
+/* `nth-of-type`, not `nth-child`: the container's first child is the sr-only <span> that
+   announces "Loading flights…", so nth-child would shift every bar by one and leave the last
+   one with no width rule at all (a full-width slab wider than any real flight row). */
+.agd-skel-bar:nth-of-type(1) {
+  width: 72%;
+}
+.agd-skel-bar:nth-of-type(2) {
+  width: 54%;
+}
+.agd-skel-bar:nth-of-type(3) {
+  width: 63%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes agd-shimmer {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+  .agd-skel-bar {
+    animation: agd-shimmer 1.2s ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agd-skel-bar {
+    animation: none;
+  }
+}
+
+/* ---- action block (DrawerShell's footer) ---- */
+.agd-caveat {
+  margin: 0;
+  color: var(--fg);
+}
+.agd-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

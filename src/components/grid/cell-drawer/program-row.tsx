@@ -1,0 +1,103 @@
+"use client";
+
+/**
+ * One program's offer for the selected cell (spec §3.5): miles, fees, seats, direct or with
+ * stops, operating airlines as plain text codes, and the freshness mark with "Seen by
+ * seats.aero 2 h ago". "Show flights" spends one seats.aero call and expands the flight rows
+ * underneath (flights-list.tsx).
+ *
+ * Program names are text — never a logo, never a brand color (kickoff §0.1). The cost of the
+ * button sits in its `title`, not beside it (docs/UI_PLAN.md §8 row 11), so the row reads as
+ * data rather than as a warning.
+ */
+import { useState } from "react";
+import { apiTrips } from "@/components/grid/api";
+import { FreshnessMark } from "@/components/grid/freshness-mark";
+import { FlightsList, type FlightsState } from "@/components/grid/cell-drawer/flights-list";
+import { drawerFees } from "@/components/grid/cell-drawer/copy-details";
+import { Button } from "@/components/ui/button";
+import { cabinName, formatMiles, formatSeats } from "@/lib/grid/format";
+import { formatAge, tier } from "@/lib/grid/freshness";
+import { programDisplayName } from "@/lib/grid/ranking";
+import type { AvailabilityRow } from "@/lib/grid/types";
+import { useLocale, useT } from "@/lib/i18n/client";
+import type { TripsForUserResult } from "@/lib/server/find";
+
+export interface ProgramRowProps {
+  row: AvailabilityRow;
+  /** Epoch ms the freshness age is measured against. */
+  now: number;
+  /** The query's dynamic-pricing scope; Get Trips must ask in the same scope it was cached in. */
+  includeFiltered: boolean;
+  /** Fees and the booking link learned from Get Trips flow back into the grid. */
+  onTripsLoaded: (row: AvailabilityRow, result: TripsForUserResult) => void;
+}
+
+export function ProgramRow({ row, now, includeFiltered, onTripsLoaded }: ProgramRowProps) {
+  const t = useT();
+  const locale = useLocale();
+  const [flights, setFlights] = useState<FlightsState>({ status: "idle" });
+  const tr = tier(row.computed_last_seen, now);
+  const loaded = flights.status === "ok";
+
+  async function load() {
+    setFlights({ status: "loading" });
+    const res = await apiTrips(row.source_id, row.cabin, includeFiltered);
+    if (res.ok) {
+      setFlights({ status: "ok", result: res.value });
+      onTripsLoaded(row, res.value);
+    } else {
+      setFlights({ status: "error", failure: res });
+    }
+  }
+
+  return (
+    <section className="agd-prog" data-tier={tr} data-program={row.program} data-testid="program-row">
+      <div className="agd-prog-head">
+        <h3 className="agd-prog-name">{programDisplayName(row.program)}</h3>
+        <span className="agd-age t-meta" data-tier={tr}>
+          <FreshnessMark tier={tr} />
+          <span>{t("grid.freshness.updated", { age: formatAge(row.computed_last_seen, now, locale) })}</span>
+        </span>
+      </div>
+
+      <p className="agd-stats t-body">
+        <span className="agd-miles" data-testid="program-miles" data-miles={row.miles}>
+          {formatMiles(row.miles, locale)} {t("grid.cell.miles")}
+        </span>
+        <span data-testid="program-fees">
+          {drawerFees(row, locale)} {t("grid.cell.fees")}
+        </span>
+        <span>{formatSeats(row.seats_left, locale, t)}</span>
+        <span>{row.direct ? t("grid.cell.direct") : t("grid.drawer.with_stops")}</span>
+        <span>{cabinName(row.cabin, t)}</span>
+        {row.dynamic === true && <span className="agd-muted">{t("grid.cell.filtered")}</span>}
+      </p>
+
+      {row.airlines.length > 0 && (
+        <p className="agd-muted t-meta">{t("grid.drawer.operated_by", { airlines: row.airlines.join(", ") })}</p>
+      )}
+
+      {/* The fees column reads "—" until a Get Trips call fills it in; say why, once. */}
+      {row.fees_cents === null && !loaded && <p className="agd-muted t-meta">{t("grid.sheet.fees_after_load")}</p>}
+
+      {!loaded && (
+        <div>
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            disabled={flights.status === "loading"}
+            title={t("grid.sheet.load_trips_cost")}
+            onClick={() => void load()}
+            data-testid="show-flights"
+          >
+            {flights.status === "loading" ? t("grid.sheet.loading_trips") : t("grid.sheet.load_trips")}
+          </Button>
+        </div>
+      )}
+
+      <FlightsList state={flights} onRetry={() => void load()} />
+    </section>
+  );
+}

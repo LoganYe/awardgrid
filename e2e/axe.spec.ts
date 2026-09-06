@@ -10,12 +10,12 @@ import AxeBuilder from "@axe-core/playwright";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { applyTheme, AXE_SUMMARY_FILE, expect, loginAs, openGridWithResults, test } from "./fixtures";
+import { applyTheme, AXE_SUMMARY_FILE, expect, loginAs, openAskDrawer, openCellDrawer, openGridWithResults, test } from "./fixtures";
 
 const AXE_STRICT = process.env.E2E_AXE_STRICT === "1";
 const SUMMARY_FILE = AXE_SUMMARY_FILE;
 /** Pages already held to the §8 floor (zero serious/critical) regardless of AXE_STRICT. */
-const STRICT_PAGES = new Set(["login", "register", "legal", "grid-results", "grid-chip-editor"]);
+const STRICT_PAGES = new Set(["login", "register", "legal", "grid-results", "grid-chip-editor", "grid-cell-drawer", "grid-ask-drawer"]);
 type Impact = "critical" | "serious" | "moderate" | "minor";
 
 interface PageSummary {
@@ -65,9 +65,17 @@ async function audit(page: Page, key: string): Promise<void> {
   if (AXE_STRICT || STRICT_PAGES.has(key)) expect(bad, "serious/critical axe violations").toEqual([]);
 }
 
+/**
+ * Most audits run on the desktop projects only. The two drawer audits are the exception: below
+ * 768 px the same drawers become a full-height sheet and a bottom sheet with a drag handle
+ * (spec §6) — different roles, different focus order, different touch targets — so the mobile
+ * presentations are audited as well as the desktop ones.
+ */
+const MOBILE_TOO = new Set(["grid-cell-drawer", "grid-ask-drawer"]);
+
 test.describe("axe", () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(!testInfo.project.name.startsWith("desktop"), "desktop projects only");
+    test.skip(!testInfo.project.name.startsWith("desktop") && !MOBILE_TOO.has(testInfo.title), "desktop projects only");
     await applyTheme(page);
   });
 
@@ -105,6 +113,29 @@ test.describe("axe", () => {
     await page.locator('[data-chip="origins"]').click();
     await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
     await audit(page, "grid-chip-editor");
+  });
+
+  /**
+   * The grid with the cell drawer open (6.4). At the desktop viewport the drawer pushes rather
+   * than overlays, so the grid behind it is still in the accessibility tree: this audit covers
+   * the drawer's own headings, the freshness marks, the caveat line and the action buttons AND
+   * the page they sit beside, in both themes.
+   */
+  test("grid-cell-drawer", async ({ page }) => {
+    await openGridWithResults(page);
+    await openCellDrawer(page);
+    await audit(page, "grid-cell-drawer");
+  });
+
+  /**
+   * The grid with the Ask drawer open (6.4): context pills, the suggestion buttons, the composer
+   * and the cost meter. The scripted stream is not involved — an empty, idle drawer is the state
+   * every other one is drawn on top of.
+   */
+  test("grid-ask-drawer", async ({ page }) => {
+    await openGridWithResults(page);
+    await openAskDrawer(page);
+    await audit(page, "grid-ask-drawer");
   });
 
   test("settings", async ({ page }) => {

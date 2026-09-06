@@ -1,0 +1,160 @@
+/**
+ * Drawer shell (spec §3.5, §3.6, §6; docs/UI_PLAN.md §4, §6.5, §6.6, §10).
+ *
+ * Four presentations, one panel: push (≥ 1280, the page beside it shrinks), overlay (768–1279,
+ * scrim), sheet (< 768, full height) and bottom-sheet (< 768, drag handle). The panel is always
+ * `position: fixed` — even when pushing — so it never scrolls with the page; "push" is done by
+ * padding <main>, not by putting the drawer in the flow, which keeps grid-app.tsx's layout
+ * untouched.
+ *
+ * Motion answers a user action and nothing else (§1.1): 200 ms on the panel's transform, 150 ms
+ * on the scrim's opacity, and zero of both under prefers-reduced-motion.
+ */
+
+/* ---- push: the page content gives up the drawer's width (spec §6, ≥ 1280 only) ---- */
+
+main {
+  transition: padding-right var(--motion-slow) ease-out;
+}
+
+@media (min-width: 1280px) {
+  html[data-drawer-push="open"] > body > main {
+    padding-right: calc(var(--ag-drawer-push, 0px) + var(--gutter));
+  }
+}
+
+/* ---- scrim (overlay, sheet and bottom-sheet only; never behind a pushing drawer) ---- */
+
+.ag-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--fg);
+  opacity: 0.4;
+  /* A touch drag on the scrim must not chain to the grid behind a modal dialog. */
+  overscroll-behavior: contain;
+  touch-action: none;
+  transition: opacity var(--motion-fast) ease-out;
+}
+
+/* Invisible AND intangible: the scrim stays mounted for the 200 ms exit, and an invisible
+   full-viewport layer that still ate clicks would swallow the user's next one. */
+.ag-drawer-scrim[data-state="closed"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- the panel ---- */
+
+.ag-drawer {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg);
+  color: var(--fg);
+  transition: transform var(--motion-slow) ease-out;
+}
+
+/* Same reason as the scrim: nothing in a leaving panel is clickable (it is `inert` too). */
+.ag-drawer[data-state="closed"] {
+  pointer-events: none;
+}
+
+.ag-drawer:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+/* Right-hand drawer: push, overlay and the full-height mobile sheet. */
+.ag-drawer[data-side="right"] {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--ag-drawer-width, 480px);
+  max-width: 100vw;
+  border-left: 1px solid var(--line);
+}
+
+.ag-drawer[data-side="right"][data-state="closed"] {
+  transform: translateX(100%);
+}
+
+.ag-drawer[data-mode="sheet"] {
+  width: 100vw;
+}
+
+/* Bottom sheet: the Ask drawer below 768 px. */
+.ag-drawer[data-side="bottom"] {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  max-height: 85dvh;
+  border-top: 1px solid var(--line);
+  border-top-left-radius: var(--radius-surface);
+  border-top-right-radius: var(--radius-surface);
+}
+
+.ag-drawer[data-side="bottom"][data-state="closed"] {
+  transform: translateY(100%);
+}
+
+/* While a finger is on the handle the panel follows it 1:1 — a transition would lag the drag. */
+.ag-drawer[data-dragging="true"] {
+  transition: none;
+}
+
+/* ---- touch targets in the mobile presentations (spec §3.4: 40 px on mobile) ----
+   The drawers are built out of the same xs controls as the toolbar (24 px) because at desktop
+   they sit in a dense column. Below 768 px the same drawer is a sheet under a thumb, so every
+   control in it grows to the 40 px the rest of the mobile UI uses. Keyed on the presentation
+   rather than on `pointer: coarse`: the presentation is what the spec's 40 px rule is about, and
+   it is the same at every input type. */
+
+.ag-drawer[data-mode="sheet"] [data-slot="button"],
+.ag-drawer[data-mode="bottom-sheet"] [data-slot="button"] {
+  min-height: 40px;
+  min-width: 40px;
+}
+
+/* ---- drag handle (32 × 4 px bar in a 40 px touch target, docs/UI_PLAN.md §6.6) ---- */
+
+.ag-drawer-handle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  background: none;
+  border: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.ag-drawer-handle[data-dragging="true"] {
+  cursor: grabbing;
+}
+
+.ag-drawer-handle::before {
+  content: "";
+  width: 32px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--line-strong);
+}
+
+.ag-drawer-handle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main,
+  .ag-drawer,
+  .ag-drawer-scrim {
+    transition: none;
+  }
+}
