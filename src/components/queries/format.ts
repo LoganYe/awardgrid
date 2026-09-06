@@ -3,6 +3,9 @@
  * human "every 3 h" rendering, plus the SaveQueryDialog form reducer. No React, no DOM, no
  * network — unit-tested in format.test.ts. Safe to import from server and client code.
  */
+import { formatPillDateRange } from "@/components/ask/labels";
+import { intlLocale, type FormatLocale } from "@/lib/grid/format";
+import type { Translate } from "@/lib/i18n";
 import type { QueryObject } from "@/lib/query/schema";
 
 // ---------------------------------------------------------------------------
@@ -35,6 +38,29 @@ export function dateSummary(query: Pick<QueryObject, "date_from" | "date_to">): 
 export function defaultQueryName(query: Pick<QueryObject, "origins" | "destinations" | "cabins">, max = 60): string {
   const name = `${routeSummary(query)} ${cabinSummary(query)}`;
   return name.length > max ? name.slice(0, max - 1) + "…" : name;
+}
+
+/**
+ * What a standing query will actually watch, in words: "PVG to SEA, Sep 7–13, business and
+ * first". The save dialog shows it because the query being saved is not always the query on
+ * screen — from the cell drawer it is one route over a ±3-day window (spec §3.5) — and §1.3 says
+ * a button says exactly what happens.
+ *
+ * `formatPillDateRange` is the Ask pill's range formatter, reused rather than re-derived: both
+ * places print the same window to the same reader.
+ */
+export function queryScopeSummary(query: QueryObject, t: Translate, locale: FormatLocale): string {
+  const route = t("grid.drawer.route", { origin: query.origins.join(", "), dest: query.destinations.join(", ") });
+  const dates = formatPillDateRange(query.date_from, query.date_to, locale);
+  const order = ["F", "J", "W", "Y"];
+  const names = [...query.cabins].sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((c) => t(`grid.cabin.${c}`));
+  let cabins: string;
+  try {
+    cabins = new Intl.ListFormat(intlLocale(locale), { style: "long", type: "conjunction" }).format(names);
+  } catch {
+    cabins = names.join(locale === "zh" ? "、" : ", ");
+  }
+  return t("saved.dialog.scope", { route, dates, cabins });
 }
 
 // ---------------------------------------------------------------------------

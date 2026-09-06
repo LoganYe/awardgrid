@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-06T08:55:07.840Z",
+  "generated_at": "2026-09-06T10:49:13.869Z",
   "note": "axe-core audit of the current UI; counts per impact per page and project (strict for login, register and legal)",
   "pages": {
     "desktop-light/login": {
@@ -133,6 +133,86 @@
       "violations": []
     },
     "desktop-dark/grid-chip-editor": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNSIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-light/grid-cell-drawer": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNSIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-light/grid-ask-drawer": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNSIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-dark/grid-cell-drawer": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNSIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-dark/grid-ask-drawer": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNSIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "mobile-light/grid-cell-drawer": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNSIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "mobile-light/grid-ask-drawer": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNSIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "mobile-dark/grid-cell-drawer": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNSIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "mobile-dark/grid-ask-drawer": {
       "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNSIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
       "counts": {
         "critical": 0,

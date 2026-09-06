@@ -36,10 +36,32 @@ does not include `e2e/`; `playwright.config.ts` and `scripts/seed-e2e.ts` are co
 The app process gets (from `playwright.config.ts`, `appEnv`): `DATABASE_PATH=<tmpdir>/awardgrid-e2e/e2e.db`
 (override with `E2E_DB_PATH`), `MASTER_KEY=eeee…` (64 × `e`, test-only), `SEATS_AERO_BASE_URL=http://127.0.0.1:3999/partnerapi/`,
 `APP_URL=http://127.0.0.1:3400`, `COOKIE_SECURE=false`, `NODE_ENV=production`, `TZ=UTC`,
-`ANTHROPIC_API_KEY=""` (the ask lane shows its "not configured" state) and no Telegram token
-(mock transport). Because these are set in the process environment they beat any local `.env`.
+`ANTHROPIC_API_KEY=""` (the ask lane shows its "not configured" state), `ASK_DEMO_STREAM=1`
+(the scripted Ask stream below) and no Telegram token (mock transport). Because these are set in the process environment they beat any local `.env`.
 Ports: `E2E_APP_PORT`, `E2E_MOCK_PORT`. Locally `reuseExistingServer` is on, so a server you
 started yourself on those ports is reused; in CI (`CI=1`) the suite always starts its own.
+
+## The scripted Ask stream (`/api/ask/demo`)
+
+The app runs with no `ANTHROPIC_API_KEY`, so the real ask lane can never stream and the Ask
+drawer's streaming states would be unphotographable. `src/app/api/ask/demo/route.ts` replays a
+fixed, obviously synthetic answer as SSE framed exactly like `POST /api/ask` (init, text deltas
+every 150 ms, two tool events, a result with a cost), so `e2e/ask-drawer.spec.ts` can exercise
+and photograph the streaming UI offline. Nothing on those screenshots was fetched.
+
+Two switches, both required, so nothing of this exists in production:
+
+- **Server:** `ASK_DEMO_STREAM=1` (exported by `start-app.sh`). Without it the route is a 404.
+- **Page:** `?askdemo=1` in the URL, remembered in `sessionStorage` for the rest of the session
+  (the grid rewrites its own URL when a query runs). `NEXT_PUBLIC_ASK_DEMO=1` at **build** time
+  does the same for every page; the harness deliberately does not set it, because it is inlined
+  by `next build` (so it would only apply when `start-app.sh` runs the build) and it would put
+  every other spec's Ask drawer on the scripted stream.
+
+Extra page switches, for the states a happy stream cannot show: `&askcap=1` reports today's
+spend at the cap (disabled input, reason and reset time) and `&askerr=<code>` answers with one
+scripted failure (`no_key`, `timeout`, `plugin_missing`, `budget`, `sdk`). The drawer probes
+`/api/ask/demo?probe=1` once on mount and falls back to the real `/api/ask` on a 404.
 
 ## Database and users (`scripts/seed-e2e.ts`)
 
@@ -91,6 +113,12 @@ loader, so it must not import Next.js or the database).
   enforce it on every page. 6.0 baseline: one serious `color-contrast` violation on grid-results.
 - `shell.spec.ts` — Phase 6.1: top bar, footer, theme and language toggles, user and mobile
   menus, login/register/legal. Captures land in `docs/screenshots/v0.2/shell/`.
+- `ask-drawer.spec.ts` — Phase 6.4 (spec §3.6): context pills and their `aria-pressed` toggle,
+  the three suggestions, the streamed markdown answer, tool activity collapsed and expanded,
+  Stop, the cost meter moving after an answer, the cap and the mobile bottom sheet. Captures land
+  in `docs/screenshots/v0.2/ask-drawer/`. Every stream here is the scripted one above. The
+  keyless drawer is captured through `&askerr=no_key`, not the `nokey` user: the "Ask" button
+  lives in the toolbar, which only renders once a query has run on a key.
 
 ## Visual-regression baselines (Linux plan)
 

@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { parseInline, parseMarkdownLite } from "./markdown";
+import { parseInline, parseMarkdownLite, safeHref } from "./markdown";
+
+describe("safeHref", () => {
+  it("allows http(s) and same-origin paths only", () => {
+    expect(safeHref("https://example.invalid/a")).toBe("https://example.invalid/a");
+    expect(safeHref("http://example.invalid")).toBe("http://example.invalid");
+    expect(safeHref("/settings")).toBe("/settings");
+  });
+
+  it("rejects anything that could execute or leave the origin unexpectedly", () => {
+    expect(safeHref("javascript:alert(1)")).toBeNull();
+    expect(safeHref("data:text/html,<script>")).toBeNull();
+    expect(safeHref("//evil.invalid")).toBeNull();
+    // A backslash is "/" to the URL parser, so this would resolve to https://evil.invalid/.
+    expect(safeHref("/\\evil.invalid")).toBeNull();
+    expect(safeHref("/\\/evil.invalid")).toBeNull();
+    expect(safeHref("\\\\evil.invalid")).toBeNull();
+    expect(safeHref("mailto:a@b.c")).toBeNull();
+    expect(safeHref("")).toBeNull();
+  });
+});
 
 describe("parseInline", () => {
   it("handles bold and code, leaves unmatched markers literal", () => {
@@ -11,6 +31,16 @@ describe("parseInline", () => {
       { kind: "text", text: " now" },
     ]);
     expect(parseInline("a ** b ` c")).toEqual([{ kind: "text", text: "a ** b ` c" }]);
+  });
+
+  it("turns a safe markdown link into a link span and leaves an unsafe one literal", () => {
+    expect(parseInline("see [the table](https://example.invalid/t) now")).toEqual([
+      { kind: "text", text: "see " },
+      { kind: "link", text: "the table", href: "https://example.invalid/t" },
+      { kind: "text", text: " now" },
+    ]);
+    expect(parseInline("[click](javascript:alert(1))")).toEqual([{ kind: "text", text: "[click](javascript:alert(1))" }]);
+    expect(parseInline("an [unclosed link")).toEqual([{ kind: "text", text: "an [unclosed link" }]);
   });
 });
 

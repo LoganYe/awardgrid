@@ -32,7 +32,7 @@ import { Cell, uiCellStatus } from "@/components/grid/cell";
 import { CellTooltip } from "@/components/grid/cell-tooltip";
 import { COLUMN_MIN, ROW_HEAD_WIDTH, ROW_HEIGHT, useDensity, useRovingGrid, type Density, type GridPos } from "@/components/grid/use-roving-grid";
 
-// Kept for src/components/grid/index.ts and cell-sheet.tsx, which import these from here.
+// Re-exported for src/components/grid/index.ts, which publishes these from here.
 export { Cell } from "@/components/grid/cell";
 export { FRESHNESS_GLYPH, TIER_TEXT } from "@/components/grid/freshness-mark";
 

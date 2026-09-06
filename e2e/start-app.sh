@@ -16,6 +16,11 @@ export COOKIE_SECURE="${COOKIE_SECURE:-false}"
 export NODE_ENV=production
 # Ask lane shows its "not configured" state; Telegram uses the mock transport.
 export ANTHROPIC_API_KEY=""
+# The scripted Ask stream (/api/ask/demo) exists only while this is set, and only a page that
+# asks for it uses it: e2e/ask-drawer.spec.ts opens /grid?askdemo=1. NEXT_PUBLIC_ASK_DEMO is
+# deliberately NOT exported here — it is inlined at build time, so it would only take effect when
+# this script runs the build, and it would put every other spec's Ask drawer on the demo stream.
+export ASK_DEMO_STREAM=1
 export TELEGRAM_BOT_TOKEN=""
 export TELEGRAM_BOT_USERNAME=""
 export TZ="${TZ:-UTC}"

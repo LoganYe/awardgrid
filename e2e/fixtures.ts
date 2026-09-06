@@ -13,6 +13,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { test as base, expect, request as playwrightRequest, type Locator, type Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
+import { zh } from "../src/lib/i18n/dictionaries/zh";
 import type { QueryObject } from "../src/lib/query/schema";
 import { E2E_PASSWORD, type E2eUsername } from "./users";
 
@@ -65,6 +66,15 @@ export async function loginCookies(baseURL: string, username: E2eUsername): Prom
   } finally {
     await ctx.dispose();
   }
+}
+
+/**
+ * Drop the cached session for `username`. A test that actually logs out has destroyed that
+ * session server-side, so the cached cookie is dead: without this, every later test that logs in
+ * as the same user would be handed the dead cookie and land on /login.
+ */
+export function forgetLoginCookies(username: E2eUsername): void {
+  cookieCache.delete(username);
 }
 
 /** Put `username`'s session cookie into the page's browser context (replacing any other user). */
@@ -170,12 +180,16 @@ export async function closeDrawer(page: Page): Promise<void> {
   await expect(page.getByRole("dialog")).toBeHidden();
 }
 
-/** Open the Ask drawer from the grid toolbar (inside the "Filters" sheet below 768 px) and wait for its prompt box. */
-export async function openAskDrawer(page: Page): Promise<Locator> {
-  const ask = page.getByRole("button", { name: en["ask.open"], exact: true });
-  if (!(await ask.isVisible())) await page.getByRole("button", { name: en["grid.toolbar.filters"] }).click();
+/**
+ * Open the Ask drawer from the grid toolbar (inside the "Filters" sheet below 768 px) and wait
+ * for it. The controls are named in the UI language, so the locale has to be told.
+ */
+export async function openAskDrawer(page: Page, locale: "en" | "zh" = "en"): Promise<Locator> {
+  const dict = locale === "zh" ? zh : en;
+  const ask = page.getByRole("button", { name: dict["ask.open"], exact: true });
+  if (!(await ask.isVisible())) await page.getByRole("button", { name: dict["grid.toolbar.filters"] }).click();
   await ask.click();
-  const dialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: en["ask.open"] }) });
+  const dialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: dict["ask.open"] }) });
   await expect(dialog).toBeVisible();
   return dialog;
 }

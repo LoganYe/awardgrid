@@ -335,7 +335,8 @@ export const en = {
   "grid.sheet.no_trips": "This program returns no flight-level detail.",
   "grid.sheet.no_link": "No direct link. Search on the program's own site.",
   "grid.sheet.nonstop": "nonstop",
-  "grid.sheet.stops": "{n} stop(s)",
+  "grid.sheet.stops": "{n} stops",
+  "grid.sheet.stop_one": "1 stop",
   "grid.sheet.segments": "Segments",
   "grid.sheet.booking_links": "Booking links",
   "grid.sheet.local_times": "Times are airport-local.",
@@ -451,6 +452,9 @@ export const en = {
   "saved.dialog.edit_title": "Edit standing query",
   "saved.dialog.save_body":
     "awardgrid re-runs this exact query on your key and messages you when seats appear or get cheaper.",
+  "saved.dialog.save_body_cell":
+    "awardgrid re-runs this route and date window on your key and messages you when seats appear or get cheaper.",
+  "saved.dialog.scope": "Watches {route}, {dates}, {cabins}.",
   "saved.dialog.name_hint": "1–60 characters",
   "saved.dialog.preset.every_3h": "Every 3 hours",
   "saved.dialog.preset.every_6h": "Every 6 hours",
@@ -509,6 +513,7 @@ export const en = {
   "ask.suggestion.combine_trip": "Plan Tokyo and Seoul in one trip.",
   "ask.streaming": "Thinking…",
   "ask.empty_answer": "No answer text came back. Ask again.",
+  "ask.answer_done": "Answer complete.",
   "ask.tools_used": "Tools used: {names}",
   "ask.tools_none": "No tools used yet",
   "ask.footer.cost": "This answer: {cost}",
@@ -516,7 +521,7 @@ export const en = {
   "ask.max_turns": "Stopped at the turn limit. Ask a narrower question.",
   "ask.no_key": "Add your seats.aero Pro key in settings before asking.",
   "ask.no_key_link": "Open settings",
-  "ask.budget": "Today's Ask budget ({cap}) is used up. It resets at {resetAt} (midnight UTC).",
+  "ask.budget": "Today's Ask budget ({cap}) is used up. It resets at {resetAt}.",
   "ask.timeout": "The answer timed out after 120 s. Try a narrower question.",
   "ask.plugin_missing":
     "The toolkit plugin isn't built on this server. Whoever runs it should run `pnpm build:plugin` and restart.",
@@ -582,4 +587,33 @@ export const en = {
   "grid.parse_failure.dates": "Couldn't read the dates in this query.",
   "grid.parse_failure.generic": "Couldn't read this query.",
   "grid.parse_failure.build": "Build it with chips instead",
+
+  // ---- drawer shell (6.4: cell drawer, Ask drawer) ----
+  "drawer.handle": "Drag down to close",
+  // ---- cell drawer (6.4, spec §3.5) ----
+  "grid.drawer.route": "{origin} to {dest}",
+  "grid.drawer.operated_by": "Operated by {airlines}",
+  "grid.drawer.with_stops": "with stops",
+  "grid.drawer.no_link_yet": "No direct link for this program yet",
+  "grid.drawer.flights_error": "Couldn't load flights from seats.aero. Try again.",
+  "grid.drawer.copy_failed": "Couldn't copy the details. Select the text and copy it manually.",
+  "grid.drawer.ask_about": "Ask about this cell",
+
+  // ---- Ask drawer (6.4, spec §3.6: context pills, suggestions, tool activity) ----
+  "ask.pill.routes": "{n} routes",
+  "ask.pill.route_one": "1 route",
+  "ask.suggestions_label": "Suggested questions",
+  "ask.turn.you": "You",
+  "ask.turn.answer": "Answer",
+  "ask.tools.toggle": "Tool activity ({n})",
+  "ask.tool.cached_search": "Checked seats.aero cached search",
+  "ask.tool.bulk_availability": "Checked seats.aero bulk availability",
+  "ask.tool.trips": "Checked seats.aero trips",
+  "ask.tool.read": "Read the toolkit files",
+  "ask.tool.search": "Searched the toolkit files",
+  "ask.tool.web": "Read a web page",
+  "ask.tool.bash": "Ran a command",
+  "ask.tool.skill": "Read {name}",
+  "ask.tool.skill_generic": "Read a toolkit skill",
+  "ask.tool.mcp": "Searched {server}",
 } as const;

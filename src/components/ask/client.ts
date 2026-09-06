@@ -30,19 +30,24 @@ async function failureFrom(res: Response): Promise<AskFailure> {
   return { ok: false, status: res.status, error };
 }
 
+export const ASK_ENDPOINT = "/api/ask";
+export const ASK_USAGE_ENDPOINT = "/api/ask/usage";
+
 export interface AskStreamOptions {
   prompt: string;
   context: AskContext;
   signal: AbortSignal;
   onEvent: (ev: AskWireEvent) => void;
   fetchImpl?: typeof fetch;
+  /** Where to POST; defaults to /api/ask. The e2e demo stream (src/app/api/ask/demo) overrides it. */
+  endpoint?: string;
 }
 
-export async function askStream({ prompt, context, signal, onEvent, fetchImpl }: AskStreamOptions): Promise<AskStreamResult> {
+export async function askStream({ prompt, context, signal, onEvent, fetchImpl, endpoint }: AskStreamOptions): Promise<AskStreamResult> {
   const f = fetchImpl ?? fetch;
   let res: Response;
   try {
-    res = await f("/api/ask", {
+    res = await f(endpoint ?? ASK_ENDPOINT, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "text/event-stream" },
       body: JSON.stringify({ prompt, context }),
@@ -71,9 +76,9 @@ export async function askStream({ prompt, context, signal, onEvent, fetchImpl }:
   return { ok: true };
 }
 
-export async function fetchAskUsage(fetchImpl: typeof fetch = fetch): Promise<AskUsageResponse | null> {
+export async function fetchAskUsage(fetchImpl: typeof fetch = fetch, url: string = ASK_USAGE_ENDPOINT): Promise<AskUsageResponse | null> {
   try {
-    const res = await fetchImpl("/api/ask/usage", { credentials: "same-origin", headers: { accept: "application/json" } });
+    const res = await fetchImpl(url, { credentials: "same-origin", headers: { accept: "application/json" } });
     if (!res.ok) return null;
     const body = (await res.json()) as Partial<AskUsageResponse>;
     if (typeof body.spentUsd !== "number" || typeof body.capUsd !== "number") return null;

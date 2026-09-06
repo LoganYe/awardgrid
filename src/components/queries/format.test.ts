@@ -11,11 +11,43 @@ import {
   looksLikeValidCron,
   presetForCron,
   queryFormReducer,
+  queryScopeSummary,
   routeSummary,
   type QueryFormState,
 } from "./format";
+import { translator } from "@/lib/i18n";
+import { QueryObject } from "@/lib/query/schema";
 
 const Q = { origins: ["HKG", "PVG", "NRT", "ICN"], destinations: ["SEA"], cabins: ["F", "J"] as ("F" | "J")[] };
+
+describe("queryScopeSummary", () => {
+  const cellWindow = QueryObject.parse({
+    origins: ["PVG"],
+    destinations: ["SEA"],
+    date_from: "2026-09-07",
+    date_to: "2026-09-13",
+    cabins: ["J", "F"],
+    raw_text: "x",
+    language: "en",
+  });
+
+  it("says the route, the window and the cabins the save will actually watch", () => {
+    // The ±3-day window from a cell drawer save — not the grid's own 7-route, 30-day query.
+    expect(queryScopeSummary(cellWindow, translator("en"), "en")).toBe("Watches PVG to SEA, Sep 7–13, First and Business.");
+  });
+
+  it("reads in the UI language, with the locale's own punctuation", () => {
+    const zh = queryScopeSummary(cellWindow, translator("zh"), "zh");
+    expect(zh).toContain("PVG 到 SEA");
+    expect(zh).toContain("头等舱");
+    expect(zh).not.toContain(" · ");
+  });
+
+  it("names every origin and destination of a multi-route query", () => {
+    const grid = QueryObject.parse({ ...cellWindow, origins: ["HKG", "SHA"], destinations: ["SEA", "PDX"], date_to: "2026-10-06" });
+    expect(queryScopeSummary(grid, translator("en"), "en")).toContain("HKG, SHA to SEA, PDX");
+  });
+});
 
 describe("summaries", () => {
   it("routeSummary truncates after three codes", () => {

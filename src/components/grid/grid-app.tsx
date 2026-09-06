@@ -18,7 +18,7 @@ import type { Provenance } from "@/lib/query/deterministic";
 import type { QuotaSnapshot, TripsForUserResult } from "@/lib/server/find";
 import { noticeKey } from "@/lib/notices";
 import { apiExport, apiFind, apiParse, uiNotices, type ApiFailure, type UiNotice } from "@/components/grid/api";
-import { CellSheet } from "@/components/grid/cell-sheet";
+import { CellDrawer } from "@/components/grid/cell-drawer/cell-drawer";
 import { ChipRow } from "@/components/grid/chip-row";
 import { isModified, resetToParsed, type ChipId } from "@/components/grid/chips-model";
 import { FailureState, NoKeyState, StartState } from "@/components/grid/empty-states";
@@ -29,6 +29,7 @@ import { QueryBar } from "@/components/grid/query-bar";
 import { applyChipAction, gridHref, localToday, mergeTripsIntoGrid, type ChipAction } from "@/components/grid/state";
 import { QuotaBanner, Toolbar } from "@/components/grid/toolbar";
 import { AskDrawer } from "@/components/ask/ask-drawer";
+import { useDrawerState, type CellAddress } from "@/components/drawers/use-drawer-state";
 import { cellContextFromCell } from "@/components/ask/context";
 
 export interface GridAppProps {
@@ -39,13 +40,7 @@ export interface GridAppProps {
 
 type Phase = "idle" | "parsing" | "loading" | "ready";
 
-interface CellRef {
-  origin: string;
-  dest: string;
-  date: string;
-}
-
-function findCell(grid: Grid, ref: CellRef | null): GridCell | null {
+function findCell(grid: Grid, ref: CellAddress | null): GridCell | null {
   if (!ref) return null;
   for (const line of grid.cells) {
     for (const cell of line) {
@@ -94,10 +89,11 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
   const [programsChecked, setProgramsChecked] = useState<number | undefined>(undefined);
   const [orientation, setOrientation] = useState<Orientation>("dates");
   const [now, setNow] = useState<number>(() => Date.now());
-  const [selected, setSelected] = useState<CellRef | null>(null);
+  // One slot for both right-hand drawers: opening either closes the other (spec §3, §11).
+  const drawers = useDrawerState();
+  const selected = drawers.cell;
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [askOpen, setAskOpen] = useState(false);
   // Empty results: the grid is hidden until "review the not-monitored cells" reveals it.
   const [revealGrid, setRevealGrid] = useState(false);
   const inflight = useRef<AbortController | null>(null);
@@ -177,7 +173,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
     setManualMode(false);
     setProvenance(res.value.provenance);
     setParseWarnings(uiNotices(res.value));
-    setSelected(null);
+    drawers.closeCell();
     if (!hasKey) {
       setPhase("ready");
       return;
@@ -188,7 +184,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
   /** Commit a toolbar edit: the toolbar acts at once, unlike the chips (spec §3.3). */
   function commit(next: QueryObject) {
     setQuery(next);
-    setSelected(null);
+    drawers.closeCell();
     if (hasKey) void runFind(next);
   }
 
@@ -294,7 +290,9 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
 
   const shown = useMemo(() => (grid ? (orientation === "routes" ? transposeGrid(grid) : grid) : null), [grid, orientation]);
   const selectedCell = useMemo(() => (grid ? findCell(grid, selected) : null), [grid, selected]);
-  const askCell = useMemo(() => cellContextFromCell(selectedCell), [selectedCell]);
+  // The Ask pill reads the RETAINED selection, not the cell drawer's slot: opening Ask closes the
+  // cell drawer, so `selected` is already null by the time the Ask drawer renders (spec §3.6).
+  const askCell = useMemo(() => cellContextFromCell(grid ? findCell(grid, drawers.selected) : null), [grid, drawers.selected]);
   const busy = phase === "parsing" || phase === "loading";
   const warnings = [...parseWarnings, ...findWarnings];
   const quotaExceeded = failure?.error === "quota" || (quota !== null && quota.used >= quota.limit);
@@ -375,7 +373,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
           onExport={() => void onExport()}
           exporting={exporting}
           canExport={shown !== null}
-          onAsk={() => setAskOpen(true)}
+          onAsk={drawers.openAsk}
           quotaExceeded={quotaExceeded}
           disabled={modified}
           searching={phase === "loading"}
@@ -406,7 +404,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
                 grid={shown}
                 now={now}
                 selected={selectedCell}
-                onSelect={(c) => setSelected({ origin: c.origin, dest: c.dest, date: c.date })}
+                onSelect={(c) => drawers.openCell({ origin: c.origin, dest: c.dest, date: c.date })}
                 programsByPair={programsByPair ?? undefined}
                 dimmed={modified}
               />
@@ -417,16 +415,22 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
 
       {!query && hasKey && phase === "idle" && !failure && <StartState />}
 
-      <AskDrawer open={askOpen} onOpenChange={setAskOpen} query={query} cell={askCell} hasKey={hasKey} />
+      <AskDrawer
+        open={drawers.askOpen}
+        onOpenChange={(next) => (next ? drawers.openAsk() : drawers.close())}
+        query={query}
+        cell={askCell}
+        hasKey={hasKey}
+      />
 
       {query && (
-        <CellSheet
+        <CellDrawer
           cell={selectedCell}
-          sortBy={query.sort_by}
-          includeFiltered={query.include_filtered}
+          query={query}
           now={now}
-          onClose={() => setSelected(null)}
+          onClose={drawers.closeCell}
           onTripsLoaded={onTripsLoaded}
+          onAsk={drawers.openAsk}
         />
       )}
     </div>

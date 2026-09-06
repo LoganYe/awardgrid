@@ -17,6 +17,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/settings/native-select";
+import type { QueryPrefill } from "@/components/drawers/prefill";
 import { formatDate } from "@/components/settings/api";
 import { errorText, type I18nKey } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/i18n/client";
@@ -31,6 +32,7 @@ import {
   formToBody,
   initialFormState,
   queryFormReducer,
+  queryScopeSummary,
   type CronPresetId,
   type NotifyRule,
   type QueryFormState,
@@ -52,7 +54,13 @@ const NOTIFY_KEY: Record<NotifyRule, I18nKey> = {
 
 const NOTIFY_RULES: readonly NotifyRule[] = ["both", "new_cells", "price_drop"];
 
-type Mode = { kind: "create"; query: QueryObject } | { kind: "edit"; saved: SavedQuerySummary };
+type Mode =
+  /**
+   * `name` overrides the derived default — the cell drawer names the route it prefilled from,
+   * and `fromCell` says the query being saved is NOT the one on the grid, so the dialog stops
+   * claiming it re-runs "this exact query".
+   */
+  { kind: "create"; query: QueryObject; name?: string; fromCell?: boolean } | { kind: "edit"; saved: SavedQuerySummary };
 
 export interface QueryFormDialogProps {
   mode: Mode;
@@ -63,7 +71,9 @@ export interface QueryFormDialogProps {
 }
 
 function initialState(mode: Mode): QueryFormState {
-  return mode.kind === "create" ? initialFormState(mode.query) : formStateFrom(mode.saved);
+  if (mode.kind === "edit") return formStateFrom(mode.saved);
+  const state = initialFormState(mode.query);
+  return mode.name ? { ...state, name: mode.name.slice(0, NAME_MAX_LENGTH) } : state;
 }
 
 /** The shared form dialog (controlled). */
@@ -123,8 +133,22 @@ export function QueryFormDialog({ mode, open, onOpenChange, onSaved }: QueryForm
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{mode.kind === "create" ? t("saved.dialog.save_body") : t("saved.dialog.quota_hint")}</DialogDescription>
+          <DialogDescription>
+            {mode.kind === "create" ? t(mode.fromCell ? "saved.dialog.save_body_cell" : "saved.dialog.save_body") : t("saved.dialog.quota_hint")}
+          </DialogDescription>
         </DialogHeader>
+
+        {/*
+          What is actually being watched, in words. From the cell drawer this is one route over a
+          ±3-day window (spec §3.5) and NOT the grid's own query, and the prefilled name only
+          carries the cell's single date — without this line the difference is invisible until
+          after the save (§1.3: a button says exactly what happens).
+        */}
+        {mode.kind === "create" && !created && (
+          <p className="text-xs text-muted-foreground" data-testid="save-query-scope">
+            {queryScopeSummary(mode.query, t, locale)}
+          </p>
+        )}
 
         {created ? (
           <div className="flex flex-col gap-3">
@@ -255,20 +279,34 @@ export function QueryFormDialog({ mode, open, onOpenChange, onSaved }: QueryForm
 export interface SaveQueryDialogProps {
   /** The grid's current QueryObject (already validated by the parser / chips). */
   query: QueryObject;
+  /**
+   * Save something narrower than the grid's query. The cell drawer passes the cell's route and
+   * a ±3-day window (spec §3.5) built by `prefillFromCell` in components/drawers/prefill.ts;
+   * when it is present the dialog saves `prefill.query`, not `query`.
+   */
+  prefill?: QueryPrefill;
   disabled?: boolean;
+  className?: string;
 }
 
-/** Grid-header entry point: the button + the create dialog. */
-export function SaveQueryDialog({ query, disabled }: SaveQueryDialogProps) {
+/** Grid-toolbar and cell-drawer entry point: the button + the create dialog. */
+export function SaveQueryDialog({ query, prefill, disabled, className }: SaveQueryDialogProps) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const saving = prefill?.query ?? query;
   return (
     <>
       {/* Text only: toolbar buttons carry no icons (docs/UI_PLAN.md §6.2, §10). */}
-      <Button type="button" variant="outline" size="xs" onClick={() => setOpen(true)} disabled={disabled}>
+      <Button type="button" variant="outline" size="xs" onClick={() => setOpen(true)} disabled={disabled} className={className}>
         {t("grid.save_query")}
       </Button>
-      {open && <QueryFormDialog mode={{ kind: "create", query }} open={open} onOpenChange={setOpen} />}
+      {open && (
+        <QueryFormDialog
+          mode={{ kind: "create", query: saving, fromCell: prefill !== undefined, ...(prefill?.name !== undefined ? { name: prefill.name } : {}) }}
+          open={open}
+          onOpenChange={setOpen}
+        />
+      )}
     </>
   );
 }
