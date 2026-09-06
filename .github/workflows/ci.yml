@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Build the pruned toolkit plugin (so the plugin-dependent gate tests run)
+        run: pnpm build:plugin
+
       - name: Test (fixtures only, no network)
         run: pnpm test
 

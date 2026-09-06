@@ -183,7 +183,7 @@ Docker was **not** available on the machine this was built on; the CI job `docke
 ## Tests
 
 ```sh
-pnpm test                                     # Vitest, 79 files / 722 tests, no network, no keys (2 live-gated tests skip)
+pnpm build:plugin && pnpm test                 # Vitest, 79 files / 722 tests, no network, no keys (2 live-gated tests skip; 1 more skips until the plugin is built)
 pnpm typecheck && pnpm lint
 bash scripts/check-no-secrets-in-bundle.sh --build   # fixture/seed key strings absent from .next/, Partner-Authorization absent from client chunks
 AWARDGRID_LIVE_SMOKE=1 pnpm exec tsx scripts/ask-smoke.ts   # optional: one real Ask session; needs ANTHROPIC_API_KEY; ≤ $0.50
