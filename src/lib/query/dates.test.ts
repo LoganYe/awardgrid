@@ -6,22 +6,31 @@ const today = "2026-09-06";
 
 describe("parseDates — relative windows", () => {
   it.each([
-    ["未来一个月", "2026-09-06", "2026-10-06"],
-    ["接下来一个月", "2026-09-06", "2026-10-06"],
-    ["next month", "2026-09-06", "2026-10-06"],
-    ["next 30 days", "2026-09-06", "2026-10-06"],
-    ["in the next month", "2026-09-06", "2026-10-06"],
-    ["未来两周", "2026-09-06", "2026-09-20"],
-    ["next two weeks", "2026-09-06", "2026-09-20"],
-    ["next 14 days", "2026-09-06", "2026-09-20"],
-    ["未来45天", "2026-09-06", "2026-10-21"],
-    ["未来十天", "2026-09-06", "2026-09-16"],
-    ["next 7 days", "2026-09-06", "2026-09-13"],
-    ["未来三个月", "2026-09-06", "2026-12-05"],
-    ["next 3 months", "2026-09-06", "2026-12-05"],
+    ["未来一个月", "2026-09-06", "2026-10-05"],
+    ["接下来一个月", "2026-09-06", "2026-10-05"],
+    ["next month", "2026-09-06", "2026-10-05"],
+    ["next 30 days", "2026-09-06", "2026-10-05"],
+    ["in the next month", "2026-09-06", "2026-10-05"],
+    ["未来两周", "2026-09-06", "2026-09-19"],
+    ["next two weeks", "2026-09-06", "2026-09-19"],
+    ["next 14 days", "2026-09-06", "2026-09-19"],
+    ["未来45天", "2026-09-06", "2026-10-20"],
+    ["未来十天", "2026-09-06", "2026-09-15"],
+    ["next 7 days", "2026-09-06", "2026-09-12"],
+    ["未来三个月", "2026-09-06", "2026-12-04"],
+    ["next 3 months", "2026-09-06", "2026-12-04"],
     ["this month", "2026-09-06", "2026-09-30"],
   ])("%s", (text, from, to) => {
     expect(parseDates(text, today)).toEqual({ date_from: from, date_to: to, capped: false });
+  });
+
+  // The window a phrase names is the window the chip reports: "next 30 days" is 30 days
+  // inclusive of today, the same count date-model.presetRange produces for the editor's own
+  // "Next 30 days" preset, so a parsed query is never shown as modified after clicking it.
+  it("counts the named window inclusively", () => {
+    const r = parseDates("next 30 days", today)!;
+    expect(r.date_to).toBe("2026-10-05");
+    expect((Date.parse(`${r.date_to}T00:00:00Z`) - Date.parse(`${r.date_from}T00:00:00Z`)) / 86_400_000 + 1).toBe(30);
   });
 
   it("caps 4 months at 92 days and flags it", () => {

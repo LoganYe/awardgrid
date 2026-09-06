@@ -7,12 +7,10 @@ import {
   decodeQueryParam,
   encodeQueryParam,
   gridHref,
-  isCommittableDate,
   localToday,
   mergeTripsIntoGrid,
   normalizeIata,
   sameQuery,
-  siblingAirports,
 } from "./state";
 
 const base = QueryObject.parse({
@@ -39,9 +37,9 @@ describe("chip reducers", () => {
     expect(QueryObject.safeParse(r).success).toBe(true);
   });
 
-  it("toggles cabins in canonical F/J/W/Y order and keeps at least one", () => {
+  it("toggles cabins in the canonical J/F/W/Y order (spec §3.2) and keeps at least one", () => {
     const y = applyChipAction(base, { type: "toggle_cabin", cabin: "Y" });
-    expect(y.cabins).toEqual(["F", "J", "Y"]);
+    expect(y.cabins).toEqual(["J", "F", "Y"]);
     const noJ = applyChipAction(y, { type: "toggle_cabin", cabin: "J" });
     expect(noJ.cabins).toEqual(["F", "Y"]);
     const single = applyChipAction(QueryObject.parse({ ...base, cabins: ["F"] }), { type: "toggle_cabin", cabin: "F" });
@@ -76,23 +74,6 @@ describe("chip reducers", () => {
     expect(none.programs).toBeUndefined();
     expect(applyChipAction(base, { type: "set_programs", programs: [...SEATS_SOURCES] }).programs).toBeUndefined();
     expect(applyChipAction(base, { type: "set_programs", programs: ["made_up"] }).programs).toBeUndefined();
-  });
-
-  it("isCommittableDate rejects the partial values a date input emits while typing", () => {
-    expect(isCommittableDate("2026-10-15")).toBe(true);
-    expect(isCommittableDate("0002-10-15")).toBe(false);
-    expect(isCommittableDate("0202-10-15")).toBe(false);
-    expect(isCommittableDate("2026-13-01")).toBe(false);
-    expect(isCommittableDate("")).toBe(false);
-  });
-
-  it("siblingAirports suggests the rest of an expanded metro, never duplicates or unknown airports", () => {
-    expect(siblingAirports(["NRT", "SEA"])).toEqual(["HND"]);
-    expect(siblingAirports(["NRT", "HND"])).toEqual([]);
-    expect(siblingAirports(["ICN", "JFK"])).toEqual(["GMP", "EWR", "LGA"]);
-    expect(siblingAirports(["SEA"])).toEqual([]); // single-airport city
-    expect(siblingAirports(["XYZ"])).toEqual([]); // not in the seed
-    expect(siblingAirports(["PVG"])).toEqual(["SHA"]);
   });
 
   it("sameQuery ignores raw_text/language and ordering of cabins/programs", () => {
@@ -174,3 +155,4 @@ describe("mergeTripsIntoGrid", () => {
     expect(mergeTripsIntoGrid(grid, c, { fees_cents: null, currency: null, booking_url: null }).cells[0]![0]!.all[2]).toEqual(c);
   });
 });
+

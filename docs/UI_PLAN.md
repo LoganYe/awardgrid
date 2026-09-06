@@ -163,7 +163,7 @@ Page-level states replace the grid area: **No key** — 14 px sentence + `Open s
 ┌──────────────────────────────────┐          ┌──────────────────────────────────┐
 │ Search city or airport           │ 36 input │ Next 30 days  Next 60 days  Next 90 days │ presets, link buttons
 │ HKG  Hong Kong                 × │ 32 rows  │  October 2026        November 2026     │ two months, 7 × 28 px cells
-│ SHA  Shanghai  ▸ PVG ✓  SHA ✓  × │ group row│  Mo Tu We Th Fr Sa Su   Mo Tu We …    │ range fill --bg-raised, ends --fg
+│ SHA  Shanghai  ▸ PVG ✓  SHA ✓  × │ group row│  Mo Tu We Th Fr Sa Su   Mo Tu We …    │ range band --selection between --line-strong rules, ends --fg
 │ TYO  Tokyo     ▸ NRT ✓  HND ✓  × │          │  …                                    │
 │ ICN  Seoul                     × │          │ Oct 1 – Oct 30, 30 days               │ 12 muted; "92 days is the most
 │ Add IATA code  ___               │ free entry│                                       │  seats.aero searches at once" when capped
@@ -174,7 +174,11 @@ Direct only: one switch. Sort: one select bound to sort_by (Fewest miles, Lowest
 Empty Origins/Destinations: chip in --error with "Add at least one airport" under the list.
 ```
 
-A city group is one row (`SHA  Shanghai`) whose `▸` expands the member airports; the group toggle checks all members, the per-airport toggles refine. The Examples popover is the same surface with three rows (zh and en of the canonical query plus one each way), each a button that fills the bar and closes.
+A city group is one row (`SHA  Shanghai`) whose `▸` expands the member airports; the group toggle checks all members, the per-airport toggles refine; its accessible name is `SHA Shanghai, every airport`, so it is never confused with the Hongqiao airport toggle beside it. The Examples popover is the same surface with three rows (zh and en of the canonical query plus one each way), each a button that fills the bar and closes. It is anchored to the **bottom of the whole query-bar row**, not to the `Examples` link inside it: a popover that covers the field it fills, or the Run button next to it, is a bug.
+
+**Range band.** In-range days are `--selection` (the `--fg` tint the page already uses for text selection) between 1 px `--line-strong` rules top and bottom; the rules are what identify the range, and they clear 3:1 on the `--bg-raised` popover ground in both themes (`src/styles/tokens.test.ts`). The first draft filled the range with `--bg-raised` on a `--bg-raised` surface — 1.1:1, invisible — and gave unselected days the identical fill on hover; hover is now a 1 px `--line-strong` ring and nothing else uses a fill. Every day cell carries its full localized date as its accessible name, and the line under the calendar is a live region reading exactly what the chip reads (`Oct 1 – Oct 30 (30 days)`), on the clamped range: a pick longer than 92 days is stored clamped, so the calendar, the count and the query never disagree.
+
+**Deviation, logged:** `data/places.json` expands the `SEL` metro to `ICN` **and** `GMP`, so the spec's own placeholder (`… SEL to SEA …`) produces a seventh, permanently hatched `GMP → SEA` column. Spec §3.2's worked example, §7's demo dataset and the §6.2 wireframe all end the origin list at `ICN`. The seed is right about Seoul and stays as it is; the e2e canonical query names `ICN`/`仁川` explicitly (`e2e/fixtures.ts`) so the demo grid is the six routes the fixtures carry.
 
 ### 6.3 Grid page, 768–1279 (two-line cells, 32 px rows, drawers overlay)
 
@@ -483,4 +487,7 @@ Every change made to this document by the review, with the reason.
 - **§8 copy**: row 5 zh rewritten (「已检查 3 个计划，2 小时前。」 was a dangling fragment); rows 11–15 added for drawer strings, the two subtitles, "Sign out everywhere", and the "WORD — fragment" pattern that the current dictionaries use in at least 14 strings (`——` in zh); page subtitles ruled out.
 - **§10 rewritten** as an honest table: the Type row now says plainly that Inter is the generic choice and why it stays; the Numbering row's "Yes — none needed" was rewritten; the Arrows row admits the draft's own `▶`/`▾` tells; rows added for empty states, icons, motion, feedback and the hatch.
 - **§12 added** (twelve findings from the before screenshots) and this log.
+- **§6.2a range fill corrected** (6.3 review). "Range fill `--bg-raised`" on a `--bg-raised` popover was 1.10:1 in light and 1.13:1 in dark — the plan had written down the defect. The band is now `--selection` between `--line-strong` rules, and the hover state on unselected days is a ring, not the same fill.
+- **§6.2a Examples anchor pinned** (6.3 review): to the query-bar row, not the link, after the popover was measured covering the textarea at 390 px and clipping the Run button at 1440 px.
+- **§6.2a SEL/GMP deviation logged** (6.3 review), with the decision to name `ICN` in the e2e canonical query rather than edit the places seed.
 - Not changed, checked and confirmed: 48 px bar, 360 px auth column, 880 px max content, 480/420 px drawers, 112 px minimum column, seven chips in the spec's order, toolbar contents, footer vertical rule, cell anatomy (fees left / seats right, mark + age right), six cell states, four freshness tiers with shape + text, all six page-level states, Queries columns and inline delete, Settings section order, the 156-PNG screenshot matrix arithmetic, sentence case and full-width zh punctuation in every "After" string.

@@ -89,6 +89,27 @@ describe("tokens.css", () => {
     }
   });
 
+  // The calendar's range band and the "not monitored" hatch are both drawn in --line-strong on
+  // the --bg-raised popover ground: WCAG 1.4.11 asks 3:1 for a non-text mark that carries
+  // meaning, and these two are the only indication of their state.
+  it("--line-strong clears 3:1 on --bg-raised in both themes (range band, hatch)", () => {
+    const channel = (v: number) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+    const luminance = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => channel(parseInt(hex.slice(i, i + 2), 16) / 255));
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    };
+    const ratio = (a: string, b: string) => {
+      const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
+      return (x! + 0.05) / (y! + 0.05);
+    };
+    for (const [name, map] of [
+      ["light", light],
+      ["dark", dark],
+    ] as const) {
+      expect(ratio(map.get("--line-strong")!, map.get("--bg-raised")!), `${name}: --line-strong on --bg-raised`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   it("names no airline or loyalty program", () => {
     const names = [
       "alaska", "american", "aadvantage", "united", "mileageplus", "delta", "skymiles", "aeroplan", "air canada",

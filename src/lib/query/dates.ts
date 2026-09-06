@@ -162,7 +162,9 @@ function parseRelative(text: string, today: number): DateRange | null {
     if (!m) continue;
     const n = days(m);
     if (n === null || n <= 0) continue;
-    return capRange(today, addDays(today, n));
+    // Inclusive: "next 30 days" is today plus 29 more, so the Dates chip reads "(30 days)" and
+    // matches the editor's own "Next 30 days" preset (date-model.presetRange).
+    return capRange(today, addDays(today, n - 1));
   }
   if (/本月|这个月|這個月|this\s+month|rest\s+of\s+(?:the|this)\s+month/i.test(text)) {
     const d = new Date(today);

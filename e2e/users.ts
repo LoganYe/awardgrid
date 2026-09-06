@@ -9,14 +9,33 @@
 
 export const E2E_PASSWORD = "demo-password-1";
 
-export type E2eUsername = "demo" | "nokey" | "empty" | "slow" | "slow2" | "slow3" | "slow4" | "partial" | "quota";
+export type E2eUsername =
+  | "demo"
+  | "nokey"
+  | "empty"
+  | "slow"
+  | "slow2"
+  | "slow3"
+  | "slow4"
+  | "slow5"
+  | "slow6"
+  | "slow7"
+  | "slow8"
+  | "partial"
+  | "quota";
 
 /**
  * One slow user per Playwright project (desktop-light, desktop-dark, mobile-light, mobile-dark):
  * a single app process and one cache serve every project, so a second project's search would be
  * answered from the first one's cache and never show the loading state.
+ *
+ * The availability cache is keyed by user, so every test that needs the loading state needs its
+ * own set: grid.spec.ts (the 6.2 skeleton) takes the first four, chips.spec.ts (the 6.3 skeleton
+ * in the chips' shape) the second four. Sharing one set would let whichever spec runs first warm
+ * the cache and leave the other with an instant answer.
  */
 export const E2E_SLOW_USERS: readonly E2eUsername[] = ["slow", "slow2", "slow3", "slow4"];
+export const E2E_CHIP_SLOW_USERS: readonly E2eUsername[] = ["slow5", "slow6", "slow7", "slow8"];
 
 export interface E2eUserSpec {
   username: E2eUsername;
@@ -41,6 +60,10 @@ export const E2E_USERS: readonly E2eUserSpec[] = [
   { username: "slow2", seatsAeroKey: "demo-key-slow" },
   { username: "slow3", seatsAeroKey: "demo-key-slow" },
   { username: "slow4", seatsAeroKey: "demo-key-slow" },
+  { username: "slow5", seatsAeroKey: "demo-key-slow" },
+  { username: "slow6", seatsAeroKey: "demo-key-slow" },
+  { username: "slow7", seatsAeroKey: "demo-key-slow" },
+  { username: "slow8", seatsAeroKey: "demo-key-slow" },
   { username: "partial", seatsAeroKey: "demo-key-partial" },
   { username: "quota", seatsAeroKey: "demo-key-normal", quotaCalls: E2E_QUOTA_CALLS },
 ];

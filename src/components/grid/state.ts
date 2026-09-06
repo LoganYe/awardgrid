@@ -7,11 +7,15 @@
  * upper-cased and validated as IATA before they become chips.
  */
 import type { AvailabilityRow, Grid, GridCell } from "@/lib/grid/types";
-import { DEFAULT_PLACES, type Places } from "@/lib/query/places";
 import { MAX_SPAN_DAYS, QueryObject, type Cabin, type SortBy } from "@/lib/query/schema";
 import { SEATS_SOURCES } from "@/lib/seatsaero/types";
 
-export const ALL_CABINS: readonly Cabin[] = ["F", "J", "W", "Y"];
+/**
+ * The one canonical cabin order, spec §3.2's "J / F / W / Y". Both the toolbar's toggle and the
+ * chip editor rewrite `cabins` into it, so the same set always reads the same way ("J, F"),
+ * whichever control the user touched.
+ */
+export const ALL_CABINS: readonly Cabin[] = ["J", "F", "W", "Y"];
 export const SORT_OPTIONS: readonly SortBy[] = ["miles_asc", "fees_asc", "seats_desc", "date_asc"];
 
 export type ChipAction =
@@ -130,21 +134,6 @@ function setPrograms(q: QueryObject, programs: string[] | null): QueryObject {
   return { ...rest, programs: known };
 }
 
-/**
- * Sibling airports of the metros that `codes` belong to, in seed order, excluding codes
- * already present — the one-click "+ HND" suggestions next to an expanded metro (§4.2: a wrong
- * expansion is fixed by clicking). Airports outside the seed contribute nothing.
- */
-export function siblingAirports(codes: readonly string[], places: Places = DEFAULT_PLACES): string[] {
-  const have = new Set(codes);
-  const out: string[] = [];
-  for (const [, airports] of Object.entries(places.cities)) {
-    if (airports.length < 2 || !airports.some((a) => have.has(a))) continue;
-    for (const a of airports) if (!have.has(a) && !out.includes(a)) out.push(a);
-  }
-  return out;
-}
-
 /** True when two queries would produce the same grid (raw_text/language do not matter). */
 export function sameQuery(a: QueryObject | null, b: QueryObject | null): boolean {
   if (a === null || b === null) return a === b;
@@ -214,15 +203,6 @@ export function gridHref(q: QueryObject | null): string {
 
 // Display formatting (miles, fees, seats) lives in src/lib/grid/format.ts — one formatter set
 // for the cell, the tooltip, the aria label and the drawer (Intl in the viewer's locale).
-
-/**
- * True for a complete, plausible YYYY-MM-DD (years 2000–2199). A <input type="date"> reports
- * intermediate values such as "0002-10-15" while the year is being typed; those must never
- * reach /api/find.
- */
-export function isCommittableDate(value: string): boolean {
-  return /^2[01]\d{2}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
-}
 
 /** Today's date in the browser's local calendar, YYYY-MM-DD. */
 export function localToday(now: Date = new Date()): string {

@@ -53,6 +53,8 @@
   --color-aging: var(--aging);
   --color-stale: var(--stale);
   --color-error: var(--error);
+  /* The text-selection tint, reused as the calendar's range band (docs/UI_PLAN.md §6.2a). */
+  --color-selection: var(--selection);
 
   /* ---- shadcn aliases ---- */
   --color-background: var(--bg);

@@ -18,7 +18,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { SOURCE_NAMES, type SeatsSource } from "../../src/lib/seatsaero/types";
 
-export const DEMO_ORIGINS = ["HKG", "PVG", "SHA", "NRT", "HND", "ICN"] as const;
+export const DEMO_ORIGINS = ["HKG", "PVG", "SHA", "NRT", "HND", "ICN", "GMP"] as const;
 export const DEMO_DEST = "SEA";
 export const DEMO_ANCHOR = "2026-10-01";
 export const DEMO_DAYS = 30;
@@ -65,10 +65,10 @@ const TAXES: Record<DemoProgram, [number, number]> = {
   flyingblue: [20_000, 45_000],
 };
 const MILES_RANGE = { J: [55_000, 120_000], F: [70_000, 160_000] } as const;
-const REGION: Record<string, string> = { HKG: "Asia", PVG: "Asia", SHA: "Asia", NRT: "Asia", HND: "Asia", ICN: "Asia", SEA: "North America" };
+const REGION: Record<string, string> = { HKG: "Asia", PVG: "Asia", SHA: "Asia", NRT: "Asia", HND: "Asia", ICN: "Asia", GMP: "Asia", SEA: "North America" };
 /** Great-circle-ish distances in miles, for realism only. */
-const DISTANCE: Record<string, number> = { HKG: 6483, PVG: 5710, SHA: 5714, NRT: 4776, HND: 4792, ICN: 5217 };
-const TZ_HOURS: Record<string, number> = { HKG: 8, PVG: 8, SHA: 8, NRT: 9, HND: 9, ICN: 9, SEA: -7, TPE: 8, YVR: -7, SFO: -7 };
+const DISTANCE: Record<string, number> = { HKG: 6483, PVG: 5710, SHA: 5714, NRT: 4776, HND: 4792, ICN: 5217, GMP: 5231 };
+const TZ_HOURS: Record<string, number> = { HKG: 8, PVG: 8, SHA: 8, NRT: 9, HND: 9, ICN: 9, GMP: 9, SEA: -7, TPE: 8, YVR: -7, SFO: -7 };
 const COORDS: Record<string, { Lat: number; Lon: number }> = {
   HKG: { Lat: 22.308, Lon: 113.918 },
   PVG: { Lat: 31.143, Lon: 121.805 },
@@ -76,10 +76,11 @@ const COORDS: Record<string, { Lat: number; Lon: number }> = {
   NRT: { Lat: 35.772, Lon: 140.393 },
   HND: { Lat: 35.549, Lon: 139.78 },
   ICN: { Lat: 37.469, Lon: 126.451 },
+  GMP: { Lat: 37.558, Lon: 126.791 },
   SEA: { Lat: 47.449, Lon: -122.309 },
 };
 const HUBS = ["NRT", "ICN", "TPE", "YVR", "SFO"] as const;
-const CITY: Record<string, string> = { HKG: "HKG", PVG: "SHA", SHA: "SHA", NRT: "TYO", HND: "TYO", ICN: "SEL", TPE: "TPE", YVR: "YVR", SFO: "SFO" };
+const CITY: Record<string, string> = { HKG: "HKG", PVG: "SHA", SHA: "SHA", NRT: "TYO", HND: "TYO", ICN: "SEL", GMP: "SEL", TPE: "TPE", YVR: "YVR", SFO: "SFO" };
 const AIRCRAFT = ["77W", "789", "359", "781", "333", "78J"] as const;
 const FARE_CLASS = { J: "I", F: "O" } as const;
 
@@ -427,7 +428,10 @@ function generateTrips(rand: Rand, row: DemoAvailability): DemoTripsResponse {
       const distance = leg.to === DEMO_DEST && leg.from === origin ? DISTANCE[origin]! : leg.to === DEMO_DEST ? int(rand, 4_700, 6_000) : int(rand, 500, 1_800);
       const flightMin = Math.round(distance / 8.6) + 15;
       const tzTo = TZ_HOURS[leg.to]!;
-      const arrive = cursor + flightMin + (tzTo - tzFrom) * 60;
+      // Local arrival clock time. Crossing the date line eastbound lands earlier in the day than
+      // the departure; a connection must still never depart before the leg that fed it, so the
+      // local arrival is kept on the same calendar day rather than rolled back one.
+      const arrive = Math.max(cursor + 1, cursor + flightMin + (tzTo - tzFrom) * 60);
       const flightNumber = `${leg.carrier}${int(rand, 10, 999)}`;
       segments.push({
         ID: ksuidLike(rand),
