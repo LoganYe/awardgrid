@@ -24,6 +24,8 @@
     "src/**/*.tsx",
     "scripts/**/*.ts",
     "test/**/*.ts",
+    "e2e/**/*.ts",
+    "fixtures/**/*.ts",
     "*.ts",
     "*.mts",
     ".next/types/**/*.ts",

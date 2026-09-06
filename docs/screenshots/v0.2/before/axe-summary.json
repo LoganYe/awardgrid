@@ -1,0 +1,100 @@
+{
+  "generated_at": "2026-09-06T02:22:07.609Z",
+  "note": "axe-core baseline of the v0.1 UI before Phase 6; counts per impact, not yet enforced",
+  "pages": {
+    "desktop-light/login": {
+      "url": "http://127.0.0.1:3400/login",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-light/grid-results": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 1,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 84,
+          "help": "Elements must meet minimum color contrast ratio thresholds"
+        }
+      ]
+    },
+    "desktop-light/settings": {
+      "url": "http://127.0.0.1:3400/settings",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-light/queries": {
+      "url": "http://127.0.0.1:3400/queries",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-dark/login": {
+      "url": "http://127.0.0.1:3400/login",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-dark/grid-results": {
+      "url": "http://127.0.0.1:3400/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDYiLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJGIl0sImRpcmVjdF9vbmx5IjpmYWxzZSwiaW5jbHVkZV9maWx0ZXJlZCI6ZmFsc2UsInNvcnRfYnkiOiJtaWxlc19hc2MiLCJyYXdfdGV4dCI6Iummmea4r-OAgeS4iua1t-OAgeS4nOS6rOOAgemmluWwlOWIsOilv-mbheWbvu-8jOacquadpeS4gOS4quaciOacgOS-v-WunOeahOWktOetieiIsSIsImxhbmd1YWdlIjoiemgifQ",
+      "counts": {
+        "critical": 0,
+        "serious": 1,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2,
+          "help": "Elements must meet minimum color contrast ratio thresholds"
+        }
+      ]
+    },
+    "desktop-dark/settings": {
+      "url": "http://127.0.0.1:3400/settings",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-dark/queries": {
+      "url": "http://127.0.0.1:3400/queries",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    }
+  }
+}
