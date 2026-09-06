@@ -49,7 +49,8 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/.next/standalone/server.js ./server.js
 COPY --from=build --chown=node:node /app/.next/standalone/.next ./.next
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
-# (No public/ directory in this project — nothing to copy.)
+# public/: the self-hosted Inter font (OFL) served by the standalone server.
+COPY --from=build --chown=node:node /app/public ./public
 
 # Full node_modules from the build stage: the worker, migrations and the admin CLI run TypeScript
 # directly via node_modules/.bin/tsx (tsx is a devDependency, present because this is the complete
