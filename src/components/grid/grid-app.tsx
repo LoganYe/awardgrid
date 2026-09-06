@@ -21,6 +21,8 @@ import { GridTable } from "@/components/grid/grid-table";
 import { HeaderBar } from "@/components/grid/header-bar";
 import { QueryBox } from "@/components/grid/query-box";
 import { applyChipAction, gridHref, localToday, mergeTripsIntoGrid, type ChipAction } from "@/components/grid/state";
+import { AskDrawer } from "@/components/ask/ask-drawer";
+import { cellContextFromCell } from "@/components/ask/context";
 
 export interface GridAppProps {
   initialQuery: QueryObject | null;
@@ -65,6 +67,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
   const [selected, setSelected] = useState<CellRef | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
   const inflight = useRef<AbortController | null>(null);
 
   // Keep the freshness ages ticking while the page is open.
@@ -173,6 +176,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
 
   const shown = useMemo(() => (grid ? (orientation === "routes" ? transposeGrid(grid) : grid) : null), [grid, orientation]);
   const selectedCell = useMemo(() => (grid ? findCell(grid, selected) : null), [grid, selected]);
+  const askCell = useMemo(() => cellContextFromCell(selectedCell), [selectedCell]);
   const busy = phase === "parsing" || phase === "loading";
   const warnings = [...parseWarnings, ...findWarnings];
 
@@ -215,6 +219,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
             exporting={exporting}
             onToggleOrientation={() => setOrientation((o) => (o === "dates" ? "routes" : "dates"))}
             onExport={() => void onExport()}
+            onAsk={() => setAskOpen(true)}
           />
           {exportError && <p className="text-xs text-destructive">{exportError}</p>}
           {gridHasResults(grid) ? (
@@ -229,6 +234,8 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
       )}
 
       {!query && hasKey && phase === "idle" && !failure && <StartState />}
+
+      <AskDrawer open={askOpen} onOpenChange={setAskOpen} query={query} cell={askCell} hasKey={hasKey} />
 
       {query && (
         <CellSheet

@@ -1,6 +1,6 @@
 "use client";
 
-import { DownloadIcon, Rows3Icon } from "lucide-react";
+import { DownloadIcon, MessageSquareTextIcon, Rows3Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SaveQueryDialog } from "@/components/queries/SaveQueryDialog";
@@ -18,6 +18,8 @@ export interface HeaderBarProps {
   exporting: boolean;
   onToggleOrientation: () => void;
   onExport: () => void;
+  /** Opens the Ask drawer with the current query + selected cell as context (kickoff §7 point 6). */
+  onAsk?: () => void;
 }
 
 function formatReset(iso: string, locale: string): string {
@@ -27,7 +29,7 @@ function formatReset(iso: string, locale: string): string {
 }
 
 /** Calls used this render · cache badge · oldest/newest seen · quota · save as standing query · CSV · orientation. */
-export function HeaderBar({ grid, quota, now, orientation, exporting, onToggleOrientation, onExport }: HeaderBarProps) {
+export function HeaderBar({ grid, quota, now, orientation, exporting, onToggleOrientation, onExport, onAsk }: HeaderBarProps) {
   const t = useT();
   const locale = useLocale();
   const { meta } = grid;
@@ -51,6 +53,12 @@ export function HeaderBar({ grid, quota, now, orientation, exporting, onToggleOr
       )}
       <span className="ml-auto flex items-center gap-1.5">
         <SaveQueryDialog query={grid.query} />
+        {onAsk && (
+          <Button type="button" variant="outline" size="xs" onClick={onAsk}>
+            <MessageSquareTextIcon data-icon="inline-start" />
+            {t("ask.open")}
+          </Button>
+        )}
         <Button type="button" variant="outline" size="xs" onClick={onToggleOrientation} aria-label={t("grid.transpose")}>
           <Rows3Icon data-icon="inline-start" className={cn(orientation === "routes" && "rotate-90")} />
           {orientation === "dates" ? t("grid.rows_dates") : t("grid.rows_routes")}
