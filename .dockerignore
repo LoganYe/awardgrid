@@ -1,0 +1,23 @@
+# Build context for Dockerfile. vendor/ (toolkit submodule) is REQUIRED — do not ignore it.
+# build/ and .next/ are regenerated inside the image (pnpm build:plugin && pnpm build).
+node_modules
+.next
+build
+tsconfig.tsbuildinfo
+.git
+.github
+.claude
+AGENTS.md
+CLAUDE.md
+# Secrets / runtime data never enter the image (Next would otherwise copy .env into .next/standalone).
+.env
+.env.*
+!.env.example
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite3
+data/runtime
+coverage
+.vitest-cache
+**/.DS_Store
