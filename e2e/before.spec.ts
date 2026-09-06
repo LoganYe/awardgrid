@@ -5,7 +5,12 @@
  *
  * These are plain page.screenshot() captures, not toHaveScreenshot baselines — the point is to
  * document what the redesign starts from. Everything on screen is synthetic demo data.
+ *
+ * The PNGs under docs/screenshots/v0.2/before/ are the record of the v0.1 UI and are not
+ * regenerated; run this spec with E2E_BEFORE_DIR=<scratch dir> to check it still passes.
+ * Copy is read from the en dictionary so the 6.1 i18n audit did not break the assertions.
  */
+import { en } from "../src/lib/i18n/dictionaries/en";
 import { applyTheme, beforeShot, closeDrawer, expect, openAskDrawer, openCellDrawer, openGridWithResults, queryBox, submitQuery, test } from "./fixtures";
 
 test.describe("before: current UI", () => {
@@ -29,7 +34,7 @@ test.describe("before: current UI", () => {
     await asUser("demo");
     await page.goto("/grid");
     await expect(queryBox(page)).toBeVisible();
-    await expect(page.getByText("Ask for a route, dates and a cabin to build a grid.")).toBeVisible();
+    await expect(page.getByText(en["grid.empty.start"])).toBeVisible();
     await beforeShot(page, "grid-empty");
   });
 
@@ -49,7 +54,7 @@ test.describe("before: current UI", () => {
   test("grid-nokey", async ({ page, asUser }) => {
     await asUser("nokey");
     await page.goto("/grid");
-    await expect(page.getByRole("alert").getByText("Add your seats.aero key in Settings.")).toBeVisible();
+    await expect(page.getByRole("alert").getByText(en["grid.empty.no_key"])).toBeVisible();
     await beforeShot(page, "grid-nokey");
   });
 
@@ -57,7 +62,7 @@ test.describe("before: current UI", () => {
     await asUser("quota");
     await page.goto("/grid");
     await submitQuery(page, "HKG, SHA, TYO, SEL to SEA, next 30 days, business and first");
-    await expect(page.getByRole("alert").getByText(/quota/i)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("alert").getByText(/daily limit reached|quota/i)).toBeVisible({ timeout: 60_000 });
     await beforeShot(page, "grid-quota");
   });
 
@@ -65,7 +70,7 @@ test.describe("before: current UI", () => {
     await asUser("empty");
     await page.goto("/grid");
     await submitQuery(page, "HKG, SHA, TYO, SEL to SEA, next 30 days, business and first");
-    await expect(page.getByText("No award seats found for this query.")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(en["grid.empty.no_results"])).toBeVisible({ timeout: 60_000 });
     await beforeShot(page, "grid-empty-results");
   });
 
@@ -80,7 +85,7 @@ test.describe("before: current UI", () => {
   test("queries-empty", async ({ page, asUser }) => {
     await asUser("empty");
     await page.goto("/queries");
-    await expect(page.getByText("No saved queries yet. Save one from the grid.")).toBeVisible();
+    await expect(page.getByText(en["saved.empty"])).toBeVisible();
     await beforeShot(page, "queries-empty");
   });
 

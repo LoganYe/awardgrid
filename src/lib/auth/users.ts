@@ -21,6 +21,13 @@ export const USERNAME_RE = /^[a-z0-9_.-]{3,32}$/;
 export const PASSWORD_MIN = 8;
 export const LOCALES = ["en", "zh"] as const;
 export type Locale = (typeof LOCALES)[number];
+/** UI theme choices (Phase 6.1); "system" follows prefers-color-scheme. */
+export const THEMES = ["system", "light", "dark"] as const;
+export type Theme = (typeof THEMES)[number];
+
+export function isTheme(value: unknown): value is Theme {
+  return typeof value === "string" && (THEMES as readonly string[]).includes(value);
+}
 
 /**
  * A real argon2id hash (same parameters as hashPassword) of a throwaway random password. When
@@ -148,6 +155,8 @@ export function listUsers(db: Db): UserSummary[] {
 export interface UserSettingsPatch {
   locale?: string;
   timezone?: string;
+  /** "system" | "light" | "dark" (Phase 6.1). */
+  theme?: Theme;
   /** "HH:MM" or null to clear. */
   quietHoursStart?: string | null;
   quietHoursEnd?: string | null;
@@ -201,6 +210,11 @@ export function updateUserSettings(db: Db, userId: string, patch: UserSettingsPa
       throw new SettingsValidationError("quietHoursEnd", "quiet hours end must be HH:MM (24h)");
     }
     set.quietHoursEnd = patch.quietHoursEnd;
+  }
+  if (patch.theme !== undefined) {
+    // Callers validate with zod first; a bad value here is a programming error, not user input.
+    if (!isTheme(patch.theme)) throw new RangeError(`theme must be one of ${THEMES.join(", ")}`);
+    set.theme = patch.theme;
   }
   if (Object.keys(set).length === 0) {
     const current = getUserById(db, userId);

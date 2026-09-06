@@ -1,175 +1,240 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../styles/tokens.css";
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/*
+ * `dark:` follows <html data-theme>: explicit "dark", or the OS preference while the attribute is
+ * "system" (or missing). An explicit "light" never turns dark.
+ */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(
+        [data-theme="system"],
+        [data-theme="system"] *,
+        :root:not([data-theme]),
+        :root:not([data-theme]) *
+      ) {
+      @slot;
+    }
+  }
+}
 
+/* Self-hosted Inter (OFL, public/fonts/LICENSE-Inter.txt). Latin ranges only: CJK falls through
+   to the system faces in --font-stack without waiting for this download. */
+@font-face {
+  font-family: "InterVariable";
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0100-024F, U+2000-206F, U+20A0-20CF, U+2190-2199, U+2212, U+2026;
+}
+
+/*
+ * Tailwind utilities resolve to the tokens. Our names (bg-bg, text-fg-muted, border-line, …) and
+ * the shadcn names the ui/* primitives rely on (bg-background, text-muted-foreground, …) point at
+ * the same eleven variables, so a theme switch changes everything at once.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-system-sans);
-  --font-mono: var(--font-system-mono);
-  --font-heading: var(--font-sans);
+  /* ---- tokens ---- */
+  --color-bg: var(--bg);
+  --color-bg-raised: var(--bg-raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-accent: var(--accent);
   --color-fresh: var(--fresh);
   --color-aging: var(--aging);
   --color-stale: var(--stale);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-error: var(--error);
+
+  /* ---- shadcn aliases ---- */
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--bg);
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--bg-raised);
+  --color-popover-foreground: var(--fg);
+  --color-primary: var(--fg);
+  --color-primary-foreground: var(--bg);
+  --color-secondary: var(--bg-raised);
+  --color-secondary-foreground: var(--fg);
+  --color-muted: var(--bg-raised);
+  --color-muted-foreground: var(--fg-muted);
+  --color-accent-foreground: var(--fg);
+  --color-destructive: var(--error);
+  --color-border: var(--line);
+  --color-input: var(--line-strong);
+  --color-ring: var(--accent);
+  --color-sidebar: var(--bg);
+  --color-sidebar-foreground: var(--fg);
+  --color-sidebar-primary: var(--fg);
+  --color-sidebar-primary-foreground: var(--bg);
+  --color-sidebar-accent: var(--bg-raised);
+  --color-sidebar-accent-foreground: var(--fg);
+  --color-sidebar-border: var(--line);
+  --color-sidebar-ring: var(--accent);
+  --color-chart-1: var(--fg);
+  --color-chart-2: var(--fg-muted);
+  --color-chart-3: var(--line-strong);
+  --color-chart-4: var(--line);
+  --color-chart-5: var(--bg-raised);
+
+  /* ---- type ---- */
+  --font-sans: var(--font-stack);
+  --font-heading: var(--font-stack);
+  --font-mono: var(--font-stack);
+  --text-meta: var(--type-meta);
+  --text-meta--line-height: var(--leading-meta);
+  --text-grid: var(--type-grid);
+  --text-grid--line-height: var(--leading-grid);
+  --text-body: var(--type-body);
+  --text-body--line-height: var(--leading-body);
+  --text-section: var(--type-section);
+  --text-section--line-height: var(--leading-section);
+  --text-title: var(--type-title);
+  --text-title--line-height: var(--leading-title);
+
+  /* ---- radii: 4 px on controls, 6 px on surfaces, 0 on the grid ---- */
+  --radius: var(--radius-control);
+  --radius-xs: var(--radius-control);
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-control);
+  --radius-xl: var(--radius-surface);
+  --radius-2xl: var(--radius-surface);
+  --radius-3xl: var(--radius-surface);
+  --radius-4xl: var(--radius-surface);
+
+  /* ---- shell sizes ---- */
+  --spacing-topbar: var(--topbar-height);
+  --spacing-footer: var(--footer-height);
+  --spacing-gutter: var(--gutter);
+  --spacing-content: var(--content-max);
+  --spacing-auth: var(--auth-width);
+  --spacing-drawer-cell: var(--drawer-cell);
+  --spacing-drawer-ask: var(--drawer-ask);
+
+  /* ---- motion ---- */
+  --default-transition-duration: var(--motion-fast);
+  --animate-none: none;
 }
 
+/* The shadcn CSS variables themselves, for code that reads var(--secondary) etc. directly. */
 :root {
-  --font-system-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
-  --font-system-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  --fresh: oklch(0.6 0.15 150);
-  --aging: oklch(0.72 0.15 75);
-  --stale: oklch(0.6 0.2 25);
-  --background: oklch(0.99 0.002 90);
-  --foreground: oklch(0.17 0.005 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.4rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
-    --fresh: oklch(0.72 0.15 150);
-    --aging: oklch(0.8 0.14 80);
-    --stale: oklch(0.7 0.18 25);
-  }
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card: var(--bg);
+  --card-foreground: var(--fg);
+  --popover: var(--bg-raised);
+  --popover-foreground: var(--fg);
+  --primary: var(--fg);
+  --primary-foreground: var(--bg);
+  --secondary: var(--bg-raised);
+  --secondary-foreground: var(--fg);
+  --muted: var(--bg-raised);
+  --muted-foreground: var(--fg-muted);
+  --accent-foreground: var(--fg);
+  --destructive: var(--error);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--accent);
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+  *,
+  ::before,
+  ::after {
+    border-color: var(--line);
   }
   html {
-    @apply font-sans;
-    /* Dense, data-first: 14px root scales every rem-based token (kickoff §8). */
-    font-size: 14px;
-    color-scheme: light dark;
+    font-family: var(--font-stack);
+    /* Every figure on the page lines up: tabular digits are inherited by everything. */
+    font-variant-numeric: tabular-nums;
     -webkit-text-size-adjust: 100%;
+    color-scheme: light dark;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
   }
   body {
-    @apply bg-background text-foreground;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.45;
+    background: var(--bg);
+    color: var(--fg);
+    font-size: var(--type-body);
+    line-height: var(--leading-body);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
-  /* Numerics (miles, fees, seats, dates) render in ui-monospace via .num or font-mono. */
-  .num {
-    font-family: var(--font-system-mono);
-    font-variant-numeric: tabular-nums;
-  }
-  table {
-    font-variant-numeric: tabular-nums;
-  }
   ::selection {
-    background: color-mix(in oklch, var(--foreground) 15%, transparent);
+    background: var(--selection);
+  }
+  /* Focus: 2 px accent ring, 1 px outside the element, keyboard only. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--accent);
+    outline-offset: var(--focus-ring-offset);
+  }
+  /* No italics in Chinese (docs/UI_PLAN.md §3): emphasis is weight 500. */
+  :lang(zh) em,
+  :lang(zh) i {
+    font-style: normal;
+    font-weight: 500;
+  }
+  /* Motion answers a user action or does not happen at all. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0s !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0s !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-/* Freshness colour coding (kickoff §4.4): fresh < 2h, aging ≤ 6h, stale > 6h. */
-@utility text-fresh {
-  color: var(--fresh);
+/* ---- Type roles (docs/UI_PLAN.md §3). Sizes in px; nothing on the page is larger than 20 px. ---- */
+@utility t-title {
+  font-size: var(--type-title);
+  line-height: var(--leading-title);
+  font-weight: 600;
 }
-@utility text-aging {
-  color: var(--aging);
+@utility t-section {
+  font-size: var(--type-section);
+  line-height: var(--leading-section);
+  font-weight: 600;
 }
-@utility text-stale {
-  color: var(--stale);
+@utility t-body {
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  font-weight: 400;
+}
+@utility t-meta {
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+  font-weight: 400;
+}
+/* text-grid, text-fresh, text-aging, text-stale and text-error are generated from the @theme
+   entries above (font size 13/16 and the four colors). */
+
+/* ---- Hatch fill for "not monitored" cells: stripes in --line-strong on --bg-raised. ---- */
+@utility bg-hatch {
+  background-color: var(--bg-raised);
+  background-image: var(--hatch);
+}
+
+/* ---- Link text: the accent marks "this is interactive but not a button". ---- */
+@utility link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
 }

@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { parseBlocks } from "./markdown";
+import { parseBlocks, stripLeadingTitle } from "./markdown";
+
+describe("stripLeadingTitle", () => {
+  it("drops only a leading level-1 heading", () => {
+    expect(stripLeadingTitle("# LEGAL\n\nBody\n\n## Sub")).toBe("\nBody\n\n## Sub");
+    expect(stripLeadingTitle("\n# Title\nBody")).toBe("Body");
+    expect(stripLeadingTitle("## Not a title\nBody")).toBe("## Not a title\nBody");
+    expect(stripLeadingTitle("Body first\n# Later")).toBe("Body first\n# Later");
+    expect(stripLeadingTitle("")).toBe("");
+  });
+});
 
 describe("parseBlocks", () => {
   it("splits headings, paragraphs and lists", () => {

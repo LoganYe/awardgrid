@@ -3,20 +3,35 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { errorText } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/i18n/client";
+import { cn } from "@/lib/utils";
 
 export type AuthMode = "login" | "register";
+/** Mirrors the API rule (src/lib/auth/users.ts `weak_password`). */
+const PASSWORD_MIN_LENGTH = 8;
+type Field = "inviteCode" | "username" | "password";
+
+/** Which field an API error code belongs under; unknown codes sit under the last field. */
+function fieldFor(code: string): Field {
+  switch (code) {
+    case "invalid_invite":
+      return "inviteCode";
+    case "username_taken":
+    case "invalid_username":
+      return "username";
+    default:
+      return "password";
+  }
+}
 
 /**
- * Shared username/password form for /login and /register. Posts JSON to /api/auth/<mode>,
- * shows the API error code translated, and on success navigates to /grid (router.refresh so the
- * layout's user menu re-renders with the new cookie). Password state never leaves this component.
+ * The /login and /register form (docs/UI_PLAN.md §6.9): product name, page title, fields, one
+ * full-width primary button, one line to the other page. No card, no border, no shadow. Errors
+ * render inline under the field they belong to. Password state never leaves this component.
  */
 export function AuthForm({ mode, initialInviteCode = "" }: { mode: AuthMode; initialInviteCode?: string }) {
   const t = useT();
@@ -25,8 +40,10 @@ export function AuthForm({ mode, initialInviteCode = "" }: { mode: AuthMode; ini
   const [inviteCode, setInviteCode] = useState(initialInviteCode);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ field: Field; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const isRegister = mode === "register";
+  const passwordOk = password.length >= PASSWORD_MIN_LENGTH;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -37,7 +54,7 @@ export function AuthForm({ mode, initialInviteCode = "" }: { mode: AuthMode; ini
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify(mode === "register" ? { inviteCode, username, password } : { username, password }),
+        body: JSON.stringify(isRegister ? { inviteCode, username, password } : { username, password }),
       });
       if (res.ok) {
         setPassword("");
@@ -51,25 +68,34 @@ export function AuthForm({ mode, initialInviteCode = "" }: { mode: AuthMode; ini
       } catch {
         code = undefined;
       }
-      setError(errorText(locale, code ?? (res.status === 429 ? "rate_limited" : "unknown")));
+      const resolved = code ?? (res.status === 429 ? "rate_limited" : "unknown");
+      setError({ field: fieldFor(resolved), text: errorText(locale, resolved) });
     } catch {
-      setError(errorText(locale, "network"));
+      setError({ field: "password", text: errorText(locale, "network") });
     } finally {
       setBusy(false);
     }
   }
 
-  const isRegister = mode === "register";
+  function fieldError(field: Field) {
+    if (error?.field !== field) return null;
+    return (
+      <p id={`${field}-error`} role="alert" className="t-meta text-error">
+        {error.text}
+      </p>
+    );
+  }
+  const describedBy = (field: Field, hintId?: string) =>
+    [error?.field === field ? `${field}-error` : null, hintId ?? null].filter(Boolean).join(" ") || undefined;
+
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>{t(isRegister ? "auth.register.title" : "auth.login.title")}</CardTitle>
-        <CardDescription>{t(isRegister ? "auth.register.subtitle" : "auth.login.subtitle")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
+    <div className="flex w-full flex-col gap-8">
+      <p className="t-body font-medium text-fg">{t("app.name")}</p>
+      <div className="flex flex-col gap-6">
+        <h1 className="t-title">{t(isRegister ? "auth.register.title" : "auth.login.title")}</h1>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           {isRegister && (
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               <Label htmlFor="inviteCode">{t("auth.invite_code")}</Label>
               <Input
                 id="inviteCode"
@@ -79,11 +105,13 @@ export function AuthForm({ mode, initialInviteCode = "" }: { mode: AuthMode; ini
                 autoComplete="off"
                 spellCheck={false}
                 required
-                className="font-mono"
+                aria-invalid={error?.field === "inviteCode" || undefined}
+                aria-describedby={describedBy("inviteCode")}
               />
+              {fieldError("inviteCode")}
             </div>
           )}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             <Label htmlFor="username">{t("auth.username")}</Label>
             <Input
               id="username"
@@ -95,10 +123,17 @@ export function AuthForm({ mode, initialInviteCode = "" }: { mode: AuthMode; ini
               autoCorrect="off"
               spellCheck={false}
               required
+              aria-invalid={error?.field === "username" || undefined}
+              aria-describedby={describedBy("username", isRegister ? "username-hint" : undefined)}
             />
-            {isRegister && <p className="text-xs text-muted-foreground">{t("auth.username_hint")}</p>}
+            {isRegister && (
+              <p id="username-hint" className="t-meta text-fg-muted">
+                {t("auth.username_hint")}
+              </p>
+            )}
+            {fieldError("username")}
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             <Label htmlFor="password">{t("auth.password")}</Label>
             <Input
               id="password"
@@ -108,25 +143,30 @@ export function AuthForm({ mode, initialInviteCode = "" }: { mode: AuthMode; ini
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={isRegister ? "new-password" : "current-password"}
               required
+              aria-invalid={error?.field === "password" || undefined}
+              aria-describedby={describedBy("password", isRegister ? "password-hint" : undefined)}
             />
-            {isRegister && <p className="text-xs text-muted-foreground">{t("auth.password_hint")}</p>}
+            {isRegister && (
+              // The rule reads muted until the typed password satisfies it, then in --fg (plan §6.9).
+              <p id="password-hint" data-satisfied={passwordOk || undefined} className={cn("t-meta", passwordOk ? "text-fg" : "text-fg-muted")}>
+                {t("auth.password_hint")}
+              </p>
+            )}
+            {fieldError("password")}
           </div>
-          {error && (
-            <Alert variant="destructive" aria-live="polite">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <Button type="submit" disabled={busy} className="mt-1">
-            {busy ? t("auth.submitting") : t(isRegister ? "auth.register.submit" : "auth.login.submit")}
+          <Button type="submit" size="lg" disabled={busy} className="mt-2 w-full">
+            {busy
+              ? t(isRegister ? "auth.register.submitting" : "auth.login.submitting")
+              : t(isRegister ? "auth.register.submit" : "auth.login.submit")}
           </Button>
-          <p className="text-center text-xs text-muted-foreground">
+          <p className="t-meta text-fg-muted">
             {t(isRegister ? "auth.register.have_account" : "auth.login.no_account")}{" "}
-            <Link href={isRegister ? "/login" : "/register"} className="text-foreground underline underline-offset-2">
+            <Link href={isRegister ? "/login" : "/register"} className="link">
               {t(isRegister ? "auth.register.login_link" : "auth.login.register_link")}
             </Link>
           </p>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

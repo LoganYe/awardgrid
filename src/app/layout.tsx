@@ -2,13 +2,16 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Footer } from "@/components/shell/footer";
 import { Header } from "@/components/shell/header";
-import { UserMenu } from "@/components/shell/user-menu";
+import { getCurrentUser } from "@/lib/auth/next";
 import { htmlLang } from "@/lib/i18n";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { getLocale } from "@/lib/i18n/server";
+import { THEME_SCRIPT } from "@/lib/theme";
+import { ThemeProvider } from "@/lib/theme/client";
+import { getTheme } from "@/lib/theme/server";
 
 export const metadata: Metadata = {
-  title: { default: "awardgrid", template: "%s · awardgrid" },
+  title: { default: "awardgrid", template: "%s | awardgrid" },
   description: "Private award-flight grid on seats.aero data.",
   robots: { index: false, follow: false },
 };
@@ -20,19 +23,28 @@ export const viewport: Viewport = {
 };
 
 /**
- * Root layout. Reads the `ag_locale` cookie (so every route is dynamic — fine for a private,
- * authenticated app) and feeds the locale to client components through LocaleProvider.
- * System font stack only (no next/font — no network at build time).
+ * Root layout (spec §2). Reads the `ag_locale` and `ag_theme` cookies (every route is dynamic —
+ * fine for a private, authenticated app) and the session, so the server renders
+ * <html data-theme> and the signed-in top bar without a flash. The inline script in <head>
+ * re-applies the cookie before paint for cached documents. Fonts are self-hosted (globals.css);
+ * no next/font, no network.
  */
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
+  const user = await getCurrentUser().catch(() => null);
+  const theme = await getTheme(user?.theme);
   return (
-    <html lang={htmlLang(locale)}>
-      <body className="flex min-h-dvh flex-col">
+    <html lang={htmlLang(locale)} data-theme={theme} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className="flex min-h-dvh flex-col bg-bg text-fg">
         <LocaleProvider locale={locale}>
-          <Header locale={locale} userSlot={<UserMenu locale={locale} />} />
-          <main className="mx-auto w-full max-w-screen-2xl flex-1 px-3 py-4 sm:px-4">{children}</main>
-          <Footer locale={locale} />
+          <ThemeProvider theme={theme} persist={user !== null}>
+            <Header locale={locale} username={user?.username ?? null} />
+            <main className="flex w-full flex-1 flex-col px-gutter py-4">{children}</main>
+            <Footer locale={locale} />
+          </ThemeProvider>
         </LocaleProvider>
       </body>
     </html>

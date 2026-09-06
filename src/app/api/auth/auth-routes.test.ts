@@ -260,7 +260,7 @@ describe("GET /api/auth/me", () => {
     const res = await me(get("/api/auth/me", { cookie: `${SESSION_COOKIE}=${token}` }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { user: Record<string, unknown> };
-    expect(body.user).toEqual({ id, username: "alice", locale: "en", timezone: "UTC", hasSeatsKey: false });
+    expect(body.user).toEqual({ id, username: "alice", locale: "en", timezone: "UTC", theme: "system", hasSeatsKey: false });
     expect(JSON.stringify(body)).not.toMatch(/passwordHash|argon2/);
   });
 

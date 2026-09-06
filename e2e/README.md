@@ -80,12 +80,16 @@ loader, so it must not import Next.js or the database).
   queries, queries-empty, settings, legal — 13 per project, 52 files. Plain `page.screenshot()`
   captures, not visual-regression baselines. Known artefact: with `fullPage` the drawer's
   backdrop covers only the first viewport height (fixed-position overlay); the drawer itself is
-  intact.
-- `axe.spec.ts` — `@axe-core/playwright` (WCAG 2.x A/AA tags) on login, grid-results, settings,
-  queries for the two desktop projects. Writes counts per impact to
-  `docs/screenshots/v0.2/before/axe-summary.json` and logs serious/critical ids. It does **not**
-  fail yet; set `E2E_AXE_STRICT=1` (or flip `AXE_STRICT`) once 6.6 lands to enforce the §8 floor.
-  Baseline: one serious `color-contrast` violation on grid-results in both themes.
+  intact. The PNGs are the record of the v0.1 UI and are never regenerated: to prove the spec
+  still passes against a newer UI it writes to `test-results/before/` (gitignored) by default; the committed record under `docs/screenshots/v0.2/before/` was captured once in 6.0 and is never regenerated (set `E2E_BEFORE_DIR` explicitly to write elsewhere).
+- `axe.spec.ts` — `@axe-core/playwright` (WCAG 2.x A/AA tags) on login, register, legal,
+  grid-results, settings, queries for the two desktop projects. Writes counts per impact to
+  `docs/screenshots/v0.2/axe-summary.json` (the 6.0 baseline stays in `before/axe-summary.json`)
+  and logs serious/critical ids. Login, register and legal are held to the §8 floor (zero
+  serious/critical) already; set `E2E_AXE_STRICT=1` (or flip `AXE_STRICT`) once 6.6 lands to
+  enforce it on every page. 6.0 baseline: one serious `color-contrast` violation on grid-results.
+- `shell.spec.ts` — Phase 6.1: top bar, footer, theme and language toggles, user and mobile
+  menus, login/register/legal. Captures land in `docs/screenshots/v0.2/shell/`.
 
 ## Visual-regression baselines (Linux plan)
 

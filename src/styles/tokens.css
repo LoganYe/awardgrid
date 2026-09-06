@@ -1,0 +1,121 @@
+/*
+ * awardgrid design tokens (docs/UI_PLAN.md §2–§4). The single source of every color, size and
+ * duration the UI uses. Eleven colors per theme: six achromatic neutrals (R = G = B), one accent
+ * that is never a fill, three freshness colors and one error color. No airline or program name,
+ * no brand color, nothing tinted.
+ *
+ * Theme selection: <html data-theme="system|light|dark"> is set by the server from the ag_theme
+ * cookie and confirmed by the inline pre-paint script (src/lib/theme). Light is the default;
+ * [data-theme="dark"] is explicit dark; the prefers-color-scheme block applies only while the
+ * attribute is "system" or absent. The dark block is written twice on purpose (CSS has no way to
+ * share a declaration block between a selector and a media query without duplicating it);
+ * src/styles/tokens.test.ts asserts the two copies define the same set of tokens.
+ */
+
+:root {
+  /* ---- neutrals (light) ---- */
+  --bg: #ffffff;
+  --bg-raised: #f4f4f4;
+  --line: #e2e2e2;
+  --line-strong: #8a8a8a;
+  --fg: #171717;
+  --fg-muted: #5c5c5c;
+  /* ---- accent: link text, focus ring, modified-chip outline. Never a fill. ---- */
+  --accent: #1f5fbf;
+  /* ---- freshness (mark + age text) ---- */
+  --fresh: #1b7a3e;
+  --aging: #8f5800;
+  --stale: #9b4a4a;
+  /* ---- error ---- */
+  --error: #b42318;
+  /* ---- selection: --fg at 15 % ---- */
+  --selection: rgb(23 23 23 / 0.15);
+
+  /* ---- hatch: the "not monitored" cell pattern, drawn in --line-strong on --bg-raised ---- */
+  --hatch: repeating-linear-gradient(45deg, var(--line-strong) 0 1px, transparent 1px 6px);
+
+  /* ---- spacing (4 px base) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* ---- radii by role ---- */
+  --radius-control: 4px; /* inputs, buttons, chips, switches */
+  --radius-surface: 6px; /* popovers, drawers */
+  --radius-grid: 0px; /* the grid, its cells, its sticky headers */
+
+  /* ---- type scale (size / line) ---- */
+  --type-meta: 12px;
+  --leading-meta: 16px;
+  --type-grid: 13px;
+  --leading-grid: 16px;
+  --type-body: 14px;
+  --leading-body: 20px;
+  --type-section: 16px;
+  --leading-section: 24px;
+  --type-title: 20px;
+  --leading-title: 28px;
+
+  /* ---- shell measurements ---- */
+  --topbar-height: 48px;
+  --footer-height: 32px;
+  --gutter: 16px;
+  --content-max: 880px;
+  --auth-width: 360px;
+  --drawer-cell: 480px;
+  --drawer-ask: 420px;
+
+  /* ---- grid density ---- */
+  --row-desktop: 48px;
+  --row-tablet: 32px;
+  --row-touch: 40px;
+  --column-min: 112px;
+
+  /* ---- motion: only in answer to a user action; 0 under prefers-reduced-motion ---- */
+  --motion-fast: 150ms;
+  --motion-slow: 200ms;
+
+  /* ---- focus ring ---- */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 1px;
+
+  /* ---- font stack: Latin faces first, CJK after (browsers resolve per glyph) ---- */
+  --font-stack:
+    "InterVariable", Inter, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+}
+
+[data-theme="dark"] {
+  --bg: #111111;
+  --bg-raised: #1e1e1e;
+  --line: #2c2c2c;
+  --line-strong: #707070;
+  --fg: #ededed;
+  --fg-muted: #a3a3a3;
+  --accent: #7daaf5;
+  --fresh: #5fc77e;
+  --aging: #e3a93c;
+  --stale: #d48c8c;
+  --error: #f17a72;
+  --selection: rgb(237 237 237 / 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --bg: #111111;
+    --bg-raised: #1e1e1e;
+    --line: #2c2c2c;
+    --line-strong: #707070;
+    --fg: #ededed;
+    --fg-muted: #a3a3a3;
+    --accent: #7daaf5;
+    --fresh: #5fc77e;
+    --aging: #e3a93c;
+    --stale: #d48c8c;
+    --error: #f17a72;
+    --selection: rgb(237 237 237 / 0.15);
+  }
+}

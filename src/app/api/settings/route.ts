@@ -1,15 +1,17 @@
 /**
- * PUT /api/settings { locale?, timezone?, quietHoursStart?, quietHoursEnd? }
- *   → 200 { settings: { locale, timezone, quietHoursStart, quietHoursEnd } }
- *   → 400 { error: "invalid_body" | "invalid_locale" | "invalid_timezone" | "invalid_quiet_hours" }
+ * PUT /api/settings { locale?, timezone?, quietHoursStart?, quietHoursEnd?, theme? }
+ *   → 200 { settings: { locale, timezone, quietHoursStart, quietHoursEnd, theme } }
+ *   → 400 { error: "invalid_body" | "invalid_locale" | "invalid_timezone" | "invalid_quiet_hours" | "invalid_theme" }
  *   → 401 { error: "unauthorized" }
  * When `locale` changes the `ag_locale` cookie is set too, so the server layout re-renders in
  * the new language on the next request. Quiet hours: both or neither (one side alone is
- * rejected), `null` clears.
+ * rejected), `null` clears. `theme` ("system" | "light" | "dark", Phase 6.1) is persisted on the
+ * user so a new device starts from it; the `ag_theme` cookie (written by the toggle) wins on the
+ * current device, so this handler does not touch cookies for it.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { SettingsValidationError, updateUserSettings } from "@/lib/auth";
+import { SettingsValidationError, THEMES, updateUserSettings } from "@/lib/auth";
 import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, LOCALES } from "@/lib/i18n";
 import { getServerDb } from "@/lib/server/db";
 import { hasJsonContentType, jsonError } from "@/lib/server/http";
@@ -17,7 +19,7 @@ import { userFromRequest } from "../keys/session";
 
 export const runtime = "nodejs";
 
-export type SettingsErrorCode = "invalid_locale" | "invalid_timezone" | "invalid_quiet_hours";
+export type SettingsErrorCode = "invalid_locale" | "invalid_timezone" | "invalid_quiet_hours" | "invalid_theme";
 
 export interface SettingsResponse {
   settings: {
@@ -25,6 +27,7 @@ export interface SettingsResponse {
     timezone: string;
     quietHoursStart: string | null;
     quietHoursEnd: string | null;
+    theme: "system" | "light" | "dark";
   };
 }
 
@@ -36,6 +39,7 @@ const PutBody = z
     timezone: z.string().min(1).max(64).optional(),
     quietHoursStart: HHMM.nullable().optional(),
     quietHoursEnd: HHMM.nullable().optional(),
+    theme: z.enum(THEMES).optional(),
   })
   .strict();
 
@@ -62,6 +66,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     if (paths.has("quietHoursStart") || paths.has("quietHoursEnd")) return settingsError("invalid_quiet_hours");
     if (paths.has("locale")) return settingsError("invalid_locale");
     if (paths.has("timezone")) return settingsError("invalid_timezone");
+    if (paths.has("theme")) return settingsError("invalid_theme");
     return jsonError(400, "invalid_body");
   }
   const patch = parsed.data;
@@ -89,6 +94,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       timezone: updated.timezone,
       quietHoursStart: updated.quietHoursStart,
       quietHoursEnd: updated.quietHoursEnd,
+      theme: updated.theme,
     },
   };
   const response = NextResponse.json(body, { headers: { "cache-control": "no-store" } });

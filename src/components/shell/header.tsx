@@ -1,22 +1,44 @@
 import Link from "next/link";
-import { Suspense, type ReactNode } from "react";
 import { LocaleToggle } from "@/components/shell/locale-toggle";
+import { MobileMenu } from "@/components/shell/mobile-menu";
 import { Nav } from "@/components/shell/nav";
+import { QuotaIndicator } from "@/components/shell/quota-indicator";
+import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { UserMenu } from "@/components/shell/user-menu";
 import { translator, type Locale } from "@/lib/i18n";
 
-/** Text-only app header: name · nav · locale toggle · user menu. No logos, no images. */
-export function Header({ locale, userSlot }: { locale: Locale; userSlot: ReactNode }) {
+/**
+ * The 48 px top bar (spec §2, docs/UI_PLAN.md §6.1). Text only — no logo, no icons.
+ *   signed in, ≥ 768:  awardgrid   Grid Queries Settings        312 / 1,000 today  EN 中文  System  alice ▾
+ *   signed in, < 768:  awardgrid                                 312 / 1,000        Menu
+ *   signed out:        awardgrid                                                    EN 中文  System
+ */
+export function Header({ locale, username }: { locale: Locale; username: string | null }) {
   const t = translator(locale);
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex h-11 max-w-screen-2xl items-center gap-3 px-3 sm:px-4">
-        <Link href="/grid" className="shrink-0 font-mono text-sm font-semibold tracking-tight">
+    <header className="relative z-30 h-topbar border-b border-line bg-bg">
+      <div className="flex h-full items-center gap-6 px-gutter">
+        <Link href="/grid" className="t-body shrink-0 font-medium text-fg">
           {t("app.name")}
         </Link>
-        <Nav className="-mx-1 min-w-0 flex-1" />
-        <div className="flex shrink-0 items-center gap-2">
-          <LocaleToggle />
-          <Suspense fallback={<span className="h-4 w-12 rounded bg-muted" aria-hidden />}>{userSlot}</Suspense>
+        {username && <Nav className="hidden md:flex" />}
+        <div className="ml-auto flex min-w-0 items-center gap-4">
+          {username && <QuotaIndicator />}
+          {username ? (
+            <>
+              <div className="hidden items-center gap-4 md:flex">
+                <LocaleToggle />
+                <ThemeToggle />
+                <UserMenu username={username} />
+              </div>
+              <MobileMenu username={username} />
+            </>
+          ) : (
+            <>
+              <LocaleToggle />
+              <ThemeToggle />
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -4,6 +4,9 @@ import { zh } from "./dictionaries/zh";
 import { DEEPLINK_CAVEAT } from "@/lib/grid/deeplinks/index";
 import { errorText, hasKey, htmlLang, interpolate, LOCALES, parseLocale, t, translator } from "./index";
 
+/** Words only: lets the UI string and the CSV/CLI constant differ in punctuation, never in wording. */
+const wordsOf = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").trim().split(/\s+/);
+
 describe("i18n dictionaries", () => {
   it("en and zh have identical key sets", () => {
     const enKeys = Object.keys(en).sort();
@@ -37,11 +40,13 @@ describe("i18n dictionaries", () => {
     ]) {
       expect(hasKey(key), key).toBe(true);
     }
-    expect(en["grid.query_placeholder"]).toBe("香港、上海、东京、首尔到西雅图，未来一个月最便宜的头等舱");
+    // The placeholder is the canonical example in the current UI language (spec §3.1).
+    expect(en["grid.query_placeholder"]).toBe("HKG, SHA, TYO, SEL to SEA, next 30 days, first");
+    expect(zh["grid.query_placeholder"]).toBe("香港、上海、东京、首尔到西雅图，未来一个月最便宜的头等舱");
     expect(en["footer.attribution"]).toBe("Data: seats.aero");
     // The §4.4 caveat under every program link: the UI renders the dictionary key, the CSV /
-    // CLI render the lib constant — keep the wording identical.
-    expect(en["grid.deeplink_caveat"]).toBe(DEEPLINK_CAVEAT);
+    // CLI render the lib constant — same words (the UI version is two sentences, spec §3.5).
+    expect(wordsOf(en["grid.deeplink_caveat"])).toEqual(wordsOf(DEEPLINK_CAVEAT));
   });
 
   it("no logos or images are referenced", () => {
@@ -50,6 +55,19 @@ describe("i18n dictionaries", () => {
         expect(value).not.toMatch(/<img|\.png|\.svg|logo/i);
       }
     }
+  });
+
+  it("the same verb runs through a flow (button → toast)", () => {
+    expect(en["grid.save_query"]).toBe("Save as standing query");
+    expect(en["saved.dialog.saved"]).toBe("Standing query saved");
+    expect(en["grid.export_csv"]).toBe("Export CSV");
+    expect(en["grid.exported"]).toBe("CSV exported");
+    expect(en["settings.telegram.link"]).toBe("Link Telegram");
+    expect(en["settings.telegram.linked_now"]).toMatch(/^Telegram linked/);
+    expect(en["nav.logout"]).toBe("Log out");
+    expect(en["settings.account.logout_all"]).toBe("Log out everywhere");
+    expect(zh["grid.save_query"]).toBe("保存为定时查询");
+    expect(zh["saved.dialog.saved"]).toBe("定时查询已保存");
   });
 });
 
