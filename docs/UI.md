@@ -294,6 +294,15 @@ Three breakpoints, one set of numbers, used by the grid density hook (`use-rovin
 
 **< 768 px — mobile.** The grid stays a real table with the sticky date column and horizontal scroll; cells are one line (`60,000 ●2h`, with the cabin tag when both cabins show and the `dyn` tag when filtered) and the program name moves to the drawer. Rows 40 px, the row-header column 72 px, and every control inside a mobile drawer grows to a 40 px touch target. The toolbar collapses into a **Filters** bottom sheet holding rows, cabins, dynamic pricing, Save, Export and Ask. The cell drawer becomes a full-height sheet; the Ask drawer becomes a bottom sheet with a drag handle (initial focus skips the handle — it is the dismiss control). The top bar keeps the product name, the quota indicator and a menu that holds the nav, language, theme and Log out. The Queries table becomes a stacked list.
 
+**Touch, as distinct from narrow.** Three rules key on `(pointer: coarse)` as well as the 768 px
+width, because they are about a thumb rather than a viewport (issue #32, verified on an iPhone
+running Mobile Safari): the 40 px target floor in `globals.css`, and the grid's scroll chaining and
+column snapping in `grid-styles.css`. Width alone let the same phone in landscape — 874 px — and
+every tablet fall back to 24–32 px desktop controls. `pointer: coarse` is the PRIMARY pointer, so a
+touchscreen laptop keeps the dense controls it is driven with. The cell tooltip is the fourth: its
+pointer path asks `(hover: hover) and (pointer: fine)` and its focus path asks `:focus-visible`, so
+a tap never leaves one behind while a keyboard still gets one.
+
 All three bands are pinned by `e2e/responsive.spec.ts`, which resizes one desktop context rather than splitting the bands across projects (density is width-driven, so a resized window is the same UI a phone gets): cell lines and row heights per band, the drawer presentation per band, the toolbar collapsing into Filters, chips wrapping at 390 px, the top bar reducing to name + quota + menu, the date column staying sticky while the table scrolls sideways, every interactive element at least 40 px at 390 px, no page scrolling sideways at 390 px, nothing animating under reduced motion, and no English string leaking through in Chinese. The capture matrix then photographs both viewports in both themes; the `chips`, `cell-drawer` and `ask-drawer` captures assert no horizontal overflow in either language, which is where a long zh string shows up first.
 
 ---

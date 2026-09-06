@@ -251,6 +251,46 @@ test.describe("grid", () => {
     await expect(tip).toBeHidden();
   });
 
+  test("touch: tapping a cell opens the drawer and never leaves a tooltip behind", async ({ page }) => {
+    test.skip(!isMobile(), "the hover path is the desktop test above");
+    await openGrid(page);
+    await expectResultsGrid(page);
+    // The regression this pins (issue #32, seen on an iPhone running Mobile Safari): the tooltip
+    // was armed from `mouseenter`, which iOS synthesises on tap. The matching `mouseleave` never
+    // comes, so the tooltip opened 300 ms after every tap and then stayed, covering the row below
+    // it. The sibling test above only ever SKIPPED this case with a comment claiming it could not
+    // happen. It could.
+    const cell = page.locator('td[role="gridcell"][data-state="ok"]').first();
+    await cell.tap();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.waitForTimeout(700); // well past TOOLTIP_DELAY_MS
+    await expect(page.getByRole("tooltip")).toHaveCount(0);
+    // And it is still gone once the drawer is out of the way.
+    await page.getByRole("dialog").getByRole("button", { name: en["common.close"] }).tap();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.waitForTimeout(700);
+    await expect(page.getByRole("tooltip")).toHaveCount(0);
+  });
+
+  test("touch: the grid chains its scroll to the page and snaps columns clear of the sticky date column", async ({ page }) => {
+    test.skip(!isMobile(), "both rules are scoped to a coarse pointer / a narrow viewport");
+    await openGrid(page);
+    await expectResultsGrid(page);
+    const style = await page.locator(".ag-scroll").evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { chain: cs.overscrollBehaviorY, snap: cs.scrollSnapType, pad: cs.scrollPaddingLeft };
+    });
+    // `contain` trapped a swipe inside a letterboxed grid: it stopped at the last row instead of
+    // carrying on down the page (issue #32).
+    expect(style.chain).toBe("auto");
+    // Without snapping, a column rests half-hidden behind the sticky date column and shows only
+    // the tail of its cells — the end of "84,000" reads as a miles value of 0.
+    expect(style.snap).toContain("x");
+    expect(style.pad).not.toBe("auto");
+    const align = await page.locator("thead th[role='columnheader']").nth(1).evaluate((el) => getComputedStyle(el).scrollSnapAlign);
+    expect(align).toContain("start");
+  });
+
   test("keyboard: one tab stop, arrows move focus, the ring is the accent, Enter opens the drawer", async ({ page }) => {
     await openGrid(page);
     await expectResultsGrid(page);

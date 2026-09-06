@@ -15,10 +15,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { SaveQueryDialog } from "@/components/queries/SaveQueryDialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { buildCopyDetails, copyText } from "@/components/grid/cell-drawer/copy-details";
+import { programDisplayName } from "@/lib/grid/ranking";
 import { prefillFromCell } from "@/components/drawers/prefill";
 import { localToday } from "@/components/grid/state";
 import { resolveDeeplink } from "@/lib/grid/deeplinks/index";
-import { programShortName } from "@/lib/grid/format";
 import type { AvailabilityRow } from "@/lib/grid/types";
 import { useLocale, useT } from "@/lib/i18n/client";
 import type { QueryObject } from "@/lib/query/schema";
@@ -55,7 +55,10 @@ export function CellActions({ row, query, now, onAsk }: CellActionsProps) {
 
   const link = resolveDeeplink(row);
   const noLinkId = `${id}-no-link`;
-  const label = t("grid.sheet.open_in", { program: programShortName(row.program) });
+  // The long name, not the 112 px cell's short one: src/lib/grid/format.ts states the rule
+  // ("the long names stay in SOURCE_NAMES for the drawer, CSV and digests") and the button broke
+  // it, so the primary action read "Open in Singapore" — a country, not a program.
+  const label = t("grid.sheet.open_in", { program: programDisplayName(row.program) });
   const prefill = prefillFromCell({ origin: row.origin, dest: row.dest, date: row.date }, query, localToday());
 
   async function onCopy() {

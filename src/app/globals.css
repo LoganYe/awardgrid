@@ -241,7 +241,7 @@
   text-decoration-thickness: 1px;
 }
 
-/* ---- Touch targets below 768 px (spec §3.4 "Touch targets on mobile 40 px", §6) ----
+/* ---- Touch targets on a touch device (spec §3.4 "Touch targets on mobile 40 px", §6) ----
  *
  * The app is built out of dense desktop controls — 24 px toolbar buttons, 28 px chips, a 14 px
  * switch track, 32 px inputs — because density is the product. Below 768 px the same controls
@@ -252,8 +252,14 @@
  *
  * Unlayered on purpose, so it beats the utility classes that set an explicit `h-*`; `min-height`
  * wins over `height` anyway, and `min-width` only ever grows a box.
+ *
+ * `(pointer: coarse)` sits beside the width, because width alone was the wrong question (issue
+ * #32): the same phone turned to landscape is 874 px wide and every control snapped back to its
+ * 24-32 px desktop size under the same thumb, and so did every tablet. `pointer: coarse` is the
+ * PRIMARY pointer, so a touchscreen laptop — which reports `fine` and `any-pointer: coarse` —
+ * keeps the dense desktop controls it is driven with.
  */
-@media (max-width: 767px) {
+@media (max-width: 767px), (pointer: coarse) {
   button,
   summary,
   select,

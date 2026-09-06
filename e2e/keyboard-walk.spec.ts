@@ -18,8 +18,14 @@ import type { Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
 import { CANONICAL_QUERY_EN, expect, loginAs, test } from "./fixtures";
 
-/** The one program with a search-URL builder (src/lib/grid/deeplinks/index.ts): AA in v1. */
+/**
+ * The one program with a search-URL builder (src/lib/grid/deeplinks/index.ts): AA in v1.
+ * Two names, because the grid and the drawer deliberately use different ones: the cell has 112 px
+ * and takes PROGRAM_SHORT_NAMES, the drawer takes the long SOURCE_NAMES form (src/lib/grid/format.ts
+ * states that rule, and the Open button broke it — "Open in Singapore" named a country).
+ */
 const LINKED_PROGRAM = "American";
+const LINKED_PROGRAM_LONG = "American Airlines AAdvantage";
 
 interface Active {
   tag: string;
@@ -162,9 +168,9 @@ test.describe("keyboard walk", () => {
 
     // 10. Tab to "Open in <program>": a real link with a real href, so the user leaves for the
     //     program's site from the keyboard (spec §3.5).
-    const open = await tabTo(page, `"${en["grid.sheet.open_in"].replace("{program}", LINKED_PROGRAM)}"`, (a) => a.testid === "drawer-open");
+    const open = await tabTo(page, `"${en["grid.sheet.open_in"].replace("{program}", LINKED_PROGRAM_LONG)}"`, (a) => a.testid === "drawer-open");
     expect(open.tag).toBe("a");
-    expect(open.text).toBe(en["grid.sheet.open_in"].replace("{program}", LINKED_PROGRAM));
+    expect(open.text).toBe(en["grid.sheet.open_in"].replace("{program}", LINKED_PROGRAM_LONG));
     expect(open.href).toBeTruthy();
     expect(open.href).toMatch(/^https:\/\//);
     // The confirmation line is on screen above it, not in a tooltip the keyboard cannot open.

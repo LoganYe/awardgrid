@@ -49,6 +49,29 @@ export function useDensity(): Density {
   return density;
 }
 
+const FINE_POINTER_QUERY = "(hover: hover) and (pointer: fine)";
+
+/**
+ * Whether the primary pointer can hover. False on a touchscreen — and that is not cosmetic: iOS
+ * synthesises one `mouseenter` when you tap and never sends the matching `mouseleave`, so a
+ * hover-armed tooltip opens 300 ms after every tap and then stays, covering the row below it
+ * until you tap somewhere else. Verified on an iPhone running Mobile Safari.
+ *
+ * True on the server and during hydration, so a desktop render is never a frame without hover.
+ */
+export function useFinePointer(): boolean {
+  const [fine, setFine] = useState(true);
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const q = window.matchMedia(FINE_POINTER_QUERY);
+    const update = () => setFine(q.matches);
+    update();
+    q.addEventListener("change", update);
+    return () => q.removeEventListener("change", update);
+  }, []);
+  return fine;
+}
+
 /** Row heights per density (px). Mirrors --row-desktop / --row-tablet / --row-touch in tokens.css. */
 export const ROW_HEIGHT: Record<Density, number> = { desktop: 48, tablet: 32, mobile: 40 };
 /** Minimum column width (px), mirrors --column-min. Also the fixed width under column virtualization. */

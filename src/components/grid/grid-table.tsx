@@ -30,7 +30,7 @@ import type { QueryObject } from "@/lib/query/schema";
 import { SEATS_SOURCES } from "@/lib/seatsaero/types";
 import { Cell, uiCellStatus } from "@/components/grid/cell";
 import { CellTooltip } from "@/components/grid/cell-tooltip";
-import { COLUMN_MIN, ROUTE_ROW_HEAD_WIDTH, ROW_HEAD_WIDTH, ROW_HEIGHT, useDensity, useRovingGrid, type Density, type GridPos } from "@/components/grid/use-roving-grid";
+import { COLUMN_MIN, ROUTE_ROW_HEAD_WIDTH, ROW_HEAD_WIDTH, ROW_HEIGHT, useDensity, useFinePointer, useRovingGrid, type Density, type GridPos } from "@/components/grid/use-roving-grid";
 
 // Re-exported for src/components/grid/index.ts, which publishes these from here.
 export { Cell } from "@/components/grid/cell";
@@ -290,6 +290,7 @@ export function GridTable({ grid, now, selected, onSelect, loading = false, dimm
   const rowKind: "pair" | "date" = rowsAre;
 
   // ---- hover, focus, tooltip ----
+  const finePointer = useFinePointer();
   const [hover, setHover] = useState<GridPos | null>(null);
   const [hasFocus, setHasFocus] = useState(false);
   const [tip, setTip] = useState<TooltipState | null>(null);
@@ -418,7 +419,13 @@ export function GridTable({ grid, now, selected, onSelect, loading = false, dimm
     if (!hasFocus || roving.pending) return;
     if (samePos(lastFocus.current, roving.focus)) return;
     lastFocus.current = roving.focus;
-    armTooltip(roving.focus);
+    // Only when the focus came from the keyboard. `:focus-visible` is exactly that question, and
+    // asking it is what keeps the tooltip off a touchscreen (issue #32): closing the drawer hands
+    // focus back to the cell that opened it, which armed the tooltip over the row below with no
+    // pointer left to move away and dismiss it. A tap does not match `:focus-visible`; an arrow
+    // key does, so the keyboard path — and WCAG 2.1 SC 1.4.13 with it — is untouched.
+    const focused = elementAt(roving.focus);
+    if (focused?.matches(":focus-visible") ?? false) armTooltip(roving.focus);
     // Sticky header / first column: scrollIntoView ignores them, so nudge the scroll container.
     const el = elementAt(roving.focus);
     const scroller = scrollRef.current;
@@ -432,6 +439,11 @@ export function GridTable({ grid, now, selected, onSelect, loading = false, dimm
 
   const onHover = useCallback(
     (row: number, col: number, entering: boolean) => {
+      // A touchscreen has no hover to report. iOS synthesises `mouseenter` on tap and never sends
+      // `mouseleave`, so arming the tooltip here would open it after every tap and leave it over
+      // the row below. The FOCUS path still opens it — including for keyboards, which is what
+      // WCAG 2.1 SC 1.4.13 ("hoverable") is about — and a tap focuses the cell it activates.
+      if (!finePointer) return;
       if (entering) {
         setHover({ row, col });
         const open = tipRef.current;
@@ -447,7 +459,7 @@ export function GridTable({ grid, now, selected, onSelect, loading = false, dimm
         scheduleClose();
       }
     },
-    [armTooltip, cancelPendingClose, cancelPendingOpen, scheduleClose],
+    [armTooltip, cancelPendingClose, cancelPendingOpen, scheduleClose, finePointer],
   );
 
   const onFocusCell = useCallback((row: number, col: number) => onCellFocus({ row, col }), [onCellFocus]);
