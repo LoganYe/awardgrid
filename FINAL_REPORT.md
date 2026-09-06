@@ -161,15 +161,11 @@ The design record is `docs/UI_PLAN.md`, the working manual is `docs/UI.md`, the 
 
 ### 9.4 Needs human action
 
-- **Merge 6.6, then cut v0.2.0.** The sub-phase engineers may not touch `package.json` and may not run a git write
-  command, so the last three steps of §10 are the orchestrator's. In order: open and squash-merge the 6.6 PR (before/after
-  screenshot links and the §9 review checklist in the description) and put its number into § 9.1 where the table still
-  says "this PR"; wait for `main` to go green; then
-  `npm version 0.2.0 --no-git-tag-version` (or edit `"version"` by hand), commit, `git tag v0.2.0` and
-  `gh release create v0.2.0 --generate-notes`. Until that bump lands the footer renders **v0.1.0** — it reads
-  `package.json` rather than a literal, so nothing else needs editing, but the committed PNGs were captured before the
-  bump and show the old string. Re-run `pnpm build && pnpm e2e -g screenshots && pnpm exec tsx scripts/screenshot-index.ts`
-  after the bump (≈ 2 min, idempotent) so the matrix shows the released version.
+_Filed as issues after the release: #30 look at the screenshots, #31 native-speaker pass on the Chinese copy, #32 try the grid on a real phone, #33 promote the `visual` job after five green runs. Deferred engineering work: #34 fold the per-feature screenshot code into the matrix, #35 per-cabin split rows, #36 progressive per-program fill, #37 persist `calls_used`. Released as [v0.2.0](https://github.com/LoganYe/awardgrid/releases/tag/v0.2.0) from `b0acca1`, with `main` green on all five jobs._
+
+- **Done: 6.6 merged and v0.2.0 cut.** PR #29 merged as `b0acca1`, `main` green on typecheck·lint·test, e2e,
+  visual, gitleaks and docker smoke; `package.json` is 0.2.0 and the tag and release exist. The matrix was
+  re-captured after the bump, so the footer in every PNG reads v0.2.0.
 - **Committed: the Linux `toHaveScreenshot` baselines.** Done in this phase — `e2e/__screenshots__/` carries the 24
   snapshots the CI runner generated (run 34042101483); the `visual` job now compares instead of generating. What is left
   for a human is only the promotion below.
