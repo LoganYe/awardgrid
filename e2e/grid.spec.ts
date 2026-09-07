@@ -10,6 +10,8 @@
  */
 import type { Locator, Page } from "@playwright/test";
 import { en } from "../src/lib/i18n/dictionaries/en";
+import { interpolate } from "../src/lib/i18n";
+import { SEATS_SOURCES, SOURCE_NAMES } from "../src/lib/seatsaero/types";
 import { zh } from "../src/lib/i18n/dictionaries/zh";
 import { applyTheme, CANONICAL_QUERY_EN, CANONICAL_QUERY_ZH, expect, loginAs, projectIndex, projectSuffix, submitQuery, test, type E2eUsername } from "./fixtures";
 import { E2E_SLOW_USERS } from "./users";
@@ -469,6 +471,41 @@ test.describe("grid", () => {
     await expect(first.locator(".ag-cell-in")).toHaveCSS("outline-style", "dotted");
     // With a route list missing, the header counts what it sees instead of claiming a monitoring count.
     if (!isMobile()) await expect(grid(page).locator("thead th[role='columnheader']").nth(1).locator(".ag-head-sub")).toHaveText(/with availability$/);
+    // The strip names the program whose route list failed, and does NOT tell the user their
+    // daily quota ran out: the call was made and answered with an error (#36). Only the project
+    // that ran this query LIVE sees it — one app process serves every project, so a later one
+    // gets the cached grid, and the routes store records successes only (the cells still say
+    // not_fetched above, which is the assertion that has to hold on both paths).
+    const warnings = page.locator("details").filter({ hasText: en["grid.warnings"] }).first();
+    if ((await warnings.count()) > 0) {
+      await warnings.locator("summary").click();
+      await expect(warnings).toContainText(interpolate(en["notice.find.routes_failed"], { programs: SOURCE_NAMES.aeroplan, count: 1 }));
+      // The fixed tail of the quota sentence, taken from the dictionary so a copy edit cannot
+      // silently make this assertion vacuous.
+      await expect(warnings).not.toContainText(en["notice.find.routes_skipped"].split("}").pop()!.trim());
+    }
+  });
+
+  test("loading: the ticking seconds sit outside the announced sentence", async ({ page }) => {
+    // A local delay on /api/find holds the status line up long enough to inspect it. The mock's
+    // own slow scenario is spoken for by the skeleton test below (one slow user per project).
+    await page.route("**/api/find", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 5_000));
+      await route.continue();
+    });
+    await loginAs(page, "demo");
+    await page.goto("/grid");
+    await submitQuery(page, CANONICAL_QUERY_EN);
+    const line = searching(page);
+    await expect(line).toHaveText(interpolate(en["grid.searching_all"], { n: SEATS_SOURCES.length }), { timeout: 20_000 });
+    await expect(line).toHaveAttribute("aria-live", "polite");
+    // The counter is a sibling of the live region, hidden from assistive tech: inside it, a
+    // screen reader would re-read the whole sentence once every second.
+    await expect(page.getByTestId("grid-searching-elapsed")).toHaveAttribute("aria-hidden", "true", { timeout: 10_000 });
+    await expect(line.getByTestId("grid-searching-elapsed")).toHaveCount(0);
+    await expect(line).toHaveText(interpolate(en["grid.searching_all"], { n: SEATS_SOURCES.length }));
+    await page.unroute("**/api/find");
+    await expect(line).toBeHidden({ timeout: 60_000 });
   });
 
   test("loading: a skeleton in the real shape, static under reduced motion", async ({ page }) => {
@@ -479,7 +516,9 @@ test.describe("grid", () => {
     // Parse is instant; the mock delays every seats.aero answer 1.5 s, so the skeleton is up.
     const table = grid(page);
     await expect(table).toHaveAttribute("aria-busy", "true", { timeout: 10_000 });
-    await expect(searching(page)).toHaveText(en["grid.searching"]);
+    // The line says what is being ASKED, not what has arrived: the canonical query names no
+    // programs, so one request asks about all of them at once (nothing lands per program).
+    await expect(searching(page)).toHaveText(interpolate(en["grid.searching_all"], { n: SEATS_SOURCES.length }));
     const skeletons = page.getByTestId("cell-skeleton");
     expect(await skeletons.count()).toBeGreaterThan(100);
     // The skeleton has the eventual shape: every origin × destination pair (+ the corner) and 30+ date rows.

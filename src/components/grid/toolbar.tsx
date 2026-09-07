@@ -9,8 +9,12 @@
  * controls collapse into a "Filters" bottom sheet.
  *
  * Under the toolbar, one status line while a search runs. Progressive per-program fill (spec
- * §3.4 "Alaska ✓ American ✓ Aeroplan …") is not applicable: /api/find answers in ONE batch,
- * so the line is a single "Searching seats.aero…" that disappears on completion (UI plan §11).
+ * §3.4 "Alaska ✓ American ✓ Aeroplan …") is not buildable against seats.aero: one Cached Search
+ * request carries every program at once, so nothing arrives program by program and splitting it
+ * would cost up to 26x the daily quota and disable the cache (DECISIONS.md, BACKLOG.md). The
+ * line therefore names what is being ASKED and how long it has taken, and disappears on
+ * completion — see `searching-status.ts` for the wording and `SearchStatus` below for why the
+ * ticking seconds sit outside the live region.
  *
  * Also here: the quota banner that sits above the toolbar when the daily limit is reached.
  */
@@ -22,6 +26,7 @@ import { SaveQueryDialog } from "@/components/queries/SaveQueryDialog";
 import type { Orientation } from "@/lib/grid/types";
 import { htmlLang, type Translate } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/i18n/client";
+import { elapsedSeconds, searchingSentence, type SearchingQuery } from "@/components/grid/searching-status";
 import type { Cabin, QueryObject } from "@/lib/query/schema";
 import { formatCount } from "@/components/shell/quota-indicator-state";
 import { useDensity } from "@/components/grid/use-roving-grid";
@@ -59,8 +64,12 @@ export interface ToolbarProps {
   disabled?: boolean;
   /** Daily limit reached: Save is disabled with a tooltip. */
   quotaExceeded?: boolean;
-  /** A search is in flight: the one-line status under the toolbar. */
-  searching?: boolean;
+  /**
+   * A search is in flight: the one-line status under the toolbar. `query` is the query being
+   * run (null while there is none to describe) and `startedAt` is its `Date.now()` stamp, from
+   * which the line counts its own seconds. The whole field undefined means no search is running.
+   */
+  searching?: { query: SearchingQuery; startedAt: number };
 }
 
 function Segmented<T extends string>({ label, value, options, onChange, disabled }: { label: string; value: T | null; options: readonly { value: T; label: string }[]; onChange: (v: T) => void; disabled?: boolean }) {
@@ -167,6 +176,40 @@ function Controls({ query, orientation, onOrientation, onCabins, onIncludeFilter
   );
 }
 
+/**
+ * The status line, in its own leaf so the 1 s tick re-renders one paragraph and not the whole
+ * toolbar (the frame budget in e2e/grid-perf.spec.ts is measured on this page).
+ *
+ * The seconds are a SIBLING of the aria-live sentence and `aria-hidden`, not part of it. A live
+ * region re-announces its whole contents on every change, so putting the counter inside would
+ * make a screen reader read "Asking seats.aero about all 26 mileage programs, 1 second" again
+ * every second for as long as the search runs. Keep them apart.
+ */
+function SearchStatus({ query, startedAt }: { query: SearchingQuery; startedAt: number }) {
+  const t = useT();
+  const locale = useLocale();
+  // `startedAt` is the mount key at the call site, so a new run mounts a new line with its own
+  // counter from zero — no setState in the effect body to resynchronise an old one.
+  const [elapsed, setElapsed] = useState(() => elapsedSeconds(startedAt, Date.now()));
+  useEffect(() => {
+    const id = window.setInterval(() => setElapsed(elapsedSeconds(startedAt, Date.now())), 1_000);
+    return () => window.clearInterval(id);
+  }, [startedAt]);
+  const sentence = searchingSentence(query, elapsed, locale);
+  return (
+    <div className="ag-status-row">
+      <p className="ag-status" role="status" aria-live="polite" data-testid="grid-searching">
+        {t(sentence.key, sentence.vars)}
+      </p>
+      {elapsed > 0 && (
+        <span className="ag-status" aria-hidden="true" data-testid="grid-searching-elapsed">
+          {t("grid.searching_elapsed", { s: elapsed })}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function Toolbar(props: ToolbarProps) {
   const t = useT();
   const density = useDensity();
@@ -204,11 +247,7 @@ export function Toolbar(props: ToolbarProps) {
           <Controls {...props} stacked={false} />
         )}
       </div>
-      {searching && (
-        <p className="ag-status" role="status" aria-live="polite" data-testid="grid-searching">
-          {t("grid.searching")}
-        </p>
-      )}
+      {searching && <SearchStatus key={searching.startedAt} query={searching.query} startedAt={searching.startedAt} />}
     </div>
   );
 }

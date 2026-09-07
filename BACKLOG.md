@@ -23,10 +23,31 @@ comment that points here).
   (spec §11 "Cabin display"); a mode that splits each date row into a J row and an F row — or each route column into
   two — would show both prices at once. Needs a second axis in `src/lib/grid/pivot.ts` and a rows-toggle value beyond
   Dates ↔ Routes. (Phase 6 §11)
-- **Progressive per-program fill.** Spec §3.4 wants cells to land as each program returns, with a
-  `Alaska ✓ American ✓ Aeroplan …` status line; `/api/find` answers in one batch, so the line is a single
-  "Searching seats.aero…". Needs a streaming find endpoint (SSE, one event per program) and a cell-level merge in
-  `grid-app.tsx`; the cell already has a `loading` state to land into. (DECISIONS 6.0 / 6.2)
+- **Progressive per-program fill: closed, not deferred.** Spec §3.4 wants cells to land as each program returns, with
+  an `Alaska ✓ American ✓ Aeroplan …` status line. It cannot be built against seats.aero without breaking kickoff
+  §0.2. One Cached Search request carries every program in a single comma-joined `sources` parameter
+  (`src/lib/seatsaero/find.ts:120`, `src/lib/seatsaero/client.ts:154`) and omits it entirely for a query that names
+  none, so all 26 programs answer in that one request: splitting it multiplies the daily quota by up to 26.
+  Per-program coverage rows can also never satisfy an all-programs query (`src/lib/db/stores/cache.ts:67-74`,
+  `src/lib/seatsaero/cache.ts:152-154`), so it would disable the cache for good. And there is no program axis to fill:
+  the grid is dates × route pairs, with `not_fetched` per pair (`src/lib/grid/pivot.ts:171-180`). What shipped instead
+  is a status line that says what is being asked and how long it has taken (#36). (DECISIONS "Progressive per-program
+  fill")
+- **One flush before the routes phase (gated, unbuilt).** The honest streaming opportunity is not the search but the
+  phase after it: when some requested pair has zero rows, `ResilientRoutesCatalog.ensureLoaded`
+  (`src/lib/server/find.ts` over `src/lib/seatsaero/routes.ts:145-166`) walks the sources one at a time, up to 26
+  serial `/routes` calls, *after* the rows are already final. Flushing the finished grid once at that boundary costs
+  no extra quota, writes no per-program cache record and revises no number. It needs `POST /api/find/stream` (three
+  events: `partial`, `done`, `error`), one optional `onRowsSettled` hook in `runFind`, and a `pending_routes` option
+  in `buildGrid` so a cell that would read "no availability" reads `loading` until the routes phase settles. Gate: a
+  real cold-run measurement of that phase. Offline it is 26 sequential calls whose wall-clock is pure round-trip
+  count, crossing 2 s at about 77 ms per call; a query whose every pair returns rows makes zero routes calls and would
+  see no flush at all. (DECISIONS "The measurement that gates the one honest flush")
+- **Page-progressive fill is unsafe for a separate reason worth remembering.** Rows are expanded one per cabin
+  (`src/lib/seatsaero/normalize.ts:36-64`) while upstream orders by the availability OBJECT's lowest mileage
+  (`src/lib/seatsaero/find.ts:118`), and `buildGrid` takes `best = shown[0]` per cell. A partially-filled cell's
+  headline price can therefore revise downward under ANY sort, not only `fees_asc` / `seats_desc`. A grid whose one
+  job is "cheapest per cell" must not print a confidently wrong cheapest. (#36 design panel)
 - **Per-program actions in the cell drawer.** The footer ("Open in …", "Copy details", "Save as standing query",
   "Ask about this cell") acts on the cheapest program in the cell. Acting on any other program needs a selection
   affordance the spec does not describe. (DECISIONS 6.4)

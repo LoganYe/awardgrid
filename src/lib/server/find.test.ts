@@ -10,7 +10,7 @@ import { apiUsage, availabilityCache } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
 import { setKey } from "@/lib/keys";
 import { QueryObject, type QueryObjectInput } from "@/lib/query/schema";
-import type { Route, TripsResponse } from "@/lib/seatsaero/types";
+import { SOURCE_NAMES, type Route, type TripsResponse } from "@/lib/seatsaero/types";
 import {
   NOT_FETCHED_REASON,
   NoKeyError,
@@ -511,7 +511,18 @@ describe("findGridForUser — one program's Get Routes failing (Phase 6)", () =>
     const { db, fetch } = failingHarness(500);
     const res = await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER });
     expect(res.programs_failed).toEqual(["aeroplan"]);
-    expect(res.notices.map((n) => n.code)).toContain("find.routes_skipped");
+    // The failure is reported as a failure. It is NOT a quota story: every source this run
+    // skipped, it skipped because its route list errored, so "skipped to stay within today's
+    // quota" would tell the user their daily allowance ran out when it did not.
+    expect(res.notices.map((n) => n.code)).toContain("find.routes_failed");
+    expect(res.notices.map((n) => n.code)).not.toContain("find.routes_skipped");
+    expect(res.notices.find((n) => n.code === "find.routes_failed")?.vars).toEqual({
+      programs: SOURCE_NAMES.aeroplan,
+      count: 1,
+    });
+    // uiNotices falls back to raw English for the WHOLE strip unless the two arrays line up.
+    expect(res.warnings).toHaveLength(res.notices.length);
+    expect(res.warnings.join(" ")).toContain(SOURCE_NAMES.aeroplan);
     expect(res.grid.meta.unmonitored_pairs).toEqual([]);
     // A pair with no rows that none of the LOADED programs monitors may belong to the failed
     // one: it is "not fetched (upstream error)", neither "no availability" nor "not monitored".
@@ -545,6 +556,36 @@ describe("findGridForUser — one program's Get Routes failing (Phase 6)", () =>
     expect(gmp.length).toBeGreaterThan(0);
     expect(gmp.every((c) => c.status === "not_fetched" && c.reason === NOT_FETCHED_REASON.truncated)).toBe(true);
     expect(again.programs_by_pair).toBeNull();
+  });
+
+  it("one program fails AND the routes budget runs out: both notices, the skipped count minus the failures", async () => {
+    const { db, fetch } = failingHarness(500);
+    // 5 calls left: one Cached Search page, then a routes budget of 4 over the six programs in
+    // SYNTHETIC_PROGRAMS order — american, alaska, united are fetched, aeroplan errors (its call
+    // was still made and charged), and singapore + jetblue never get a request at all.
+    db.insert(apiUsage).values({ userId: "alice", provider: "seats_aero", day: "2026-10-01", calls: 945 }).run();
+    const res = await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER });
+    expect(res.programs_failed).toEqual(["aeroplan"]);
+    const codes = res.notices.map((n) => n.code);
+    expect(codes).toContain("find.routes_failed");
+    expect(codes).toContain("find.routes_skipped");
+    // Three sources went unloaded; one of them for an upstream error, so only two are the
+    // quota's doing and only two may be counted in the quota sentence.
+    expect(res.notices.find((n) => n.code === "find.routes_skipped")?.vars?.skipped).toBe(2);
+    expect(res.notices.find((n) => n.code === "find.routes_failed")?.vars).toEqual({ programs: SOURCE_NAMES.aeroplan, count: 1 });
+    expect(res.warnings).toHaveLength(res.notices.length);
+  });
+
+  it("warnings and notices stay the same length on every path (uiNotices falls back to English otherwise)", async () => {
+    const { db, fetch } = failingHarness(500);
+    const live = await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER });
+    expect(live.warnings).toHaveLength(live.notices.length);
+    const cached = await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER });
+    expect(cached.grid.meta.served_from_cache).toBe(true);
+    expect(cached.warnings).toHaveLength(cached.notices.length);
+    const clean = harness();
+    const ok = await findGridForUser(clean.db, { id: "alice" }, query(), { now, fetch: clean.fetch, masterKey: MASTER });
+    expect(ok.warnings).toHaveLength(ok.notices.length);
   });
 
   it("a key rejection on a route list still fails the request", async () => {

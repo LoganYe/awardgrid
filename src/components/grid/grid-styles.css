@@ -515,6 +515,16 @@
   line-height: var(--leading-meta);
   color: var(--fg-muted);
 }
+/* Sentence and elapsed seconds on one line; the seconds are a sibling, never inside the live
+   region (see SearchStatus in toolbar.tsx). Tabular figures so the width does not twitch. */
+.ag-status-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ag-status-row [data-testid="grid-searching-elapsed"] {
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---- quota banner (persistent, above the toolbar) ---- */
 .ag-quota {

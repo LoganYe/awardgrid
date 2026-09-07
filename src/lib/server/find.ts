@@ -30,8 +30,8 @@ import { tripsToFees } from "@/lib/seatsaero/normalize";
 import { Quota, QuotaExceededError, softLimitFromEnv } from "@/lib/seatsaero/quota";
 import { RoutesCatalog, type EnsureLoadedOptions, type EnsureLoadedResult } from "@/lib/seatsaero/routes";
 import type { Cabin } from "@/lib/query/schema";
-import type { Notice } from "@/lib/notices";
-import { SEATS_SOURCES, type Trip } from "@/lib/seatsaero/types";
+import { notice, noticesToText, type Notice } from "@/lib/notices";
+import { SEATS_SOURCES, SOURCE_NAMES, type Trip } from "@/lib/seatsaero/types";
 
 export { NoKeyError, ParseError, PARSER_MODEL_DEFAULT, QuotaExceededError };
 
@@ -243,6 +243,42 @@ export function notFetchedPairsFrom(result: Pick<FindResult, "rows" | "notices" 
 }
 
 /**
+ * Re-attribute the routes notices once the run is over.
+ *
+ * `ResilientRoutesCatalog.ensureLoaded` puts a source whose Get Routes call FAILED into both
+ * `failed` and `skipped`, and `runFind` turns any `skipped` into `find.routes_skipped` — "…
+ * skipped to stay within today's quota". So an upstream 500 on one program's route list used to
+ * tell the user their daily allowance had run out. It had not: the call was made and answered
+ * with an error. Here the two causes are separated again, from the one place that can see both.
+ *
+ *  - the quota sentence keeps only the sources the budget really stopped (`skipped − failed`)
+ *    and disappears when every skip was a failure;
+ *  - the failures get their own `find.routes_failed`, naming the programs.
+ *
+ * The caller must rebuild `warnings` from the returned list (`noticesToText`): `uiNotices`
+ * (src/components/grid/api.ts) drops the WHOLE strip back to the server's English unless
+ * `notices.length === warnings.length`, so an unpaired notice untranslates the zh UI.
+ */
+export function reattributeRoutesNotices(notices: readonly Notice[], failed: readonly string[]): Notice[] {
+  if (failed.length === 0) return [...notices];
+  const out: Notice[] = [];
+  for (const n of notices) {
+    if (n.code !== "find.routes_skipped") {
+      out.push(n);
+      continue;
+    }
+    const skipped = Number(n.vars?.skipped ?? 0) - failed.length;
+    if (skipped > 0) out.push(notice("find.routes_skipped", { pairs: Number(n.vars?.pairs ?? 0), skipped }));
+  }
+  const programs = failed.map((s) => (SOURCE_NAMES as Record<string, string>)[s] ?? s);
+  // Joined server-side, where the viewer's locale is not known: an English comma, like every
+  // other list the API puts inside a notice variable. The program names are English brand
+  // names in both dictionaries (SOURCE_NAMES, §0.2 #4 "text only").
+  out.push(notice("find.routes_failed", { programs: programs.join(", "), count: failed.length }));
+  return out;
+}
+
+/**
  * Pairs whose state is unknown because a program's route list is not loaded: no rows in the
  * run, not already flagged, and monitored by none of the programs whose route lists loaded.
  * Pairs a loaded program monitors keep "no availability" (their rows, if any, were fetched).
@@ -340,6 +376,11 @@ export async function findGridForUser(
     dynamicAvailable = appended.available;
   }
 
+  // Separate "the quota stopped us" from "the program's route list errored" before either
+  // reaches the user (see reattributeRoutesNotices). With nothing failed this is `result.notices`
+  // unchanged, so every other path is byte-identical to before.
+  const notices = reattributeRoutesNotices(result.notices, routes.failed);
+
   const pairs = enumeratePairs(query);
   const notFetched = notFetchedPairsFrom(result, pairs);
   // Route lists paid for on earlier requests (store only, zero calls): the header's program
@@ -351,7 +392,7 @@ export async function findGridForUser(
     const reason =
       routes.failed.length > 0
         ? NOT_FETCHED_REASON.upstream
-        : result.notices.some((n) => n.code === "find.routes_skipped")
+        : notices.some((n) => n.code === "find.routes_skipped")
           ? NOT_FETCHED_REASON.quota
           : NOT_FETCHED_REASON.truncated;
     notFetched.push(...upstreamNotFetchedPairs(routes, user.id, sources, pairs, result, notFetched, reason));
@@ -368,8 +409,10 @@ export async function findGridForUser(
   });
   return {
     grid,
-    warnings: result.warnings,
-    notices: result.notices,
+    // Rebuilt from `notices`, never passed through from the run: uiNotices pairs the two arrays
+    // by index and falls back to English for the whole strip when their lengths differ.
+    warnings: noticesToText(notices),
+    notices,
     quota: await snapshot(quota, user.id),
     dynamic_rows_available: dynamicAvailable,
     programs_failed: [...routes.failed],
