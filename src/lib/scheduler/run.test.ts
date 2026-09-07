@@ -303,6 +303,30 @@ describe("runSavedQuery", () => {
     expect(runsFor(db, sq.id)[0]!.callsUsed).toBeNull();
   });
 
+  it("a stored query written before min_cabin_pct existed runs unchanged, at the API default (issue #18)", async () => {
+    const { db, fetch, deps } = harness();
+    // Exactly what is on disk for every standing query created before #18: no such key.
+    const legacy = JSON.parse(JSON.stringify(QUERY)) as Record<string, unknown>;
+    delete legacy.min_cabin_pct;
+    expect(legacy).not.toHaveProperty("min_cabin_pct");
+    const sq = saveQuery(db, "alice", { queryJson: JSON.stringify(legacy) });
+
+    const r = await runSavedQuery(db, sq, deps(T0));
+    // It parses and runs: "first_run" is the baseline pass, not a refusal.
+    expect(r.skippedReason).toBe("first_run");
+    expect(r.error).toBeNull();
+    expect(runsFor(db, sq.id)).toHaveLength(1);
+    // The scheduler's requests are byte-identical to the pre-#18 ones: no min_cabin_pct on the
+    // wire, and therefore the same cache scope as the rows it already has a baseline against.
+    expect(fetch.calls.length).toBeGreaterThan(0);
+    expect(fetch.calls.every((c) => !c.url.searchParams.has("min_cabin_pct"))).toBe(true);
+
+    // And a second run is served from the SAME cache scope: no extra upstream call.
+    const before = fetch.calls.length;
+    await runSavedQuery(db, sq, deps(T0));
+    expect(fetch.calls).toHaveLength(before);
+  });
+
   it("invalid query_json → 'invalid_query' without touching the key or upstream", async () => {
     const { db, fetch, deps } = harness();
     const sq = saveQuery(db, "alice", { queryJson: '{"origins":[]}' });

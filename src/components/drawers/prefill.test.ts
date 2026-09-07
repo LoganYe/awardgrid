@@ -12,6 +12,7 @@ const BASE: QueryObject = {
   programs: ["alaska", "american"],
   direct_only: true,
   include_filtered: true,
+  min_cabin_pct: 100,
   sort_by: "fees_asc",
   raw_text: "HKG, SHA, TYO, SEL to SEA, next 30 days, first",
   language: "en",

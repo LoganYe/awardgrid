@@ -205,10 +205,10 @@ test.describe("queries page", () => {
     await expect(panel.getByLabel(en["saved.schedule"], { exact: true })).toBeVisible();
     await expect(panel.getByLabel(en["saved.notify_on"], { exact: true })).toBeVisible();
 
-    // The same seven chips as the grid, in the same order, inside the drawer.
+    // The same eight chips as the grid, in the same order, inside the drawer.
     const chips = panel.getByRole("region", { name: en["grid.chips.title"] });
     await expect(chips).toBeVisible();
-    for (const chip of [en["grid.chips.origins"], en["grid.chips.destinations"], en["grid.chips.dates"], en["grid.chips.cabins"], en["grid.chips.programs"], en["grid.chips.direct_only"], en["grid.chips.sort"]]) {
+    for (const chip of [en["grid.chips.origins"], en["grid.chips.destinations"], en["grid.chips.dates"], en["grid.chips.cabins"], en["grid.chips.programs"], en["grid.chips.direct_only"], en["grid.chips.min_cabin_pct"], en["grid.chips.sort"]]) {
       await expect(chips.getByRole("button", { name: new RegExp(`^${chip}`) }).first()).toBeVisible();
     }
 

@@ -54,6 +54,7 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
 | Dates | Dates | 日期 | |
 | Direct only | Direct only | 仅直飞 | |
 | Dynamic pricing | dynamic pricing | 动态定价 | Toolbar switch "Show dynamic pricing" 显示动态定价 |
+| Mixed cabin (`min_cabin_pct`) | Mixed cabin | 混舱 | Both the chip and the drawer badge (`grid.sheet.mixed_cabin`) use this one term. Its default (100) is **"not allowed" / 不允许**, never "off" / 关: "off" is what the Direct only chip beside it says for the opposite meaning, a constraint lifted, while 100 is the constraint at maximum |
 | Not monitored | Not monitored by seats.aero | seats.aero 未监控此航线 | Cell state 3 |
 | Not fetched | Not fetched | 未获取 | Cell state 4 |
 | Chips (parsed query editors) | chips | 筛选条件 | |

@@ -61,6 +61,7 @@ import {
   openGrid,
   openGridWithCells,
   openManualMode,
+  openMixedCabin,
   openQueries,
   openSettings,
   openSignedInShell,
@@ -174,6 +175,13 @@ test.describe("screenshots", () => {
     await openChipEditor(page, "programs", "alaska");
     await shot(page, "grid", "programs");
     await closePopover(page);
+
+    // The one chip whose value changes what an empty cell MEANS, at a value other than its
+    // default (issue #18): the summary reads "75% and up" and the hint names the same figure.
+    await openMixedCabin(page, 75);
+    await shot(page, "grid", "mixed-cabin");
+    await closePopover(page);
+    await resetChips(page);
 
     // Modified but not yet run: outlined chip, Run affordance, dimmed grid (§3.7).
     await makeModified(page);

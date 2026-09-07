@@ -11,6 +11,7 @@ import {
   chipSummary,
   isAllPrograms,
   isModified,
+  mixedCabinHint,
   modifiedChips,
   programCount,
   programsList,
@@ -37,13 +38,57 @@ const en: ChipContext = { locale: "en", t: translator("en"), programsTotal: 24 }
 const zh: ChipContext = { locale: "zh", t: translator("zh"), programsTotal: 24 };
 const draft = (patch: Partial<QueryDraft> = {}): QueryDraft => ({ ...canonical, ...patch });
 
-describe("the seven chips", () => {
+describe("the eight chips", () => {
   it("are the spec's list in the spec's order", () => {
-    expect(CHIP_ORDER).toEqual(["origins", "destinations", "dates", "cabins", "programs", "direct_only", "sort"]);
+    // Mixed cabin (issue #18) sits at index 6: after Direct only, keeping the two
+    // search-shaping toggles together, and before Sort, the only display-only chip.
+    expect(CHIP_ORDER).toEqual(["origins", "destinations", "dates", "cabins", "programs", "direct_only", "min_cabin_pct", "sort"]);
     expect(CHIPS.map((c) => c.id)).toEqual([...CHIP_ORDER]);
     expect(chipLabel("origins", en.t)).toBe("Origins");
     expect(chipLabel("direct_only", zh.t)).toBe("仅直飞");
+    expect(chipLabel("min_cabin_pct", en.t)).toBe("Mixed cabin");
+    expect(chipLabel("min_cabin_pct", zh.t)).toBe("混舱");
     expect(CHIPS.find((c) => c.id === "dates")!.fields).toEqual(["date_from", "date_to"]);
+    expect(CHIPS.find((c) => c.id === "min_cabin_pct")!.fields).toEqual(["min_cabin_pct"]);
+  });
+});
+
+describe("the Mixed cabin chip (issue #18)", () => {
+  it("reads 100 as a state, 0 as 'any' and anything else as a floor", () => {
+    // Never "off": that is what Direct only next to it says for the OPPOSITE meaning (#18).
+    expect(chipSummary("min_cabin_pct", draft(), en)).toBe("not allowed");
+    expect(chipSummary("min_cabin_pct", draft({ min_cabin_pct: 100 }), en)).toBe("not allowed");
+    expect(chipSummary("min_cabin_pct", draft({ min_cabin_pct: 100 }), zh)).toBe("不允许");
+    expect(chipSummary("min_cabin_pct", draft(), en)).not.toBe(en.t("grid.chips.off"));
+    expect(chipSummary("min_cabin_pct", draft({ min_cabin_pct: 75 }), en)).toBe("75% and up");
+    expect(chipSummary("min_cabin_pct", draft({ min_cabin_pct: 0 }), en)).toBe("any");
+    expect(chipSummary("min_cabin_pct", draft({ min_cabin_pct: 63 }), en)).toBe("63% and up");
+    expect(chipSummary("min_cabin_pct", draft({ min_cabin_pct: 75 }), zh)).toBe("75% 及以上");
+    expect(chipSummary("min_cabin_pct", draft({ min_cabin_pct: 0 }), zh)).toBe("不限");
+    // A draft parsed from a pre-#18 payload has no such key: it must read as "off", at rest.
+    const legacy = draft();
+    delete (legacy as { min_cabin_pct?: number }).min_cabin_pct;
+    expect(chipSummary("min_cabin_pct", legacy, en)).toBe("not allowed");
+    expect(chipAriaLabel("min_cabin_pct", draft({ min_cabin_pct: 75 }), en)).toBe("Mixed cabin 75% and up");
+  });
+
+  it("takes the outline only when the value really changed — absent equals an explicit 100", () => {
+    const legacy = draft();
+    delete (legacy as { min_cabin_pct?: number }).min_cabin_pct;
+    expect(modifiedChips(draft({ min_cabin_pct: 100 }), legacy)).toEqual([]);
+    expect(isModified(draft({ min_cabin_pct: 100 }), legacy)).toBe(false);
+    // ...and it comes from CHIP_ORDER, so no hand-written clause in isModified is needed.
+    expect(modifiedChips(draft({ min_cabin_pct: 70 }), legacy)).toEqual(["min_cabin_pct"]);
+    expect(isModified(draft({ min_cabin_pct: 70 }), canonical)).toBe(true);
+  });
+
+  it("gives every value a hint that is true at that value", () => {
+    expect(mixedCabinHint(100, en)).toBe("Keeps only itineraries flown entirely in the chosen cabin.");
+    expect(mixedCabinHint(75, en)).toBe("Keeps itineraries flying at least 75% of the distance in the chosen cabin.");
+    // At 0 nothing is dropped, so a sentence about dropping itineraries would be false.
+    expect(mixedCabinHint(0, en)).toBe("Keeps every itinerary, whatever share of the distance is in the chosen cabin.");
+    expect(mixedCabinHint(0, zh)).toBe("保留全部行程，不限所选舱位的飞行距离占比。");
+    expect(new Set([100, 75, 0].map((pct) => mixedCabinHint(pct, zh))).size).toBe(3);
   });
 });
 

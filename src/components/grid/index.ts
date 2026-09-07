@@ -12,7 +12,7 @@ export { CellDrawer, type CellDrawerProps } from "@/components/grid/cell-drawer/
 export { FailureState, NoKeyState, NoResultsState, StartState, failureText } from "@/components/grid/empty-states";
 export * from "@/components/grid/state";
 export * from "@/components/grid/api";
-// The pure models behind the chips: the seven chips and their summaries, the places index the
+// The pure models behind the chips: the eight chips and their summaries, the places index the
 // Origins/Destinations editors search, and the calendar the Dates editor draws.
 export * from "@/components/grid/chips-model";
 export * from "@/components/grid/places-index";

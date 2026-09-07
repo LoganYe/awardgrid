@@ -37,7 +37,7 @@ Every non-trivial choice, one line each, newest at the bottom. Format:
 - **Bulk Availability parsing**: Bulk responses are parsed with the same lenient `{ data, count, hasMore, cursor }` / Availability zod schema as Cached Search, with a recorded fixture gap if the smoke shows otherwise. _Why:_ The Bulk 200 schema in the OpenAPI is empty (`{}`); prose says "similar to Cached Search".
 - **Bulk vs Cached selection**: Executor estimates pages: Cached = ⌈pairs×days×programs / 1000⌉ per request set; Bulk = one program per call, region-filtered; pick the smaller estimate, default Cached. _Why:_ Docs: Cached for specific airports/dates across programs, Bulk for one program across regions; both cost one call per page.
 - **NumDaysOut**: `Route.NumDaysOut` is shown only as a hint ("monitored ~N days out"), never used to blank a cell. _Why:_ It is an undocumented integer in the schema; its semantics are unverified.
-- **Get Trips params**: Client accepts `include_filtered` and `min_cabin_pct` (default 100) and parses optional `MixedCabinPct`; `min_cabin_pct` is not exposed in v1 UI. _Why:_ Both are in the Get Trips OpenAPI; the toolkit skill omits `min_cabin_pct`.
+- **Get Trips params**: Client accepts `include_filtered` and `min_cabin_pct` (default 100) and parses optional `MixedCabinPct`. _Why:_ Both are in the Get Trips OpenAPI; the toolkit skill omits `min_cabin_pct`. _Amended by issue #18:_ `min_cabin_pct` is no longer a client-only parameter — it is a field on `QueryObject`, the eighth chip, part of the cache scope, and forwarded to Cached Search, Bulk Availability and Get Trips alike. See "#18 Mixed cabin" at the end of this file.
 - **Programs list**: `QueryObject.programs` is validated as strings, not a closed enum; the 26-row Concepts table seeds the picker and unknown codes returned by the API (e.g. `lifemiles`) are displayed as-is. _Why:_ `lifemiles` appears in example JSON but not in the sources table; the list changes.
 - **Quota accounting**: Every HTTP request to `seats.aero/partnerapi/*` for a user (each search/bulk page, each Get Trips, each Get Routes, the key-validation call) increments `api_usage`; hard stop at 950/day. _Why:_ Only "1,000 API calls per day" is documented; no per-request weighting, 429 or headers exist, so count conservatively.
 - **Quota reset boundary**: Count per UTC calendar day and label the reset time "assumed 00:00 UTC". _Why:_ The docs never state when the daily window resets.
@@ -549,3 +549,63 @@ it survives only on the generate path, which is a one-off bootstrap and must not
   whether the UI regressed or the baseline is stale. If the baseline is stale, take the `-actual.png` from that
   artifact (it is the Ubuntu/Chromium rendering the policy requires) rather than regenerating on a Mac, and say in
   the commit message what moved and why.
+
+### #18 Mixed cabin (`min_cabin_pct`), and why it had to enter the cache scope
+
+seats.aero's Cached Search, Bulk Availability and Get Trips all accept `min_cabin_pct` (0-100
+integer, default 100). At 100 — the API's own default, and what every call this product made
+before now — an itinerary is dropped unless the whole distance is flown in the requested cabin,
+so a business trip with one regional economy leg comes back as nothing and the grid draws `none`.
+That is indistinguishable from genuinely no availability. The `MixedCabinPct` badge that would
+explain it already shipped in the drawer (`flights-list.tsx`) and was unreachable.
+
+- **The field is a UI-only control, like `include_filtered`.** It is on `QueryObject` and
+  deliberately NOT on `QueryObjectLLM`: never inferred from what the user typed.
+- **`.default(100)`, not `.optional()`.** Every consumer then reads a concrete number, so the
+  absent-vs-100 divergence can only be introduced at one place instead of seven. An old `?q=`
+  link, a `saved_queries.query_json` written months ago and an LLM parse all decode to exactly
+  100 — their meaning, and their cache scope, unchanged. Pinned by `src/lib/query/schema.test.ts`
+  and by a scheduler test that runs a stored query with the key deleted.
+- **The cache scope had to change, and this is the whole issue.** `min_cabin_pct` changes what
+  the API RETURNS, exactly as `include_filtered` does, and — also exactly as with
+  `include_filtered` — neither direction is a superset: a 100 pull is missing the mixed-cabin
+  itineraries a 70 pull returns, and a 70 pull carries itineraries a 100 query must not be shown.
+  Nothing can be filtered locally either way. Without it in the scope, a 70 % search is answered
+  from the 100 % coverage record with zero API calls and the user stares at the same strict grid
+  forever — the identical invisible failure the issue is about, just one layer down. It is
+  therefore carried through `CacheQuery`, `rowKey`, `rowMatches`, `CoverageRecord`,
+  `coverageSatisfies`, the runFind scope and the SQLite encoders, compared everywhere as
+  `(x.min_cabin_pct ?? 100) === (y.min_cabin_pct ?? 100)`.
+- **No migration, and here is why.** Both SQLite encoders append the new marker ONLY when the
+  value is not 100: `encodeProgram` writes `alaska#pct70` (after any `#filtered`), and
+  `encodeProgramsKey` appends a `pct70` flag. Every row and every `programs_key` already in the
+  tables keeps its exact stored text and decodes to 100, which is what it always meant. The
+  columns are the existing strings; no schema change, no backfill, no drizzle file.
+- **The trap that came with it.** `scopeWhere`'s prefilter selected the default scope with
+  `notLike(program, '%#filtered')`, anchored at the END. A row stored as `alaska#pct70` does not
+  end in `#filtered`, so that predicate would have handed a 70 % row to a 100 % query.
+  `rowMatches` is authoritative, but a prefilter that is wrong in that direction is a defect
+  waiting for the day someone trusts it, so the prefilter is honest now: an explicit programs
+  list is exact via `encodeProgram`, a non-default pct matches `%#pct<N>`, and the default scope
+  excludes `%#pct%` outright. Both stores have a test asserting a 100 % query never sees a
+  `#pct70` row.
+- **Get Trips carries it too.** The drawer's flight list is fetched in the same scope the grid was
+  produced in, or it would contradict the cell that opened it. `/api/trips/[id]` takes
+  `min_cabin_pct` and refuses anything outside 0-100 with a 400 rather than clamping silently.
+- **100 is emitted as nothing.** It is the API's own default, so every request this product makes
+  at rest is byte-identical to what it sent before this change — which is also what keeps the
+  cache of existing users warm rather than re-fetching everything once.
+- **The CSV gets no `min_cabin_pct` column.** `ROW_HEADER` has a per-row `dynamic` column because
+  `include_filtered` is a property of the ROW that came back (that row was filtered out of the
+  default view), while `min_cabin_pct` is a property of the QUERY: every row in one export shares
+  it, so a column would repeat one number on every line. Nothing in the CSV describes the query
+  today — not the cabins, not the programs, not the date window — and adding a query field to a
+  row format for this one parameter would be the wrong place to start. The cost is real and
+  accepted: two exports taken either side of relaxing the setting are not distinguishable from
+  their contents. If that becomes a problem the fix is a header comment or a sidecar line
+  describing the whole query, not a repeated column.
+- **The control is the eighth chip, not a toolbar switch.** Reasoning in `docs/UI_PLAN.md` §13
+  ("Revision from issue #18"); the short version is that the toolbar runs the query on every
+  click, which is wrong for a value found by trial against a 1,000-call daily budget, and that
+  `include_filtered` earns its toolbar place only because the `dyn` cell tag makes its effect
+  visible in the grid, which nothing does for this one.

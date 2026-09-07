@@ -175,6 +175,29 @@ describe("GET /api/trips/[id]", () => {
     expect((await trips(get("/api/trips/abc"), ctx("abc"))).status).toBe(401);
     expect((await trips(get("/api/trips/x", aliceToken), ctx("bad id!"))).status).toBe(400);
     expect((await trips(get("/api/trips/abc?cabin=Z", aliceToken), ctx("abc"))).status).toBe(400);
+    // min_cabin_pct is the documented 0-100 integer or nothing at all — never a silent clamp.
+    expect((await trips(get("/api/trips/abc?min_cabin_pct=101", aliceToken), ctx("abc"))).status).toBe(400);
+    expect((await trips(get("/api/trips/abc?min_cabin_pct=-1", aliceToken), ctx("abc"))).status).toBe(400);
+    expect((await trips(get("/api/trips/abc?min_cabin_pct=70.5", aliceToken), ctx("abc"))).status).toBe(400);
+    // The raw string is checked before Number() sees it. Every one of these used to coerce to a
+    // number in range — "" and a bare key to 0, the most permissive value there is (issue #18).
+    for (const q of ["min_cabin_pct=", "min_cabin_pct", "min_cabin_pct=0x10", "min_cabin_pct=1e1", "min_cabin_pct=%20", "min_cabin_pct=%2B70", "min_cabin_pct=70.0"]) {
+      expect((await trips(get(`/api/trips/abc?${q}`, aliceToken), ctx("abc"))).status, q).toBe(400);
+    }
+  });
+
+  it("carries min_cabin_pct upstream so the drawer asks in the grid's own scope (issue #18)", async () => {
+    const id = "2PPrELk9WcfJaNREWEPXypvhXAD";
+    // Absent, and an explicit 100, both leave the wire untouched: 100 is the API's default.
+    await trips(get(`/api/trips/${id}?cabin=J`, aliceToken), ctx(id));
+    expect(fetchStub.calls[0]!.url.searchParams.has("min_cabin_pct")).toBe(false);
+    await trips(get(`/api/trips/${id}?cabin=J&min_cabin_pct=100`, aliceToken), ctx(id));
+    expect(fetchStub.calls[1]!.url.searchParams.has("min_cabin_pct")).toBe(false);
+    // A non-default value reaches Get Trips, or the flight list contradicts the grid.
+    await trips(get(`/api/trips/${id}?cabin=J&min_cabin_pct=70`, aliceToken), ctx(id));
+    expect(fetchStub.calls[2]!.url.searchParams.get("min_cabin_pct")).toBe("70");
+    await trips(get(`/api/trips/${id}?cabin=J&min_cabin_pct=0`, aliceToken), ctx(id));
+    expect(fetchStub.calls[3]!.url.searchParams.get("min_cabin_pct")).toBe("0");
   });
 
   it("200 with trips and fees, spending one call", async () => {

@@ -29,6 +29,7 @@ export type ChipAction =
   | { type: "toggle_cabin"; cabin: Cabin }
   | { type: "set_direct_only"; value: boolean }
   | { type: "set_include_filtered"; value: boolean }
+  | { type: "set_min_cabin_pct"; value: number }
   | { type: "set_max_miles"; value: number | null }
   | { type: "set_sort"; value: SortBy }
   | { type: "toggle_program"; program: string }
@@ -107,6 +108,10 @@ export function applyChipAction(q: QueryObject, action: ChipAction): QueryObject
       return { ...q, direct_only: action.value };
     case "set_include_filtered":
       return { ...q, include_filtered: action.value };
+    case "set_min_cabin_pct":
+      // Always write the number, never delete the key (the set_direct_only pattern, not
+      // set_max_miles): the field is a required number after the schema's .default(100).
+      return { ...q, min_cabin_pct: action.value };
     case "set_max_miles": {
       const v = action.value;
       if (v === null || !Number.isFinite(v) || v <= 0) {
@@ -152,6 +157,9 @@ function canonicalJson(q: QueryObject): string {
     p: q.programs ? [...q.programs].sort() : null,
     x: q.direct_only,
     i: q.include_filtered,
+    // Absent and an explicit 100 are the SAME search: `?? 100` is what stops a user who opens
+    // the Mixed cabin editor and leaves it alone from seeing the modified state for no reason.
+    n: q.min_cabin_pct ?? 100,
     m: q.max_miles ?? null,
     s: q.sort_by,
   });

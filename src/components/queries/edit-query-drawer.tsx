@@ -3,7 +3,7 @@
 /**
  * "Edit" on the Queries page opens the 480 px drawer (spec §4, §11): name, schedule presets +
  * a custom cron, the notify rule and the drop threshold, and — the point of the drawer rather
- * than a dialog — the SAME seven chip editors the grid uses (src/components/grid/chip-row.tsx)
+ * than a dialog — the SAME eight chip editors the grid uses (src/components/grid/chip-row.tsx)
  * with the saved QueryObject as the draft, so what a standing query watches is edited the way
  * the query itself was built.
  *

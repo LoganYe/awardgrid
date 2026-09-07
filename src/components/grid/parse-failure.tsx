@@ -3,7 +3,7 @@
 /**
  * Parse failure, inline under the query bar (spec §3.7, docs/UI_PLAN.md §6.2): one sentence per
  * thing the parser could not read, and a way forward — "Build it with chips instead" opens the
- * seven chips in manual mode with the first editor already open. Never a modal, never an apology.
+ * eight chips in manual mode with the first editor already open. Never a modal, never an apology.
  *
  * The raw text is not echoed here: it stays in the query bar directly above ("the raw text
  * preserved in the bar", §6.2), so repeating it would put the same sentence on screen twice.

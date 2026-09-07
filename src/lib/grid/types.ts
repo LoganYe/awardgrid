@@ -24,6 +24,12 @@ export interface AvailabilityRow {
   /** True when fetched with include_filtered=true (a separate cache scope); absent = false. */
   include_filtered?: boolean;
   /**
+   * The seats.aero min_cabin_pct the fetch carried (a separate cache scope, exactly like
+   * include_filtered). Absent = 100, the API's own default — which is what every row written
+   * before issue #18 is, so nothing had to be migrated.
+   */
+  min_cabin_pct?: number;
+  /**
    * True for a dynamically priced row that the query (include_filtered=false) did NOT ask
    * for: it was appended from the cached include_filtered scope so the UI can render the
    * "filtered" cell state and explain the "Show dynamic pricing" toggle. Absent = false.

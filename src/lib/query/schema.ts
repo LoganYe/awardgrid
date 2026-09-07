@@ -43,6 +43,12 @@ export type SeatsProgram = z.infer<typeof SeatsProgram>;
 
 /** Fixed defaults (kickoff §12 — do not re-open). */
 export const DEFAULT_CABINS: Cabin[] = ["J", "F"];
+/**
+ * seats.aero's own default for `min_cabin_pct`: no mixed-cabin distance allowed. An ABSENT
+ * value means exactly this everywhere — in a stored query, in a `?q=` link and in the cache —
+ * which is why issue #18 needed no database migration.
+ */
+export const DEFAULT_MIN_CABIN_PCT = 100;
 export const MAX_SPAN_DAYS = 92;
 
 /**
@@ -65,6 +71,19 @@ export const QueryObject = z
      * the cache scope.
      */
     include_filtered: z.boolean().default(false),
+    /**
+     * seats.aero `min_cabin_pct` (0-100 integer, default 100): the minimum share of the
+     * itinerary's distance that must be flown in the requested cabin. 100 — the API's own
+     * default — means no mixed-cabin distance is allowed, so a business itinerary with one
+     * regional economy leg comes back as nothing. Like include_filtered it is a UI-only field
+     * (never inferred from the text, absent from QueryObjectLLM) and it changes what the API
+     * returns, so it is part of the cache scope.
+     *
+     * `.default(100)` rather than `.optional()`: every consumer then reads a concrete number,
+     * and an old ?q= link, a stored saved_queries.query_json or an LLM parse with no value all
+     * decode to exactly 100 — their meaning and their cache scope unchanged.
+     */
+    min_cabin_pct: z.number().int().min(0).max(100).default(100),
     max_miles: z.number().int().optional(),
     sort_by: SortBy.default("miles_asc"),
     raw_text: z.string(),

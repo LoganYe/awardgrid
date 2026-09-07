@@ -8,24 +8,28 @@
  *
  * `isModified(draft, parsed)` drives the accent outline, the Run affordance and the disabled
  * toolbar; `resetToParsed` restores the baseline. Everything here is pure: no React, no DOM, no
- * network. The seven chips are a typed list in the spec's order, so the chip row, the editors
+ * network. The eight chips are a typed list in the spec's order, so the chip row, the editors
  * and the aria labels all iterate the same source.
  */
 import { formatRange, fromQueryDates, clampTo92 } from "@/components/grid/date-model";
 import { programShortName } from "@/lib/grid/format";
 import { DEFAULT_PLACES_INDEX, groupForEditor, type PlacesIndex } from "@/components/grid/places-index";
 import type { I18nKey, Locale, Translate } from "@/lib/i18n";
-import { MAX_SPAN_DAYS, type Cabin, type QueryObject, type SortBy } from "@/lib/query/schema";
+import { DEFAULT_MIN_CABIN_PCT, MAX_SPAN_DAYS, type Cabin, type QueryObject, type SortBy } from "@/lib/query/schema";
 import { SEATS_SOURCES, SOURCE_NAMES, type SeatsSource } from "@/lib/seatsaero/types";
 
 // ---------------------------------------------------------------------------
-// The seven chips
+// The eight chips
 // ---------------------------------------------------------------------------
 
-export type ChipId = "origins" | "destinations" | "dates" | "cabins" | "programs" | "direct_only" | "sort";
+export type ChipId = "origins" | "destinations" | "dates" | "cabins" | "programs" | "direct_only" | "min_cabin_pct" | "sort";
 
-/** Spec §3.2: "Seven chips, always in this order". */
-export const CHIP_ORDER = ["origins", "destinations", "dates", "cabins", "programs", "direct_only", "sort"] as const;
+/**
+ * Spec §3.2 / docs/UI_PLAN.md §6.2a: the chips, always in this order. Seven until issue #18
+ * added "Mixed cabin" at index 6 — after Direct only, keeping the two search-shaping toggles
+ * together, and before Sort, which stays last as the only display-only chip.
+ */
+export const CHIP_ORDER = ["origins", "destinations", "dates", "cabins", "programs", "direct_only", "min_cabin_pct", "sort"] as const;
 
 export interface ChipDef {
   id: ChipId;
@@ -42,6 +46,7 @@ export const CHIPS: readonly ChipDef[] = [
   { id: "cabins", labelKey: "grid.chips.cabins", fields: ["cabins"] },
   { id: "programs", labelKey: "grid.chips.programs", fields: ["programs"] },
   { id: "direct_only", labelKey: "grid.chips.direct_only", fields: ["direct_only"] },
+  { id: "min_cabin_pct", labelKey: "grid.chips.min_cabin_pct", fields: ["min_cabin_pct"] },
   { id: "sort", labelKey: "grid.chips.sort", fields: ["sort_by"] },
 ];
 
@@ -68,6 +73,8 @@ export interface QueryDraft {
   programs?: readonly string[];
   direct_only: boolean;
   include_filtered: boolean;
+  /** seats.aero min_cabin_pct; 100 (the API default) means no mixed-cabin distance allowed. */
+  min_cabin_pct: number;
   max_miles?: number;
   sort_by: SortBy;
   raw_text: string;
@@ -152,9 +159,37 @@ export function chipSummary(chip: ChipId, query: QueryDraft, ctx: ChipContext): 
       return summarizePrograms(query, ctx);
     case "direct_only":
       return ctx.t(query.direct_only ? "grid.chips.on" : "grid.chips.off");
+    case "min_cabin_pct":
+      return summarizeMinCabinPct(query, ctx);
     case "sort":
       return ctx.t(SORT_LABEL_KEYS[query.sort_by]);
   }
+}
+
+/**
+ * "not allowed" at 100, "any" at 0, "75% and up" otherwise. 100 reads as a STATE, not a number:
+ * it is the API's own default and nobody chose the figure. It deliberately does NOT reuse
+ * "off", the word the Direct only chip immediately to its left uses: there "off" means the
+ * constraint is lifted, here 100 is the constraint at maximum and the reason a cell can read
+ * "none", so the same word beside it would have said the opposite of what it means (issue #18).
+ * Absent reads as 100 so a draft parsed from a pre-#18 payload is at rest, not silently
+ * different.
+ */
+export function summarizeMinCabinPct(query: Pick<QueryDraft, "min_cabin_pct">, ctx: ChipContext): string {
+  const pct = query.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT;
+  if (pct === DEFAULT_MIN_CABIN_PCT) return ctx.t("grid.chips.mixed_cabin_none");
+  if (pct === 0) return ctx.t("grid.chips.mixed_cabin_any");
+  return ctx.t("grid.chips.mixed_cabin_min", { pct });
+}
+
+/**
+ * The editor's hint, which has to carry the chosen figure: a fixed sentence about "less of the
+ * distance" names no threshold at 100 and is simply false at 0, where nothing is dropped.
+ */
+export function mixedCabinHint(pct: number, ctx: Pick<ChipContext, "t">): string {
+  if (pct === DEFAULT_MIN_CABIN_PCT) return ctx.t("grid.chips.mixed_cabin_hint_none");
+  if (pct === 0) return ctx.t("grid.chips.mixed_cabin_hint_any");
+  return ctx.t("grid.chips.mixed_cabin_hint_min", { pct });
 }
 
 const SORT_LABEL_KEYS: Record<SortBy, I18nKey> = {
@@ -198,6 +233,10 @@ function chipEqual(chip: ChipId, a: QueryDraft, b: QueryDraft): boolean {
     }
     case "direct_only":
       return a.direct_only === b.direct_only;
+    case "min_cabin_pct":
+      // `?? 100` or the accent outline paints on a chip nobody touched whenever the parsed
+      // baseline predates the field.
+      return (a.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT) === (b.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT);
     case "sort":
       return a.sort_by === b.sort_by;
   }

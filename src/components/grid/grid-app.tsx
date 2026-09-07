@@ -236,6 +236,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
       cabins: [],
       direct_only: false,
       include_filtered: false,
+      min_cabin_pct: 100,
       sort_by: "miles_asc",
       raw_text: text,
       language: locale,
