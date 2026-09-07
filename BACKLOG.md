@@ -104,6 +104,10 @@ comment that points here).
   is kept because the worker / migrate / admin CLIs run through `tsx` at runtime — see the comment on Dockerfile:52),
   and it would not remove the last native module (`@node-rs/argon2` ships a binary regardless).
   (ARCHITECTURE §9.1 / §7 #21, DECISIONS "SQLite driver")
+- The local `docker compose` run of issue #11 is now a confirmation rather than a discovery: CI starts the
+  worker container too (`docker compose up -d` with no service name) and asserts its `worker.start` line carries
+  `"transport":"mock"`. What the local run still adds is a real machine's volume permissions and a real Docker
+  Desktop / colima, which the runner's does not stand in for.
 - Docker image size: the runtime stage keeps the full `node_modules` because the worker/migrate/admin CLIs run through the `tsx` devDependency; precompiling `src/cli/*.ts` would allow a production prune. (DECISIONS Phase 5)
 - Quota reset boundary: assumed 00:00 UTC and labelled as such; confirm with seats.aero and show the exact reset. (DECISIONS "Quota reset boundary")
 - Duffel / Ignav keys are stored but only used by the Ask lane; a cash-price column in the grid would use them in the fast lane (prerequisite for `cpp_desc`).
