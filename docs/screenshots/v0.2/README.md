@@ -4,7 +4,7 @@ Every image on this page is a capture of the offline demo build: the `DEMO=1` mo
 server (`fixtures/demo/`, synthetic data), the seeded e2e users and the scripted Ask stream.
 **Nothing here is real award data**, and no key, network call or account is involved.
 
-Generated 2026-09-06 by:
+Generated 2026-09-07 by:
 
 ```sh
 pnpm build && pnpm e2e -g screenshots      # capture the matrix (four projects)

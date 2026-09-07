@@ -321,6 +321,11 @@ export const zh: Record<keyof typeof en, string> = {
   "grid.exporting": "导出中…",
   "grid.export_failed": "导出失败。请重新运行查询后再试。",
   "grid.searching": "正在搜索 seats.aero…",
+  "grid.searching_all": "正在向 seats.aero 查询全部 {n} 个里程计划…",
+  "grid.searching_some": "正在向 seats.aero 查询 {n} 个里程计划…",
+  "grid.searching_named": "正在向 seats.aero 查询 {programs}…",
+  "grid.searching_elapsed": "{s} 秒",
+  "grid.searching_slow": "仍在向 seats.aero 查询。日期范围较宽时耗时更长。",
   "grid.cell.click_hint": "点击单元格查看所有里程计划并显示航班。",
   "grid.cell.unmonitored_short": "未监控",
   "grid.cell.best_of": "{n} 个中最优",
@@ -379,6 +384,7 @@ export const zh: Record<keyof typeof en, string> = {
   "notice.find.truncated_search": "结果可能不完整：为保护每日额度，Cached Search 在第 {pages} 页后停止。",
   "notice.find.truncated_bulk": "结果可能不完整：为保护每日额度，Bulk Availability（{source}）在第 {pages} 页后停止。",
   "notice.find.routes_skipped": "无法确认 seats.aero 是否监控 {pairs} 条空白航线：为保留今日额度，跳过了 {skipped} 个里程计划的航线列表。",
+  "notice.find.routes_failed": "无法获取 {programs} 的航线列表。相关航线的空白单元格可能是未查询，而非确实没有座位。",
   // ---- notify (Telegram digests + link bot replies; src/lib/notify) ----
   "notify.digest.title": "awardgrid · {name}",
   // 新舱位 kept verbatim: pinned by src/lib/notify/format.test.ts:134 (glossary says 新座位; update the pin first).

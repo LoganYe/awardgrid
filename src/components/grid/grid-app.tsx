@@ -96,6 +96,9 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
   const [exportError, setExportError] = useState<string | null>(null);
   // Empty results: the grid is hidden until "review the not-monitored cells" reveals it.
   const [revealGrid, setRevealGrid] = useState(false);
+  // When the in-flight search started, so the status line can count its own seconds without
+  // this component re-rendering once a second (the tick lives in the line itself).
+  const [searchStartedAt, setSearchStartedAt] = useState<number | null>(null);
   const inflight = useRef<AbortController | null>(null);
   const gridRef = useRef<GridTableHandle>(null);
 
@@ -118,6 +121,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
       inflight.current?.abort();
       const controller = new AbortController();
       inflight.current = controller;
+      setSearchStartedAt(Date.now());
       setPhase("loading");
       setFailure(null);
       setRevealGrid(false);
@@ -380,7 +384,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
           onAsk={drawers.openAsk}
           quotaExceeded={quotaExceeded}
           disabled={modified}
-          searching={phase === "loading"}
+          searching={phase === "loading" && searchStartedAt !== null ? { query: ranQuery, startedAt: searchStartedAt } : undefined}
         />
       )}
       {exportError && <p className="t-meta text-error">{exportError}</p>}

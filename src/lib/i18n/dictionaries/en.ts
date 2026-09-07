@@ -333,6 +333,15 @@ export const en = {
   "grid.exporting": "Exporting…",
   "grid.export_failed": "Export failed. Run the query again and retry.",
   "grid.searching": "Searching seats.aero…",
+  // The search is ONE seats.aero request carrying every program at once, so the line says what
+  // is being ASKED, never what has arrived: nothing arrives program by program (DECISIONS 6.2).
+  "grid.searching_all": "Asking seats.aero about all {n} mileage programs…",
+  "grid.searching_some": "Asking seats.aero about {n} mileage programs…",
+  "grid.searching_named": "Asking seats.aero about {programs}…",
+  // Rendered in an aria-hidden sibling of the status sentence, never inside it: a live region
+  // that changed every second would re-announce the whole sentence every second.
+  "grid.searching_elapsed": "{s}s",
+  "grid.searching_slow": "Still asking seats.aero. Wide date ranges take longer.",
   "grid.cell.click_hint": "Click a cell to see every program and show flights.",
   "grid.cell.unmonitored_short": "not monitored",
   "grid.cell.best_of": "best of {n}",
@@ -402,6 +411,8 @@ export const en = {
     "Results may be incomplete: stopped after {pages} page(s) of Bulk Availability ({source}) to protect the daily quota.",
   "notice.find.routes_skipped":
     "Couldn't check whether seats.aero monitors {pairs} empty pair(s): {skipped} program route list(s) skipped to stay within today's quota.",
+  "notice.find.routes_failed":
+    "Couldn't load the route list for {programs}. Blank cells on those routes may be unchecked rather than empty.",
   // ---- notify (Telegram digests + link bot replies; src/lib/notify) ----
   "notify.digest.title": "awardgrid · {name}",
   "notify.digest.new_header": "{n} new",

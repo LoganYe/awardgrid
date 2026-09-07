@@ -30,6 +30,7 @@ export const NOTICE_CODES = [
   "find.truncated_search",
   "find.truncated_bulk",
   "find.routes_skipped",
+  "find.routes_failed",
 ] as const;
 
 export type NoticeCode = (typeof NOTICE_CODES)[number];
