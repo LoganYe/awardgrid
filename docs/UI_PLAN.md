@@ -137,7 +137,7 @@ Product name is 14/500 `--fg` plain text, a link to `/grid`. Current nav link is
 │ Rows: Dates | Routes   J  F  Both      ○ Show dynamic pricing        Save as standing query  Export CSV │ 32
 │ Asking seats.aero about all 26 mileage programs…                                   8s     │ 12/16, only while loading
 │ ┌──────────┬────────────────┬────────────────┬────────────────┬────────────────┬───────── │
-│ │          │ HKG → SEA      │ PVG → SEA      │ NRT → SEA      │ ICN → SEA      │ HND → S  │ header 32, sticky
+│ │          │ HKG → SEA      │ PVG → SEA      │ NRT → SEA      │ ICN → SEA      │ HND → S  │ header, sticky (follows --ag-row-h: 48 at >= 1280, not the 32 this once said)
 │ │          │ 3 programs     │ 2 programs     │ 3 programs     │ 1 program      │ not moni │ 12 muted
 │ ├──────────┼────────────────┼────────────────┼────────────────┼────────────────┼───────── │
 │ │ Wed Oct 1│ J 60,000       │ –              │ F 80,000       │ ░░░░░░░░░░░░░░ │ ▒▒▒▒▒▒▒▒ │ row 48; ISO date on hover

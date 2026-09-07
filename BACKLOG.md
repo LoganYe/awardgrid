@@ -6,11 +6,11 @@ comment that points here).
 
 ## Grid / fast lane
 
-- Deeplinks for programs other than AA (Alaska/Atmos Rewards, Aeroplan, United, Flying Blue, …): `src/lib/grid/deeplinks/index.ts` falls back to the seats.aero booking URL or the program homepage. (§12: AA only in v1)
+- Deeplinks for programs other than AA (Alaska/Atmos Rewards, Aeroplan, United, Flying Blue, …): `src/lib/grid/deeplinks/index.ts` falls back to the seats.aero booking URL, and to nothing at all when there is none — `resolveDeeplink` returns `url: null, kind: "none"` (index.ts:70), which is the boundary-correct answer and should stay that way: a guessed search URL that 404s is worse than no button. (§12: AA only in v1; issue #15)
 - `cpp_desc` sort (cents-per-point): needs a Duffel cash reference fare per cell; `FutureSortBy` in `src/lib/query/schema.ts` and `isImplementedSortBy` in `src/lib/grid/ranking.ts` already reserve it. (§4.5)
 - Write Get Trips results back into `availability_cache`: `fees_cents`, `currency`, `booking_url` are returned to the client on cell expand (`getTripsForUser`) but never persisted, so `fees_asc` and the CSV only see fees for cells expanded in this render. (DECISIONS "Fees per cell")
 - A real `include_filtered` column on `availability_cache` instead of the `program#filtered` suffix encoding in `src/lib/db/stores/cache.ts` (needs a migration; PK change). (DECISIONS "`include_filtered` scope")
-- `min_cabin_pct` as an advanced setting (query-level, default 100, forwarded to Cached Search / Bulk Availability / Get Trips) plus the `MixedCabinPct` badge in the cell drawer. (ARCHITECTURE §2.6, DECISIONS "Get Trips params")
+- `min_cabin_pct` as an advanced setting (query-level, default 100, forwarded to Cached Search / Bulk Availability / Get Trips). The `MixedCabinPct` badge it was paired with already ships (`src/components/grid/cell-drawer/flights-list.tsx:105`); it is simply unreachable while every call goes out at the default 100. The parameter reaches only the HTTP layer today (`types.ts:271`, `client.ts:179`) — not `QueryObject`, not `planFind`, not the cache scope — so this is a threading task, and the scope is the load-bearing part of it. (ARCHITECTURE §2.6, DECISIONS "Get Trips params"; issue #18)
 - Use `Route.NumDaysOut` as a "not yet monitored" hint once its semantics are confirmed against a live fixture. (DECISIONS "NumDaysOut")
 - Prefer `ComputedLastSeen` for freshness if the live API turns out to send it; confirm `TotalDuration` units and the Bulk Availability envelope with a recorded smoke (the 40-call test-key smoke never ran). (ARCHITECTURE §8)
 - Round-trip / multi-city queries (v1 is one-way grid only). Multiple passengers (`RemainingSeats` is shown; no pax filter).
@@ -58,7 +58,7 @@ comment that points here).
 - **Per-program actions in the cell drawer.** The footer ("Open in …", "Copy details", "Save as standing query",
   "Ask about this cell") acts on the cheapest program in the cell. Acting on any other program needs a selection
   affordance the spec does not describe. (DECISIONS 6.4)
-- **The mobile grid page spends 56 % of the viewport before the first data row.** At 390 x 844 the query block runs to
+- **The mobile grid page spends too much of the viewport before the first data row — the 56 % below is stale and nothing measures it.** The figure predates two fixes now in `query-bar.tsx` (the textarea is `rows={1}`, and "Parsed from" is one truncated line), and no assertion guards §6.4's budget, so nobody would notice it drifting either way. Issue #48 measures it first and decides after. The original reading, for the record: at 390 x 844 the query block ran to
   y = 476: the top bar, a three-line textarea, "Parsed from", the `llm_off` hint, the seven chips wrapping to five rows,
   then the Filters row — leaving about four 40 px data rows on first paint against §6.4's budget of two chip rows. The
   v0.2 review's cheap half is done ("Parsed from" is one truncated line now); the rest is a layout decision, not a
@@ -96,7 +96,14 @@ comment that points here).
 - Verify the grid on a real phone: 6.6 photographs and asserts it at 390 × 844 in a desktop browser's emulation, but sticky-column behaviour, momentum scrolling and touch targets have never been checked on physical hardware. (§8)
 - Admin CLI: `reset-password --user`, `delete-user --user`, `revoke-invite <code>`; today only invite / users / invites / revoke-sessions.
 - Second factor (TOTP) for the web login — the deployment relies on Tailscale/Access as the second wall. (§2: no passkeys/OAuth/email, decided)
-- Revisit the `node:sqlite` driver (`drizzle-orm/node-sqlite`) instead of `better-sqlite3` when drizzle-orm 1.0 is `latest` (today only in the 1.0 RC, with a different migration folder layout) — removes the native module. (ARCHITECTURE §9.1 / §7 #21, DECISIONS "SQLite driver")
+- **Watch item, not queued work** (issue #19 closed 2026-09-07): revisit the `node:sqlite` driver
+  (`drizzle-orm/node-sqlite`) instead of `better-sqlite3` **when `drizzle-orm` AND `drizzle-kit` are both at `1.x`
+  on the `latest` dist-tag and the 1.0 line has a `node:sqlite` driver** — a conjunction, because the RC line uses a
+  different migration folder layout. `npm view drizzle-orm version` is 0.45.2 today, so the trigger has not fired.
+  _Two things the old note claimed that are not true:_ it would not let the runtime image prune `node_modules` (that
+  is kept because the worker / migrate / admin CLIs run through `tsx` at runtime — see the comment on Dockerfile:52),
+  and it would not remove the last native module (`@node-rs/argon2` ships a binary regardless).
+  (ARCHITECTURE §9.1 / §7 #21, DECISIONS "SQLite driver")
 - Docker image size: the runtime stage keeps the full `node_modules` because the worker/migrate/admin CLIs run through the `tsx` devDependency; precompiling `src/cli/*.ts` would allow a production prune. (DECISIONS Phase 5)
 - Quota reset boundary: assumed 00:00 UTC and labelled as such; confirm with seats.aero and show the exact reset. (DECISIONS "Quota reset boundary")
 - Duffel / Ignav keys are stored but only used by the Ask lane; a cash-price column in the grid would use them in the fast lane (prerequisite for `cpp_desc`).
@@ -108,7 +115,7 @@ comment that points here).
 ## Release-window mode (documented, not built)
 
 Most programs open award inventory ~330–360 days out at a fixed local time
-(e.g. JAL ~10:00 JST, ANA ~09:00 JST, AA/Alaska ~331 days, United ~337 days).
+(e.g. AA/Alaska ~331 days, United ~337 days). _Corrected:_ this list used to cite JAL ~10:00 JST and ANA ~09:00 JST — neither is a seats.aero source (`src/lib/seatsaero/types.ts:16-43` lists 26), so it motivated the feature with programs the grid cannot query at all. See issue #17, and #47 for the rolling-window half that is not blocked.
 A "release-window" standing query would, once a day just after the program's
 release time, run Cached Search for only the newly opened date on each
 monitored route — roughly **1 seats.aero call per route per day** — and push
