@@ -431,3 +431,11 @@ captures plus the 52 frozen `before/` files, every one of them written by
 - **A regression test, not a baseline update.** `e2e/queries.spec.ts` replaces the Next run cell's
   text with each of the three readings and asserts the Name column does not move. It fails without
   the CSS floor (verified by reverting the rule) and passes with it.
+- **The quota seed writes tomorrow as well as today.** The daily quota is keyed by UTC day, so a
+  suite that starts at 23:58 and reaches the quota tests at 00:05 asks about a day the seed never
+  wrote: the "quota" user's 950 calls belong to yesterday, today reads 0, and every quota state
+  silently becomes an ordinary grid. CI run 34068335365 hit exactly that — `grid-quota` failed in
+  `axe`, `before`, `grid` and `screenshots`, in every project, for no reason but the clock. One
+  extra row per user makes the seed correct on both sides of midnight. This is the same class of
+  defect as the column widths above, and the same reason: a job that is going to be REQUIRED must
+  not depend on what time it runs.
