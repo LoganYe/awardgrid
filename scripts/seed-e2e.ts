@@ -71,11 +71,25 @@ export interface SeededE2eUser {
   hasKey: boolean;
 }
 
+/**
+ * Seed a day's usage — and the NEXT day's with it.
+ *
+ * The quota is keyed by UTC day, so a suite that starts at 23:58 and reaches the quota tests at
+ * 00:05 asks about a day the seed never wrote: the "quota" user's 950 calls belong to yesterday,
+ * today reads 0, and every quota state silently becomes a normal grid. That is what happened to
+ * CI run 34068335365 — grid-quota failed in axe, before, grid and screenshots, in every project,
+ * for no reason but the clock. Writing tomorrow too costs one row per user and makes the seed
+ * correct on both sides of midnight.
+ */
 function upsertQuota(db: Db, userId: string, calls: number, day: string): void {
-  db.insert(apiUsage)
-    .values({ userId, provider: SEATS_AERO_PROVIDER, day, calls })
-    .onConflictDoUpdate({ target: [apiUsage.userId, apiUsage.provider, apiUsage.day], set: { calls } })
-    .run();
+  const next = new Date(`${day}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  for (const d of [day, next.toISOString().slice(0, 10)]) {
+    db.insert(apiUsage)
+      .values({ userId, provider: SEATS_AERO_PROVIDER, day: d, calls })
+      .onConflictDoUpdate({ target: [apiUsage.userId, apiUsage.provider, apiUsage.day], set: { calls } })
+      .run();
+  }
 }
 
 /** One diff cell as `query_runs.cells_json` stores it: key + miles + fees + seats + freshness. */
