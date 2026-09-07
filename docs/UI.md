@@ -83,6 +83,8 @@ Grid density is driven by `data-density` on `.ag-wrap`, set from `matchMedia` in
 
 Minimum column width is 112 px (`--column-min`) at every density. Row heights include the grid line (`.ag-cell-in` is `row − 1 px`) so body rows measure exactly 48 / 32 / 40 px like the header.
 
+The one exception is **Cells: Per cabin** (§1.5b), where the cell stacks one 16 px line per selected cabin and the row is `rowHeightFor(density, lines)` = `max(density height, 16 × lines + 8)` (`use-roving-grid.ts`). For the two premium cabins that is 48 / **40** / 40 — desktop and mobile pay nothing, tablet grows 32 → 40 because a 31 px inner box cannot hold two 16 px lines. Three cabins give 56 px, four give 72 px, at every density. With one cabin `rowHeightFor(density, 1)` is exactly `ROW_HEIGHT[density]`, so a single-cabin query renders as it always did.
+
 Radii by role: 4 px on controls (`--radius-control`), 6 px on popovers and drawers (`--radius-surface`), **0 on the grid** and its cells and sticky headers (`--radius-grid`), 9999 only on the freshness dots, which are circles.
 
 Borders: 1 px `--line` between grid cells, under the top bar, above the footer, between the query block and the grid, and on a drawer's page-facing edge. 1 px `--line-strong` on inputs, chips and outline buttons. No border on sections, table outer edges, Settings sections or the auth form; **no shadow anywhere** — popovers separate from the page by their `--bg-raised` ground plus a 1 px `--line-strong` edge.
@@ -116,6 +118,19 @@ Six states, each carrying a **pattern and a label**, never colour alone (`src/co
 | `loading` | skeleton bars at the eventual line positions (static under reduced motion) | `aria-busy` on the grid |
 
 The `dyn` tag is drawn on mobile too, so the filtered state never rests on the muted colour alone. Fees that are unknown render `?`, not a dash — a dash would read like the no-availability state.
+
+### 1.5b Cells: Best | Per cabin
+
+With more than one cabin in the query the toolbar gains a third segmented control, **Cells  Best | Per cabin** (`toolbar.tsx`; docs/UI_PLAN.md §6.2b). It is absent — not disabled — with one cabin, and the mode is forced back to `Best` whenever the cabins drop below two, so flipping Both → J → Both returns the default rather than the previous choice.
+
+- **Best** (the default) is the shipped anatomy: the best row across the selected cabins with a one-letter `J` / `F` tag.
+- **Per cabin** draws one line per cabin, in the canonical J F W Y order (`CABIN_ORDER` in `src/lib/query/schema.ts`), each of them the **one-line mobile cell verbatim** — cabin tag, miles, the `dyn` tag when that cabin's only rows are dynamic, then the freshness mark and age. The program short name is not on the line; it stays in the tooltip, the drawer and the `aria-label`. A cabin with no row for that route and date draws its tag and an en dash; a cell with nothing for **any** cabin keeps the single centred dash of the `none` state.
+
+The slots come from the pure `bestPerCabin(cell, cabins, query)` in `src/lib/grid/pivot.ts`, which applies the query's `sort_by` per cabin and marks a cabin whose only rows are hidden dynamic pricing as `filtered`. Freshness is a property of the **line** here, not of the cell: `data-tier` rides on `.ag-cabin-line` and the `<td>` carries none.
+
+The grid's shape does not change — one `gridcell` per intersection, the same `aria-rowcount` / `aria-colcount` / `aria-rowindex` / `aria-colindex`, the same roving keyboard model, the same drawer, the same virtualization thresholds, the same CSV. The `aria-label` names each cabin in turn: "SEA to NRT, October 15. business, 60,000 miles, $5.60 fees, 2 seats, Alaska, seen 2 hours ago. first, no availability." Each cabin's clause is resolved **before** the clauses are joined, because the sentinel helpers in `src/lib/grid/aria.ts` use a non-global `String.replace` (see DECISIONS "#35"). The label roughly doubles in length, which is the accepted cost of a cell that says twice as much; the mode is off by default.
+
+Like the Rows toggle, the layout is client view state and is **not** in `?q=`: a shared link opens in `Best`.
 
 ### 1.6 Motion and reduced motion
 
@@ -158,9 +173,9 @@ Which file renders what. Anything ending in `.ts` next to a `.tsx` is the pure p
 | `examples-popover.tsx` | three bilingual example queries, anchored to the whole query row |
 | `chip-row.tsx` + `chips-model.ts` | the seven chips in order (Origins · Destinations · Dates · Cabins · Programs · Direct only · Sort), the modified state, Reset to parsed |
 | `chip-editors/*.tsx` | one popover editor each: `places-editor` (searchable list, city groups, free IATA entry), `dates-editor` (two-month hand-written calendar + presets, 92-day clamp), `cabins-editor`, `programs-editor`, `direct-editor`, `sort-editor`; `chip-popover.tsx` is the shared surface |
-| `toolbar.tsx` | rows toggle, cabin chips, "Show dynamic pricing", Save as standing query, Export CSV, Ask; collapses into a Filters bottom sheet below 768 px |
+| `toolbar.tsx` | rows toggle, cabin chips, the Cells layout toggle (only with more than one cabin), "Show dynamic pricing", Save as standing query, Export CSV, Ask; collapses into a Filters bottom sheet below 768 px |
 | `grid-table.tsx` | `<table role="grid">`, sticky header row and first column, virtualization, hover highlight, density |
-| `cell.tsx` | one cell: six states, cabin tag, freshness mark, `aria-label`, roving `tabindex` |
+| `cell.tsx` | one cell: six states, cabin tag, freshness mark, `aria-label`, roving `tabindex`; and the per-cabin line stack (§1.5b) |
 | `cell-tooltip.tsx` | the hover/focus tooltip listing every program for the cell with its own mark and age |
 | `freshness-mark.tsx` | the 8 × 8 SVG marks |
 | `grid-skeleton.tsx` | the loading grid in the query's real shape (rows from the Dates chip, columns from the airports) |
@@ -298,7 +313,7 @@ Three breakpoints, one set of numbers, used by the grid density hook (`use-rovin
 
 **768–1279 px — tablet.** Cells drop to two lines (miles + program/freshness); fees and seats move to the tooltip and the drawer. Rows 32 px; the row-header column 80 px. Chips wrap and shorten to counts when a value would exceed 160 px. Drawers **overlay** with a 40 % `--fg` scrim: modal, focus trapped, body scroll locked, the scrim contains overscroll.
 
-**< 768 px — mobile.** The grid stays a real table with the sticky date column and horizontal scroll; cells are one line (`60,000 ●2h`, with the cabin tag when both cabins show and the `dyn` tag when filtered) and the program name moves to the drawer. Rows 40 px, the row-header column 72 px, and every control inside a mobile drawer grows to a 40 px touch target. The toolbar collapses into a **Filters** bottom sheet holding rows, cabins, dynamic pricing, Save, Export and Ask. The cell drawer becomes a full-height sheet; the Ask drawer becomes a bottom sheet with a drag handle (initial focus skips the handle — it is the dismiss control). The top bar keeps the product name, the quota indicator and a menu that holds the nav, language, theme and Log out. The Queries table becomes a stacked list.
+**< 768 px — mobile.** The grid stays a real table with the sticky date column and horizontal scroll; cells are one line (`60,000 ●2h`, with the cabin tag when both cabins show and the `dyn` tag when filtered) and the program name moves to the drawer. Rows 40 px, the row-header column 72 px, and every control inside a mobile drawer grows to a 40 px touch target. The toolbar collapses into a **Filters** bottom sheet holding rows, cabins, the Cells layout toggle when the query has more than one cabin, dynamic pricing, Save, Export and Ask. With **Per cabin** on, two 16 px lines plus 8 px of padding are exactly the 40 px touch row, so the phone pays nothing for the mode. The cell drawer becomes a full-height sheet; the Ask drawer becomes a bottom sheet with a drag handle (initial focus skips the handle — it is the dismiss control). The top bar keeps the product name, the quota indicator and a menu that holds the nav, language, theme and Log out. The Queries table becomes a stacked list.
 
 **Touch, as distinct from narrow.** Three rules key on `(pointer: coarse)` as well as the 768 px
 width, because they are about a thumb rather than a viewport (issue #32, verified on an iPhone

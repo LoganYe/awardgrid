@@ -17,6 +17,14 @@ export const Cabin = z.enum(["Y", "W", "J", "F"]);
 export type Cabin = z.infer<typeof Cabin>;
 
 /**
+ * Canonical cabin DISPLAY order, spec §3.2's "J / F / W / Y". The zod enum's own order is the
+ * seats.aero field order (Y W J F) and is not what the UI reads out: the toolbar toggle, the
+ * chip editor and the per-cabin cell all order cabins by this list, so the same set always
+ * reads the same way ("J, F") whichever control produced it.
+ */
+export const CABIN_ORDER: readonly Cabin[] = ["J", "F", "W", "Y"];
+
+/**
  * Sort orders. `cpp_desc` (cents-per-point) is reserved for a future Duffel cash reference
  * and is intentionally NOT accepted by the schema yet — see BACKLOG.md.
  */

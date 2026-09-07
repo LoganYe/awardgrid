@@ -225,7 +225,30 @@
 }
 .ag-cell[data-tier="stale"] .ag-miles,
 .ag-cell[data-tier="unknown"] .ag-miles,
-.ag-cell[data-state="filtered"] .ag-miles {
+/* The `:not()` matters: a cell-level "filtered" status means SOME cabin is dynamic, and without
+   the guard it would mute both per-cabin lines including the one that is not. In that layout the
+   dynamic muting is carried per line, below. The two `[data-tier]` selectors need no guard —
+   the <td> carries no data-tier in per-cabin layout (cell.tsx). */
+.ag-cell[data-state="filtered"] .ag-cell-in:not([data-layout="per_cabin"]) .ag-miles {
+  color: var(--fg-muted);
+}
+
+/* ---- per-cabin cells (docs/UI_PLAN.md §6.2b) ---- */
+/* One 16 px line per cabin, centred in the row at every density (the row is sized to fit them
+   by rowHeightFor in use-roving-grid.ts). The line itself is .ag-l1, reused unchanged. */
+.ag-cell-in[data-layout="per_cabin"] {
+  justify-content: center;
+}
+.ag-cabin-line {
+  min-width: 0;
+}
+.ag-cabin-none {
+  color: var(--fg-muted);
+}
+/* Stale / unknown / dynamic is a property of the LINE here, not of the cell. */
+.ag-cabin-line[data-tier="stale"] .ag-miles,
+.ag-cabin-line[data-tier="unknown"] .ag-miles,
+.ag-cabin-line[data-slot-state="filtered"] .ag-miles {
   color: var(--fg-muted);
 }
 /* Cabin tag: a one-letter glyph in a 1 px outlined box; muted, never a color. */

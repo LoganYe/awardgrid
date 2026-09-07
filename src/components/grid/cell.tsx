@@ -25,10 +25,11 @@ import { memo } from "react";
 import { cellAriaLabel } from "@/lib/grid/aria";
 import { formatAge, formatAgeCompact, tier } from "@/lib/grid/freshness";
 import { formatFees, formatMiles, formatSeats, programShortName } from "@/lib/grid/format";
+import { bestPerCabin } from "@/lib/grid/pivot";
 import { programDisplayName } from "@/lib/grid/ranking";
-import type { AvailabilityRow, CellStatus, FreshnessTier, GridCell } from "@/lib/grid/types";
+import type { AvailabilityRow, CabinSlot, CellLayout, CellStatus, FreshnessTier, GridCell } from "@/lib/grid/types";
 import { hasKey, type Locale, type Translate } from "@/lib/i18n";
-import type { Cabin } from "@/lib/query/schema";
+import type { Cabin, QueryObject } from "@/lib/query/schema";
 import { FreshnessMark } from "@/components/grid/freshness-mark";
 import type { Density } from "@/components/grid/use-roving-grid";
 
@@ -73,6 +74,14 @@ export interface CellProps {
   showCabinTag: boolean;
   /** Cabins the grid shows (named in the aria label of empty states). */
   cabins: readonly Cabin[];
+  /**
+   * How the cell draws when it has rows; default "best" (today's anatomy). Optional so
+   * src/components/queries/diff-cells.tsx, which builds a one-cabin cell with no Grid behind it,
+   * keeps compiling and behaving exactly as it does — do not make it required.
+   */
+  layout?: CellLayout;
+  /** Needed only by layout "per_cabin" (sort_by, include_filtered). Pass `grid.query`. */
+  query?: QueryObject;
   /** 0-based data coordinates (row header / header row excluded). */
   row: number;
   col: number;
@@ -121,7 +130,39 @@ function CabinTag({ cabin }: { cabin: Cabin }) {
   );
 }
 
-function CellBody({ cell, status, now, density, showCabinTag, t, locale }: Pick<CellProps, "cell" | "status" | "now" | "density" | "showCabinTag" | "t" | "locale">) {
+/**
+ * One cabin's line in the per-cabin layout: the EXISTING one-line mobile cell (tag, miles, the
+ * `dyn` tag, mark + age), reused verbatim at every density. It is already shipped at the 112 px
+ * minimum column in both languages, so there is no new width to defend — and the program short
+ * name is deliberately not on it: it would ellipse to a stub at the floor, and it is in the
+ * tooltip, the drawer and the cell's aria-label instead (docs/UI_PLAN.md §6.2b).
+ *
+ * Stale / unknown / dynamic muting is a property of the LINE here, not of the cell, so the tier
+ * rides on this span and the <td> carries no data-tier in this layout.
+ */
+function CabinLine({ slot, now, locale, t }: { slot: CabinSlot; now: number; locale: Locale; t: Translate }) {
+  const row = slot.row;
+  return (
+    <span className="ag-l1 ag-cabin-line" data-tier={row ? tier(row.computed_last_seen, now) : undefined} data-slot-state={slot.filtered ? "filtered" : undefined}>
+      <CabinTag cabin={slot.cabin} />
+      {row ? (
+        <>
+          <span className="ag-miles">{formatMiles(row.miles, locale)}</span>
+          {slot.filtered && (
+            <span className="ag-tag" title={t("grid.cell.filtered")}>
+              {t("grid.cell.filtered_short")}
+            </span>
+          )}
+          <AgeMark row={row} now={now} locale={locale} t={t} />
+        </>
+      ) : (
+        <span className="ag-cabin-none">{t("grid.cell.none")}</span>
+      )}
+    </span>
+  );
+}
+
+function CellBody({ cell, status, now, density, showCabinTag, perCabin, t, locale }: Pick<CellProps, "cell" | "status" | "now" | "density" | "showCabinTag" | "t" | "locale"> & { perCabin?: readonly CabinSlot[] }) {
   if (status === "loading") return <Skeleton density={density} />;
   if (status === "unmonitored") return <div className="ag-cell-in" />;
   if (status === "not_fetched") {
@@ -136,9 +177,20 @@ function CellBody({ cell, status, now, density, showCabinTag, t, locale }: Pick<
   }
   const best = cell.best;
   if (status === "none" || !best) {
+    // A cell with nothing for ANY cabin keeps one centred en dash at both layouts: enumerating a
+    // dash per cabin would only add noise, and the aria label still names the cabins.
     return (
       <div className="ag-cell-in">
         <span aria-hidden="true">{t("grid.cell.none")}</span>
+      </div>
+    );
+  }
+  if (perCabin) {
+    return (
+      <div className="ag-cell-in" data-layout="per_cabin" aria-hidden="true">
+        {perCabin.map((slot) => (
+          <CabinLine key={slot.cabin} slot={slot} now={now} locale={locale} t={t} />
+        ))}
       </div>
     );
   }
@@ -206,9 +258,13 @@ function CellBody({ cell, status, now, density, showCabinTag, t, locale }: Pick<
 }
 
 function CellImpl(props: CellProps) {
-  const { cell, status, now, row, col, tabbable, selected, describedBy, cabins, t, locale, register, onActivate, onFocusCell, onHover } = props;
-  const tr: FreshnessTier | undefined = cell.best && status !== "loading" && status !== "none" ? tier(cell.best.computed_last_seen, now) : undefined;
-  const label = cellAriaLabel({ ...cell, status }, locale, t, now, { cabins });
+  const { cell, status, now, row, col, tabbable, selected, describedBy, cabins, layout, query, t, locale, register, onActivate, onFocusCell, onHover } = props;
+  // Per-cabin layout draws one line per cabin, each with its own freshness: the tier is a
+  // property of the line there, so the <td> carries none and the cell-level muting cannot reach
+  // across both lines (grid-styles.css).
+  const perCabin: CabinSlot[] | undefined = layout === "per_cabin" && query && (status === "ok" || status === "filtered") ? bestPerCabin(cell, cabins, query) : undefined;
+  const tr: FreshnessTier | undefined = perCabin ? undefined : cell.best && status !== "loading" && status !== "none" ? tier(cell.best.computed_last_seen, now) : undefined;
+  const label = cellAriaLabel({ ...cell, status }, locale, t, now, { cabins, perCabin });
   const title = cellTitle(cell, status, t);
   const interactive = status !== "loading";
   return (
@@ -232,7 +288,7 @@ function CellImpl(props: CellProps) {
       onMouseEnter={() => onHover(row, col, true)}
       onMouseLeave={() => onHover(row, col, false)}
     >
-      <CellBody cell={cell} status={status} now={now} density={props.density} showCabinTag={props.showCabinTag} t={t} locale={locale} />
+      <CellBody cell={cell} status={status} now={now} density={props.density} showCabinTag={props.showCabinTag} perCabin={perCabin} t={t} locale={locale} />
     </td>
   );
 }

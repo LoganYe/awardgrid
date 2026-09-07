@@ -12,10 +12,11 @@
  *   not_fetched  no rows and the pair's fetch did not complete (`reason` = i18n key)
  *   none         no rows, fetched, nothing available
  */
-import type { QueryObject } from "@/lib/query/schema";
+import { CABIN_ORDER, type Cabin, type QueryObject } from "@/lib/query/schema";
 import { compareRows } from "@/lib/grid/ranking";
 import type {
   AvailabilityRow,
+  CabinSlot,
   CellStatus,
   Grid,
   GridCell,
@@ -92,6 +93,33 @@ function cellKey(origin: string, dest: string, date: string): string {
 /** True when the row is dynamic pricing the query did not ask for (hidden by the toggle). */
 export function isHiddenDynamic(row: AvailabilityRow, query: Pick<QueryObject, "include_filtered">): boolean {
   return row.dynamic === true && !query.include_filtered;
+}
+
+/**
+ * The per-cabin view of one cell (docs/UI_PLAN.md §6.2b): one slot per selected cabin, in the
+ * canonical J F W Y order, each holding that cabin's own best row under the query's `sort_by`.
+ *
+ * The rule mirrors buildGrid's exactly, one cabin at a time: hidden dynamic rows only win a
+ * slot that has nothing else, and that slot is marked `filtered` so the line can be drawn muted
+ * with the `dyn` tag. A cabin with no rows at all yields `row: null` — the line says so rather
+ * than disappearing, so the reader learns WHICH cabin is missing.
+ *
+ * Pure: `cell.all` is never mutated (the sort runs on a copy), and no memoization — it runs
+ * inside the already-memoized Cell over an array that is typically one to six rows.
+ */
+export function bestPerCabin(
+  cell: GridCell,
+  cabins: readonly Cabin[],
+  query: Pick<QueryObject, "include_filtered" | "sort_by">,
+): CabinSlot[] {
+  const cmp = compareRows(query.sort_by);
+  return CABIN_ORDER.filter((c) => cabins.includes(c)).map((cabin) => {
+    // buildGrid already sorted `all`, but bestPerCabin must not assume its input came from there.
+    const mine = cell.all.filter((r) => r.cabin === cabin).sort(cmp);
+    const shown = mine.filter((r) => !isHiddenDynamic(r, query));
+    const row = shown[0] ?? mine[0] ?? null;
+    return { cabin, row, filtered: shown.length === 0 && mine.length > 0 };
+  });
 }
 
 export function buildGrid(

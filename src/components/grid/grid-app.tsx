@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { transposeGrid } from "@/lib/grid/pivot";
-import type { AvailabilityRow, Grid, GridCell, Orientation } from "@/lib/grid/types";
+import type { AvailabilityRow, CellLayout, Grid, GridCell, Orientation } from "@/lib/grid/types";
 import { useLocale, useT } from "@/lib/i18n/client";
 import { MAX_SPAN_DAYS, type Cabin, type QueryObject } from "@/lib/query/schema";
 import type { Provenance } from "@/lib/query/deterministic";
@@ -88,6 +88,12 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
   const [programsByPair, setProgramsByPair] = useState<Record<string, number> | null>(null);
   const [programsChecked, setProgramsChecked] = useState<number | undefined>(undefined);
   const [orientation, setOrientation] = useState<Orientation>("dates");
+  /*
+    Cell layout (docs/UI_PLAN.md §6.2b). Like `orientation` this is client view state and is NOT
+    written to `?q=`: the codec encodes the query a run answered, not how the toolbar draws it.
+    Cost, accepted: a J-vs-F comparison cannot be handed over as a link (DECISIONS.md).
+  */
+  const [layout, setLayout] = useState<CellLayout>("best");
   const [now, setNow] = useState<number>(() => Date.now());
   // One slot for both right-hand drawers: opening either closes the other (spec §3, §11).
   const drawers = useDrawerState();
@@ -292,6 +298,16 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
     window.requestAnimationFrame(() => gridRef.current?.focusFirstUnmonitored());
   }
 
+  /*
+    One cabin has nothing to split, so the Cells control is not rendered — and the mode must not
+    survive behind the absent control. Adjusted during render rather than in an effect (React's
+    own alternative, and the effect form is a lint error here): the correction lands in the same
+    commit, so no child ever sees the stale mode. Flipping the cabins back to Both therefore
+    restores the default "Best", not the previous choice — one less piece of hidden state.
+  */
+  const cabinCount = query?.cabins.length ?? 0;
+  if (cabinCount < 2 && layout !== "best") setLayout("best");
+
   const shown = useMemo(() => (grid ? (orientation === "routes" ? transposeGrid(grid) : grid) : null), [grid, orientation]);
   const selectedCell = useMemo(() => (grid ? findCell(grid, selected) : null), [grid, selected]);
   // The Ask pill reads the RETAINED selection, not the cell drawer's slot: opening Ask closes the
@@ -376,6 +392,8 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
           orientation={orientation}
           onOrientation={setOrientation}
           onCabins={(cabins) => commit({ ...query, cabins })}
+          layout={layout}
+          onLayout={setLayout}
           onIncludeFiltered={(value) => onChip({ type: "set_include_filtered", value })}
           dynamicRowsAvailable={dynamicRowsAvailable}
           onExport={() => void onExport()}
@@ -390,7 +408,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
       {exportError && <p className="t-meta text-error">{exportError}</p>}
 
       {loadingSkeleton && query ? (
-        <GridSkeleton query={query} orientation={orientation} now={now} />
+        <GridSkeleton query={query} orientation={orientation} now={now} layout={layout} />
       ) : (
         shown &&
         grid && (
@@ -414,6 +432,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
                 selected={selectedCell}
                 onSelect={(c) => drawers.openCell({ origin: c.origin, dest: c.dest, date: c.date })}
                 programsByPair={programsByPair ?? undefined}
+                layout={layout}
                 dimmed={modified}
               />
             )}

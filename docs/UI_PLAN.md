@@ -87,7 +87,7 @@ Why the CJK faces sit *after* the Latin faces and still render Chinese in a CJK 
 
 - 4 px base unit. Component gaps: 4 (inside a chip), 8 (between chips, between fields), 16 (between blocks), 24 (between page sections), 32 (above the footer).
 - Top bar 48 px, footer 32 px single line. Page gutters 16 px at every breakpoint. Grid page is full-bleed; Queries and Settings max 880 px, left-aligned inside the gutters; auth column 360 px centered both axes.
-- Grid rows: 48 px at ≥ 1280 (three 16 px lines — the spec's three-line anatomy cannot fit its 32 px figure at 13/16, and the anatomy is the point of the page); 32 px at 768–1279 (two-line cells, the spec's number honored where two lines exist); 40 px under `(pointer: coarse)` (one-line cells). No density toggle in the toolbar — the toolbar holds exactly what spec §3.3 lists. Minimum column 112 px; sticky row-header column 96 px (80 px at 768–1279, 72 px below). Logged in §11.
+- Grid rows: 48 px at ≥ 1280 (three 16 px lines — the spec's three-line anatomy cannot fit its 32 px figure at 13/16, and the anatomy is the point of the page); 32 px at 768–1279 (two-line cells, the spec's number honored where two lines exist); 40 px under `(pointer: coarse)` (one-line cells). No density toggle in the toolbar — the toolbar holds exactly what spec §3.3 lists. Minimum column 112 px; sticky row-header column 96 px (80 px at 768–1279, 72 px below). Logged in §11. With **Cells: Per cabin** (§6.2b) the cell holds one 16 px line per selected cabin, so the row is `max(density height, 16 × cabins + 8)`: for the two premium cabins that is 48 px at ≥ 1280 (unchanged), **40 px at 768–1279** (up from 32 — `.ag-cell-in` is `calc(var(--ag-row-h) - 1px)` = 31 px and `--leading-grid` is 16 px, so two lines genuinely do not fit, and this is the one density the mode costs) and 40 px below 768 (unchanged — 2 × 16 + 8 is exactly `--row-touch`). Three cabins give 56 px, four give 72 px, at every density. The per-cabin line is the one-line mobile cell verbatim — cabin tag, miles, the `dyn` tag when the cabin's only rows are dynamic, then the freshness mark and age — at the same `0 6px` padding, so it is proven at the 112 px minimum column in both languages. The program short name is not on it: it stays in the tooltip, the drawer and the cell's `aria-label`. The sticky header band follows `--ag-row-h`, so it grows with the rows in this mode.
 - Radii: 4 px on inputs, buttons, chips, switches; 6 px on popovers and drawers; 0 on the grid, its cells and its sticky headers; 9999 on the freshness dots only (they are circles).
 - Borders: 1 px `--line` between grid cells, under the top bar, above the footer, between the query block and the grid, on the drawer's page-facing edge. 1 px `--line-strong` on inputs, chips and outline buttons. No border on sections, tables' outer edges, the Settings sections, or the auth form. No shadow anywhere; popovers separate from the page by `--bg-raised` ground + 1 px `--line-strong`.
 - Focus ring: 2 px solid `--accent`, `outline-offset: 1px`, on `:focus-visible` only; inside the grid the ring is drawn inset so it is not clipped by the scroll container.
@@ -103,7 +103,7 @@ Constants in `src/lib/grid/freshness.ts` (existing thresholds kept: fresh `< 2 h
 | stale | 1.25 px stroke ring, no fill | `--stale` | 600 `--fg-muted` | `1d` |
 | unknown | 1.25 px stroke ring, no fill | `--fg-muted` | 600 `--fg-muted` | `?` |
 
-Age text format (existing `formatAgeCompact`): under 1 min `now` / `刚刚`; minutes `45m` / `45分钟`; hours `2h` / `2小时`; days `1d` / `1天`; unparseable `?`. Age is always rendered, in the tier color, 12/16, right-aligned on the cell's last line, mark 4 px to its left. The text alone conveys the tier, so the encoding survives grayscale, and the shapes differ so it survives color blindness. Tooltip on the mark: "seats.aero last saw this: 2 h ago" / 「seats.aero 查看时间：2 小时前」. The frame has to take a bare noun, because `formatAge` also returns "unknown" / 「未知」 and 「刚刚」.
+Age text format (existing `formatAgeCompact`): under 1 min `now` / `刚刚`; minutes `45m` / `45分钟`; hours `2h` / `2小时`; days `1d` / `1天`; unparseable `?`. Age is always rendered, in the tier color, 12/16, right-aligned on the cell's last line, mark 4 px to its left. In **Per cabin** (§6.2b) every cabin line carries its own mark and age, and the stale / unknown muting of the miles is a property of that line, not of the cell: the `data-tier` attribute moves from the `<td>` to the line. A cabin slot with no row carries neither. The text alone conveys the tier, so the encoding survives grayscale, and the shapes differ so it survives color blindness. Tooltip on the mark: "seats.aero last saw this: 2 h ago" / 「seats.aero 查看时间：2 小时前」. The frame has to take a bare noun, because `formatAge` also returns "unknown" / 「未知」 and 「刚刚」.
 
 Aria wording (cell `aria-label`, en): `SEA to NRT, October 15, business, 60,000 miles, $5.60 fees, 2 seats, Alaska, seen 2 hours ago.` Stale adds `, stale` after the age; unknown reads `freshness unknown`. zh: `SEA 到 NRT，10 月 15 日，商务舱，60,000 里程，税费 $5.60，2 个座位，Alaska，2 小时前查看。`
 
@@ -180,6 +180,36 @@ A city group is one row (`SHA  Shanghai`) whose `▸` expands the member airport
 
 **Deviation, logged:** `data/places.json` expands the `SEL` metro to `ICN` **and** `GMP`, so the spec's own placeholder (`… SEL to SEA …`) produces a seventh, permanently hatched `GMP → SEA` column. Spec §3.2's worked example, §7's demo dataset and the §6.2 wireframe all end the origin list at `ICN`. The seed is right about Seoul and stays as it is; the e2e canonical query names `ICN`/`仁川` explicitly (`e2e/fixtures.ts`) so the demo grid is the six routes the fixtures carry.
 
+### 6.2b Cells: Best | Per cabin
+
+A third segmented control sits right of the cabin chips: **Cells  Best | Per cabin**, rendered only when the query asks for more than one cabin, and absent — not disabled — otherwise. `Best` is the default and is spec §3.4's cabin display: the best row across the selected cabins with a one-letter `J` / `F` tag. `Per cabin` draws one line per cabin, in the canonical J F W Y order, each `[J] 60,000 ●45m`. A cabin with no row for that route and date draws `[F] –`; a cell with nothing for any cabin keeps today's single centred dash.
+
+The grid's shape does not change: one cell per date and route, one `gridcell` per intersection, the same `aria-rowcount` / `aria-colcount` / `aria-rowindex` / `aria-colindex`, the same roving focus (ArrowDown still means the next date, PageDown still means a week), the same drawer per cell, the same sticky corner and single header row, the same 400-cell and 24-column virtualization thresholds, the same CSV. Only the inside of the cell changes.
+
+This was chosen over splitting the date row or the route column in two. `GridCell.all` already holds every row for the cell across programs **and selected cabins**, so both prices are a rendering question; an axis split would have doubled one ARIA index, forced a repeated or `rowspan`-ed sticky header that a row virtualizer cannot keep, doubled the cell count against the virtualization threshold, and — in the column variant — changed what a `grid.cols` entry is, silently breaking the not-monitored and not-fetched column sub-labels that `useHeaderText` looks up by pair key.
+
+The cell's `aria-label` names each cabin in turn: 'SEA to NRT, October 15. business, 60,000 miles, $5.60 fees, 2 seats, Alaska, seen 2 hours ago. first, no availability.' Each cabin's clause is built and its unknown-fees / seats / age substitutions applied **before** the clauses are joined: the helpers in `src/lib/grid/aria.ts` use a non-global `String.replace`, so composing one sentence with two clause groups would leave a sentinel character in the announced text.
+
+The mode is client-side, like the Rows toggle: it is not part of `QueryObject`, so it is not in `?q=` and a shared link opens in `Best`.
+
+```
+│ Rows: Dates | Routes   J  F  Both   Cells: Best | Per cabin   ○ Show dynamic pricing   Save as standing query  Export CSV │
+│ ┌──────────┬────────────────┬────────────────┬────────────────┬────────────────┐
+│ │ Dates    │ HKG → SEA      │ PVG → SEA      │ NRT → SEA      │ ICN → SEA      │ sticky
+│ │          │ 3 programs     │ 2 programs     │ 3 programs     │ 1 program      │ 12 muted
+│ ├──────────┼────────────────┼────────────────┼────────────────┼────────────────┤
+│ │ Wed Oct 1│ J  60,000 ●45m │ J  62,500 ●1h  │ J       –      │ ░░░░░░░░░░░░░░ │ row 48 = 2 × 16
+│ │          │ F  80,000 ◐3h  │ F       –      │ F  80,000 ◐3h  │ ░░░░  ░░░░░░░░ │ centered
+│ ├──────────┼────────────────┼────────────────┼────────────────┼────────────────┤
+│ │ Thu Oct 2│ J  57,500 ○1d  │ ┈┈┈┈┈┈┈┈┈┈┈┈┈┈ │ J  70,000 ●20m │ J  75,000 ●20m │
+│ │          │ F       –      │ ┈ not fetched ┈│ F  90,000 dyn ●│ F       –      │
+│ ├──────────┼────────────────┼────────────────┼────────────────┼────────────────┤
+│ │ Fri Oct 3│        –       │ J  61,000 ●2h  │ J  70,000 ●20m │ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒ │ whole-cell none:
+│ │          │                │ F       –      │ F  85,000 ◐4h  │ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒ │ one dash
+│ └──────────┴────────────────┴────────────────┴────────────────┴────────────────┘
+│    96 px         ≥ 112 px
+```
+
 ### 6.3 Grid page, 768–1279 (two-line cells, 32 px rows, drawers overlay)
 
 ```
@@ -199,7 +229,7 @@ A city group is one row (`SHA  Shanghai`) whose `▸` expands the member airport
 │ │        │ American○1d│ ┈┈┈┈┈┈┈┈┈ │ United●20m│ Alaska ○? │ ▒▒▒▒▒▒▒ │
 │ │  80 px │  ≥112 px  │ 
 ```
-Fees and seats move to the tooltip and the drawer. Chips show counts when their value would exceed 160 px. The drawer overlays the grid (no push) with a `--scrim` veil (black at 40 %, the same in both themes — see the revision log).
+Fees and seats move to the tooltip and the drawer. In **Per cabin** rows are 40 px, not 32 — two 16 px lines do not fit a 31 px inner box. This is the one density the mode makes shorter to see, about a fifth fewer rows on screen. Chips show counts when their value would exceed 160 px. The drawer overlays the grid (no push) with a `--scrim` veil (black at 40 %, the same in both themes — see the revision log).
 
 ### 6.4 Grid page, < 768 (one-line cells, 40 px rows, Filters sheet)
 
@@ -230,7 +260,7 @@ Fees and seats move to the tooltip and the drawer. Chips show counts when their 
       │ Export CSV            │
       └───────────────────────┘
 ```
-Cabin tag stays (`J 60,000`) when both cabins are shown; the program name moves to the drawer. Top bar keeps name, quota and a menu (nav + language + theme + log out).
+Cabin tag stays (`J 60,000`) when both cabins are shown; the program name moves to the drawer. **Per cabin** costs the phone nothing: two 16 px lines and 8 px of padding are exactly the 40 px touch row, the row head stays 72 px, and the one-line mobile cell — which is what the per-cabin line reuses — was already only the tag, the miles and the age. The Filters sheet gains one row, `Cells  Best | Per cabin`, between Cabins and the dynamic-pricing switch. Top bar keeps name, quota and a menu (nav + language + theme + log out).
 
 ### 6.5 Cell drawer (480 px, right; full-height sheet < 768)
 
@@ -403,7 +433,7 @@ Path: `docs/screenshots/v0.2/<page>/<state>-<viewport>-<theme>[-zh].png`; viewpo
 | `register` | `default`, `error` |
 | `legal` | `default` |
 
-That is 27 states × 2 viewports × 2 themes = 108 PNGs, plus 12 grid states × 2 × 2 in zh = 48, total 156. `scripts/screenshots.ts` generates `docs/screenshots/v0.2/README.md` as a contact sheet (one table per page, thumbnails 240 px wide). Every capture uses `DEMO=1` mock data with the clock frozen at the demo epoch (`page.clock.setFixedTime`) so ages are deterministic, `animations: "disabled"`, `reducedMotion: "reduce"`, and waits for `document.fonts.ready`.
+That is 28 states × 2 viewports × 2 themes = 112 PNGs, plus 12 grid states × 2 × 2 in zh = 48, total 160. `scripts/screenshots.ts` generates `docs/screenshots/v0.2/README.md` as a contact sheet (one table per page, thumbnails 240 px wide). Every capture uses `DEMO=1` mock data with the clock frozen at the demo epoch (`page.clock.setFixedTime`) so ages are deterministic, `animations: "disabled"`, `reducedMotion: "reduce"`, and waits for `document.fonts.ready`.
 
 Baselines: `toHaveScreenshot` snapshots are generated **only on Linux CI** (Chromium on Ubuntu; the `visual` job uploads `test-results/` as an artifact and `pnpm e2e:update` in CI commits under `test/e2e/__screenshots__/linux/`). Local macOS runs compare against the same Linux baselines with `maxDiffPixelRatio: 0.02` and `threshold: 0.3` so font hinting differences do not fail the run; CI compares strictly (`maxDiffPixelRatio: 0.001`). The `visual` job is non-blocking until five consecutive green runs (§11 of the spec). Baseline updates need the reason in the commit message.
 
@@ -449,6 +479,9 @@ Reviewed axis by axis with the question the spec asks: *would any generic data a
 - **Provenance badges**: the `det`/`llm`/`def` uppercase badges become a single 12 px sentence-case note next to the "Parsed from" line ("dates guessed") shown only when the LLM path filled a field. _Why:_ §1.2 eyebrow tell.
 - **Ask entry point** (6.2 review): spec §3.3 lists the toolbar's five controls and no trigger for the Ask drawer (§6.6); the trigger is a text-only "Ask" button at the right end of the grid toolbar, after Export CSV (inside the Filters sheet below 768 px). The toolbar therefore holds the five spec controls plus this one entry point. _Why:_ the drawer belongs to the grid page and the top bar (§6.1) stays as drawn.
 - **Dynamic tag** (6.2 review): the state-5 tag reads `dyn` / `动态` at every density; "dynamic" does not fit the 112 px minimum column beside a cabin tag and six-digit miles, and the full word lives in the cell's title and aria label. The tag is drawn on mobile too (§6.4 wireframe amended in spirit: `60,000 dyn ●2h`), so the muted color is never the only signal.
+- **Per-cabin cells, not a split axis** (issue #35): both prices at once is delivered by stacking one line per cabin inside the existing cell (§6.2b), not by splitting the date row or the route column. _Why:_ `GridCell.all` already carries every cabin's rows, so the merged view was a rendering choice, and an axis split would have spent the grid's density — the product — on data the cell already held.
+- **The per-cabin line is the mobile line** (issue #35): cabin tag, miles, the `dyn` tag, mark + age, and not the program name. _Why:_ that exact line is already shipped at the 112 px minimum column in both languages; adding the program would make it ellipse to a stub at the floor, which is worse than naming the program in the tooltip, the drawer and the aria label.
+- **The cabin layout is view state and is not in `?q=`** (issue #35): like `orientation` it lives in `grid-app.tsx`. _Why:_ `?q=` encodes the query a run answered; the toolbar controls the view. _Cost, accepted:_ a J-vs-F comparison cannot be handed over as a link.
 - **Column-header count** (6.2 review): "N programs" is the routes catalog's monitoring count and appears only when the catalog knows every requested program; otherwise the header reads "N with availability" from the cells.
 
 ## 12. What the current UI gets wrong against this plan (from `docs/screenshots/v0.2/before/`)
@@ -490,7 +523,7 @@ Every change made to this document by the review, with the reason.
 - **§6.2a range fill corrected** (6.3 review). "Range fill `--bg-raised`" on a `--bg-raised` popover was 1.10:1 in light and 1.13:1 in dark — the plan had written down the defect. The band is now `--selection` between `--line-strong` rules, and the hover state on unselected days is a ring, not the same fill.
 - **§6.2a Examples anchor pinned** (6.3 review): to the query-bar row, not the link, after the popover was measured covering the textarea at 390 px and clipping the Run button at 1440 px.
 - **§6.2a SEL/GMP deviation logged** (6.3 review), with the decision to name `ICN` in the e2e canonical query rather than edit the places seed.
-- Not changed, checked and confirmed: 48 px bar, 360 px auth column, 880 px max content, 480/420 px drawers, 112 px minimum column, seven chips in the spec's order, toolbar contents, footer vertical rule, cell anatomy (fees left / seats right, mark + age right), six cell states, four freshness tiers with shape + text, all six page-level states, Queries columns and inline delete, Settings section order, the 156-PNG screenshot matrix arithmetic, sentence case and full-width zh punctuation in every "After" string.
+- Not changed, checked and confirmed: 48 px bar, 360 px auth column, 880 px max content, 480/420 px drawers, 112 px minimum column, seven chips in the spec's order, toolbar contents, footer vertical rule, cell anatomy (fees left / seats right, mark + age right), six cell states, four freshness tiers with shape + text, all six page-level states, Queries columns and inline delete, Settings section order, the 160-PNG screenshot matrix arithmetic (156 before the `cells-per-cabin` state, §9), sentence case and full-width zh punctuation in every "After" string.
 
 ### Revisions from the v0.2 screenshot review (issues #30 / #31)
 

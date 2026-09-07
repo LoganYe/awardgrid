@@ -533,4 +533,110 @@ test.describe("grid", () => {
     await expectResultsGrid(page);
     await expect(page.getByTestId("cell-skeleton")).toHaveCount(0);
   });
+
+  // ---- Cells: Best | Per cabin (docs/UI_PLAN.md §6.2b) --------------------
+
+  /** Pick a cell layout from the toolbar (inside the Filters sheet below 768 px). */
+  async function setCells(page: Page, layout: "best" | "per_cabin"): Promise<void> {
+    const controls = await openControls(page);
+    const name = layout === "per_cabin" ? en["grid.toolbar.cells_per_cabin"] : en["grid.toolbar.cells_best"];
+    await controls.getByRole("group", { name: en["grid.toolbar.cells"] }).getByRole("button", { name, exact: true }).click();
+    await closeControls(page);
+    await settled(page);
+  }
+
+  async function setCabin(page: Page, cabin: "J" | "F" | "both"): Promise<void> {
+    const controls = await openControls(page);
+    const name = cabin === "both" ? en["grid.toolbar.cabin_both"] : cabin;
+    await controls.getByRole("group", { name: en["grid.toolbar.cabins"] }).getByRole("button", { name, exact: true }).click();
+    await closeControls(page);
+    await settled(page);
+  }
+
+  test("per cabin: one line per cabin, an en dash for the cabin that has nothing", async ({ page }) => {
+    await openGrid(page);
+    await expectResultsGrid(page);
+
+    // Best is the default, and the control offers the other mode.
+    const cellsGroup = await openControls(page);
+    const group = cellsGroup.getByRole("group", { name: en["grid.toolbar.cells"] });
+    await expect(group.getByRole("button", { name: en["grid.toolbar.cells_best"], exact: true })).toHaveAttribute("aria-pressed", "true");
+    await closeControls(page);
+
+    await setCells(page, "per_cabin");
+
+    // A cell that has both cabins draws two lines: two cabin tags, J before F, and two miles.
+    const stacked = page.locator('td[role="gridcell"][data-state="ok"]').filter({ hasNot: page.locator(".ag-cabin-none") }).first();
+    await expect(stacked.locator(".ag-cabin-line")).toHaveCount(2);
+    expect(await stacked.locator(".ag-cabin").allTextContents()).toEqual(["J", "F"]);
+    expect((await stacked.locator(".ag-cabin-line .ag-miles").allTextContents()).length).toBe(2);
+
+    // A cell with only one cabin's award still draws the other cabin's line, as a labelled dash.
+    const partial = page.locator('td[role="gridcell"][data-state="ok"]').filter({ has: page.locator(".ag-cabin-none") }).first();
+    await expect(partial).toBeAttached();
+    await expect(partial.locator(".ag-cabin-line")).toHaveCount(2);
+    await expect(partial.locator(".ag-cabin-none").first()).toHaveText(en["grid.cell.none"]);
+
+    // The label names both cabins in turn, and carries no private-use sentinel (aria.ts's
+    // non-global String.replace would leak one if the clauses were composed before resolving).
+    const label = (await partial.getAttribute("aria-label")) ?? "";
+    expect(label).toMatch(/business/);
+    expect(label).toMatch(/first/);
+    expect(label).toContain(en["grid.cell.no_availability"].toLocaleLowerCase("en"));
+    expect(label).not.toMatch(/[\uE000-\uF8FF]/);
+
+    // The cell body stays hidden from the reader: the whole announcement is the label.
+    await expect(partial.locator(".ag-cell-in")).toHaveAttribute("aria-hidden", "true");
+    // A cell with nothing for any cabin keeps ONE centred dash, not one per cabin.
+    const none = cells(page, "none").first();
+    await expect(none).toHaveText(en["grid.cell.none"]);
+    await expect(none.locator(".ag-cabin-line")).toHaveCount(0);
+  });
+
+  test("per cabin: the ARIA indices are identical before and after the toggle", async ({ page }) => {
+    await openGrid(page);
+    await expectResultsGrid(page);
+    const table = grid(page);
+    const sample = () =>
+      table.evaluate((el) => {
+        const cell = el.querySelector('td[role="gridcell"][data-row="2"][data-col="1"]');
+        const row = cell?.closest("tr");
+        return {
+          rowcount: el.getAttribute("aria-rowcount"),
+          colcount: el.getAttribute("aria-colcount"),
+          rows: el.querySelectorAll("tbody tr[role='row']").length,
+          cols: el.querySelectorAll("thead th[role='columnheader']").length,
+          cells: el.querySelectorAll('td[role="gridcell"]').length,
+          rowindex: row?.getAttribute("aria-rowindex") ?? null,
+          colindex: cell?.getAttribute("aria-colindex") ?? null,
+        };
+      });
+    const before = await sample();
+    await setCells(page, "per_cabin");
+    expect(await sample()).toEqual(before);
+    // One gridcell per intersection: the cell count did not double.
+    expect(before.cells).toBeGreaterThan(0);
+  });
+
+  test("per cabin: one cabin removes the control and the mode with it", async ({ page }) => {
+    await openGrid(page);
+    await expectResultsGrid(page);
+    await setCells(page, "per_cabin");
+    await expect(page.locator(".ag-cabin-line").first()).toBeAttached();
+
+    // One cabin has nothing to split: the group is absent, not disabled, and the cells are single-line.
+    await setCabin(page, "J");
+    let controls = await openControls(page);
+    await expect(controls.getByRole("group", { name: en["grid.toolbar.cells"] })).toHaveCount(0);
+    await closeControls(page);
+    await expect(page.locator(".ag-cabin-line")).toHaveCount(0);
+
+    // Back to both cabins: the control returns on its DEFAULT, not on the previous choice.
+    await setCabin(page, "both");
+    controls = await openControls(page);
+    await expect(controls.getByRole("group", { name: en["grid.toolbar.cells"] }).getByRole("button", { name: en["grid.toolbar.cells_best"], exact: true })).toHaveAttribute("aria-pressed", "true");
+    await closeControls(page);
+    await expect(page.locator(".ag-cabin-line")).toHaveCount(0);
+  });
+
 });

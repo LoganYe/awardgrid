@@ -416,6 +416,81 @@ captures plus the 52 frozen `before/` files, every one of them written by
   but the page does read as claiming two things at once, and it is a §3.4 question rather than a
   capture-ownership one.
 
+### #35 Per-cabin cells in the grid
+
+Issue #35 and `BACKLOG.md` asked literally for split ROWS — each date row becoming a J row and an
+F row. This ships a stacked CELL instead, `Cells: Best | Per cabin` (docs/UI_PLAN.md §6.2b), and
+closes #35 with it. §4, §5, §6.2b, §6.3, §6.4, §9 and §11 of the plan are amended.
+
+- **Per-cabin cells, not a split axis.** Both prices at once is delivered by stacking one 16 px
+  line per cabin inside the existing cell, not by splitting the date row or the route column.
+  _Why:_ `types.ts` already documents `GridCell.all` as "every row for this (pair, date) across
+  programs **and selected cabins**", and buildGrid's cell loop confirms it — both prices are
+  already in the cell at render time and only the renderer throws one away. An axis split pays 2×
+  rows or 2× columns for data the cell already holds, and it would spend the grid's density,
+  which is the product. `buildGrid` returns the same `Grid`; `aria-rowcount` / `aria-colcount` /
+  `aria-rowindex` / `aria-colindex`, `moveFocus` and `PAGE_ROWS`, the 400-cell and 24-column
+  virtualization thresholds, `transposeGrid`, `cellAt`, `iterateCells`, `gridStats`, `csv.ts`, the
+  `?q=` codec and the Queries page's `diff-cells.tsx` are all untouched.
+- **Why the row split was rejected.** It was the honest runner-up and the best-verified proposal,
+  but it interleaves J and F down one column: "cheapest business across 30 dates" becomes a read
+  of every other row, ArrowDown stops meaning "next date", and a 30-day phone grid becomes 60 rows
+  of 40 px with the row head widened 72 → 88 px out of 390. Its own status rule ("otherwise the
+  parent's status verbatim") also gave an empty F subrow of a J-only date `status: "ok"` with
+  `best === null`, so `data-state="ok"` would land on a cell the `[data-state="none"]` styling can
+  never reach.
+- **Why the column split was rejected.** It halves the route axis, which is the axis the product
+  exists for (five routes become two and a half at 1440; one route is 296 px of a 390 px phone),
+  and it changes `cellAt`'s indexing with no type error to catch it, so a mistake reaches
+  `toCsv`, `gridStats` and `ascii.ts` silently. Its composite column keys ("HKG-SEA|J") also miss
+  `useHeaderText`'s pair-keyed `unmonitored` set and `notFetched` map, which would have silently
+  deleted the sub-label from exactly the columns that most need explaining.
+- **The per-cabin line is the mobile line.** It carries the cabin tag, the miles, the `dyn` tag
+  and the mark + age, and not the program name. _Why:_ that exact line is already shipped at the
+  112 px minimum column in both languages, so there is no new padding token, no width rule and no
+  new zh overflow risk. Adding the program would make it ellipse to a stub at the floor, which is
+  worse than naming the program in the tooltip, the drawer and the aria label — all three of which
+  do name it, per cabin.
+- **Each cabin's aria clause is resolved before the clauses are joined.** `dropClause` and
+  `replaceClause` in `src/lib/grid/aria.ts` build their `RegExp` with no `g` flag, so
+  `String.replace` rewrites the first match only. Composing one sentence with two cabin clause
+  groups and then dropping the empties leaked U+E000 / U+E001 / U+E002 into the announced text —
+  reproduced before the fix, and `aria.test.ts` keeps the regression. `cabinClause()` builds and
+  resolves one cabin at a time, where each sentinel appears at most once, so the non-global regex
+  is correct by construction.
+- **The freshness tier moved from the `<td>` to the line.** In per-cabin layout each line has its
+  own age, so `data-tier` rides on `.ag-cabin-line` and the `<td>` carries none; the existing
+  `.ag-cell[data-state="filtered"] .ag-miles` rule gained a
+  `:not([data-layout="per_cabin"])` guard so a cell-level "filtered" status cannot mute the line
+  that is not dynamic.
+- **The layout is view state and is not in `?q=`.** Like `orientation`, it lives in
+  `grid-app.tsx`. _Why:_ `?q=` encodes the query a run answered; the toolbar controls the view,
+  and a display field inside `QueryObject` is data to `sameQuery`, `/api/find` caching and every
+  standing-query row. _Cost, accepted:_ a J-vs-F comparison cannot be handed over as a link.
+- **The control is absent below two cabins, not disabled**, and the mode is forced back to `Best`
+  whenever the cabins drop below two — so flipping Both → J → Both returns the default, not the
+  previous choice. _Why:_ a permanently dead control is worse than an absent one, and a mode
+  surviving behind a control that is gone is hidden state. Adjusted during render rather than in
+  an effect: the project's lint rules reject `setState` in an effect, and the render-time
+  correction lands in the same commit, so no child ever sees the stale mode.
+- **`CABIN_ORDER` moved to `src/lib/query/schema.ts`.** The canonical J F W Y display order lived
+  only in `src/components/grid/state.ts` as `ALL_CABINS`, and `bestPerCabin` in `src/lib/grid/`
+  needs it. A lib module must not import a component module and the order must not exist twice, so
+  the schema owns it and `ALL_CABINS` re-exports it.
+- **Open questions decided.** `cell.best` stays best-across-cabins, so `gridStats.cheapest`, the
+  CSV `best` flag, the drawer's lead program and the Ask context pill keep naming one winner while
+  the user looks at two — changing `best` to be cabin-aware would ripple into the standing-query
+  diff and the notification digest, and is left for a later issue. A cell with nothing for any
+  cabin keeps ONE centred en dash rather than one per cabin (the aria still names both cabins).
+  Tablet rows grow 32 → 40 in this mode, about a fifth fewer rows on screen; the alternative —
+  offering the mode only at ≥ 1280 and < 768 — is a control that vanishes at one breakpoint, which
+  is worse. Three or four cabins push rows to 56 / 72 px and are still offered rather than capped
+  at two: capping would be arbitrary in the other direction.
+- **Not changed:** `docs/UI_PLAN.md` §6.2's wireframe annotates the desktop header band as 32 px
+  although `.ag-table thead th { height: var(--ag-row-h) }` has made it 48 since 6.2. This change
+  makes the drift more visible (the header grows with the rows in per-cabin mode) but does not
+  touch it; it is a separate one-line plan fix.
+
 ### #37 Persist `calls_used` on query runs
 
 - **`query_runs.calls_used` is nullable, and null means "not recorded", never zero.** `drizzle/0002_query_runs_calls_used.sql` adds one nullable integer column; `record()` in `src/lib/scheduler/run.ts` writes it on every path and `toRunSummary` reads it straight back. _Why nullable rather than `NOT NULL DEFAULT 0`:_ every row written before the column existed would then claim it made no calls, which is a fabricated number in a column whose only job is to be honest about quota. The UI already had the "not recorded" state (`run-history.tsx` prints an en dash with the reason in `title`); it now means what it says.

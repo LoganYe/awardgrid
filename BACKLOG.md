@@ -19,10 +19,17 @@ comment that points here).
 
 ## UI (deferred by Phase 6)
 
-- **Per-cabin split rows in the grid.** With both cabins shown, a cell is the best row of the two with a `J`/`F` tag
-  (spec §11 "Cabin display"); a mode that splits each date row into a J row and an F row — or each route column into
-  two — would show both prices at once. Needs a second axis in `src/lib/grid/pivot.ts` and a rows-toggle value beyond
-  Dates ↔ Routes. (Phase 6 §11)
+- ~~**Per-cabin split rows in the grid.**~~ **Shipped (issue #35), as `Cells: Best | Per cabin`** — a stacked cell, not
+  a split axis (docs/UI_PLAN.md §6.2b, DECISIONS "#35"). With both cabins shown, `Per cabin` draws one 16 px line per
+  cabin inside the same cell; `Best` stays the default and is unchanged. `GridCell.all` already held every cabin's rows,
+  so both prices were a rendering question and `src/lib/grid/pivot.ts` needed one pure helper (`bestPerCabin`) rather
+  than a second axis. Rejected alternatives: **split rows** (J and F interleaved down one column, so "cheapest business
+  across 30 dates" becomes a read of every other row, ArrowDown stops meaning "next date", and a 30-day phone grid
+  becomes 60 rows) and **split columns** (halves the route axis, the axis the product exists for, and re-keys
+  `grid.cols`, which silently breaks the pair-keyed not-monitored / not-fetched column sub-labels).
+  Still open from it: `cell.best` is best-across-cabins, so `gridStats.cheapest`, the CSV `best` flag, the drawer's lead
+  program and the Ask context pill name ONE winner while the user is looking at two. Making `best` cabin-aware ripples
+  into the standing-query diff and the notification digest, so it is deferred.
 - **Progressive per-program fill: closed, not deferred.** Spec §3.4 wants cells to land as each program returns, with
   an `Alaska ✓ American ✓ Aeroplan …` status line. It cannot be built against seats.aero without breaking kickoff
   §0.2. One Cached Search request carries every program in a single comma-joined `sources` parameter

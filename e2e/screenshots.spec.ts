@@ -74,6 +74,7 @@ import {
   saveEditQueryDrawer,
   searching,
   setCabin,
+  setCells,
   setRows,
   showFlights,
   showFlightsError,
@@ -184,6 +185,13 @@ test.describe("screenshots", () => {
     await expect(grid(page).locator("tbody th[role='rowheader']").first()).toContainText(/[A-Z]{3} → [A-Z]{3}/);
     await shot(page, "grid", "rows-routes");
     await setRows(page, "dates");
+
+    // Cells: Per cabin — one 16 px line per cabin inside the same cell (§6.2b).
+    await setCells(page, "per_cabin");
+    await expect(page.locator(".ag-cabin-line").first()).toBeAttached();
+    await shot(page, "grid", "cells-per-cabin");
+    await setCells(page, "best");
+    await expect(page.locator(".ag-cabin-line")).toHaveCount(0);
 
     for (const cabin of ["J", "F"] as const) {
       await setCabin(page, cabin);

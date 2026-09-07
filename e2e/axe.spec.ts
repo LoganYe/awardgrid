@@ -167,6 +167,30 @@ test.describe("axe", () => {
   });
 
   /**
+   * The per-cabin cell layout (docs/UI_PLAN.md §6.2b). The grid's semantics are unchanged — one
+   * gridcell per intersection, the same indices — but the cell now stacks one aria-hidden line
+   * per cabin and the whole announcement is a longer aria-label, so the grid is audited again
+   * with the mode on, at both audited widths.
+   */
+  test("grid-per-cabin", async ({ page }) => {
+    await openGridWithResults(page, "demo", CANONICAL_QUERY_EN);
+    const mobile = test.info().project.name.startsWith("mobile");
+    let controls = page.getByRole("toolbar");
+    if (mobile) {
+      await controls.getByRole("button", { name: en["grid.toolbar.filters"] }).click();
+      controls = page.getByRole("dialog");
+      await expect(controls).toBeVisible();
+    }
+    await controls.getByRole("group", { name: en["grid.toolbar.cells"] }).getByRole("button", { name: en["grid.toolbar.cells_per_cabin"], exact: true }).click();
+    if (mobile) {
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toBeHidden();
+    }
+    await expect(page.locator(".ag-cabin-line").first()).toBeAttached();
+    await audit(page, "grid-per-cabin");
+  });
+
+  /**
    * All seven chip editors, in one page load. The popovers are the densest interactive surfaces
    * in the product — a search combobox with a listbox, city group rows with per-airport toggles,
    * a two-month range calendar, checkbox lists, a switch and a select — and every one of them

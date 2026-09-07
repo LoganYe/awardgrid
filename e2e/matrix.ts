@@ -105,6 +105,7 @@ export const MATRIX: readonly MatrixShot[] = [
   { page: "grid", state: "hover-tooltip", what: "Hover: highlighted headers and the per-program tooltip", viewports: ["desktop"] },
   { page: "grid", state: "focus-ring", what: "Keyboard focus: the 2 px accent ring on a cell" },
   { page: "grid", state: "rows-routes", what: "Rows toggle: routes down the side, dates across" },
+  { page: "grid", state: "cells-per-cabin", what: "Both cabins stacked in one cell: one line each, J then F (§6.2b)" },
   { page: "grid", state: "cabin-J", what: "Business only — no cabin tag" },
   { page: "grid", state: "cabin-F", what: "First only — no cabin tag" },
   { page: "grid", state: "dynamic-on", what: "Dynamic pricing shown (the filtered cells become live)" },

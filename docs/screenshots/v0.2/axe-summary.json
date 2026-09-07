@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-07T07:29:08.961Z",
+  "generated_at": "2026-09-07T08:41:13.463Z",
   "note": "axe-core audit of every page and state, on desktop-light, desktop-dark and mobile-light; zero serious/critical is enforced by default (E2E_AXE_STRICT=0 downgrades it to a report). Each page carries the time it was audited.",
   "pages": {
     "desktop-light/login": {
-      "url": "http://127.0.0.1:3440/login",
-      "at": "2026-09-07T07:22:15.959Z",
+      "url": "http://127.0.0.1:3430/login",
+      "at": "2026-09-07T08:34:34.926Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -14,8 +14,8 @@
       "violations": []
     },
     "desktop-light/register": {
-      "url": "http://127.0.0.1:3440/register",
-      "at": "2026-09-07T07:22:16.333Z",
+      "url": "http://127.0.0.1:3430/register",
+      "at": "2026-09-07T08:34:35.281Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -25,8 +25,8 @@
       "violations": []
     },
     "desktop-light/legal": {
-      "url": "http://127.0.0.1:3440/legal",
-      "at": "2026-09-07T07:22:16.774Z",
+      "url": "http://127.0.0.1:3430/legal",
+      "at": "2026-09-07T08:34:35.701Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -36,8 +36,8 @@
       "violations": []
     },
     "desktop-light/grid-results": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:18.528Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:37.426Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -47,8 +47,8 @@
       "violations": []
     },
     "desktop-light/settings": {
-      "url": "http://127.0.0.1:3440/settings",
-      "at": "2026-09-07T07:22:38.895Z",
+      "url": "http://127.0.0.1:3430/settings",
+      "at": "2026-09-07T08:34:58.885Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -58,8 +58,8 @@
       "violations": []
     },
     "desktop-light/queries": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:22:36.721Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:34:56.763Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -69,8 +69,8 @@
       "violations": []
     },
     "desktop-dark/login": {
-      "url": "http://127.0.0.1:3440/login",
-      "at": "2026-09-07T07:25:36.200Z",
+      "url": "http://127.0.0.1:3430/login",
+      "at": "2026-09-07T08:37:51.677Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -80,8 +80,8 @@
       "violations": []
     },
     "desktop-dark/register": {
-      "url": "http://127.0.0.1:3440/register",
-      "at": "2026-09-07T07:25:36.668Z",
+      "url": "http://127.0.0.1:3430/register",
+      "at": "2026-09-07T08:37:52.036Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -91,8 +91,8 @@
       "violations": []
     },
     "desktop-dark/legal": {
-      "url": "http://127.0.0.1:3440/legal",
-      "at": "2026-09-07T07:25:37.153Z",
+      "url": "http://127.0.0.1:3430/legal",
+      "at": "2026-09-07T08:37:52.461Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -102,8 +102,8 @@
       "violations": []
     },
     "desktop-dark/grid-results": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:39.391Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:37:54.326Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -113,8 +113,8 @@
       "violations": []
     },
     "desktop-dark/settings": {
-      "url": "http://127.0.0.1:3440/settings",
-      "at": "2026-09-07T07:26:06.619Z",
+      "url": "http://127.0.0.1:3430/settings",
+      "at": "2026-09-07T08:38:17.456Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -124,8 +124,8 @@
       "violations": []
     },
     "desktop-dark/queries": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:26:03.984Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:38:15.088Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -135,8 +135,8 @@
       "violations": []
     },
     "desktop-light/grid-cell-drawer": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:31.811Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:51.926Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -146,8 +146,8 @@
       "violations": []
     },
     "desktop-light/grid-ask-drawer": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:33.721Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:53.713Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -157,8 +157,8 @@
       "violations": []
     },
     "desktop-dark/grid-cell-drawer": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:56.965Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:38:10.137Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -168,8 +168,8 @@
       "violations": []
     },
     "desktop-dark/grid-ask-drawer": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:59.800Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:38:12.048Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -179,8 +179,8 @@
       "violations": []
     },
     "mobile-light/grid-cell-drawer": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:29:01.801Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:41:07.140Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -190,8 +190,8 @@
       "violations": []
     },
     "mobile-light/grid-ask-drawer": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:29:03.647Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:41:08.814Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -201,8 +201,8 @@
       "violations": []
     },
     "desktop-light/queries-expanded": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:22:37.305Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:34:57.354Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -212,8 +212,8 @@
       "violations": []
     },
     "desktop-light/queries-edit-drawer": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:22:37.965Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:34:57.990Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -223,8 +223,8 @@
       "violations": []
     },
     "desktop-dark/queries-expanded": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:26:04.715Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:38:15.680Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -234,8 +234,8 @@
       "violations": []
     },
     "desktop-dark/queries-edit-drawer": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:26:05.529Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:38:16.405Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -245,8 +245,8 @@
       "violations": []
     },
     "desktop-light/grid-chip-origins": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:20.458Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:41.096Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -256,8 +256,8 @@
       "violations": []
     },
     "desktop-light/grid-chip-destinations": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:21.990Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:42.487Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -267,8 +267,8 @@
       "violations": []
     },
     "desktop-light/grid-chip-dates": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:23.689Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:44.101Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -278,8 +278,8 @@
       "violations": []
     },
     "desktop-light/grid-chip-cabins": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:25.179Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:45.536Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -289,8 +289,8 @@
       "violations": []
     },
     "desktop-light/grid-chip-programs": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:26.757Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:47.054Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -300,8 +300,8 @@
       "violations": []
     },
     "desktop-light/grid-chip-direct_only": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:28.274Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:48.478Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -311,8 +311,8 @@
       "violations": []
     },
     "desktop-light/grid-chip-sort": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:29.727Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:49.945Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -322,8 +322,8 @@
       "violations": []
     },
     "desktop-light/grid-quota": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:34.365Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:54.426Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -333,8 +333,8 @@
       "violations": []
     },
     "desktop-light/grid-no-key": {
-      "url": "http://127.0.0.1:3440/grid",
-      "at": "2026-09-07T07:22:34.869Z",
+      "url": "http://127.0.0.1:3430/grid",
+      "at": "2026-09-07T08:34:54.935Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -344,8 +344,8 @@
       "violations": []
     },
     "desktop-light/grid-empty-results": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:22:35.524Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:55.592Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -355,8 +355,8 @@
       "violations": []
     },
     "desktop-light/grid-parse-failure": {
-      "url": "http://127.0.0.1:3440/grid",
-      "at": "2026-09-07T07:22:35.980Z",
+      "url": "http://127.0.0.1:3430/grid",
+      "at": "2026-09-07T08:34:56.046Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -366,8 +366,8 @@
       "violations": []
     },
     "desktop-light/grid-manual-mode": {
-      "url": "http://127.0.0.1:3440/grid",
-      "at": "2026-09-07T07:22:36.259Z",
+      "url": "http://127.0.0.1:3430/grid",
+      "at": "2026-09-07T08:34:56.313Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -377,8 +377,8 @@
       "violations": []
     },
     "desktop-light/queries-empty": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:22:38.379Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:34:58.386Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -388,8 +388,8 @@
       "violations": []
     },
     "desktop-dark/grid-chip-origins": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:41.739Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:37:58.394Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -399,8 +399,8 @@
       "violations": []
     },
     "desktop-dark/grid-chip-destinations": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:43.548Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:37:59.921Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -410,8 +410,8 @@
       "violations": []
     },
     "desktop-dark/grid-chip-dates": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:45.532Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:38:01.751Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -421,8 +421,8 @@
       "violations": []
     },
     "desktop-dark/grid-chip-cabins": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:47.528Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:38:03.339Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -432,8 +432,8 @@
       "violations": []
     },
     "desktop-dark/grid-chip-programs": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:49.454Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:38:04.959Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -443,8 +443,8 @@
       "violations": []
     },
     "desktop-dark/grid-chip-direct_only": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:51.343Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:38:06.516Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -454,8 +454,8 @@
       "violations": []
     },
     "desktop-dark/grid-chip-sort": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:25:53.699Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:38:08.015Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -465,8 +465,8 @@
       "violations": []
     },
     "desktop-dark/grid-quota": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:26:00.973Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:38:12.743Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -476,8 +476,8 @@
       "violations": []
     },
     "desktop-dark/grid-no-key": {
-      "url": "http://127.0.0.1:3440/grid",
-      "at": "2026-09-07T07:26:01.549Z",
+      "url": "http://127.0.0.1:3430/grid",
+      "at": "2026-09-07T08:38:13.243Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -487,8 +487,8 @@
       "violations": []
     },
     "desktop-dark/grid-empty-results": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:26:02.428Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:38:13.888Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -498,8 +498,8 @@
       "violations": []
     },
     "desktop-dark/grid-parse-failure": {
-      "url": "http://127.0.0.1:3440/grid",
-      "at": "2026-09-07T07:26:03.081Z",
+      "url": "http://127.0.0.1:3430/grid",
+      "at": "2026-09-07T08:38:14.341Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -509,8 +509,8 @@
       "violations": []
     },
     "desktop-dark/grid-manual-mode": {
-      "url": "http://127.0.0.1:3440/grid",
-      "at": "2026-09-07T07:26:03.428Z",
+      "url": "http://127.0.0.1:3430/grid",
+      "at": "2026-09-07T08:38:14.613Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -520,8 +520,8 @@
       "violations": []
     },
     "desktop-dark/queries-empty": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:26:06.019Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:38:16.888Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -531,8 +531,8 @@
       "violations": []
     },
     "mobile-light/login": {
-      "url": "http://127.0.0.1:3440/login",
-      "at": "2026-09-07T07:28:46.858Z",
+      "url": "http://127.0.0.1:3430/login",
+      "at": "2026-09-07T08:40:52.297Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -542,8 +542,8 @@
       "violations": []
     },
     "mobile-light/register": {
-      "url": "http://127.0.0.1:3440/register",
-      "at": "2026-09-07T07:28:47.249Z",
+      "url": "http://127.0.0.1:3430/register",
+      "at": "2026-09-07T08:40:52.649Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -553,8 +553,8 @@
       "violations": []
     },
     "mobile-light/legal": {
-      "url": "http://127.0.0.1:3440/legal",
-      "at": "2026-09-07T07:28:47.655Z",
+      "url": "http://127.0.0.1:3430/legal",
+      "at": "2026-09-07T08:40:53.017Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -564,8 +564,8 @@
       "violations": []
     },
     "mobile-light/grid-results": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:28:49.352Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:40:54.574Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -575,8 +575,8 @@
       "violations": []
     },
     "mobile-light/grid-chip-origins": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:28:51.179Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:40:58.069Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -586,8 +586,8 @@
       "violations": []
     },
     "mobile-light/grid-chip-destinations": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:28:52.613Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:40:59.308Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -597,8 +597,8 @@
       "violations": []
     },
     "mobile-light/grid-chip-dates": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:28:54.055Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:41:00.686Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -608,8 +608,8 @@
       "violations": []
     },
     "mobile-light/grid-chip-cabins": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:28:55.410Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:41:01.906Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -619,8 +619,8 @@
       "violations": []
     },
     "mobile-light/grid-chip-programs": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:28:56.881Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:41:03.216Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -630,8 +630,8 @@
       "violations": []
     },
     "mobile-light/grid-chip-direct_only": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:28:58.259Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:41:04.423Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -641,8 +641,8 @@
       "violations": []
     },
     "mobile-light/grid-chip-sort": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:28:59.579Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:41:05.630Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -652,8 +652,8 @@
       "violations": []
     },
     "mobile-light/grid-quota": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:29:04.330Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:41:09.385Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -663,8 +663,8 @@
       "violations": []
     },
     "mobile-light/grid-no-key": {
-      "url": "http://127.0.0.1:3440/grid",
-      "at": "2026-09-07T07:29:04.876Z",
+      "url": "http://127.0.0.1:3430/grid",
+      "at": "2026-09-07T08:41:09.837Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -674,8 +674,8 @@
       "violations": []
     },
     "mobile-light/grid-empty-results": {
-      "url": "http://127.0.0.1:3440/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
-      "at": "2026-09-07T07:29:05.532Z",
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:41:10.454Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -685,8 +685,8 @@
       "violations": []
     },
     "mobile-light/grid-parse-failure": {
-      "url": "http://127.0.0.1:3440/grid",
-      "at": "2026-09-07T07:29:05.997Z",
+      "url": "http://127.0.0.1:3430/grid",
+      "at": "2026-09-07T08:41:10.852Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -696,8 +696,8 @@
       "violations": []
     },
     "mobile-light/grid-manual-mode": {
-      "url": "http://127.0.0.1:3440/grid",
-      "at": "2026-09-07T07:29:06.305Z",
+      "url": "http://127.0.0.1:3430/grid",
+      "at": "2026-09-07T08:41:11.107Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -707,8 +707,8 @@
       "violations": []
     },
     "mobile-light/queries": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:29:06.762Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:41:11.504Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -718,8 +718,8 @@
       "violations": []
     },
     "mobile-light/queries-expanded": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:29:07.363Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:41:12.043Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -729,8 +729,8 @@
       "violations": []
     },
     "mobile-light/queries-edit-drawer": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:29:08.063Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:41:12.670Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -740,8 +740,8 @@
       "violations": []
     },
     "mobile-light/queries-empty": {
-      "url": "http://127.0.0.1:3440/queries",
-      "at": "2026-09-07T07:29:08.482Z",
+      "url": "http://127.0.0.1:3430/queries",
+      "at": "2026-09-07T08:41:13.035Z",
       "counts": {
         "critical": 0,
         "serious": 0,
@@ -751,8 +751,41 @@
       "violations": []
     },
     "mobile-light/settings": {
-      "url": "http://127.0.0.1:3440/settings",
-      "at": "2026-09-07T07:29:08.961Z",
+      "url": "http://127.0.0.1:3430/settings",
+      "at": "2026-09-07T08:41:13.463Z",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-light/grid-per-cabin": {
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:34:39.127Z",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "desktop-dark/grid-per-cabin": {
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:37:56.137Z",
+      "counts": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "violations": []
+    },
+    "mobile-light/grid-per-cabin": {
+      "url": "http://127.0.0.1:3430/grid?q=eyJvcmlnaW5zIjpbIkhLRyIsIlBWRyIsIlNIQSIsIk5SVCIsIkhORCIsIklDTiIsIkdNUCJdLCJkZXN0aW5hdGlvbnMiOlsiU0VBIl0sImRhdGVfZnJvbSI6IjIwMjYtMDktMDciLCJkYXRlX3RvIjoiMjAyNi0xMC0wNiIsImNhYmlucyI6WyJKIiwiRiJdLCJkaXJlY3Rfb25seSI6ZmFsc2UsImluY2x1ZGVfZmlsdGVyZWQiOmZhbHNlLCJzb3J0X2J5IjoibWlsZXNfYXNjIiwicmF3X3RleHQiOiJIS0csIFNIQSwgVFlPLCBTRUwgdG8gU0VBLCBuZXh0IDMwIGRheXMsIGJ1c2luZXNzIGFuZCBmaXJzdCIsImxhbmd1YWdlIjoiZW4ifQ",
+      "at": "2026-09-07T08:40:56.373Z",
       "counts": {
         "critical": 0,
         "serious": 0,

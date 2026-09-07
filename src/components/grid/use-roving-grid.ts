@@ -74,6 +74,18 @@ export function useFinePointer(): boolean {
 
 /** Row heights per density (px). Mirrors --row-desktop / --row-tablet / --row-touch in tokens.css. */
 export const ROW_HEIGHT: Record<Density, number> = { desktop: 48, tablet: 32, mobile: 40 };
+/**
+ * Row height for a density and the number of cabin lines the cell draws (1 in "best" layout).
+ *
+ * One line is today's density height, unchanged. Beyond that the row is the lines themselves —
+ * 16 px each, the --leading-grid the cell's `.ag-l1` is built on — plus 8 px of padding to keep
+ * them off the rules. Two lines therefore cost desktop and mobile nothing (48 and 40 already fit)
+ * and grow tablet 32 → 40, the one density the per-cabin mode costs (docs/UI_PLAN.md §4, §6.3).
+ */
+export function rowHeightFor(density: Density, lines: number): number {
+  return Math.max(ROW_HEIGHT[density], lines > 1 ? lines * 16 + 8 : 0);
+}
+
 /** Minimum column width (px), mirrors --column-min. Also the fixed width under column virtualization. */
 export const COLUMN_MIN = 112;
 /** Sticky row-header column width per density (docs/UI_PLAN.md §4). */

@@ -7,15 +7,17 @@
  * upper-cased and validated as IATA before they become chips.
  */
 import type { AvailabilityRow, Grid, GridCell } from "@/lib/grid/types";
-import { MAX_SPAN_DAYS, QueryObject, type Cabin, type SortBy } from "@/lib/query/schema";
+import { CABIN_ORDER, MAX_SPAN_DAYS, QueryObject, type Cabin, type SortBy } from "@/lib/query/schema";
 import { SEATS_SOURCES } from "@/lib/seatsaero/types";
 
 /**
  * The one canonical cabin order, spec §3.2's "J / F / W / Y". Both the toolbar's toggle and the
  * chip editor rewrite `cabins` into it, so the same set always reads the same way ("J, F"),
- * whichever control the user touched.
+ * whichever control the user touched. It lives in the schema now (the per-cabin cell in
+ * src/lib/grid/pivot.ts needs it, and a lib module must not import a component one); this
+ * re-export keeps the component-layer name that the chip editors already import.
  */
-export const ALL_CABINS: readonly Cabin[] = ["J", "F", "W", "Y"];
+export const ALL_CABINS: readonly Cabin[] = CABIN_ORDER;
 export const SORT_OPTIONS: readonly SortBy[] = ["miles_asc", "fees_asc", "seats_desc", "date_asc"];
 
 export type ChipAction =
