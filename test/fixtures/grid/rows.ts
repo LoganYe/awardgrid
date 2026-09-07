@@ -37,6 +37,7 @@ export function makeQuery(over: Partial<QueryObject> = {}): QueryObject {
     cabins: ["J", "F"],
     direct_only: false,
     include_filtered: false,
+    min_cabin_pct: 100,
     sort_by: "miles_asc",
     raw_text: "test",
     language: "en",

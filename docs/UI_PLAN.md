@@ -132,7 +132,8 @@ Product name is 14/500 `--fg` plain text, a link to `/grid`. Current nav link is
 │ Parsed from: 香港,上海,东京,首尔到西雅图 未来一个月 头等                                   │ 12/16 muted
 │                                                                                            │
 │ [Origins HKG, PVG/SHA, NRT/HND, ICN] [Destinations SEA] [Dates Oct 1 – Oct 30 (30 days)]   │ chips 28 h
-│ [Cabins J F] [Programs all 24] [Direct only off] [Sort miles]     Reset to parsed    Run  │ Run appears only when modified
+│ [Cabins J F] [Programs all 24] [Direct only off] [Mixed cabin not allowed] [Sort miles]     │ chips 28 h
+│                                                        Reset to parsed  Run │ its own row once modified (§6.4)
 │ ─────────────────────────────────────────────────────────────────────────────────────────── │ 1px --line
 │ Rows: Dates | Routes   J  F  Both      ○ Show dynamic pricing        Save as standing query  Export CSV │ 32
 │ Asking seats.aero about all 26 mileage programs…                                   8s     │ 12/16, only while loading
@@ -170,7 +171,7 @@ Page-level states replace the grid area: **No key** — 14 px sentence + `Open s
 └──────────────────────────────────┘          └──────────────────────────────────┘
 Cabins: four toggles J F W Y (at least one; the last one cannot be switched off).
 Programs: search input + checkbox list from the user's routes catalog, "All" at the top; chip shows "all 24" or "3 of 24".
-Direct only: one switch. Sort: one select bound to sort_by (Fewest miles, Lowest fees, Most seats, Earliest date — the four values of `SortBy` in `src/lib/query/schema.ts`).
+Direct only: one switch. Mixed cabin: one select bound to min_cabin_pct (not allowed = 100, 75% and up, 50% and up, 25% and up, any = 0). The default reads "not allowed", never "off": Direct only sits immediately to its left and there "off" lifts a constraint, while 100 is the constraint at maximum and the reason a cell can read "none". Under the select, a hint that names the chosen value — "Keeps only itineraries flown entirely in the chosen cabin." at 100, "Keeps itineraries flying at least {pct}% of the distance in the chosen cabin." between, "Keeps every itinerary, whatever share of the distance is in the chosen cabin." at 0 — because one fixed sentence is unmoored at 100 and false at 0. A value carried in a `?q=` link that is none of the presets is appended as its own option so a shared link round-trips. Sort: one select bound to sort_by (Fewest miles, Lowest fees, Most seats, Earliest date — the four values of `SortBy` in `src/lib/query/schema.ts`).
 Empty Origins/Destinations: chip in --error with "Add at least one airport" under the list.
 ```
 
@@ -243,7 +244,7 @@ Fees and seats move to the tooltip and the drawer. In **Per cabin** rows are 40 
 │ [ Run ]              Examples │
 │ Parsed from: 香港,上海…         │
 │ [Origins 5][Dest SEA][Oct 1–30]│ chips wrap, 32 h touch
-│ [J F][all 24][Direct off][miles]│
+│ [J F][all 24][Direct off][Mixed not allowed][miles]│
 │ Filters                  Run  │ toolbar collapsed into a sheet; "Filters" is a plain button
 │ ┌──────┬─────────┬─────────┬─ │
 │ │      │ HKG→SEA │ PVG→SEA │ N│ 40
@@ -260,7 +261,7 @@ Fees and seats move to the tooltip and the drawer. In **Per cabin** rows are 40 
       │ Export CSV            │
       └───────────────────────┘
 ```
-Cabin tag stays (`J 60,000`) when both cabins are shown; the program name moves to the drawer. **Per cabin** costs the phone nothing: two 16 px lines and 8 px of padding are exactly the 40 px touch row, the row head stays 72 px, and the one-line mobile cell — which is what the per-cabin line reuses — was already only the tag, the miles and the age. The Filters sheet gains one row, `Cells  Best | Per cabin`, between Cabins and the dynamic-pricing switch. Top bar keeps name, quota and a menu (nav + language + theme + log out).
+The chip row is eight chips below 768 as well, and the eighth is free at rest and costs a row while editing. Pixel-measured on the published captures either side of issue #18: **at rest** at 390 x 844, seven and eight chips both wrap to four rows and the grid header lands at the same y, so Mixed cabin joins the last row for nothing. **Modified** — chips edited, not yet run — it costs one chip row in both bands, because "Reset to parsed / Run" no longer fits beside the last chip and takes a line of its own: 48 px at 390 (the "Run to refresh" band moves y = 460 → 508, one 40 px data row off the first paint) and 36 px at 1440 (y = 240 → 276). Two things were weighed and both were accepted rather than fixed. The row itself: hiding the chip contradicts §6.4:391 (the chips are the single source of truth for what the grid was asked), and letting Run share the eighth chip's row puts a destructive-looking affordance inside a flow that wraps unpredictably. And the width of the default summary: "not allowed" is what pushes the 1440 case over, and "off" would fit — but "off" is the word Direct only uses beside it for the opposite meaning, and a wrong word costs more than a line of chrome in a state the user is passing through. The 48 px belongs to the open mobile-viewport item in BACKLOG.md, which is now scoped to measure the modified state too. Cabin tag stays (`J 60,000`) when both cabins are shown; the program name moves to the drawer. **Per cabin** costs the phone nothing: two 16 px lines and 8 px of padding are exactly the 40 px touch row, the row head stays 72 px, and the one-line mobile cell — which is what the per-cabin line reuses — was already only the tag, the miles and the age. The Filters sheet gains one row, `Cells  Best | Per cabin`, between Cabins and the dynamic-pricing switch. Top bar keeps name, quota and a menu (nav + language + theme + log out).
 
 ### 6.5 Cell drawer (480 px, right; full-height sheet < 768)
 
@@ -533,3 +534,7 @@ Every change made to this document by the review, with the reason.
 - **The Run button has three labels, not two.** §6.2 shows one busy label; parsing and searching are two phases and the status line 20 px below the button already distinguished them, so the button reads Run / Parsing… / Running… and reserves the widest of the three so it cannot resize mid-submit.
 - **The quota banner's third sentence is conditional.** §6.2's "Cached results are still shown" is only true when a previously fetched grid is on screen; hitting the limit on the first search of the day left the sentence describing a blank page. It is a separate string now, and the no-cache case gets the left-aligned empty state §6.2 gives every other page-level state.
 - Not changed, re-checked: the eleven colour tokens, the three radii, the 112 px minimum column, the seven chips and their order, the six cell states, the four freshness tiers, the drawer widths and the four presentations, the Queries columns, the Settings section order.
+
+### Revision from issue #18 (mixed-cabin availability)
+
+- **Eighth chip added: Mixed cabin** (issue #18; §6.2, §6.2a, §6.4 amended). `min_cabin_pct` (0-100, default 100) changes what seats.aero returns and is part of the cache scope, so an itinerary flown in business with one regional economy leg comes back as nothing and the grid renders an unexplained `none`. It was placed at index 6 — after Direct only, before Sort, keeping the two search-shaping toggles together and Sort last as the only display-only chip — and not in the toolbar beside "Show dynamic pricing", although that is the closer structural precedent. Two reasons. The toolbar acts at once (`commit` → `runFind`, `grid-app.tsx:195`), which is right for a boolean and wrong for a value the user finds by trial against a 1000-call daily budget; and `include_filtered` can live there only because its effect is self-evidencing in the grid via the `dyn` cell tag, while a mixed-cabin result carries no cell-level mark and its only evidence is the drawer badge behind "Show flights". §6.4:391 requires the chips to be the single source of truth for what the grid was asked; a results-changing field the chips did not show would have contradicted that in substance. "Seven chips in the spec's order", confirmed unchanged in the 6.0 and 6.1 passes, is now eight.

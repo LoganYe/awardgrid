@@ -33,6 +33,9 @@ const NARROW = { width: 390, height: 844 };
 /** Every route a signed-in user can reach, for the sweeps that must hold on all of them. */
 const PAGES = ["/grid", "/queries", "/settings", "/legal"] as const;
 
+/** The chips in spec order (chips.spec.ts pins this against the real constant). */
+const CHIP_IDS = ["origins", "destinations", "dates", "cabins", "programs", "direct_only", "min_cabin_pct", "sort"] as const;
+
 const cells = (page: Page) => page.locator('td[role="gridcell"][data-state="ok"]');
 
 /**
@@ -275,7 +278,7 @@ test.describe("responsive", () => {
     await expect(sheet.getByRole("button", { name: en["ask.open"] })).toBeVisible();
   });
 
-  /** §6: "chips wrap to multiple lines" — seven chips cannot sit on one 390 px row. */
+  /** §6: "chips wrap to multiple lines" — eight chips cannot sit on one 390 px row. */
   test("the chips wrap at 390", async ({ page }) => {
     await resize(page, NARROW);
     await openGridWithResults(page, "demo", CANONICAL_QUERY_EN);
@@ -367,6 +370,27 @@ test.describe("responsive", () => {
 
     await openAskDrawer(page);
     expect(await smallTargets(page)).toEqual([]);
+  });
+
+  /**
+   * The same floor inside the chip editor popovers, which the sweep above never entered. The
+   * Mixed cabin editor (issue #18) is the reason it is asserted now: it sets its `<select>` to
+   * `h-8` (32 px) and leans in its own comment on the bare `select { min-height: var(--row-touch) }`
+   * rule in globals.css to lift it to 40. Nothing measured that rule, so the next editor to
+   * inherit the assumption could have shipped under the floor unnoticed.
+   */
+  test("touch targets are at least 40 px at 390 inside every chip editor", async ({ page }) => {
+    await resize(page, NARROW);
+    await openGridWithResults(page, "demo", CANONICAL_QUERY_EN);
+    for (const id of CHIP_IDS) {
+      const trigger = page.locator(`[data-chip="${id}"]`);
+      await trigger.scrollIntoViewIfNeeded();
+      await trigger.click();
+      await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
+      expect(await smallTargets(page), id).toEqual([]);
+      await page.keyboard.press("Escape");
+      await expect(page.locator('[data-slot="popover-content"]')).toBeHidden();
+    }
   });
 
   /**

@@ -10,7 +10,7 @@
  * The in-memory store is for tests and the CLI; the web app supplies a SQLite-backed store
  * implementing the same interface.
  */
-import type { Cabin } from "@/lib/query/schema";
+import { DEFAULT_MIN_CABIN_PCT, type Cabin } from "@/lib/query/schema";
 import type { AvailabilityRow } from "@/lib/grid/types";
 
 export const DEFAULT_CACHE_TTL_MINUTES = 45;
@@ -31,6 +31,14 @@ export interface CacheQuery {
    * locally in either direction. Exact match only. Absent = false.
    */
   include_filtered?: boolean;
+  /**
+   * seats.aero `min_cabin_pct`. Like include_filtered this is an EXACT-MATCH scope in both
+   * directions, not a superset relation: at 100 the API drops every itinerary with mixed-cabin
+   * distance, so a 100 pull is missing rows a 70 pull returns, and a 70 pull carries rows a 100
+   * query must not be shown. Absent = 100 (the API default), which is what every row and record
+   * written before issue #18 is.
+   */
+  min_cabin_pct?: number;
 }
 
 export interface CoverageRecord {
@@ -45,6 +53,8 @@ export interface CoverageRecord {
   direct_only: boolean;
   /** True when the fetch carried include_filtered=true (see CacheQuery). Absent = false. */
   include_filtered?: boolean;
+  /** The min_cabin_pct the fetch carried (see CacheQuery). Absent = 100. */
+  min_cabin_pct?: number;
   fetched_at: string; // ISO
 }
 
@@ -65,8 +75,11 @@ export interface AvailabilityCacheStore {
   markPairsFetched(userId: string, records: readonly CoverageRecord[]): Promise<void>;
 }
 
-export function rowKey(r: Pick<AvailabilityRow, "program" | "origin" | "dest" | "date" | "cabin" | "include_filtered">): string {
-  return [r.program, r.origin, r.dest, r.date, r.cabin, r.include_filtered ? "filtered" : ""].join("|");
+export function rowKey(
+  r: Pick<AvailabilityRow, "program" | "origin" | "dest" | "date" | "cabin" | "include_filtered" | "min_cabin_pct">,
+): string {
+  const pct = r.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT;
+  return [r.program, r.origin, r.dest, r.date, r.cabin, r.include_filtered ? "filtered" : "", pct === DEFAULT_MIN_CABIN_PCT ? "" : `pct${pct}`].join("|");
 }
 
 export function rowMatches(r: AvailabilityRow, q: CacheQuery): boolean {
@@ -78,7 +91,8 @@ export function rowMatches(r: AvailabilityRow, q: CacheQuery): boolean {
     q.cabins.includes(r.cabin) &&
     (q.programs === undefined || q.programs.includes(r.program)) &&
     (!q.direct_only || r.direct) &&
-    (q.include_filtered ?? false) === (r.include_filtered ?? false)
+    (q.include_filtered ?? false) === (r.include_filtered ?? false) &&
+    (q.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT) === (r.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT)
   );
 }
 
@@ -147,6 +161,7 @@ export function coverageSatisfies(c: CoverageRecord, q: CacheQuery, ttlMinutes: 
   if (!isFreshTimestamp(c.fetched_at, ttlMinutes, now)) return false;
   if (c.direct_only && !q.direct_only) return false;
   if ((c.include_filtered ?? false) !== (q.include_filtered ?? false)) return false;
+  if ((c.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT) !== (q.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT)) return false;
   if (c.date_from > q.date_from || c.date_to < q.date_to) return false;
   if (!q.cabins.every((cab) => c.cabins.includes(cab))) return false;
   if (c.programs === null) return true;

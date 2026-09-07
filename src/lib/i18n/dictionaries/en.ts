@@ -99,6 +99,16 @@ export const en = {
   "grid.chips.cabins": "Cabins",
   "grid.chips.programs": "Programs",
   "grid.chips.direct_only": "Direct only",
+  "grid.chips.min_cabin_pct": "Mixed cabin",
+  // The default (100) must NOT borrow "off" from Direct only: there "off" lifts a constraint,
+  // here it is the strictest setting in the product and the reason cells read "none" (issue #18).
+  "grid.chips.mixed_cabin_none": "not allowed",
+  "grid.chips.mixed_cabin_min": "{pct}% and up",
+  "grid.chips.mixed_cabin_any": "any",
+  // One hint per value, because a fixed sentence is false at one end of the select or the other.
+  "grid.chips.mixed_cabin_hint_none": "Keeps only itineraries flown entirely in the chosen cabin.",
+  "grid.chips.mixed_cabin_hint_min": "Keeps itineraries flying at least {pct}% of the distance in the chosen cabin.",
+  "grid.chips.mixed_cabin_hint_any": "Keeps every itinerary, whatever share of the distance is in the chosen cabin.",
   "grid.chips.sort": "Sort",
   "grid.chips.remove": "Remove",
   "grid.rows_dates": "Rows: dates",

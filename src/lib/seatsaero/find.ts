@@ -120,6 +120,9 @@ export function planFind(query: QueryObject, opts: PlanOptions = {}): FindPlan {
       ...(programs ? { sources: programs } : {}),
       ...(query.direct_only ? { only_direct_flights: true } : {}),
       ...(query.include_filtered ? { include_filtered: true } : {}),
+      // 100 is the API's own default: emitting nothing keeps the request byte-identical to
+      // what this product sent before min_cabin_pct existed.
+      ...(query.min_cabin_pct < 100 ? { min_cabin_pct: query.min_cabin_pct } : {}),
     },
   };
   const cachedCalls = search.pages;
@@ -166,6 +169,7 @@ function bulkRequestsFor(
     take: PAGE_SIZE,
     ...(cabin ? { cabin } : {}),
     ...(query.include_filtered ? { include_filtered: true } : {}),
+    ...(query.min_cabin_pct < 100 ? { min_cabin_pct: query.min_cabin_pct } : {}),
   };
   const routes = routesKnown?.routesFor(source);
   if (!routes) {
@@ -267,6 +271,9 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
     ...(programs ? { programs } : {}),
     direct_only: query.direct_only,
     include_filtered: query.include_filtered,
+    // min_cabin_pct changes what the API returns exactly as include_filtered does, so it is
+    // part of the scope: a 70 % search must not be answered from a 100 % record, nor poison it.
+    min_cabin_pct: query.min_cabin_pct,
   };
   const sources = programs ?? [...SEATS_SOURCES];
 
@@ -326,7 +333,11 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
     // warning tells the user, and refetching the same incomplete scope every render would
     // only spend more quota on the same answer. `all` keeps every cabin row of the fetched objects (a direct-only upstream filter is
     // per object, so an object can still carry a non-direct cabin); `rows` is the answer.
-    const all = availabilitiesToRows(availabilities, { fetchedAt, includeFiltered: query.include_filtered }).filter((r) =>
+    const all = availabilitiesToRows(availabilities, {
+      fetchedAt,
+      includeFiltered: query.include_filtered,
+      minCabinPct: query.min_cabin_pct,
+    }).filter((r) =>
       rowMatches(r, { ...scope, direct_only: false }),
     );
     rows = all.filter((r) => rowMatches(r, scope));
@@ -339,6 +350,7 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
       programs,
       direct_only: query.direct_only,
       include_filtered: query.include_filtered,
+      min_cabin_pct: query.min_cabin_pct,
       fetched_at: fetchedAt,
     }));
     await cache.deleteRows(userId, scope);

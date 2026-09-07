@@ -1,5 +1,5 @@
 /**
- * Phase 6.3 — the query bar and the seven chip editors (spec §3.1, §3.2, §3.7; docs/UI_PLAN.md
+ * Phase 6.3 — the query bar and the eight chip editors (spec §3.1, §3.2, §3.7; docs/UI_PLAN.md
  * §6.2 and §6.2a). One test per state, asserting the semantics:
  * the chip order, the value summaries, the popover keyboard contract (Enter opens, Esc closes
  * and returns focus), the modified state (accent outline, Run affordance, disabled toolbar,
@@ -18,8 +18,8 @@ import { zh } from "../src/lib/i18n/dictionaries/zh";
 import { applyTheme, CANONICAL_QUERY_EN, CANONICAL_QUERY_ZH, expect, loginAs, projectIndex, submitQuery, test, type E2eUsername } from "./fixtures";
 import { E2E_CHIP_SLOW_USERS } from "./users";
 
-/** The seven chips, in the order spec §3.2 pins. */
-const CHIP_ORDER = ["origins", "destinations", "dates", "cabins", "programs", "direct_only", "sort"];
+/** The eight chips, in the order spec §3.2 pins (Mixed cabin added at index 6, issue #18). */
+const CHIP_ORDER = ["origins", "destinations", "dates", "cabins", "programs", "direct_only", "min_cabin_pct", "sort"];
 
 const chips = (page: Page) => page.locator("[data-chip]");
 const chip = (page: Page, id: string) => page.locator(`[data-chip="${id}"]`);
@@ -41,8 +41,8 @@ async function settled(page: Page): Promise<void> {
 }
 
 /** Log in, run the canonical query and wait for the results grid and its chips. */
-async function openParsed(page: Page, opts: { zh?: boolean } = {}): Promise<void> {
-  await loginAs(page, "demo");
+async function openParsed(page: Page, opts: { zh?: boolean; user?: E2eUsername } = {}): Promise<void> {
+  await loginAs(page, opts.user ?? "demo");
   if (opts.zh) {
     const baseURL = new URL(test.info().project.use.baseURL ?? "http://127.0.0.1:3400");
     await page.context().addCookies([{ name: "ag_locale", value: "zh", domain: baseURL.hostname, path: "/" }]);
@@ -64,7 +64,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("query bar and chips", () => {
-  test("parsed: seven chips in spec order with their value summaries", async ({ page }) => {
+  test("parsed: eight chips in spec order with their value summaries", async ({ page }) => {
     await openParsed(page);
 
     expect(await chips(page).evaluateAll((els) => els.map((el) => el.getAttribute("data-chip")))).toEqual(CHIP_ORDER);
@@ -78,6 +78,12 @@ test.describe("query bar and chips", () => {
     await expect(chip(page, "cabins")).toContainText("J");
     await expect(chip(page, "programs")).toContainText("all");
     await expect(chip(page, "direct_only")).toContainText(en["grid.chips.off"]);
+    // At the API's default (100) the chip reads as a STATE beside "Direct only off", not a
+    // number nobody chose (issue #18).
+    await expect(chip(page, "min_cabin_pct")).toContainText(en["grid.chips.min_cabin_pct"]);
+    // NOT "off": that is what Direct only beside it says for the opposite meaning (#18).
+    await expect(chip(page, "min_cabin_pct")).toContainText(en["grid.chips.mixed_cabin_none"]);
+    await expect(chip(page, "min_cabin_pct")).not.toContainText(en["grid.chips.off"]);
     await expect(chip(page, "sort")).toContainText(en["grid.sort.miles_asc"]);
 
     // "Parsed from: <raw text>" keeps the chips traceable to what the user typed (spec §3.1).
@@ -201,6 +207,48 @@ test.describe("query bar and chips", () => {
     await expect(chip(page, "programs")).toHaveAttribute("data-chip-state", "default");
   });
 
+  test("mixed cabin editor: a non-default value is legible on the page and survives the ?q= round trip", async ({ page }) => {
+    // Its own account: this is the only test that runs the query twice, and on `demo` the two
+    // extra calls moved the quota readout in every capture taken after it (issue #18 review).
+    await openParsed(page, { user: "mixed" });
+    // At rest the chip says "not allowed" and nothing is modified.
+    await expect(chip(page, "min_cabin_pct")).toHaveAttribute("data-chip-state", "default");
+
+    const editor = await openChip(page, "min_cabin_pct");
+    const select = editor.getByRole("combobox", { name: en["grid.chips.min_cabin_pct"] });
+    await expect(select).toBeVisible();
+    // The hint says what the control does to the results, in the popover, not in a tooltip.
+    // The hint carries the value it describes, so it is true at whatever the select holds.
+    await expect(editor).toContainText(en["grid.chips.mixed_cabin_hint_none"]);
+    await select.selectOption("0");
+    await expect(editor).toContainText(en["grid.chips.mixed_cabin_hint_any"]);
+    await select.selectOption("75");
+    await expect(editor).toContainText(en["grid.chips.mixed_cabin_hint_min"].replace("{pct}", "75"));
+    await page.keyboard.press("Escape");
+    await expect(popover(page)).toBeHidden();
+
+    // The whole point of the chip: a non-default value is readable without opening anything.
+    await expect(chip(page, "min_cabin_pct")).toContainText(en["grid.chips.mixed_cabin_min"].replace("{pct}", "75"));
+    await expect(chip(page, "min_cabin_pct")).toHaveAttribute("data-chip-state", "modified");
+    await expect(page.getByTestId("chips-run")).toBeVisible();
+
+    // Running carries it into the ?q= link, and reloading that link reads it back.
+    await page.getByTestId("chips-run").click();
+    await settled(page);
+    await expect(chip(page, "min_cabin_pct")).toHaveAttribute("data-chip-state", "default");
+    const shared = page.url();
+    expect(shared).toContain("?q=");
+    await page.goto(shared);
+    await settled(page);
+    await expect(chip(page, "min_cabin_pct")).toContainText(en["grid.chips.mixed_cabin_min"].replace("{pct}", "75"));
+    await expect(page.getByTestId("chips-run")).toBeHidden();
+
+    // Opening the editor and leaving it alone must NOT mark the query modified.
+    await openChip(page, "min_cabin_pct");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("chips-run")).toBeHidden();
+  });
+
   test("modified: outline, Run affordance, disabled toolbar, dimmed grid, and ?q= only after Run", async ({ page }) => {
     await openParsed(page);
     const before = page.url();
@@ -278,7 +326,7 @@ test.describe("query bar and chips", () => {
 
   });
 
-  test("manual mode: 'Build it with chips instead' opens all seven chips with the first editor", async ({ page }) => {
+  test("manual mode: 'Build it with chips instead' opens all eight chips with the first editor", async ({ page }) => {
     await loginAs(page, "demo");
     await page.goto("/grid");
     await submitQuery(page, "国庆去东京");

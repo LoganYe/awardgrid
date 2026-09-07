@@ -2,7 +2,7 @@
  * axe-core audit of every page and every state (Phase 6.6, spec §8: "WCAG AA contrast in both
  * themes … zero serious/critical violations").
  *
- * Matrix: login · register · legal · grid-results · the seven chip editors · cell drawer · Ask
+ * Matrix: login · register · legal · grid-results · the eight chip editors · cell drawer · Ask
  * drawer · quota · no-key · empty results · parse failure · queries (list, expanded, edit
  * drawer, empty) · settings — each on **desktop-light, desktop-dark and mobile-light**. Dark
  * and light are separate runs because contrast is the violation these catch and the two themes
@@ -38,12 +38,12 @@ import {
 const AXE_STRICT = process.env.E2E_AXE_STRICT !== "0";
 
 /**
- * The seven chips in spec order. Inlined rather than imported from chips-model.ts: that module
+ * The eight chips in spec order. Inlined rather than imported from chips-model.ts: that module
  * pulls data/places.json, which Playwright's loader cannot import without a JSON attribute
  * (e2e/fixtures.ts inlines the query codec for the same reason). chips.spec.ts pins the order
  * against the real constant, so a divergence here fails there.
  */
-const CHIP_ORDER = ["origins", "destinations", "dates", "cabins", "programs", "direct_only", "sort"] as const;
+const CHIP_ORDER = ["origins", "destinations", "dates", "cabins", "programs", "direct_only", "min_cabin_pct", "sort"] as const;
 const SUMMARY_FILE = AXE_SUMMARY_FILE;
 
 type Impact = "critical" | "serious" | "moderate" | "minor";
@@ -191,7 +191,7 @@ test.describe("axe", () => {
   });
 
   /**
-   * All seven chip editors, in one page load. The popovers are the densest interactive surfaces
+   * All eight chip editors, in one page load. The popovers are the densest interactive surfaces
    * in the product — a search combobox with a listbox, city group rows with per-airport toggles,
    * a two-month range calendar, checkbox lists, a switch and a select — and every one of them
    * renders over the grid, so each is audited on its own rather than sampled.

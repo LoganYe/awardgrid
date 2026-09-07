@@ -11,6 +11,11 @@ export interface NormalizeOptions {
   fetchedAt: string;
   /** Whether the request carried include_filtered=true; stamped on every row for cache scoping. */
   includeFiltered?: boolean;
+  /**
+   * The min_cabin_pct the request carried; stamped on every row for cache scoping. 100 (the
+   * API's own default) is stamped as ABSENT, so a row is byte-identical to a pre-#18 one.
+   */
+  minCabinPct?: number;
 }
 
 /** "AA, B6" → ["AA","B6"]; null/"" → []. */
@@ -59,6 +64,7 @@ export function availabilityToRows(av: Availability, opts: NormalizeOptions): Av
       booking_url: null,
       fetched_at: opts.fetchedAt,
       ...(opts.includeFiltered ? { include_filtered: true } : {}),
+      ...(opts.minCabinPct !== undefined && opts.minCabinPct < 100 ? { min_cabin_pct: opts.minCabinPct } : {}),
     });
   }
   return rows;

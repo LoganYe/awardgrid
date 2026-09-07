@@ -273,7 +273,7 @@ export async function focusRing(page: Page): Promise<void> {
 }
 
 /** Open a chip's popover editor, optionally with a search term typed into it. */
-export async function openChipEditor(page: Page, id: "origins" | "dates" | "programs", search?: string): Promise<Locator> {
+export async function openChipEditor(page: Page, id: "origins" | "dates" | "programs" | "min_cabin_pct", search?: string): Promise<Locator> {
   const trigger = chip(page, id);
   await trigger.scrollIntoViewIfNeeded();
   await trigger.click();
@@ -332,12 +332,26 @@ export async function openExamples(page: Page): Promise<void> {
   await expect(popover(page).getByRole("button")).toHaveCount(3);
 }
 
-/** From a parse failure, take the escape hatch: seven chips, three of them blocking. */
+/** From a parse failure, take the escape hatch: eight chips, three of them blocking. */
 export async function openManualMode(page: Page): Promise<void> {
   await page.getByTestId("build-with-chips").click();
   await expect(popover(page)).toBeVisible();
   await expect(page.getByTestId("parse-failure")).toBeHidden();
   await expect(page.getByTestId("chips-error")).toHaveCount(3);
+}
+
+/**
+ * The Mixed cabin editor at a NON-default value (issue #18). Every other published capture shows
+ * the chip at 100, which is the one value that changes nothing: this is the state that changes
+ * what an empty cell means, so it is the state worth photographing. The popover is left open —
+ * the chip summary, the select and the value-specific hint are all in frame at once.
+ */
+export async function openMixedCabin(page: Page, pct = 75): Promise<Locator> {
+  const editor = await openChipEditor(page, "min_cabin_pct");
+  await editor.getByRole("combobox", { name: en["grid.chips.min_cabin_pct"] }).selectOption(String(pct));
+  await expect(chip(page, "min_cabin_pct")).toHaveAttribute("data-chip-state", "modified");
+  await expect(editor).toContainText(en["grid.chips.mixed_cabin_hint_min"].replace("{pct}", String(pct)));
+  return editor;
 }
 
 /** Flip the rows toggle to Routes (or back to Dates). */

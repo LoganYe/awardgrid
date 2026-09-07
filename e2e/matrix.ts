@@ -135,8 +135,9 @@ export const MATRIX: readonly MatrixShot[] = [
   { page: "grid", state: "origins", what: "Origins chip editor: city groups and search (§3.2)" },
   { page: "grid", state: "dates", what: "Dates chip editor: two months and the presets (§3.2)" },
   { page: "grid", state: "programs", what: "Programs chip editor: search and the count (§3.2)" },
+  { page: "grid", state: "mixed-cabin", what: "Mixed cabin chip editor at 75%: the one setting that changes what an empty cell means (§3.2, issue #18)" },
   { page: "grid", state: "chips-error", what: "An emptied Origins chip: red chip, the reason under the row, Run disabled (§3.2)" },
-  { page: "grid", state: "chips-manual", what: "'Build it with chips instead': seven chips, three of them blocking (§3.7)" },
+  { page: "grid", state: "chips-manual", what: "'Build it with chips instead': eight chips, three of them blocking (§3.7)" },
 
   // ---- queries (spec §4) -------------------------------------------------
   { page: "queries", state: "list", what: "One row per standing query", fullPage: true },

@@ -110,8 +110,20 @@ export function apiFind(query: QueryObject, orientation: Orientation, signal?: A
   return request<FindResponse>("/api/find", json({ query, orientation }), signal);
 }
 
-export function apiTrips(availabilityId: string, cabin: string, includeFiltered: boolean, signal?: AbortSignal): Promise<ApiResult<TripsForUserResult>> {
-  const qs = new URLSearchParams({ cabin, ...(includeFiltered ? { include_filtered: "true" } : {}) });
+export function apiTrips(
+  availabilityId: string,
+  cabin: string,
+  includeFiltered: boolean,
+  minCabinPct: number,
+  signal?: AbortSignal,
+): Promise<ApiResult<TripsForUserResult>> {
+  // Get Trips must ask in the SAME scope the grid was produced in, or the drawer's flight list
+  // contradicts the cell that opened it. 100 is the API default and is left off the wire.
+  const qs = new URLSearchParams({
+    cabin,
+    ...(includeFiltered ? { include_filtered: "true" } : {}),
+    ...(minCabinPct < 100 ? { min_cabin_pct: String(minCabinPct) } : {}),
+  });
   return request<TripsForUserResult>(`/api/trips/${encodeURIComponent(availabilityId)}?${qs}`, { method: "GET" }, signal);
 }
 

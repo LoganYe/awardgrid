@@ -54,6 +54,7 @@ export const SMOKE_QUERY: QueryObject = {
   cabins: ["F"],
   direct_only: false,
   include_filtered: false,
+  min_cabin_pct: 100,
   sort_by: "miles_asc",
   raw_text: "西雅图到东京 十月 最便宜的头等舱",
   language: "zh",

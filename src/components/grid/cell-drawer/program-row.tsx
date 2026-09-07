@@ -29,11 +29,14 @@ export interface ProgramRowProps {
   now: number;
   /** The query's dynamic-pricing scope; Get Trips must ask in the same scope it was cached in. */
   includeFiltered: boolean;
+  /** The query's min_cabin_pct; Get Trips must ask in the same scope, or the flight list
+   * would show itineraries the grid excluded (or hide ones it counted). */
+  minCabinPct: number;
   /** Fees and the booking link learned from Get Trips flow back into the grid. */
   onTripsLoaded: (row: AvailabilityRow, result: TripsForUserResult) => void;
 }
 
-export function ProgramRow({ row, now, includeFiltered, onTripsLoaded }: ProgramRowProps) {
+export function ProgramRow({ row, now, includeFiltered, minCabinPct, onTripsLoaded }: ProgramRowProps) {
   const t = useT();
   const locale = useLocale();
   const [flights, setFlights] = useState<FlightsState>({ status: "idle" });
@@ -42,7 +45,7 @@ export function ProgramRow({ row, now, includeFiltered, onTripsLoaded }: Program
 
   async function load() {
     setFlights({ status: "loading" });
-    const res = await apiTrips(row.source_id, row.cabin, includeFiltered);
+    const res = await apiTrips(row.source_id, row.cabin, includeFiltered, minCabinPct);
     if (res.ok) {
       setFlights({ status: "ok", result: res.value });
       onTripsLoaded(row, res.value);

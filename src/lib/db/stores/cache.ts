@@ -8,13 +8,16 @@
  * Two impedance mismatches between the Phase-1 interfaces and the migrated schema are bridged
  * here rather than by a schema change:
  *
- *  1. `AvailabilityRow.include_filtered` is a separate cache scope with its own identity (the
- *     in-memory store keys on it), but the table PK is (user, program, origin, dest, date, cabin).
- *     Rows fetched with include_filtered=true are stored with the program suffixed by
- *     `#filtered` (`encodeProgram`) and decoded on the way out, so both scopes coexist.
+ *  1. `AvailabilityRow.include_filtered` and `AvailabilityRow.min_cabin_pct` are separate cache
+ *     scopes with their own identity (the in-memory store keys on both), but the table PK is
+ *     (user, program, origin, dest, date, cabin). Rows fetched with include_filtered=true are
+ *     stored with the program suffixed by `#filtered`, and rows fetched with a non-default
+ *     min_cabin_pct with a further `#pct<N>` (`encodeProgram`), decoded on the way out, so the
+ *     scopes coexist. Both suffixes are written ONLY for the non-default value, so every row
+ *     already in the table keeps its exact stored text: that is why neither needed a migration.
  *
  *  2. `CoverageRecord` is a rectangle (date_from..date_to × cabins) tagged with programs,
- *     direct_only and include_filtered, while `cache_coverage` holds one row per
+ *     direct_only, include_filtered and min_cabin_pct, while `cache_coverage` holds one row per
  *     (date, cabin, programs_key). A record is expanded to rows on write; the flags ride in
  *     `programs_key` (`encodeProgramsKey`). On read, rows sharing (pair, programs_key,
  *     fetched_at) are folded back into records — one per (set of cabins with identical dates,
@@ -28,7 +31,7 @@ import { and, asc, eq, gte, inArray, like, lt, lte, notLike, sql } from "drizzle
 import type { Db } from "@/lib/db/client";
 import { availabilityCache, cacheCoverage, type AvailabilityCacheRow } from "@/lib/db/schema";
 import type { AvailabilityRow } from "@/lib/grid/types";
-import { Cabin } from "@/lib/query/schema";
+import { Cabin, DEFAULT_MIN_CABIN_PCT } from "@/lib/query/schema";
 import {
   minFetchedAt,
   rowMatches,
@@ -44,36 +47,61 @@ import {
 
 /** Suffix appended to `program` for rows fetched with include_filtered=true. */
 export const FILTERED_PROGRAM_SUFFIX = "#filtered";
+/**
+ * Suffix appended to `program` for rows fetched with a NON-DEFAULT min_cabin_pct, e.g.
+ * `alaska#pct70` / `alaska#filtered#pct70`. Written only when the value is not 100, so every
+ * row already in the table keeps its exact stored text and still decodes to 100 — which is why
+ * issue #18 needed no migration.
+ */
+export const PCT_PROGRAM_PREFIX = "#pct";
+const PCT_PROGRAM_RE = /#pct(\d{1,3})$/;
 /** `programs_key` marker for "every program the key can access". */
 export const ALL_PROGRAMS_KEY = "*";
 const KEY_FLAG_DIRECT = "direct";
 const KEY_FLAG_FILTERED = "filtered";
+const KEY_FLAG_PCT = "pct";
+const KEY_FLAG_PCT_RE = /^pct(\d{1,3})$/;
 
-export function encodeProgram(program: string, includeFiltered: boolean | undefined): string {
-  return includeFiltered ? `${program}${FILTERED_PROGRAM_SUFFIX}` : program;
+export function encodeProgram(program: string, includeFiltered: boolean | undefined, minCabinPct?: number): string {
+  const head = includeFiltered ? `${program}${FILTERED_PROGRAM_SUFFIX}` : program;
+  const pct = minCabinPct ?? DEFAULT_MIN_CABIN_PCT;
+  return pct === DEFAULT_MIN_CABIN_PCT ? head : `${head}${PCT_PROGRAM_PREFIX}${pct}`;
 }
 
-export function decodeProgram(stored: string): { program: string; include_filtered: boolean } {
-  if (stored.endsWith(FILTERED_PROGRAM_SUFFIX)) {
-    return { program: stored.slice(0, -FILTERED_PROGRAM_SUFFIX.length), include_filtered: true };
+export function decodeProgram(stored: string): { program: string; include_filtered: boolean; min_cabin_pct: number } {
+  // `#pct<N>` is the outer suffix, so it is stripped first.
+  let rest = stored;
+  let pct = DEFAULT_MIN_CABIN_PCT;
+  const m = PCT_PROGRAM_RE.exec(rest);
+  if (m) {
+    pct = Number(m[1]);
+    rest = rest.slice(0, -m[0].length);
   }
-  return { program: stored, include_filtered: false };
+  if (rest.endsWith(FILTERED_PROGRAM_SUFFIX)) {
+    return { program: rest.slice(0, -FILTERED_PROGRAM_SUFFIX.length), include_filtered: true, min_cabin_pct: pct };
+  }
+  return { program: rest, include_filtered: false, min_cabin_pct: pct };
 }
 
 /**
- * `programs_key` = "<programs>[|direct][|filtered]" where <programs> is "*" (all programs)
- * or the sorted, comma-joined program list. Sorted so the same set always yields the same PK.
+ * `programs_key` = "<programs>[|direct][|filtered][|pct<N>]" where <programs> is "*" (all
+ * programs) or the sorted, comma-joined program list. Sorted so the same set always yields the
+ * same PK. `pct<N>` is written only for a non-default N, so every key already in
+ * `cache_coverage` keeps its exact text and decodes to 100.
  */
 export function encodeProgramsKey(
   programs: readonly string[] | null | undefined,
   directOnly: boolean | undefined,
   includeFiltered: boolean | undefined,
+  minCabinPct?: number,
 ): string {
   const head =
     programs === null || programs === undefined ? ALL_PROGRAMS_KEY : [...new Set(programs)].sort().join(",");
   const flags: string[] = [];
   if (directOnly) flags.push(KEY_FLAG_DIRECT);
   if (includeFiltered) flags.push(KEY_FLAG_FILTERED);
+  const pct = minCabinPct ?? DEFAULT_MIN_CABIN_PCT;
+  if (pct !== DEFAULT_MIN_CABIN_PCT) flags.push(`${KEY_FLAG_PCT}${pct}`);
   return [head, ...flags].join("|");
 }
 
@@ -81,12 +109,15 @@ export function decodeProgramsKey(key: string): {
   programs: string[] | null;
   direct_only: boolean;
   include_filtered: boolean;
+  min_cabin_pct: number;
 } {
   const [head = ALL_PROGRAMS_KEY, ...flags] = key.split("|");
+  const pctFlag = flags.map((f) => KEY_FLAG_PCT_RE.exec(f)).find((m) => m !== null);
   return {
     programs: head === ALL_PROGRAMS_KEY ? null : head === "" ? [] : head.split(","),
     direct_only: flags.includes(KEY_FLAG_DIRECT),
     include_filtered: flags.includes(KEY_FLAG_FILTERED),
+    min_cabin_pct: pctFlag ? Number(pctFlag[1]) : DEFAULT_MIN_CABIN_PCT,
   };
 }
 
@@ -168,7 +199,7 @@ function parseAirlines(json: string): string[] {
 }
 
 function toRow(r: AvailabilityCacheRow): AvailabilityRow {
-  const { program, include_filtered } = decodeProgram(r.program);
+  const { program, include_filtered, min_cabin_pct } = decodeProgram(r.program);
   const row: AvailabilityRow = {
     program,
     origin: r.origin,
@@ -188,13 +219,15 @@ function toRow(r: AvailabilityCacheRow): AvailabilityRow {
   };
   // Only present when true, matching what normalize() produces and what callers compare against.
   if (include_filtered) row.include_filtered = true;
+  // Same rule for the default 100: absent, exactly as normalize() leaves it.
+  if (min_cabin_pct !== DEFAULT_MIN_CABIN_PCT) row.min_cabin_pct = min_cabin_pct;
   return row;
 }
 
 function toInsert(userId: string, r: AvailabilityRow): typeof availabilityCache.$inferInsert {
   return {
     userId,
-    program: encodeProgram(r.program, r.include_filtered),
+    program: encodeProgram(r.program, r.include_filtered, r.min_cabin_pct),
     origin: r.origin,
     dest: r.dest,
     date: r.date,
@@ -254,6 +287,7 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
     if (q.origins.length === 0 || q.dests.length === 0 || q.cabins.length === 0) return null;
     if (q.programs !== undefined && q.programs.length === 0) return null;
     const filtered = q.include_filtered ?? false;
+    const pct = q.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT;
     const conds = [
       eq(t.userId, userId),
       inArray(t.origin, [...q.origins]),
@@ -261,15 +295,28 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
       gte(t.date, q.date_from),
       lte(t.date, q.date_to),
       inArray(t.cabin, [...q.cabins]),
-      q.programs !== undefined
-        ? inArray(
-            t.program,
-            q.programs.map((p) => encodeProgram(p, filtered)),
-          )
-        : filtered
-          ? like(t.program, `%${FILTERED_PROGRAM_SUFFIX}`)
-          : notLike(t.program, `%${FILTERED_PROGRAM_SUFFIX}`),
     ];
+    if (q.programs !== undefined) {
+      // Exact: the encoded program carries both flags, so nothing else can match.
+      conds.push(
+        inArray(
+          t.program,
+          q.programs.map((p) => encodeProgram(p, filtered, pct)),
+        ),
+      );
+    } else if (pct !== DEFAULT_MIN_CABIN_PCT) {
+      // `#pct<N>` is the outer suffix, so this alone pins both the pct and (via the encoded
+      // text before it) nothing else; the `#filtered` half is re-checked by rowMatches below.
+      conds.push(like(t.program, `%${PCT_PROGRAM_PREFIX}${pct}`));
+      conds.push(filtered ? like(t.program, `%${FILTERED_PROGRAM_SUFFIX}${PCT_PROGRAM_PREFIX}${pct}`) : notLike(t.program, `%${FILTERED_PROGRAM_SUFFIX}${PCT_PROGRAM_PREFIX}${pct}`));
+    } else {
+      // THE TRAP this guards: `notLike('%#filtered')` is anchored at the END, so a row stored
+      // as `alaska#pct70` does not end in `#filtered` and an unguarded prefilter would hand a
+      // 70 % row to a 100 % query. Exclude every `#pct` row explicitly instead of relying on
+      // the filtered predicate to do it.
+      conds.push(notLike(t.program, `%${PCT_PROGRAM_PREFIX}%`));
+      conds.push(filtered ? like(t.program, `%${FILTERED_PROGRAM_SUFFIX}`) : notLike(t.program, `%${FILTERED_PROGRAM_SUFFIX}`));
+    }
     if (q.direct_only) conds.push(eq(t.direct, true));
     return and(...conds);
   }
@@ -287,7 +334,8 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
         .all()
         .map(toRow)
         // The SQL filter is authoritative for the PK columns; rowMatches re-checks the exact
-        // in-memory semantics (direct_only, include_filtered scope, programs) so both stores agree.
+        // in-memory semantics (direct_only, include_filtered/min_cabin_pct scope, programs) so
+        // both stores agree — scopeWhere is only ever a prefilter.
         .filter((r) => rowMatches(r, q));
       return { rows, fetched_at_min: minFetchedAt(rows) };
     },
@@ -382,6 +430,7 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
             fetched_at: g.fetched_at,
           };
           if (decoded.include_filtered) rec.include_filtered = true;
+          if (decoded.min_cabin_pct !== DEFAULT_MIN_CABIN_PCT) rec.min_cabin_pct = decoded.min_cabin_pct;
           out.push(rec);
         }
       }
@@ -399,7 +448,7 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
       assertUserId(userId);
       const values: (typeof cacheCoverage.$inferInsert)[] = [];
       for (const r of records) {
-        const key = encodeProgramsKey(r.programs, r.direct_only, r.include_filtered);
+        const key = encodeProgramsKey(r.programs, r.direct_only, r.include_filtered, r.min_cabin_pct);
         for (const date of datesBetween(r.date_from, r.date_to)) {
           for (const cabin of r.cabins) {
             values.push({ userId, origin: r.origin, dest: r.dest, date, cabin, programsKey: key, fetchedAt: r.fetched_at });

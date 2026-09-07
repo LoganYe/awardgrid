@@ -59,6 +59,20 @@ describe("InMemoryAvailabilityCache", () => {
     expect((await cache.getRows("u", { ...scope, include_filtered: true })).rows).toHaveLength(0);
   });
 
+  it("keeps min_cabin_pct rows in their own scope, with absent reading as 100 (issue #18)", async () => {
+    const cache = new InMemoryAvailabilityCache();
+    // A row written before #18 existed carries no min_cabin_pct at all; it IS a 100 row.
+    await cache.putRows("u", [row({ miles: 70000 }), row({ miles: 90000, min_cabin_pct: 70 })]);
+    expect((await cache.getRows("u", scope)).rows.map((r) => r.miles)).toEqual([70000]);
+    expect((await cache.getRows("u", { ...scope, min_cabin_pct: 100 })).rows.map((r) => r.miles)).toEqual([70000]);
+    // A 70 % search must NOT be handed the 100 % row: seats.aero returned a different answer.
+    expect((await cache.getRows("u", { ...scope, min_cabin_pct: 70 })).rows.map((r) => r.miles)).toEqual([90000]);
+    // ...and must not poison it either.
+    await cache.deleteRows("u", { ...scope, min_cabin_pct: 70 });
+    expect((await cache.getRows("u", scope)).rows).toHaveLength(1);
+    expect((await cache.getRows("u", { ...scope, min_cabin_pct: 70 })).rows).toHaveLength(0);
+  });
+
   it("upserts by PK, filters by scope, and reports the oldest fetched_at", async () => {
     const cache = new InMemoryAvailabilityCache();
     await cache.putRows("u", [row({ miles: 70000 }), row({ miles: 65000 })]); // same PK → one row
@@ -103,6 +117,19 @@ describe("freshness and coverage", () => {
     expect(coverageSatisfies({ ...rec, include_filtered: true }, q, 45, now)).toBe(false);
     expect(coverageSatisfies(rec, { ...q, include_filtered: true }, 45, now)).toBe(false);
     expect(coverageSatisfies({ ...rec, include_filtered: true }, { ...q, include_filtered: true }, 45, now)).toBe(true);
+    // min_cabin_pct, like include_filtered, is an exact-match scope in BOTH directions: at 100
+    // seats.aero drops every mixed-cabin itinerary, so a 100 record is not a superset of a 70
+    // one and a 70 record is not a superset of a 100 one either (it holds extra itineraries).
+    expect(coverageSatisfies({ ...rec, min_cabin_pct: 70 }, q, 45, now)).toBe(false);
+    expect(coverageSatisfies(rec, { ...q, min_cabin_pct: 70 }, 45, now)).toBe(false);
+    expect(coverageSatisfies({ ...rec, min_cabin_pct: 70 }, { ...q, min_cabin_pct: 70 }, 45, now)).toBe(true);
+    // Absent and explicit 100 are the SAME scope — every record written before #18 keeps working.
+    expect(coverageSatisfies(rec, { ...q, min_cabin_pct: 100 }, 45, now)).toBe(true);
+    expect(coverageSatisfies({ ...rec, min_cabin_pct: 100 }, q, 45, now)).toBe(true);
+    expect(uncoveredPairs({ ...scope, min_cabin_pct: 70 }, [rec, { ...rec, origin: "PVG" }], 45, now)).toEqual([
+      { origin: "HKG", dest: "SEA" },
+      { origin: "PVG", dest: "SEA" },
+    ]);
     expect(uncoveredPairs(scope, [rec], 45, now)).toEqual([{ origin: "PVG", dest: "SEA" }]);
     expect(uncoveredPairs(scope, [rec, { ...rec, origin: "PVG" }], 45, now)).toEqual([]);
   });

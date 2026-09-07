@@ -23,7 +23,8 @@ export type E2eUsername =
   | "slow7"
   | "slow8"
   | "partial"
-  | "quota";
+  | "quota"
+  | "mixed";
 
 /**
  * One slow user per Playwright project (desktop-light, desktop-dark, mobile-light, mobile-dark):
@@ -81,5 +82,9 @@ export const E2E_USERS: readonly E2eUserSpec[] = [
   { username: "slow7", seatsAeroKey: "demo-key-slow" },
   { username: "slow8", seatsAeroKey: "demo-key-slow" },
   { username: "partial", seatsAeroKey: "demo-key-partial" },
+  // The Mixed cabin chip (issue #18) runs the query twice, at two different min_cabin_pct
+  // scopes. On `demo` those two extra calls moved the quota readout in every published capture
+  // taken after them, so the one test that spends them has an account nobody photographs.
+  { username: "mixed", seatsAeroKey: "demo-key-normal" },
   { username: "quota", seatsAeroKey: "demo-key-normal", quotaCalls: E2E_QUOTA_CALLS },
 ];

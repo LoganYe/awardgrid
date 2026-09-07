@@ -36,6 +36,7 @@ const QUERY: QueryObject = {
   cabins: ["F"],
   direct_only: false,
   include_filtered: false,
+  min_cabin_pct: 100,
   sort_by: "miles_asc",
   raw_text: "香港、上海、东京、首尔到西雅图，未来一个月最便宜的头等舱",
   language: "zh",

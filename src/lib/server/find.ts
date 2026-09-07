@@ -173,6 +173,9 @@ function filteredScope(query: QueryObject): CacheQuery {
     ...(programs ? { programs } : {}),
     direct_only: query.direct_only,
     include_filtered: true,
+    // Same mixed-cabin scope as the query itself: the dynamic-pricing hint may only be borrowed
+    // from a scope that asked seats.aero the same question.
+    min_cabin_pct: query.min_cabin_pct,
   };
 }
 
@@ -501,7 +504,7 @@ export async function getTripsForUser(
   db: Db,
   user: UserRef,
   availabilityId: string,
-  opts: ServerFindOptions & { cabin?: Cabin; include_filtered?: boolean } = {},
+  opts: ServerFindOptions & { cabin?: Cabin; include_filtered?: boolean; min_cabin_pct?: number } = {},
 ): Promise<TripsForUserResult> {
   const now = opts.now ?? (() => new Date());
   const apiKey = resolveSeatsKey(db, user.id, opts.masterKey);
@@ -516,7 +519,12 @@ export async function getTripsForUser(
     calls += 1;
   });
   try {
-    const res = await client.getTrips(availabilityId, opts.include_filtered ? { include_filtered: true } : {});
+    const pct = opts.min_cabin_pct ?? 100;
+    const res = await client.getTrips(availabilityId, {
+      ...(opts.include_filtered ? { include_filtered: true } : {}),
+      // 100 is the API's own default: omitted so the request is unchanged from before #18.
+      ...(pct < 100 ? { min_cabin_pct: pct } : {}),
+    });
     const fees = tripsToFees(res, opts.cabin);
     const trips = res.data.map(summarizeTrip).sort((a, b) => a.miles - b.miles || a.fees_cents - b.fees_cents);
     return {

@@ -171,8 +171,8 @@ Which file renders what. Anything ending in `.ts` next to a `.tsx` is the pure p
 | `grid-app.tsx` | the page orchestrator: query bar → chips → quota banner → toolbar → grid or an empty state; owns the query state, the URL `?q=`, and the drawer slot |
 | `query-bar.tsx` | the growing input, Run, the Examples link, "Parsed from:" and the "guessed" provenance note |
 | `examples-popover.tsx` | three bilingual example queries, anchored to the whole query row |
-| `chip-row.tsx` + `chips-model.ts` | the seven chips in order (Origins · Destinations · Dates · Cabins · Programs · Direct only · Sort), the modified state, Reset to parsed |
-| `chip-editors/*.tsx` | one popover editor each: `places-editor` (searchable list, city groups, free IATA entry), `dates-editor` (two-month hand-written calendar + presets, 92-day clamp), `cabins-editor`, `programs-editor`, `direct-editor`, `sort-editor`; `chip-popover.tsx` is the shared surface |
+| `chip-row.tsx` + `chips-model.ts` | the eight chips in order (Origins · Destinations · Dates · Cabins · Programs · Direct only · Mixed cabin · Sort), the modified state, Reset to parsed |
+| `chip-editors/*.tsx` | one popover editor each: `places-editor` (searchable list, city groups, free IATA entry), `dates-editor` (two-month hand-written calendar + presets, 92-day clamp), `cabins-editor`, `programs-editor`, `direct-editor`, `mixed-cabin-editor` (the `min_cabin_pct` select, issue #18), `sort-editor`; `chip-popover.tsx` is the shared surface |
 | `toolbar.tsx` | rows toggle, cabin chips, the Cells layout toggle (only with more than one cabin), "Show dynamic pricing", Save as standing query, Export CSV, Ask; collapses into a Filters bottom sheet below 768 px |
 | `grid-table.tsx` | `<table role="grid">`, sticky header row and first column, virtualization, hover highlight, density |
 | `cell.tsx` | one cell: six states, cabin tag, freshness mark, `aria-label`, roving `tabindex`; and the per-cabin line stack (§1.5b) |
@@ -194,7 +194,7 @@ Which file renders what. Anything ending in `.ts` next to a `.tsx` is the pure p
 
 ### Queries — `src/components/queries/`
 
-`queries-table.tsx` (the one table: name, schedule, notifies on, last run, next run, enabled, actions), `query-row.tsx` (the row and its expansion), `run-history.tsx` (the last 20 runs), `diff-cells.tsx` (new / dropped / cheaper cells rendered with the real grid-cell component), `inline-confirm.tsx` (delete confirms in the row, never in a modal, and returns focus), `edit-query-drawer.tsx` (the same seven chip editors in a drawer), `SaveQueryDialog.tsx`, `format.ts` (schedule labels, run summaries).
+`queries-table.tsx` (the one table: name, schedule, notifies on, last run, next run, enabled, actions), `query-row.tsx` (the row and its expansion), `run-history.tsx` (the last 20 runs), `diff-cells.tsx` (new / dropped / cheaper cells rendered with the real grid-cell component), `inline-confirm.tsx` (delete confirms in the row, never in a modal, and returns focus), `edit-query-drawer.tsx` (the same eight chip editors in a drawer), `SaveQueryDialog.tsx`, `format.ts` (schedule labels, run summaries).
 
 ### Settings — `src/components/settings/`
 
@@ -343,7 +343,7 @@ How each is actually enforced:
 | Floor | Enforced by |
 |---|---|
 | Contrast | `src/styles/tokens.test.ts` (the shipped hexes are the plan's, both dark copies agree) + `docs/ui-plan-assets/contrast.mjs` for any new pair + axe at runtime |
-| Zero serious/critical | `e2e/axe.spec.ts` — `@axe-core/playwright` with the WCAG 2.x A/AA tags, **enforced by default** since 6.6 (`E2E_AXE_STRICT=0` downgrades it to a report while triaging). The matrix is every page and state: login, register, legal, grid results, the seven chip editors, the cell drawer, the Ask drawer, quota, no key, empty results, parse failure, manual mode, queries (list, expanded, edit drawer, empty) and settings — each on **desktop-light, desktop-dark and mobile-light** (dark is a second palette, and below 768 px the drawers and toolbar become sheets with a different focus order). Counts per impact land in `docs/screenshots/v0.2/axe-summary.json`, offending elements are logged |
+| Zero serious/critical | `e2e/axe.spec.ts` — `@axe-core/playwright` with the WCAG 2.x A/AA tags, **enforced by default** since 6.6 (`E2E_AXE_STRICT=0` downgrades it to a report while triaging). The matrix is every page and state: login, register, legal, grid results, the eight chip editors, the cell drawer, the Ask drawer, quota, no key, empty results, parse failure, manual mode, queries (list, expanded, edit drawer, empty) and settings — each on **desktop-light, desktop-dark and mobile-light** (dark is a second palette, and below 768 px the drawers and toolbar become sheets with a different focus order). Counts per impact land in `docs/screenshots/v0.2/axe-summary.json`, offending elements are logged |
 | Keyboard | the pure model in `src/lib/grid/keyboard.ts` with `keyboard.test.ts`, the roving tabindex in `use-roving-grid.ts`, and the mouse-free walk in §8 |
 | No colour-only meaning | the state table in §1.5 — every state has a pattern and a label; reviewed per PR against the §1.2 self-check |
 | Reduced motion | the global block in `globals.css` and the per-component blocks; `e2e/responsive.spec.ts` asserts nothing animates under `prefers-reduced-motion`, and the whole suite runs with `reducedMotion: "reduce"` |
@@ -362,7 +362,7 @@ Start: signed in, `/grid`, focus on the document (nothing selected).
 
 1. **Tab** until the query bar has focus. It is a `textarea` named "Search awards" (`grid.search`); the top bar's links, the quota indicator and the language, theme and user controls come before it in source order, so they are what you pass through.
 2. **Type** the query — `HKG, SHA, TYO, SEL to SEA, next 30 days, business and first`, or the Chinese equivalent. The field grows to three lines and then scrolls.
-3. **Enter** runs it. Focus stays in the field: Enter is "run", not "leave". The seven chips appear below with what the parser read, and the grid runs. (**Shift+Enter** inserts a newline instead; while an IME candidate window is open Enter confirms the candidate and never submits.)
+3. **Enter** runs it. Focus stays in the field: Enter is "run", not "leave". The eight chips appear below with what the parser read, and the grid runs. (**Shift+Enter** inserts a newline instead; while an IME candidate window is open Enter confirms the candidate and never submits.)
 4. **Tab** to the chips row. Each chip is a button; the first is **Origins**.
 5. **Enter** opens the Origins editor. The popover takes focus, so the editor is reachable without going back to the page.
 6. **Tab** through the editor to drop an airport. Tokyo is one city row — `TYO ▸ NRT ✓ HND ✓` — so the control that removes a single airport is that airport's own toggle (named "HND selected"); the row's **×** at the end removes the whole city. **Enter** toggles it. The Origins chip summary updates as you go, and the query is now *modified*: the chip takes the accent outline, and "Reset to parsed" and "Run" appear at the end of the row.

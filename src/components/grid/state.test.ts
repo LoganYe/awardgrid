@@ -63,6 +63,13 @@ describe("chip reducers", () => {
     expect(applyChipAction(base, { type: "set_sort", value: "fees_asc" }).sort_by).toBe("fees_asc");
     expect(applyChipAction(base, { type: "set_direct_only", value: true }).direct_only).toBe(true);
     expect(applyChipAction(base, { type: "set_include_filtered", value: true }).include_filtered).toBe(true);
+    // set_min_cabin_pct always writes the number — it never deletes the key, so the field stays
+    // a concrete number and 100 stays representable as an explicit choice.
+    expect(applyChipAction(base, { type: "set_min_cabin_pct", value: 70 }).min_cabin_pct).toBe(70);
+    expect(applyChipAction(base, { type: "set_min_cabin_pct", value: 0 }).min_cabin_pct).toBe(0);
+    const back = applyChipAction(applyChipAction(base, { type: "set_min_cabin_pct", value: 70 }), { type: "set_min_cabin_pct", value: 100 });
+    expect(back.min_cabin_pct).toBe(100);
+    expect("min_cabin_pct" in back).toBe(true);
   });
 
   it("programs: toggling from 'all' selects one; selecting every program or none means 'all'", () => {
@@ -83,6 +90,22 @@ describe("chip reducers", () => {
     expect(sameQuery(null, null)).toBe(true);
     expect(sameQuery(base, null)).toBe(false);
   });
+
+  it("sameQuery: a 70 % draft differs from the 100 % run, but absent and explicit 100 do not", () => {
+    // Without min_cabin_pct in canonicalJson the Run affordance never appears and the user keeps
+    // looking at 100 % results — the same invisible failure issue #18 is about.
+    expect(sameQuery(base, { ...base, min_cabin_pct: 70 })).toBe(false);
+    expect(sameQuery({ ...base, min_cabin_pct: 70 }, { ...base, min_cabin_pct: 50 })).toBe(false);
+    expect(sameQuery({ ...base, min_cabin_pct: 70 }, { ...base, min_cabin_pct: 70 })).toBe(true);
+    // A query parsed from a pre-#18 payload and one that says 100 out loud are one query: a user
+    // who opens the editor and leaves it alone must not see the modified state.
+    const legacyJson = JSON.parse(JSON.stringify(base)) as Record<string, unknown>;
+    delete legacyJson.min_cabin_pct;
+    const legacy = QueryObject.parse(legacyJson);
+    expect(sameQuery(legacy, { ...base, min_cabin_pct: 100 })).toBe(true);
+    // And the same holds for a raw object that never went through the schema at all.
+    expect(sameQuery(legacyJson as never, { ...base, min_cabin_pct: 100 })).toBe(true);
+  });
 });
 
 describe("URL codec", () => {
@@ -94,6 +117,20 @@ describe("URL codec", () => {
     expect(gridHref(null)).toBe("/grid");
   });
 
+  it("a ?q= link written before min_cabin_pct existed decodes to exactly 100 (issue #18)", async () => {
+    const legacy = JSON.parse(JSON.stringify(base)) as Record<string, unknown>;
+    delete legacy.min_cabin_pct;
+    const link = Buffer.from(JSON.stringify(legacy)).toString("base64url");
+    const decoded = decodeQueryParam(link);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.min_cabin_pct).toBe(100);
+    // The link's meaning — and its cache scope — is unchanged: it equals the query we hold.
+    expect(sameQuery(decoded, base)).toBe(true);
+    // A shared link carrying a non-preset value round-trips it exactly.
+    const odd = decodeQueryParam(encodeQueryParam({ ...base, min_cabin_pct: 63 }));
+    expect(odd!.min_cabin_pct).toBe(63);
+  });
+
   it("rejects garbage, invalid JSON and invalid QueryObjects without throwing", () => {
     expect(decodeQueryParam(null)).toBeNull();
     expect(decodeQueryParam("")).toBeNull();
@@ -101,6 +138,9 @@ describe("URL codec", () => {
     expect(decodeQueryParam(Buffer.from("{not json").toString("base64url"))).toBeNull();
     expect(decodeQueryParam(Buffer.from(JSON.stringify({ ...base, origins: [] })).toString("base64url"))).toBeNull();
     expect(decodeQueryParam(Buffer.from(JSON.stringify({ ...base, date_to: "2027-06-01" })).toString("base64url"))).toBeNull();
+    // min_cabin_pct outside the documented 0-100 integer range is garbage, not a clamp.
+    expect(decodeQueryParam(Buffer.from(JSON.stringify({ ...base, min_cabin_pct: 101 })).toString("base64url"))).toBeNull();
+    expect(decodeQueryParam(Buffer.from(JSON.stringify({ ...base, min_cabin_pct: -1 })).toString("base64url"))).toBeNull();
   });
 });
 

@@ -101,6 +101,28 @@ describe("planFind", () => {
     expect(bulk.requests[0]!.params.include_filtered).toBe(true);
   });
 
+  it("forwards min_cabin_pct (issue #18) to Cached Search and Bulk Availability, and omits the default", () => {
+    // 100 is the API's own default, so the request must be byte-identical to the pre-#18 one.
+    const off = planFind(query());
+    expect(off.requests[0]!.params.min_cabin_pct).toBeUndefined();
+    expect(planFind(query({ min_cabin_pct: 100 })).requests[0]!.params.min_cabin_pct).toBeUndefined();
+
+    const on = planFind(query({ min_cabin_pct: 70, programs: ["alaska"] }));
+    expect(on.requests[0]!.params.min_cabin_pct).toBe(70);
+    // 0 means "any mixed-cabin distance" and is a real value, not an absence.
+    expect(planFind(query({ min_cabin_pct: 0 })).requests[0]!.params.min_cabin_pct).toBe(0);
+
+    const wide = query({
+      min_cabin_pct: 70,
+      programs: ["alaska"],
+      date_to: "2026-12-31",
+      destinations: ["SEA", "SFO", "LAX", "PDX", "SAN", "LAS", "PHX", "DEN"],
+    });
+    const bulk = planFind(wide, { routesKnown: { routesFor: () => syntheticRoutes("alaska") } });
+    expect(bulk.mode).toBe("bulk");
+    expect(bulk.requests[0]!.params.min_cabin_pct).toBe(70);
+  });
+
   it("chooses Bulk Availability when programs are named, the catalog is known, and it is cheaper", () => {
     // 20 × 20 pairs over 92 days in J: cached ≈ 400×92×1×1×0.15 = 5520 rows → 6 pages.
     const origins = Array.from({ length: 20 }, (_, i) => `A${String(i).padStart(2, "0")}`.slice(0, 3).toUpperCase());
@@ -310,6 +332,43 @@ describe("runFind (end to end over the synthetic fixture, no network)", () => {
     expect(plainAgain.rows.every((r) => r.include_filtered === undefined)).toBe(true);
     expect(filteredAgain.rows.every((r) => r.include_filtered === true)).toBe(true);
     expect(searches()).toHaveLength(2);
+  });
+
+  it("min_cabin_pct: a 70 % search is never served from a 100 % cache record, and never poisons it (issue #18)", async () => {
+    const h = harness();
+    const searches = () => h.fetch.calls.filter((c) => c.url.pathname === "/partnerapi/search");
+    const programs = [...SYNTHETIC_PROGRAMS];
+
+    // 1. The default (100) is the API's own: the request is byte-identical to the pre-#18 one.
+    const strict = await runFind({ query: query({ programs }), userId: "p", apiKey: KEY, ...h, now: () => NOW });
+    expect(searches()[0]!.url.searchParams.has("min_cabin_pct")).toBe(false);
+    expect(strict.rows.length).toBeGreaterThan(0);
+    expect(strict.rows.every((r) => r.min_cabin_pct === undefined)).toBe(true);
+
+    // 2. THE DEFECT: without min_cabin_pct in the cache scope, this call is answered from the
+    //    100 % coverage record with zero API calls and the user sees the strict grid forever.
+    const relaxed = await runFind({ query: query({ programs, min_cabin_pct: 70 }), userId: "p", apiKey: KEY, ...h, now: () => NOW });
+    expect(relaxed.served_from_cache).toBe(false);
+    expect(searches()).toHaveLength(2);
+    expect(searches()[1]!.url.searchParams.get("min_cabin_pct")).toBe("70");
+    expect(relaxed.rows.every((r) => r.min_cabin_pct === 70)).toBe(true);
+
+    // 3. Nor does the 70 % pull poison the 100 % scope: the strict query still answers from its
+    //    own rows, with no refetch.
+    const strictAgain = await runFind({ query: query({ programs }), userId: "p", apiKey: KEY, ...h, now: () => NOW });
+    const relaxedAgain = await runFind({ query: query({ programs, min_cabin_pct: 70 }), userId: "p", apiKey: KEY, ...h, now: () => NOW });
+    expect(strictAgain.served_from_cache).toBe(true);
+    expect(relaxedAgain.served_from_cache).toBe(true);
+    expect(strictAgain.rows.every((r) => r.min_cabin_pct === undefined)).toBe(true);
+    expect(relaxedAgain.rows.every((r) => r.min_cabin_pct === 70)).toBe(true);
+    expect(strictAgain.rows).toHaveLength(strict.rows.length);
+    expect(searches()).toHaveLength(2);
+
+    // 4. A third value is a third scope, not a near-miss of either.
+    const fifty = await runFind({ query: query({ programs, min_cabin_pct: 50 }), userId: "p", apiKey: KEY, ...h, now: () => NOW });
+    expect(fifty.served_from_cache).toBe(false);
+    expect(searches()).toHaveLength(3);
+    expect(searches()[2]!.url.searchParams.get("min_cabin_pct")).toBe("50");
   });
 
   it("a direct-only fetch does not evict the all-flights rows cached for the same scope", async () => {

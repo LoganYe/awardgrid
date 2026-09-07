@@ -64,8 +64,25 @@ describe("encoding helpers", () => {
     expect(encodeProgram("american", undefined)).toBe("american");
     expect(encodeProgram("american", false)).toBe("american");
     expect(encodeProgram("american", true)).toBe("american#filtered");
-    expect(decodeProgram("american")).toEqual({ program: "american", include_filtered: false });
-    expect(decodeProgram("american#filtered")).toEqual({ program: "american", include_filtered: true });
+    // Existing stored text keeps its meaning: no `#pct` suffix decodes to the API default, 100.
+    expect(decodeProgram("american")).toEqual({ program: "american", include_filtered: false, min_cabin_pct: 100 });
+    expect(decodeProgram("american#filtered")).toEqual({ program: "american", include_filtered: true, min_cabin_pct: 100 });
+  });
+
+  it("round-trips the min_cabin_pct scope through the program column with no migration", () => {
+    // 100 is the default, so it adds NOTHING: every row already in the table keeps its exact
+    // stored text and decodes to 100. That is what makes this change migration-free.
+    expect(encodeProgram("american", false, 100)).toBe("american");
+    expect(encodeProgram("american", false, undefined)).toBe("american");
+    expect(encodeProgram("american", true, 100)).toBe("american#filtered");
+    expect(encodeProgram("american", false, 70)).toBe("american#pct70");
+    expect(encodeProgram("american", true, 70)).toBe("american#filtered#pct70");
+    expect(encodeProgram("american", false, 0)).toBe("american#pct0");
+    expect(decodeProgram("american")).toEqual({ program: "american", include_filtered: false, min_cabin_pct: 100 });
+    expect(decodeProgram("american#filtered")).toEqual({ program: "american", include_filtered: true, min_cabin_pct: 100 });
+    expect(decodeProgram("american#pct70")).toEqual({ program: "american", include_filtered: false, min_cabin_pct: 70 });
+    expect(decodeProgram("american#filtered#pct70")).toEqual({ program: "american", include_filtered: true, min_cabin_pct: 70 });
+    expect(decodeProgram("american#pct0")).toEqual({ program: "american", include_filtered: false, min_cabin_pct: 0 });
   });
 
   it("round-trips programs + flags through programs_key with a canonical order", () => {
@@ -75,10 +92,28 @@ describe("encoding helpers", () => {
     expect(encodeProgramsKey(["alaska"], true, true)).toBe("alaska|direct|filtered");
     expect(encodeProgramsKey(null, false, true)).toBe("*|filtered");
     expect(encodeProgramsKey([], true, false)).toBe("|direct");
-    expect(decodeProgramsKey("*")).toEqual({ programs: null, direct_only: false, include_filtered: false });
-    expect(decodeProgramsKey("alaska,united|direct")).toEqual({ programs: ["alaska", "united"], direct_only: true, include_filtered: false });
-    expect(decodeProgramsKey("*|filtered")).toEqual({ programs: null, direct_only: false, include_filtered: true });
-    expect(decodeProgramsKey("|direct")).toEqual({ programs: [], direct_only: true, include_filtered: false });
+    expect(decodeProgramsKey("*")).toEqual({ programs: null, direct_only: false, include_filtered: false, min_cabin_pct: 100 });
+    expect(decodeProgramsKey("alaska,united|direct")).toEqual({ programs: ["alaska", "united"], direct_only: true, include_filtered: false, min_cabin_pct: 100 });
+    expect(decodeProgramsKey("*|filtered")).toEqual({ programs: null, direct_only: false, include_filtered: true, min_cabin_pct: 100 });
+    expect(decodeProgramsKey("|direct")).toEqual({ programs: [], direct_only: true, include_filtered: false, min_cabin_pct: 100 });
+  });
+
+  it("carries min_cabin_pct in programs_key only when it is not the default", () => {
+    // Every programs_key already in cache_coverage keeps its exact text and decodes to 100.
+    expect(encodeProgramsKey(null, false, false, 100)).toBe("*");
+    expect(encodeProgramsKey(null, false, false, undefined)).toBe("*");
+    expect(encodeProgramsKey(null, false, false, 70)).toBe("*|pct70");
+    expect(encodeProgramsKey(["alaska"], true, true, 70)).toBe("alaska|direct|filtered|pct70");
+    expect(encodeProgramsKey(null, false, false, 0)).toBe("*|pct0");
+    expect(decodeProgramsKey("*")).toEqual({ programs: null, direct_only: false, include_filtered: false, min_cabin_pct: 100 });
+    expect(decodeProgramsKey("*|pct70")).toEqual({ programs: null, direct_only: false, include_filtered: false, min_cabin_pct: 70 });
+    expect(decodeProgramsKey("alaska|direct|filtered|pct70")).toEqual({
+      programs: ["alaska"],
+      direct_only: true,
+      include_filtered: true,
+      min_cabin_pct: 70,
+    });
+    expect(decodeProgramsKey("*|pct0").min_cabin_pct).toBe(0);
   });
 
   it("datesBetween is inclusive, handles month ends and inverted ranges", () => {
@@ -133,6 +168,57 @@ describe("createSqliteAvailabilityCache", () => {
     await cache.deleteRows("u", { ...scope, include_filtered: true });
     expect((await cache.getRows("u", scope)).rows).toHaveLength(1);
     expect((await cache.getRows("u", { ...scope, include_filtered: true })).rows).toHaveLength(0);
+  });
+
+  it("keeps min_cabin_pct rows in their own scope — a 100 query never sees a #pct70 row (issue #18)", async () => {
+    const cache = createSqliteAvailabilityCache(testDbWithUsers(USERS));
+    await cache.putRows("u", [
+      row({ miles: 70000 }),
+      row({ miles: 90000, min_cabin_pct: 70 }),
+      row({ miles: 80000, include_filtered: true, min_cabin_pct: 70 }),
+    ]);
+    // THE TRAP: scopeWhere selected the default scope with notLike(program, "%#filtered"),
+    // which is anchored at the end — "american#pct70" does not end in "#filtered", so an
+    // unguarded prefilter hands a 70 % row to a 100 % query.
+    const plain = (await cache.getRows("u", scope)).rows;
+    expect(plain.map((r) => r.miles)).toEqual([70000]);
+    expect(plain[0]!.program).toBe("american");
+    expect(plain[0]!.min_cabin_pct).toBeUndefined();
+    expect((await cache.getRows("u", { ...scope, min_cabin_pct: 100 })).rows.map((r) => r.miles)).toEqual([70000]);
+
+    const pct = (await cache.getRows("u", { ...scope, min_cabin_pct: 70 })).rows;
+    expect(pct.map((r) => r.miles)).toEqual([90000]);
+    expect(pct[0]!.program).toBe("american");
+    expect(pct[0]!.min_cabin_pct).toBe(70);
+    // The two flags are independent scopes and compose.
+    const both = (await cache.getRows("u", { ...scope, include_filtered: true, min_cabin_pct: 70 })).rows;
+    expect(both.map((r) => r.miles)).toEqual([80000]);
+    expect((await cache.getRows("u", { ...scope, include_filtered: true })).rows).toHaveLength(0);
+    // An explicit programs list is exact on both flags too.
+    expect((await cache.getRows("u", { ...scope, programs: ["american"] })).rows.map((r) => r.miles)).toEqual([70000]);
+    expect((await cache.getRows("u", { ...scope, programs: ["american"], min_cabin_pct: 70 })).rows.map((r) => r.miles)).toEqual([90000]);
+    // Re-inserting a 70 % pull must not delete the 100 % rows.
+    await cache.deleteRows("u", { ...scope, min_cabin_pct: 70 });
+    expect((await cache.getRows("u", scope)).rows.map((r) => r.miles)).toEqual([70000]);
+    expect((await cache.getRows("u", { ...scope, min_cabin_pct: 70 })).rows).toHaveLength(0);
+    expect((await cache.getRows("u", { ...scope, include_filtered: true, min_cabin_pct: 70 })).rows).toHaveLength(1);
+  });
+
+  it("coverage written at 100 does not cover a 70 % search, and the two never merge", async () => {
+    const cache = createSqliteAvailabilityCache(testDbWithUsers(USERS));
+    const now = new Date("2026-10-01T12:10:00.000Z");
+    await cache.markPairsFetched("u", [coverage(), coverage({ min_cabin_pct: 70, fetched_at: "2026-10-01T12:05:00.000Z" })]);
+    const recs = await cache.getCoverage("u", [{ origin: "HKG", dest: "SEA" }]);
+    expect(recs).toHaveLength(2);
+    expect(recs.filter((r) => (r.min_cabin_pct ?? 100) === 100)).toHaveLength(1);
+    expect(recs.filter((r) => r.min_cabin_pct === 70)).toHaveLength(1);
+    const pair = { origins: ["HKG"], dests: ["SEA"], date_from: "2026-10-01", date_to: "2026-10-30", cabins: ["J", "F"] as const };
+    expect(uncoveredPairs(pair, recs, 45, now)).toEqual([]);
+    expect(uncoveredPairs({ ...pair, min_cabin_pct: 70 }, recs, 45, now)).toEqual([]);
+    expect(uncoveredPairs({ ...pair, min_cabin_pct: 50 }, recs, 45, now)).toEqual([{ origin: "HKG", dest: "SEA" }]);
+    // Only the 100 record exists → the 70 % search is uncovered and must go to the API.
+    const onlyDefault = recs.filter((r) => (r.min_cabin_pct ?? 100) === 100);
+    expect(uncoveredPairs({ ...pair, min_cabin_pct: 70 }, onlyDefault, 45, now)).toEqual([{ origin: "HKG", dest: "SEA" }]);
   });
 
   it("upserts by PK, filters by scope, and reports the oldest fetched_at", async () => {

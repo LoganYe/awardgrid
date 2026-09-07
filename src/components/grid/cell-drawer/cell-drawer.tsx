@@ -123,6 +123,7 @@ export function CellDrawer({ cell, query, now, onClose, onTripsLoaded, onAsk }: 
           row={row}
           now={now}
           includeFiltered={query.include_filtered}
+          minCabinPct={query.min_cabin_pct}
           onTripsLoaded={onTripsLoaded}
         />
       ))}

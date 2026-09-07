@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * The seven parsed chips (spec §3.2, docs/UI_PLAN.md §6.2a) — Origins, Destinations, Dates,
- * Cabins, Programs, Direct only, Sort, always in that order, wrapping on narrow widths.
+ * The eight parsed chips (spec §3.2, docs/UI_PLAN.md §6.2a) — Origins, Destinations, Dates,
+ * Cabins, Programs, Direct only, Mixed cabin, Sort, always in that order, wrapping on narrow
+ * widths.
  *
  * Each chip is a button carrying its label and value summary; clicking (or Enter / Space) opens
  * its editor popover anchored to the chip, Esc closes it and returns focus to the chip. Editing
@@ -23,6 +24,7 @@ import { CabinsEditor } from "@/components/grid/chip-editors/cabins-editor";
 import { ChipPopover, type ChipState } from "@/components/grid/chip-editors/chip-popover";
 import { DatesEditor } from "@/components/grid/chip-editors/dates-editor";
 import { DirectEditor } from "@/components/grid/chip-editors/direct-editor";
+import { MixedCabinEditor } from "@/components/grid/chip-editors/mixed-cabin-editor";
 import { PlacesEditor } from "@/components/grid/chip-editors/places-editor";
 import { ProgramsEditor } from "@/components/grid/chip-editors/programs-editor";
 import { SortEditor } from "@/components/grid/chip-editors/sort-editor";
@@ -91,6 +93,8 @@ export function ChipRow({ query, parsed, modified, today, disabled = false, open
         );
       case "direct_only":
         return <DirectEditor value={query.direct_only} onChange={(value) => onChange({ ...query, direct_only: value })} />;
+      case "min_cabin_pct":
+        return <MixedCabinEditor value={query.min_cabin_pct} onChange={(min_cabin_pct) => onChange({ ...query, min_cabin_pct })} />;
       case "sort":
         return <SortEditor value={query.sort_by} onChange={(sort_by) => onChange({ ...query, sort_by })} />;
     }

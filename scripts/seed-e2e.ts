@@ -52,6 +52,7 @@ export function canonicalQuery(today: Date): QueryObject {
     cabins: ["J", "F"],
     direct_only: false,
     include_filtered: false,
+    min_cabin_pct: 100,
     sort_by: "miles_asc",
     raw_text: "HKG, SHA, TYO, SEL to SEA, next 30 days, business and first",
     language: "en",
