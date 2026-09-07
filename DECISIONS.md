@@ -636,3 +636,152 @@ explain it already shipped in the drawer (`flights-list.tsx`) and was unreachabl
   44 min to 13 h 14, median 9 h 35.
 - **Not changed:** `TotalDuration` is still flight plus layover in minutes and is zone-free either
   way, so the drawer's headline duration means what it did before.
+
+### #52 A Get Trips fee is written back to the cell's row — without touching its freshness
+
+Get Trips is the only source of a real fee, its currency and a booking link. `getTripsForUser`
+computed all three (`tripsToFees`) and returned them to the one open drawer; nothing persisted
+them, although `availability_cache` has held `fees_cents`, `currency` and `booking_url` since
+Phase 1 and the upsert already sets them. The client patched its own in-memory grid
+(`mergeTripsIntoGrid`), so the numbers survived exactly as long as the render did. The visible
+consequence was that `fees_asc` — and the CSV's fee column — only ever saw fees for the handful
+of cells expanded in that render, and everything else fell into the null tail with nothing saying
+that is what had happened. **This makes fees durable; it does not make `fees_asc` honest.** A fee
+still arrives only one expand at a time, so on a first render coverage is exactly zero and
+`fees_asc` degenerates to `miles_asc` — `byFeesAscNullLast` returns 0 for every pair and the chain
+falls through to `byMilesAsc`, which is where `miles_asc` starts. It climbs one expand, one cell
+and one quota call at a time from there, and nothing in the grid, the sort control or the CSV
+says where it stands. `fees_asc` cannot answer its
+own question until fees arrive in bulk (`include_trips=true` on Cached Search, still an opt-in
+executor flag) or coverage is surfaced — both in BACKLOG.md. Do not read this entry as fixing it.
+
+`cacheFeesFromTrips` (`src/lib/server/find.ts`) now writes the priced row back through the
+existing store. No migration: the columns exist.
+
+- **The write does NOT touch `computed_last_seen`, or `fetched_at`.** This is the design question
+  of the issue. `computed_last_seen` is what the grid's freshness mark reads, and to a reader that
+  mark answers one question: *how old is what I am looking at?* The honest answer is the age of the
+  oldest thing in the cell — the availability itself (does this award still exist, at these miles,
+  with these seats), which Cached Search observed and Get Trips did not re-observe. Stamping a Get
+  Trips fee onto that field would redate the whole row from a call that learned one field of it:
+  a three-day-old availability would draw a filled "fresh" dot because someone priced it an hour
+  ago. The converse is equally bad — a fee is not evidence the row got older, so nothing is aged
+  down either. So the two clocks stay where they are, and a cell whose fee is an hour old and whose
+  availability is three days old reads "3d", which is true of the cell as a whole and understates
+  only the fee. Understating the fee's freshness is the safe direction: the mark never claims
+  anything is fresher than it is. Get Trips also has its own cadence — a per-expand call the user
+  pays for one cell at a time — so there is no rate at which it could keep a grid's marks honest.
+  `fetched_at` is left alone for a second reason: it drives `fetched_at_min` and pairs with the
+  `cache_coverage` record that decides refetching, and bumping one row's copy would make a scope
+  look newer than the fetch that actually filled it.
+  What makes "the mark never claims anything is fresher than it is" an invariant rather than a hope
+  is `putRows`: its `onConflictDoUpdate` sets `feesCents: excluded.fees_cents` unconditionally
+  (`db/stores/cache.ts`), so every Cached Search upsert wipes a learned fee along with the rest of
+  the row. A fee therefore can never outlive the `computed_last_seen` it sits next to, and can
+  never be older than it. That is the enforcement — not the delete, which under `direct_only: true`
+  covers a subset of what the insert covers.
+  **The residual gap, stated rather than hidden:** nothing in the product ever reports a fee's OWN
+  age. Before this change that only mattered inside the render where the user had just clicked
+  "Show flights"; it is now reachable with no click and no context, and `buildCopyDetails`
+  (`copy-details.ts`) emits `$84.30 fees` and `seats.aero last saw this: 3 days ago` as consecutive
+  self-describing facts in a block that reads as one snapshot at one time. Understating is still
+  the safe direction, and a per-fee timestamp needs a column, so it is in BACKLOG.md.
+- **Which row: the one the cell shows.** `tripsToFees(res, cabin)` picks the cheapest trip IN THE
+  REQUESTED CABIN (miles, then taxes) — the number the drawer prints for that cabin's row — and the
+  write goes to the cached row with that Availability ID and that cabin, so the fee stored is the
+  fee shown. One availability yields one row per cabin (`availabilityToRows`), all sharing the ID,
+  which is why the cabin is part of the address and not an afterthought. With no cabin requested,
+  `tripsToFees` returns the cheapest trip across cabins; that is not any single cell's fee, so
+  nothing is written at all rather than being attributed to a row it does not describe.
+- **Scoped exactly like every other cache write.** Per user, and inside the scope the row was read
+  in: `getRowsBySourceId(userId, sourceId, {include_filtered, min_cabin_pct})` — a mandatory
+  argument, not an option — carries the drawer's own scope, which the route already threads through
+  for the same reason (#18). A 70 % answer can never land on a 100 % row. The scope that matters is
+  the ROW's, not the query's, and the two differ in exactly one place: a `dynamic: true` row
+  borrowed into a plain grid, which `appendCachedDynamicRows` takes from the `include_filtered=true`
+  cache scope. Get Trips was being asked in the QUERY's scope for those rows, so the write-back
+  correctly refused (it may not invent a plain-scope row) and the fee was silently discarded —
+  along with the quota the call cost — on precisely the rows whose real fees `fees_asc` most needs.
+  `ProgramRow` now asks in `row.include_filtered ?? query.include_filtered` (same for
+  `min_cabin_pct`), which is what the prop's own rationale always said: ask in the scope the row was
+  cached in. The write then lands inside the scope the row was read in, the rule is unchanged, and
+  the flight list stops being drawn from a scope that row never came from. Rows are addressed by
+  `source_id` rather than by re-deriving (program, pair, date) from the
+  trip payload: the availability id is the identity the request already carries, so a mismatch can
+  only ever mean "not cached", never "write to the wrong row".
+- **A targeted UPDATE, not a re-upsert of the row that was read.** Learning a fee is a
+  read-modify-write across two awaits, and `/api/find` and `/api/trips` are concurrent handlers
+  over the same synchronous better-sqlite3 handle, so a Cached Search refresh for the same user (a
+  second tab, the scheduler) can land in that gap — a drawer expand overlapping a grid refresh is
+  an ordinary thing to do. Re-upserting the whole row through `putRows` would then roll the refresh
+  back: its new miles, seats and `computed_last_seen` would be replaced by the snapshot read a
+  microtask earlier, and worse, a row the refresh had DELETED because the award is gone would be
+  re-inserted with its stale miles — a phantom cell, served from a coverage record the refresh has
+  just made fresh, until the TTL expires. That is also the one path that could contradict this
+  entry's own freshness rule, by moving a row's mark backwards. So the store grew
+  `updateRowFees(userId, key, fees)`: an `UPDATE` of exactly `fees_cents` / `currency` /
+  `booking_url`, with **no insert fallback**, keyed on the PK plus `source_id`. Every other column
+  keeps whatever the refresh put there; a deleted or re-identified row matches zero rows and
+  nothing is written. The id is in the key on purpose — a fee describes one Availability, so if a
+  refresh has replaced the cell with a different one the write must miss rather than mislabel it.
+- **Nothing is written unless something was learned ABOUT THIS CABIN — the booking link included.**
+  A call that throws never reaches the write. A trip list that is empty, or that has no trip in this
+  cabin, yields `fees_cents: null`, and the whole write is skipped. The link is gated on the same
+  evidence as the fee even though it does not come from the same place: `booking_links[]` is
+  per-AVAILABILITY and ignores both the cabin filter and the trip list, so seats.aero returns one
+  whether or not it found anything to book in the cabin being priced. Persisting it on that
+  evidence is not free — `resolveDeeplink` prefers `row.booking_url` over every program builder,
+  so an `american` J row that Get Trips says has no J itinerary would permanently show
+  "Open booking link" instead of the AA award-search deeplink BACKLOG calls the boundary-correct
+  answer, and the CSV's `booking_url` column would carry it too. A priced trip in the cabin is the
+  evidence that write was waiting for. In the other direction a null still never lands on a good
+  value: a priced trip whose response carries no link keeps the stored one. A store failure is
+  logged by name only (§10) and the user still gets the answer they paid a call for.
+- **The currency written is the one the fee was quoted in — verbatim, null included.** An amount and
+  its label are one fact; they are read from the same trip and stored together. seats.aero sends
+  `TaxesCurrency: ""` for USD (see "Fees per cell" and "TotalTaxes unit" above) and `tripsToFees`
+  normalizes that to null, which is exactly what `availabilityToRows` already records for USD and
+  what `formatFees` already renders as `$`. So an empty currency is not a gap to be filled: it is
+  the answer. There were three options and only one is safe — refusing a fee with no explicit
+  currency would discard most real answers, including every one in the docs' own example payload;
+  *inheriting the row's previously stored currency* would quietly mislabel one (a J row holding
+  `(1200, "EUR")` that is then priced at `TotalTaxes 9900 / TaxesCurrency ""` would render
+  "99.00 EUR" for a $99.00 fee, in the grid, in `fees_asc` and in the CSV's `currency` column,
+  while the drawer reading the same response printed `$99.00`). Only the fee's own currency is
+  ever true of the fee. Not reachable in this repo's fixtures — the demo generator and the
+  synthetic generator emit only `"USD"` or `""` — so it is covered by a unit test, not by e2e.
+- **A partially-priced cell headlines the priced row, and that is the sort doing what it says.**
+  This is the main user-visible consequence of persisting the fee and it deserves stating: under
+  `fees_asc`, expanding ONE row in a cell can change which award that cell recommends. Measured on
+  the synthetic fixture — HKG–SEA 2026-10-02 holds singapore/66,000 and alaska/75,500, both
+  fee-null, and headlines singapore; expand alaska (fee $99) and re-run the same query from cache
+  and the cell headlines alaska/75,500, 9,500 miles more. Before this change it could not happen,
+  because no fee survived the render. Three options were on the table: rank within a cell only when
+  every row's fee is known, fall back to `miles_asc` for a mixed cell, or leave it. We leave it.
+  `byFeesAscNullLast` already carries the rule — "unknown fees sort after every known fee (we
+  cannot claim they are cheap)" — and it is the only defensible one: a cell that silently reverted
+  to `miles_asc` would be ignoring a fee the user paid a call to learn, and would make the sort's
+  behaviour depend on a coverage condition the user cannot see. What is genuinely missing is not a
+  different order but a MARK: "cheapest fee" and "only measured fee" render identically today. That
+  is the same coverage gap as the opening paragraph, and it is in BACKLOG.md with it.
+- **A Cached Search refresh still overwrites the learned fee** with the availability's own
+  `{cabin}TotalTaxes` (usually null) when the TTL expires, because that path deletes and re-inserts
+  the scope. That is correct precedence — the search is authoritative for the row it returns — and
+  it means a learned fee is a within-TTL improvement, not a permanent one.
+- **Amends "Fees per cell" (Phase 0):** a cell now shows a real fee for as long as the row it was
+  learned on stays in the cache, not only in the render where the drawer was open.
+- **It moves one committed visual baseline, and that is a real consequence, not test noise.**
+  `e2e/cell-drawer.spec.ts` and `e2e/screenshots.spec.ts` click "Show flights" on the demo user's
+  FIRST available cell, and `workers: 1` / `fullyParallel: false` means both run before
+  `visual.spec.ts` against the same warm cache — so the drawer visual.spec photographs now carries
+  the learned fee (`$72.30` → `$84.30`, aeroplan J on the first cell) and the booking deep link the
+  seats.aero URL unlocks (`deeplinks/index.ts:53`). Measured on this Mac by photographing the four
+  grid states before and after a Show flights, with a same-state control pair (own scratch
+  directory; the committed Linux baselines were NOT regenerated or compared):
+  `grid-results` / `grid-ask-drawer` / `grid-origins-editor` differ by 0.009 % of pixels
+  (desktop-light and -dark; the fee glyphs of one cell, a 15 × 11 px box) and mobile-light by 0.000 %
+  (its cells drop the fee line below 1280 px); `grid-cell-drawer` differs by 0.67 % on desktop and
+  **4.5 % on mobile-light**, where the new booking link reflows the sheet. Against
+  `maxDiffPixelRatio: 0.01` only the last one fails, so exactly one baseline has to be regenerated on
+  Linux CI: `e2e/__screenshots__/mobile-light/visual.spec.ts/grid-cell-drawer.png`. The desktop pair
+  passes at two thirds of its budget, which is worth knowing the next time that shot moves.

@@ -34,6 +34,7 @@ import type { AvailabilityRow } from "@/lib/grid/types";
 import { Cabin, DEFAULT_MIN_CABIN_PCT } from "@/lib/query/schema";
 import {
   minFetchedAt,
+  rowInScope,
   rowMatches,
   type AvailabilityCacheStore,
   type CacheQuery,
@@ -338,6 +339,46 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
         // both stores agree — scopeWhere is only ever a prefilter.
         .filter((r) => rowMatches(r, q));
       return { rows, fetched_at_min: minFetchedAt(rows) };
+    },
+
+    async getRowsBySourceId(userId, sourceId, scope): Promise<AvailabilityRow[]> {
+      assertUserId(userId);
+      if (sourceId === "") return [];
+      // (user_id, source_id) is not the PK, so this is a scan of THIS user's rows — bounded by
+      // the per-user cache and pruned by TTL, and it runs once per cell expand. The scope is
+      // applied after `decodeProgram` (via rowInScope) rather than with the LIKE predicates
+      // scopeWhere needs, so it cannot drift from the encoding: the decode is authoritative.
+      return db
+        .select()
+        .from(t)
+        .where(and(eq(t.userId, userId), eq(t.sourceId, sourceId)))
+        .orderBy(asc(t.cabin), asc(t.program))
+        .all()
+        .map(toRow)
+        .filter((r) => rowInScope(r, scope));
+    },
+
+    async updateRowFees(userId, key, fees): Promise<boolean> {
+      assertUserId(userId);
+      // A targeted UPDATE, never an upsert: it is the whole point of the method (issue #52).
+      // The WHERE is the PK plus source_id, so a row a concurrent Cached Search refresh deleted
+      // or replaced with a different availability matches zero rows and nothing is written back.
+      const res = db
+        .update(t)
+        .set({ feesCents: fees.fees_cents, currency: fees.currency, bookingUrl: fees.booking_url })
+        .where(
+          and(
+            eq(t.userId, userId),
+            eq(t.program, encodeProgram(key.program, key.include_filtered, key.min_cabin_pct)),
+            eq(t.origin, key.origin),
+            eq(t.dest, key.dest),
+            eq(t.date, key.date),
+            eq(t.cabin, key.cabin),
+            eq(t.sourceId, key.source_id),
+          ),
+        )
+        .run();
+      return res.changes > 0;
     },
 
     async putRows(userId, rows) {

@@ -73,6 +73,50 @@ describe("InMemoryAvailabilityCache", () => {
     expect((await cache.getRows("u", { ...scope, min_cabin_pct: 70 })).rows).toHaveLength(0);
   });
 
+  it("getRowsBySourceId returns one row per cabin, inside one scope, for one user (#52)", async () => {
+    const cache = new InMemoryAvailabilityCache();
+    await cache.putRows("u", [
+      row({ cabin: "J" }),
+      row({ cabin: "F", miles: 90000 }),
+      row({ cabin: "J", miles: 71000, include_filtered: true }),
+      row({ cabin: "J", miles: 72000, min_cabin_pct: 70 }),
+      row({ source_id: "id2", date: "2026-10-06" }),
+    ]);
+    await cache.putRows("bob", [row()]);
+
+    const plain = await cache.getRowsBySourceId("u", "id1", {});
+    expect(plain.map((r) => [r.cabin, r.miles]).sort()).toEqual([
+      ["F", 90000],
+      ["J", 70000],
+    ]);
+    // Each scope sees only its own row — the flags are identity here, never a superset.
+    expect((await cache.getRowsBySourceId("u", "id1", { include_filtered: true })).map((r) => r.miles)).toEqual([71000]);
+    expect((await cache.getRowsBySourceId("u", "id1", { min_cabin_pct: 70 })).map((r) => r.miles)).toEqual([72000]);
+    expect((await cache.getRowsBySourceId("u", "id1", { min_cabin_pct: 100 })).map((r) => r.miles).sort()).toEqual([70000, 90000]);
+    expect(await cache.getRowsBySourceId("u", "nope", {})).toEqual([]);
+    expect(await cache.getRowsBySourceId("carol", "id1", {})).toEqual([]);
+  });
+
+  it("updateRowFees mutates only the fee columns of an existing row (#52)", async () => {
+    const cache = new InMemoryAvailabilityCache();
+    const j = row({ cabin: "J" });
+    await cache.putRows("u", [j, row({ cabin: "J", miles: 71000, include_filtered: true })]);
+    const fees = { fees_cents: 3400, currency: null, booking_url: "https://example.test/book" };
+
+    expect(await cache.updateRowFees("u", j, fees)).toBe(true);
+    const hit = (await cache.getRowsBySourceId("u", "id1", {}))[0]!;
+    expect([hit.fees_cents, hit.currency, hit.booking_url]).toEqual([3400, null, "https://example.test/book"]);
+    expect([hit.miles, hit.seats_left, hit.computed_last_seen, hit.fetched_at]).toEqual([j.miles, j.seats_left, j.computed_last_seen, j.fetched_at]);
+    expect((await cache.getRowsBySourceId("u", "id1", { include_filtered: true }))[0]!.fees_cents).toBeNull();
+
+    // No match, no insert: the same guard that keeps a concurrently deleted row deleted.
+    for (const miss of [{ ...j, date: "2026-11-30" }, { ...j, source_id: "id-other" }, { ...j, min_cabin_pct: 70 }]) {
+      expect(await cache.updateRowFees("u", miss, fees)).toBe(false);
+    }
+    expect(await cache.updateRowFees("nobody", j, fees)).toBe(false);
+    expect((await cache.getRowsBySourceId("u", "id1", {})).length).toBe(1);
+  });
+
   it("upserts by PK, filters by scope, and reports the oldest fetched_at", async () => {
     const cache = new InMemoryAvailabilityCache();
     await cache.putRows("u", [row({ miles: 70000 }), row({ miles: 65000 })]); // same PK → one row
