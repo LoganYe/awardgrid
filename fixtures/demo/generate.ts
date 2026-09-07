@@ -68,6 +68,14 @@ const MILES_RANGE = { J: [55_000, 120_000], F: [70_000, 160_000] } as const;
 const REGION: Record<string, string> = { HKG: "Asia", PVG: "Asia", SHA: "Asia", NRT: "Asia", HND: "Asia", ICN: "Asia", GMP: "Asia", SEA: "North America" };
 /** Great-circle-ish distances in miles, for realism only. */
 const DISTANCE: Record<string, number> = { HKG: 6483, PVG: 5710, SHA: 5714, NRT: 4776, HND: 4792, ICN: 5217, GMP: 5231 };
+/**
+ * Great-circle statute miles from each connecting hub to SEA. Needed because the itinerary is
+ * sequenced on an absolute clock now: a leg's duration comes from its distance, so a geography-
+ * blind distance produces a geography-blind clock. Drawing an intermediate leg from a flat
+ * 500-1800 mile range made HKG -> SFO a two-hour flight, and once the arrival is no longer
+ * clamped that shows up as a segment departing the day before the itinerary does.
+ */
+const HUB_DISTANCE_TO_SEA: Record<string, number> = { NRT: 4776, ICN: 5217, TPE: 5943, YVR: 127, SFO: 679 };
 const TZ_HOURS: Record<string, number> = { HKG: 8, PVG: 8, SHA: 8, NRT: 9, HND: 9, ICN: 9, GMP: 9, SEA: -7, TPE: 8, YVR: -7, SFO: -7 };
 const COORDS: Record<string, { Lat: number; Lon: number }> = {
   HKG: { Lat: 22.308, Lon: 113.918 },
@@ -416,22 +424,56 @@ function generateTrips(rand: Rand, row: DemoAvailability): DemoTripsResponse {
     const legs: { from: string; to: string; carrier: string }[] = [];
     if (direct) legs.push({ from: origin, to: DEMO_DEST, carrier: pick(rand, airlines) });
     else {
-      const hub = pick(rand, HUBS.filter((h) => CITY[h] !== CITY[origin]));
+      // A connection is somewhere on the way, not a backtrack: the hub must be at least 300 miles
+      // closer to SEA than the origin is. Without that, NRT -> TPE -> SEA gets picked (TPE is
+      // further from SEA than NRT), the first leg's distance floors at the 300-mile minimum, and
+      // the drawer prints a 2,000-mile flight as a four-minute one. Every origin keeps at least
+      // two candidates; the assertion below is what says so.
+      const reachable = HUBS.filter((h) => CITY[h] !== CITY[origin] && HUB_DISTANCE_TO_SEA[h]! < DISTANCE[origin]! - 300);
+      if (reachable.length === 0) throw new Error(`no hub closer to ${DEMO_DEST} than ${origin}`);
+      const hub = pick(rand, reachable);
       const second = airlines.length > 1 ? airlines[1]! : airlines[0]!;
       legs.push({ from: origin, to: hub, carrier: airlines[0]! }, { from: hub, to: DEMO_DEST, carrier: second });
     }
     const segments: DemoSegment[] = [];
-    let cursor = depart;
+    /**
+     * The itinerary is sequenced on an ABSOLUTE clock and each leg's `DepartsAt` / `ArrivesAt` is
+     * derived from it, rather than carrying one local clock across time zones.
+     *
+     * Carrying a local clock forced a clamp — the arrival was `max(cursor + 1, …)`, because
+     * crossing the date line eastbound lands EARLIER in the local day than it departed and a
+     * connection must never depart before the leg that fed it. That clamp is where every
+     * committed cell-drawer capture got its one-minute transpacific leg: "NH914 ICN 13:06 →
+     * SEA 13:07". The sequencing constraint is real; expressing it in local time is what was
+     * wrong. On an absolute clock the constraint holds by construction and the local arrival is
+     * free to be earlier in the day — which is what actually happens on that route.
+     *
+     * `localIso` takes a signed minute offset from the row date's midnight and rolls the date
+     * itself, so an arrival before midnight or after it needs no special case here. The
+     * renderer already dates each leg side independently (#30, flights-list.tsx), which is why
+     * the generator can tell the truth now.
+     */
+    let absCursor = depart - TZ_HOURS[origin]! * 60;
     let totalFlight = 0;
     let tzFrom = TZ_HOURS[origin]!;
     for (const [order, leg] of legs.entries()) {
-      const distance = leg.to === DEMO_DEST && leg.from === origin ? DISTANCE[origin]! : leg.to === DEMO_DEST ? int(rand, 4_700, 6_000) : int(rand, 500, 1_800);
-      const flightMin = Math.round(distance / 8.6) + 15;
+      // Distances that add up. A non-stop is the origin's own figure; a connection splits it, so
+      // origin -> hub is what the direct distance has left over after hub -> SEA. The +-6 % jitter
+      // keeps the dataset from looking computed while staying geographically honest.
+      const distance =
+        leg.to === DEMO_DEST && leg.from === origin
+          ? DISTANCE[origin]!
+          : leg.to === DEMO_DEST
+            ? Math.round(HUB_DISTANCE_TO_SEA[leg.from]! * (0.94 + rand() * 0.12))
+            : Math.round(Math.max(300, DISTANCE[origin]! - HUB_DISTANCE_TO_SEA[leg.to]!) * (0.94 + rand() * 0.12));
+      // 8.6 miles a minute in the air, plus 30 for taxi, climb and descent. The constant was 15,
+      // which made the 127-mile YVR -> SEA hop a 29-minute flight — the same class of
+      // implausibility as the one-minute leg above, just less obvious. 30 puts it at 45.
+      const flightMin = Math.round(distance / 8.6) + 30;
       const tzTo = TZ_HOURS[leg.to]!;
-      // Local arrival clock time. Crossing the date line eastbound lands earlier in the day than
-      // the departure; a connection must still never depart before the leg that fed it, so the
-      // local arrival is kept on the same calendar day rather than rolled back one.
-      const arrive = Math.max(cursor + 1, cursor + flightMin + (tzTo - tzFrom) * 60);
+      const departLocal = absCursor + tzFrom * 60;
+      const absArrive = absCursor + flightMin;
+      const arriveLocal = absArrive + tzTo * 60;
       const flightNumber = `${leg.carrier}${int(rand, 10, 999)}`;
       segments.push({
         ID: ksuidLike(rand),
@@ -445,8 +487,8 @@ function generateTrips(rand: Rand, row: DemoAvailability): DemoTripsResponse {
         AircraftCode: "",
         OriginAirport: leg.from,
         DestinationAirport: leg.to,
-        DepartsAt: localIso(row.Date, cursor),
-        ArrivesAt: localIso(row.Date, arrive),
+        DepartsAt: localIso(row.Date, departLocal),
+        ArrivesAt: localIso(row.Date, arriveLocal),
         CreatedAt: row.CreatedAt,
         UpdatedAt: row.UpdatedAt,
         Source: program,
@@ -455,8 +497,11 @@ function generateTrips(rand: Rand, row: DemoAvailability): DemoTripsResponse {
       segments[order]!.AircraftCode = segments[order]!.AircraftName;
       totalFlight += flightMin;
       tzFrom = tzTo;
-      cursor = arrive + (order < legs.length - 1 ? int(rand, 90, 180) : 0);
-      if (order < legs.length - 1) totalFlight += cursor - arrive;
+      // The layover is elapsed time, so it is added on the absolute clock; TotalDuration is
+      // flight plus layover, which is what it was before and is zone-free either way.
+      const layover = order < legs.length - 1 ? int(rand, 90, 180) : 0;
+      absCursor = absArrive + layover;
+      totalFlight += layover;
     }
     const withCurrency = rand() < 0.7;
     const [taxLo, taxHi] = TAXES[program];

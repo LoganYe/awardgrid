@@ -75,12 +75,7 @@ comment that points here).
   same wrap happens at 1440 for 36 px (`grid/modified-desktop-light.png`, y = 240 → 276). Editing is
   exactly when a user needs to see the rows change, so #48's budget should be measured in the
   modified state, not only at rest. (docs/UI_PLAN.md §6.4 records why the row was accepted.)
-- **The demo generator can emit a one-minute final leg.** `fixtures/demo/generate.ts` clamps a date-line-crossing
-  arrival to `cursor + 1`, so every connecting itinerary in the published cell-drawer captures ends with an impossible
-  "NH914 ICN 13:06 → SEA 13:07". The renderer half is fixed (`flights-list.tsx` now dates each side of a leg
-  independently, so a real overnight or date-line leg carries its own day marker); the generator is outside the fixer
-  pass's edit scope (`src/**`, `e2e/**`, `docs/**`, `scripts/**`). One change: compute the true local arrival and let
-  the day marker explain it. (#30 finding 5)
+
 - **Density control in the grid toolbar.** Row height follows the breakpoint (48 / 32 / 40 px) with no user override;
   the toolbar deliberately holds exactly the controls spec §3.3 lists. A "compact" toggle would let a desktop user get
   the two-line cell. (DECISIONS 6.0 "Row height")

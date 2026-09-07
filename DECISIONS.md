@@ -609,3 +609,30 @@ explain it already shipped in the drawer (`flights-list.tsx`) and was unreachabl
   click, which is wrong for a value found by trial against a 1,000-call daily budget, and that
   `include_filtered` earns its toolbar place only because the `dyn` cell tag makes its effect
   visible in the grid, which nothing does for this one.
+
+### #49 The demo itinerary is sequenced on an absolute clock
+
+- **The one-minute transpacific leg was a local clock carried across time zones.** The generator
+  advanced one `cursor` in local minutes and clamped each arrival to `max(cursor + 1, …)`, because
+  crossing the date line eastbound lands EARLIER in the local day than it departed and a connection
+  must never depart before the leg that fed it. The sequencing constraint is real; expressing it in
+  local time is what was wrong. On an absolute clock the constraint holds by construction, and every
+  committed cell-drawer capture stops saying `NH914 ICN 13:06 → SEA 13:07`. The renderer half was
+  already fixed in #30 (`flights-list.tsx` dates each leg side independently), which is what let the
+  generator tell the truth.
+- **Fixing the clock exposed two things the clamp had been hiding**, and both had to go with it or
+  the honesty would only have moved:
+  - _Distances were geography-blind._ A connecting leg drew `int(rand, 500, 1_800)` miles whatever
+    the airports were, so HKG → SFO was a two-hour flight. With the clamp gone that surfaced as a
+    segment departing the day BEFORE the itinerary did. Legs now add up: `hub → SEA` is the hub's
+    own great-circle figure, `origin → hub` is what the direct distance has left over.
+  - _Hubs were not on the way._ `NRT → TPE → SEA` was reachable, and TPE is further from SEA than
+    NRT is, so the first leg floored at the 300-mile minimum and the drawer printed a 2,000-mile
+    flight as four minutes. A hub must now be at least 300 miles closer to SEA than the origin.
+    Every origin keeps at least two candidates and the generator throws if one ever does not.
+- **The taxi constant went 15 → 30 minutes.** `distance / 8.6 + 15` made the 127-mile YVR → SEA hop
+  a 29-minute flight — the same class of implausibility as the one-minute leg, just less obvious.
+  Nothing else moves by more than a quarter hour. True elapsed time across all 664 segments is now
+  44 min to 13 h 14, median 9 h 35.
+- **Not changed:** `TotalDuration` is still flight plus layover in minutes and is zone-free either
+  way, so the drawer's headline duration means what it did before.
