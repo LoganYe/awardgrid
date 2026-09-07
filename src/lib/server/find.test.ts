@@ -11,8 +11,10 @@ import { seedUsers } from "@/lib/db/stores/testing";
 import { setKey } from "@/lib/keys";
 import { QueryObject, type QueryObjectInput } from "@/lib/query/schema";
 import { SOURCE_NAMES, type Route, type TripsResponse } from "@/lib/seatsaero/types";
+import { createSqliteAvailabilityCache } from "@/lib/db/stores/cache";
 import {
   NOT_FETCHED_REASON,
+  cacheFeesFromTrips,
   NoKeyError,
   ParseError,
   QuotaExceededError,
@@ -28,6 +30,7 @@ import {
 } from "@/lib/server/find";
 import { notice } from "@/lib/notices";
 import { enumeratePairs } from "@/lib/grid/pivot";
+import { compareRows } from "@/lib/grid/ranking";
 import { SeatsAeroHttpError } from "@/lib/seatsaero/client";
 import { fakeFetch, jsonResponse, loadFixture, textResponse } from "../../../test/fixtures/seatsaero/helpers";
 import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "../../../test/fixtures/seatsaero/generate-synthetic";
@@ -80,6 +83,56 @@ function harness() {
     return textResponse("not found", 404);
   });
   return { db, fetch };
+}
+
+export const BOOKING_URL = "https://example.test/book";
+
+interface TripSpec {
+  taxes: number;
+  currency?: string;
+  miles?: number;
+  cabin?: string;
+}
+
+/** A Get Trips payload for ONE availability, with the taxes/currency/cabins the test dictates. */
+function tripsPayload(availabilityId: string, specs: readonly TripSpec[]): TripsResponse {
+  return {
+    data: specs.map((spec, i) => ({
+      ID: `trip-${availabilityId}-${i}`,
+      AvailabilityID: availabilityId,
+      AvailabilitySegments: [],
+      Stops: 0,
+      Carriers: "AA",
+      RemainingSeats: 2,
+      MileageCost: spec.miles ?? 70_000,
+      TotalTaxes: spec.taxes,
+      TaxesCurrency: spec.currency ?? "",
+      FlightNumbers: "AA1",
+      DepartsAt: "2026-10-01T10:00:00Z",
+      Cabin: spec.cabin ?? "business",
+      ArrivesAt: "2026-10-01T20:00:00Z",
+      Source: "american",
+    })),
+    booking_links: [{ label: "Book", link: BOOKING_URL, primary: true }],
+  };
+}
+
+/**
+ * The harness fetch with a Get Trips answer per availability id: `{ [id]: spec }`. An id with no
+ * entry answers with an empty trip list (the "nothing was learned" case).
+ */
+function feeFetch(byId: Record<string, TripSpec | TripSpec[]>): ReturnType<typeof fakeFetch> {
+  return fakeFetch((req) => {
+    if (req.url.pathname === "/partnerapi/search") return jsonResponse(synthetic);
+    if (req.url.pathname === "/partnerapi/routes") return jsonResponse(syntheticRoutes(req.url.searchParams.get("source")!));
+    if (req.url.pathname.startsWith("/partnerapi/trips/")) {
+      const id = req.url.pathname.slice("/partnerapi/trips/".length);
+      const spec = byId[id];
+      if (spec === undefined) return jsonResponse({ data: [], booking_links: [] });
+      return jsonResponse(tripsPayload(id, Array.isArray(spec) ? spec : [spec]));
+    }
+    return textResponse("not found", 404);
+  });
 }
 
 afterEach(() => {
@@ -213,6 +266,275 @@ describe("getTripsForUser", () => {
     expect(await res.json()).toMatchObject({ error: "quota", resetAt: "2026-10-02T00:00:00.000Z" });
     // Nothing was charged.
     expect(db.select().from(apiUsage).all()[0]!.calls).toBe(950);
+  });
+
+  it("writes the priced row's fees, currency and booking link back into the cache (#52)", async () => {
+    const { db } = harness();
+    const q = query({ cabins: ["J"], sort_by: "fees_asc" });
+    const first = await findGridForUser(db, { id: "alice" }, q, { now, fetch: feeFetch({}), masterKey: MASTER });
+
+    // The defect's starting point: Cached Search carries no taxes, so every row's fee is unknown
+    // and `fees_asc` can only fall back to its tiebreakers.
+    const before = first.grid.cells.flat().flatMap((c) => c.all);
+    expect(before.length).toBeGreaterThan(4);
+    expect(before.every((r) => r.fees_cents === null)).toBe(true);
+
+    // Two DIFFERENT cells get expanded — the only two fees a user could have learned by hand.
+    const cells = first.grid.cells.flat().filter((c) => c.status === "ok" && c.best !== null);
+    const cheap = cells[0]!.best!;
+    const dear = cells.find((c) => c.best!.source_id !== cheap.source_id)!.best!;
+    for (const [row, taxes] of [
+      [cheap, 1_200],
+      [dear, 9_900],
+    ] as const) {
+      const res = await getTripsForUser(db, { id: "alice" }, row.source_id, {
+        now,
+        fetch: feeFetch({ [row.source_id]: { taxes, currency: "USD", miles: row.miles } }),
+        masterKey: MASTER,
+        cabin: "J",
+        include_filtered: false,
+        min_cabin_pct: 100,
+      });
+      expect(res.fees_cents).toBe(taxes);
+    }
+
+    // The same query again, inside the TTL: no network, the grid is the cache's own answer.
+    const second = await findGridForUser(db, { id: "alice" }, q, {
+      now: () => new Date(NOW.getTime() + 20 * 60_000),
+      fetch: feeFetch({}),
+      masterKey: MASTER,
+    });
+    expect(second.grid.meta.served_from_cache).toBe(true);
+
+    const after = second.grid.cells.flat().flatMap((c) => c.all);
+    expect(after.filter((r) => r.fees_cents !== null).map((r) => [r.source_id, r.fees_cents, r.currency])).toEqual([
+      [cheap.source_id, 1_200, "USD"],
+      [dear.source_id, 9_900, "USD"],
+    ]);
+    expect(after.find((r) => r.source_id === cheap.source_id)!.booking_url).toBe(BOOKING_URL);
+
+    // What the user asked for: cheapest fee first, then the next, then the unknown tail.
+    const sorted = [...after].sort(compareRows("fees_asc"));
+    expect(sorted.slice(0, 2).map((r) => r.source_id)).toEqual([cheap.source_id, dear.source_id]);
+    expect(sorted.slice(2).every((r) => r.fees_cents === null)).toBe(true);
+
+    // Freshness is untouched: the fee is new, the availability behind it is not (see DECISIONS #52).
+    const stored = db.select().from(availabilityCache).all().find((r) => r.sourceId === cheap.source_id && r.cabin === "J")!;
+    expect(stored.computedLastSeen).toBe(cheap.computed_last_seen);
+    expect(stored.fetchedAt).toBe(cheap.fetched_at);
+    expect(stored.miles).toBe(cheap.miles);
+    expect(stored.seatsLeft).toBe(cheap.seats_left);
+  });
+
+  it("writes the fee of the cabin the cell shows, not the cheapest trip in the response (#52)", async () => {
+    const { db } = harness();
+    const q = query({ cabins: ["J", "F"] });
+    const grid = await findGridForUser(db, { id: "alice" }, q, { now, fetch: feeFetch({}), masterKey: MASTER });
+    // A cell whose availability is offered in BOTH cabins: two rows, one source_id.
+    const both = grid.grid.cells
+      .flat()
+      .flatMap((c) => c.all)
+      .filter((r, _i, all) => all.filter((x) => x.source_id === r.source_id).length === 2);
+    const j = both.find((r) => r.cabin === "J")!;
+    expect(both.some((r) => r.cabin === "F" && r.source_id === j.source_id)).toBe(true);
+
+    // First is cheaper in miles AND in taxes; the J row must not inherit it.
+    const res = await getTripsForUser(db, { id: "alice" }, j.source_id, {
+      now,
+      fetch: feeFetch({
+        [j.source_id]: [
+          { cabin: "first", miles: 60_000, taxes: 500, currency: "USD" },
+          { cabin: "business", miles: 70_000, taxes: 3_000, currency: "USD" },
+        ],
+      }),
+      masterKey: MASTER,
+      cabin: "J",
+    });
+    expect(res.fees_cents).toBe(3_000);
+    const stored = db.select().from(availabilityCache).all().filter((r) => r.sourceId === j.source_id);
+    expect(stored.map((r) => [r.cabin, r.feesCents]).sort()).toEqual([
+      ["F", null],
+      ["J", 3_000],
+    ]);
+  });
+
+  it("never writes outside the scope it read in, or into another user's cache (#52)", async () => {
+    const { db } = harness();
+    const q = query({ cabins: ["J"] });
+    const grid = await findGridForUser(db, { id: "alice" }, q, { now, fetch: feeFetch({}), masterKey: MASTER });
+    await findGridForUser(db, { id: "bob" }, q, { now, fetch: feeFetch({}), masterKey: MASTER });
+    const row = grid.grid.cells.flat().find((c) => c.best !== null)!.best!;
+    const spec = { [row.source_id]: { taxes: 4_200, currency: "USD" } };
+    const feesOf = (userId: string) =>
+      db.select().from(availabilityCache).all().filter((r) => r.userId === userId && r.sourceId === row.source_id).map((r) => r.feesCents);
+
+    // Both rows were fetched at include_filtered=false / min_cabin_pct=100; a drawer opened in
+    // either of the other scopes is asking a different question and must not touch them.
+    for (const scope of [{ include_filtered: true }, { min_cabin_pct: 70 }]) {
+      await getTripsForUser(db, { id: "alice" }, row.source_id, { now, fetch: feeFetch(spec), masterKey: MASTER, cabin: "J", ...scope });
+      expect(feesOf("alice")).toEqual([null]);
+    }
+
+    await getTripsForUser(db, { id: "alice" }, row.source_id, {
+      now,
+      fetch: feeFetch(spec),
+      masterKey: MASTER,
+      cabin: "J",
+      include_filtered: false,
+      min_cabin_pct: 100,
+    });
+    expect(feesOf("alice")).toEqual([4_200]);
+    // Bob searched the same fixture and holds a row with the same Availability ID: untouched.
+    expect(feesOf("bob")).toEqual([null]);
+  });
+
+  it("a failed call, a fee-less answer or an unattributable one leaves the cached row as it was (#52)", async () => {
+    const { db } = harness();
+    const q = query({ cabins: ["J"] });
+    const grid = await findGridForUser(db, { id: "alice" }, q, { now, fetch: feeFetch({}), masterKey: MASTER });
+    const cells = grid.grid.cells.flat().filter((c) => c.best !== null);
+    const row = cells[0]!.best!;
+    const other = cells.find((c) => c.best!.source_id !== row.source_id)!.best!;
+    const stored = (sourceId: string) =>
+      db.select().from(availabilityCache).all().find((r) => r.userId === "alice" && r.sourceId === sourceId)!;
+
+    const opts = { now, masterKey: MASTER, cabin: "J", include_filtered: false, min_cabin_pct: 100 } as const;
+    await getTripsForUser(db, { id: "alice" }, row.source_id, {
+      ...opts,
+      fetch: feeFetch({ [row.source_id]: { taxes: 1_200, currency: "EUR" } }),
+    });
+    expect([stored(row.source_id).feesCents, stored(row.source_id).currency]).toEqual([1_200, "EUR"]);
+
+    // (a) an answer with no trips at all: nothing was learned, so nothing is overwritten.
+    await getTripsForUser(db, { id: "alice" }, row.source_id, { ...opts, fetch: feeFetch({}) });
+    expect([stored(row.source_id).feesCents, stored(row.source_id).currency]).toEqual([1_200, "EUR"]);
+
+    // (b) no trip in THIS cabin: same rule, via tripsToFees' cabin filter.
+    await getTripsForUser(db, { id: "alice" }, row.source_id, {
+      ...opts,
+      fetch: feeFetch({ [row.source_id]: { cabin: "first", taxes: 99, currency: "USD" } }),
+    });
+    expect([stored(row.source_id).feesCents, stored(row.source_id).currency]).toEqual([1_200, "EUR"]);
+
+    // (c) the call itself fails: it throws before any write, and the row keeps its fee.
+    const failing = fakeFetch((req) =>
+      req.url.pathname.startsWith("/partnerapi/trips/") ? textResponse("upstream is down", 502) : textResponse("not found", 404),
+    );
+    await expect(getTripsForUser(db, { id: "alice" }, row.source_id, { ...opts, fetch: failing })).rejects.toBeInstanceOf(SeatsAeroHttpError);
+    expect([stored(row.source_id).feesCents, stored(row.source_id).currency]).toEqual([1_200, "EUR"]);
+
+    // (d) no cabin asked: the cheapest trip across cabins is not any one cell's fee.
+    const noCabin = await getTripsForUser(db, { id: "alice" }, other.source_id, {
+      now,
+      masterKey: MASTER,
+      fetch: feeFetch({ [other.source_id]: { taxes: 7_000, currency: "USD" } }),
+    });
+    expect(noCabin.fees_cents).toBe(7_000);
+    expect(stored(other.source_id).feesCents).toBeNull();
+  });
+
+  it("on a first render every fee is unknown, so fees_asc IS miles_asc (#52 does not fix that)", async () => {
+    // The honest limit of #52, pinned so nobody reads the write-back as a fix for `fees_asc`.
+    // Cached Search carries no taxes, so a grid that has never been expanded has zero fee
+    // coverage; `byFeesAscNullLast` then returns 0 for every pair and the chain falls through to
+    // `byMilesAsc`, which is where `miles_asc` starts. Coverage only ever climbs one expand — one
+    // cell, one quota call — at a time. See BACKLOG.md.
+    const { db } = harness();
+    const grid = await findGridForUser(db, { id: "alice" }, query({ sort_by: "fees_asc" }), { now, fetch: feeFetch({}), masterKey: MASTER });
+    const rows = grid.grid.cells.flat().flatMap((c) => c.all);
+    expect(rows.length).toBeGreaterThan(100);
+    expect(rows.filter((r) => r.fees_cents !== null)).toEqual([]);
+    const id = (r: (typeof rows)[number]) => `${r.date}|${r.origin}|${r.dest}|${r.cabin}|${r.program}`;
+    expect([...rows].sort(compareRows("fees_asc")).map(id)).toEqual([...rows].sort(compareRows("miles_asc")).map(id));
+  });
+
+  it("takes the currency of the fee it just learned, never the row's previous one (#52)", async () => {
+    const { db } = harness();
+    const grid = await findGridForUser(db, { id: "alice" }, query({ cabins: ["J"] }), { now, fetch: feeFetch({}), masterKey: MASTER });
+    const row = grid.grid.cells.flat().find((c) => c.best !== null)!.best!;
+    const opts = { now, masterKey: MASTER, cabin: "J", include_filtered: false, min_cabin_pct: 100 } as const;
+    const stored = () => db.select().from(availabilityCache).all().find((r) => r.userId === "alice" && r.sourceId === row.source_id)!;
+
+    // A genuinely non-USD quote is recorded as such.
+    await getTripsForUser(db, { id: "alice" }, row.source_id, { ...opts, fetch: feeFetch({ [row.source_id]: { taxes: 12_000, currency: "EUR" } }) });
+    expect([stored().feesCents, stored().currency]).toEqual([12_000, "EUR"]);
+
+    // The next expand quotes 50.00 in USD, which seats.aero encodes as TaxesCurrency: "". The
+    // amount and its label travel together: inheriting "EUR" here would print "50.00 EUR" in the
+    // grid and the CSV while the drawer, reading the same response, prints "$50.00".
+    const res = await getTripsForUser(db, { id: "alice" }, row.source_id, { ...opts, fetch: feeFetch({ [row.source_id]: { taxes: 5_000, currency: "" } }) });
+    expect([res.fees_cents, res.currency]).toEqual([5_000, null]);
+    expect([stored().feesCents, stored().currency]).toEqual([5_000, null]);
+  });
+
+  it("does not learn a booking link for a cabin it found no itinerary in (#52)", async () => {
+    const { db } = harness();
+    const grid = await findGridForUser(db, { id: "alice" }, query({ cabins: ["J"] }), { now, fetch: feeFetch({}), masterKey: MASTER });
+    const row = grid.grid.cells.flat().find((c) => c.best !== null)!.best!;
+    // A real seats.aero response carries `booking_links` per AVAILABILITY: it is there whether or
+    // not the trip list holds anything, and whether or not anything in it is in the asked cabin.
+    const linkOnly = (data: TripsResponse["data"]) =>
+      fakeFetch((req) =>
+        req.url.pathname.startsWith("/partnerapi/trips/")
+          ? jsonResponse({ data, booking_links: [{ label: "Book", link: BOOKING_URL, primary: true }] })
+          : textResponse("not found", 404),
+      );
+    const opts = { now, masterKey: MASTER, cabin: "J", include_filtered: false, min_cabin_pct: 100 } as const;
+    const stored = () => db.select().from(availabilityCache).all().find((r) => r.userId === "alice" && r.sourceId === row.source_id)!;
+
+    // (a) no trips at all, and (b) trips but none in J. Persisting the link on this evidence
+    // would permanently re-point the cell's deeplink (resolveDeeplink prefers booking_url over
+    // every program builder) on the strength of a call that found nothing to book in this cabin.
+    await getTripsForUser(db, { id: "alice" }, row.source_id, { ...opts, fetch: linkOnly([]) });
+    expect([stored().feesCents, stored().bookingUrl]).toEqual([null, null]);
+    await getTripsForUser(db, { id: "alice" }, row.source_id, { ...opts, fetch: linkOnly(tripsPayload(row.source_id, [{ cabin: "first", taxes: 99 }]).data) });
+    expect([stored().feesCents, stored().bookingUrl]).toEqual([null, null]);
+
+    // A priced J trip is the evidence the link write was waiting for.
+    await getTripsForUser(db, { id: "alice" }, row.source_id, { ...opts, fetch: linkOnly(tripsPayload(row.source_id, [{ cabin: "business", taxes: 3_400 }]).data) });
+    expect([stored().feesCents, stored().bookingUrl]).toEqual([3_400, BOOKING_URL]);
+  });
+
+  it("a Cached Search refresh that lands mid-write is not rolled back, and a deleted row stays deleted (#52)", async () => {
+    const { db } = harness();
+    const grid = await findGridForUser(db, { id: "alice" }, query({ cabins: ["J"] }), { now, fetch: feeFetch({}), masterKey: MASTER });
+    const row = grid.grid.cells.flat().find((c) => c.best !== null)!.best!;
+    const fees = { fees_cents: 4_200, currency: "USD", booking_url: BOOKING_URL };
+
+    // cacheFeesFromTrips reads the row, then writes. /api/find and /api/trips are concurrent
+    // handlers over the same synchronous handle, so a refresh can land in that await gap; this
+    // store wrapper puts one exactly there.
+    const withRefreshInTheGap = (refresh: (c: ReturnType<typeof createSqliteAvailabilityCache>) => void) => {
+      const real = createSqliteAvailabilityCache(db);
+      return Object.assign(Object.create(Object.getPrototypeOf(real) as object) as typeof real, real, {
+        async getRowsBySourceId(...args: Parameters<typeof real.getRowsBySourceId>) {
+          const rows = await real.getRowsBySourceId(...args);
+          refresh(real);
+          return rows;
+        },
+      });
+    };
+
+    // (a) the refresh rewrote the row (new miles, seats, freshness). The fee write must add its
+    // three columns to THAT row, not restore the snapshot it read a microtask earlier.
+    const refreshed = { ...row, miles: 55_000, seats_left: 9, computed_last_seen: "2026-10-01T11:59:00Z", fetched_at: "2026-10-01T11:59:00Z" };
+    await cacheFeesFromTrips(withRefreshInTheGap((c) => void c.putRows("alice", [refreshed])), "alice", row.source_id, fees, {
+      cabin: "J",
+      include_filtered: false,
+      min_cabin_pct: 100,
+    });
+    const after = db.select().from(availabilityCache).all().find((r) => r.userId === "alice" && r.sourceId === row.source_id)!;
+    expect([after.miles, after.seatsLeft, after.computedLastSeen]).toEqual([55_000, 9, "2026-10-01T11:59:00Z"]);
+    expect([after.feesCents, after.bookingUrl]).toEqual([4_200, BOOKING_URL]);
+
+    // (b) the refresh found the award gone and deleted the row. Re-inserting it would put a
+    // phantom back in a scope whose coverage record is now fresh, so it would be served until
+    // the TTL expired. Nothing matches, so nothing is written.
+    const gone = withRefreshInTheGap(
+      (c) => void c.deleteRows("alice", { origins: [row.origin], dests: [row.dest], date_from: row.date, date_to: row.date, cabins: ["J"] }),
+    );
+    expect(await cacheFeesFromTrips(gone, "alice", row.source_id, fees, { cabin: "J", include_filtered: false, min_cabin_pct: 100 })).toBe(false);
+    expect(db.select().from(availabilityCache).all().filter((r) => r.userId === "alice" && r.sourceId === row.source_id)).toEqual([]);
   });
 
   it("summarizeTrip orders segments and normalises empty currency to null", () => {

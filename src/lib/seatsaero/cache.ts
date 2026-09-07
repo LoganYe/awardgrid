@@ -64,8 +64,65 @@ export interface CachedRows {
   fetched_at_min: string | null;
 }
 
+/**
+ * The half of a CacheQuery that is row IDENTITY rather than a filter: two rows for the same
+ * (program, pair, date, cabin) fetched at different include_filtered / min_cabin_pct are
+ * DIFFERENT rows, stored side by side (see the SQLite store's `encodeProgram`). Anything that
+ * writes to a row it did not read through a full CacheQuery has to carry this, or it writes
+ * across scopes.
+ */
+export interface RowScope {
+  /** Absent = false. */
+  include_filtered?: boolean;
+  /** Absent = 100 (the API default). */
+  min_cabin_pct?: number;
+}
+
+/** True when `r` belongs to exactly `scope` — both flags, in both directions, never a superset. */
+export function rowInScope(r: Pick<AvailabilityRow, "include_filtered" | "min_cabin_pct">, scope: RowScope): boolean {
+  return (
+    (scope.include_filtered ?? false) === (r.include_filtered ?? false) &&
+    (scope.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT) === (r.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT)
+  );
+}
+
+/**
+ * The row identity a fee write addresses: the availability_cache PK (program + its scope
+ * suffixes, pair, date, cabin) PLUS `source_id`. The id is part of the address on purpose — a
+ * fee describes one seats.aero Availability, so if a refresh has meanwhile replaced the cell
+ * with a different availability the write must miss rather than mislabel the new one.
+ */
+export type RowFeesKey = Pick<
+  AvailabilityRow,
+  "program" | "origin" | "dest" | "date" | "cabin" | "source_id" | "include_filtered" | "min_cabin_pct"
+>;
+
+/** The three columns Get Trips can learn — the only ones `updateRowFees` may touch. */
+export interface RowFees {
+  fees_cents: number | null;
+  currency: string | null;
+  booking_url: string | null;
+}
+
 export interface AvailabilityCacheStore {
   getRows(userId: string, q: CacheQuery): Promise<CachedRows>;
+  /**
+   * The cached rows for ONE seats.aero Availability ID (`source_id`) inside ONE scope — up to
+   * one per cabin, since availabilityToRows stamps every cabin's row with the same ID. This is
+   * the lookup for Get Trips, which knows the availability id and nothing else about the cell
+   * (issue #52). `scope` is mandatory: without it the same availability's filtered / mixed-cabin
+   * rows would be returned too, and a caller could write a fee across a scope boundary.
+   */
+  getRowsBySourceId(userId: string, sourceId: string, scope: RowScope): Promise<AvailabilityRow[]>;
+  /**
+   * Set ONLY `fees_cents`, `currency` and `booking_url` on the one row `key` addresses, and
+   * NEVER insert (issue #52). Get Trips learns a fee by reading the row and writing it back;
+   * re-upserting the whole row would roll back anything a Cached Search refresh wrote in the
+   * gap between the two, and would resurrect a row that refresh had deleted because the award
+   * is gone. A targeted UPDATE cannot: every other column keeps whatever the refresh put there,
+   * and a deleted or re-identified row simply matches nothing. Returns true when a row matched.
+   */
+  updateRowFees(userId: string, key: RowFeesKey, fees: RowFees): Promise<boolean>;
   /** Upsert by PK. */
   putRows(userId: string, rows: readonly AvailabilityRow[]): Promise<void>;
   /** Remove every row matching `q` (used before re-inserting a freshly fetched scope). */
@@ -112,6 +169,18 @@ export class InMemoryAvailabilityCache implements AvailabilityCacheStore {
   async getRows(userId: string, q: CacheQuery): Promise<CachedRows> {
     const rows = [...this.#rowsOf(userId).values()].filter((r) => rowMatches(r, q));
     return { rows, fetched_at_min: minFetchedAt(rows) };
+  }
+
+  async getRowsBySourceId(userId: string, sourceId: string, scope: RowScope): Promise<AvailabilityRow[]> {
+    return [...this.#rowsOf(userId).values()].filter((r) => r.source_id === sourceId && rowInScope(r, scope));
+  }
+
+  async updateRowFees(userId: string, key: RowFeesKey, fees: RowFees): Promise<boolean> {
+    const m = this.#rowsOf(userId);
+    const existing = m.get(rowKey(key));
+    if (!existing || existing.source_id !== key.source_id) return false;
+    m.set(rowKey(key), { ...existing, fees_cents: fees.fees_cents, currency: fees.currency, booking_url: fees.booking_url });
+    return true;
   }
 
   async putRows(userId: string, rows: readonly AvailabilityRow[]): Promise<void> {

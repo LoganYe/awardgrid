@@ -27,7 +27,7 @@ export interface ProgramRowProps {
   row: AvailabilityRow;
   /** Epoch ms the freshness age is measured against. */
   now: number;
-  /** The query's dynamic-pricing scope; Get Trips must ask in the same scope it was cached in. */
+  /** The query's dynamic-pricing scope; the fallback for a row that does not carry its own. */
   includeFiltered: boolean;
   /** The query's min_cabin_pct; Get Trips must ask in the same scope, or the flight list
    * would show itineraries the grid excluded (or hide ones it counted). */
@@ -45,7 +45,17 @@ export function ProgramRow({ row, now, includeFiltered, minCabinPct, onTripsLoad
 
   async function load() {
     setFlights({ status: "loading" });
-    const res = await apiTrips(row.source_id, row.cabin, includeFiltered, minCabinPct);
+    // Ask in the ROW's own scope, falling back to the query's. The two differ for a
+    // `dynamic: true` row borrowed into a plain grid, which appendCachedDynamicRows takes from
+    // the include_filtered=true cache scope: asking with the query's false would price a row
+    // that scope never held, and the #52 fee write-back would find no row of its own to land on
+    // (it refuses to write across a scope boundary), silently wasting the call's quota.
+    const res = await apiTrips(
+      row.source_id,
+      row.cabin,
+      row.include_filtered ?? includeFiltered,
+      row.min_cabin_pct ?? minCabinPct,
+    );
     if (res.ok) {
       setFlights({ status: "ok", result: res.value });
       onTripsLoaded(row, res.value);

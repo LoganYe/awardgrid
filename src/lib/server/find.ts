@@ -26,10 +26,10 @@ import { SeatsAeroClient, SeatsAeroError, SeatsAeroHttpError, SeatsAeroNetworkEr
 import { seatsFetchFromEnv } from "./seats-fetch";
 import { runFind, type FindResult } from "@/lib/seatsaero/find";
 import { cacheTtlMinutesFromEnv, uncoveredPairs, type AvailabilityCacheStore, type CacheQuery } from "@/lib/seatsaero/cache";
-import { tripsToFees } from "@/lib/seatsaero/normalize";
+import { tripsToFees, type TripFees } from "@/lib/seatsaero/normalize";
 import { Quota, QuotaExceededError, softLimitFromEnv } from "@/lib/seatsaero/quota";
 import { RoutesCatalog, type EnsureLoadedOptions, type EnsureLoadedResult } from "@/lib/seatsaero/routes";
-import type { Cabin } from "@/lib/query/schema";
+import { DEFAULT_MIN_CABIN_PCT, type Cabin } from "@/lib/query/schema";
 import { notice, noticesToText, type Notice } from "@/lib/notices";
 import { SEATS_SOURCES, SOURCE_NAMES, type Trip } from "@/lib/seatsaero/types";
 
@@ -497,6 +497,66 @@ export function summarizeTrip(t: Trip): TripSummary {
 }
 
 /**
+ * Persist what Get Trips priced onto the cached row it belongs to (issue #52). Get Trips is the
+ * only source of real fees, currency and booking link; before this they were returned to the one
+ * open drawer and dropped, so a cell's fee lasted exactly as long as the render did.
+ *
+ * The rules, in the order they bite:
+ *
+ *  - WHICH ROW. `fees` is `tripsToFees(res, cabin)` — the cheapest trip IN THAT CABIN, which is
+ *    the number the drawer shows for that cabin's row. So the write goes to that one row: the
+ *    cached row with this Availability ID and this cabin, nothing else. Without a cabin the
+ *    caller asked for the cheapest trip in ANY cabin, which is not the fee of any single cell —
+ *    there is no row it may be attributed to, and nothing is written.
+ *  - WHICH SCOPE. The lookup carries the request's own include_filtered / min_cabin_pct, so the
+ *    fee lands in the scope the drawer asked in and never leaks into the neighbouring one (a
+ *    100 % row must not inherit a 70 % answer). Per user, like every other cache write.
+ *  - EVIDENCE. Everything written is evidence about THIS cabin, so the whole write is gated on
+ *    having priced a trip in it. A response with no trip in this cabin still carries the
+ *    availability-level `booking_links[]`, and writing that link alone would permanently
+ *    re-point the cell's deeplink (`resolveDeeplink` prefers `booking_url` over every program
+ *    builder) on the strength of a call that found no itinerary to book.
+ *  - CURRENCY. The currency of the fee just learned, verbatim — null included. seats.aero sends
+ *    `TaxesCurrency: ""` for USD, which `tripsToFees` normalizes to null, and null already means
+ *    the recorded USD assumption everywhere else (`formatFees`, `availabilityToRows`). Inheriting
+ *    the row's old currency instead would label a USD amount "EUR".
+ *  - FRESHNESS. `computed_last_seen` and `fetched_at` are never touched: they say how old the
+ *    AVAILABILITY is, and a fresh fee does not make a three-day-old row newly seen. See
+ *    DECISIONS.md (#52).
+ *  - ATOMICITY. The write is a targeted `updateRowFees`, not a re-upsert of the row that was
+ *    read: between the read and the write a Cached Search refresh may have rewritten or deleted
+ *    this row, and an upsert would roll its columns back or resurrect a retired award.
+ *
+ * Returns true when a row was updated (false = nothing to learn, or no such row cached).
+ */
+export async function cacheFeesFromTrips(
+  cache: AvailabilityCacheStore,
+  userId: string,
+  availabilityId: string,
+  fees: TripFees,
+  scope: { cabin?: Cabin; include_filtered?: boolean; min_cabin_pct?: number },
+): Promise<boolean> {
+  if (scope.cabin === undefined) return false;
+  // No trip in this cabin = nothing was learned ABOUT this cabin, booking link included.
+  if (fees.fees_cents === null) return false;
+  const rows = await cache.getRowsBySourceId(userId, availabilityId, {
+    include_filtered: scope.include_filtered ?? false,
+    min_cabin_pct: scope.min_cabin_pct ?? DEFAULT_MIN_CABIN_PCT,
+  });
+  const row = rows.find((r) => r.cabin === scope.cabin);
+  if (!row) return false;
+  // A response with a priced trip but no booking link keeps the stored link: a missing link is
+  // not a contradiction of a good one, unlike the currency, which belongs to the fee itself.
+  const bookingUrl = fees.booking_url ?? row.booking_url;
+  if (fees.fees_cents === row.fees_cents && fees.currency === row.currency && bookingUrl === row.booking_url) return false;
+  return cache.updateRowFees(userId, row, {
+    fees_cents: fees.fees_cents,
+    currency: fees.currency,
+    booking_url: bookingUrl,
+  });
+}
+
+/**
  * Get Trips for one Availability ID — costs exactly one seats.aero call, reserved before the
  * request and charged whether it succeeds or fails (seats.aero charged for it either way).
  */
@@ -508,7 +568,7 @@ export async function getTripsForUser(
 ): Promise<TripsForUserResult> {
   const now = opts.now ?? (() => new Date());
   const apiKey = resolveSeatsKey(db, user.id, opts.masterKey);
-  const { quota } = wiring(db, now);
+  const { stores, quota } = wiring(db, now);
 
   const day = quota.today();
   await quota.reserve(user.id, 1, day); // throws QuotaExceededError with the reset time
@@ -526,6 +586,18 @@ export async function getTripsForUser(
       ...(pct < 100 ? { min_cabin_pct: pct } : {}),
     });
     const fees = tripsToFees(res, opts.cabin);
+    // The only place a real fee, currency or booking link is ever learned: write it back to the
+    // cell's own cached row (issue #52). A store failure must not cost the user the answer they
+    // just paid a call for, so it is logged by NAME ONLY (kickoff §10) and the response stands.
+    try {
+      await cacheFeesFromTrips(stores.cache, user.id, availabilityId, fees, {
+        ...(opts.cabin ? { cabin: opts.cabin } : {}),
+        ...(opts.include_filtered ? { include_filtered: true } : {}),
+        ...(opts.min_cabin_pct !== undefined ? { min_cabin_pct: opts.min_cabin_pct } : {}),
+      });
+    } catch (err) {
+      console.error("trips fee writeback failed", err instanceof Error ? err.name : typeof err);
+    }
     const trips = res.data.map(summarizeTrip).sort((a, b) => a.miles - b.miles || a.fees_cents - b.fees_cents);
     return {
       availability_id: availabilityId,

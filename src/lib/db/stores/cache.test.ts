@@ -151,6 +151,56 @@ describe("createSqliteAvailabilityCache", () => {
     expect(await cache.getCoverage("alice", [{ origin: "HKG", dest: "SEA" }])).toHaveLength(1);
   });
 
+  it("getRowsBySourceId is per user and per scope, and decodes the row it returns (#52)", async () => {
+    const cache = createSqliteAvailabilityCache(testDbWithUsers(USERS));
+    await cache.putRows("alice", [
+      row({ cabin: "J" }),
+      row({ cabin: "F", miles: 90000 }),
+      row({ cabin: "J", miles: 71000, include_filtered: true }),
+      row({ cabin: "J", miles: 72000, min_cabin_pct: 70 }),
+    ]);
+    await cache.putRows("bob", [row({ cabin: "J", miles: 5 })]);
+
+    const plain = await cache.getRowsBySourceId("alice", "id1", {});
+    expect(plain.map((r) => [r.cabin, r.miles])).toEqual([
+      ["F", 90000],
+      ["J", 70000],
+    ]);
+    // The `#filtered` / `#pct70` suffixes never leak out of the store.
+    expect(plain.every((r) => r.program === "american" && r.include_filtered === undefined && r.min_cabin_pct === undefined)).toBe(true);
+    expect((await cache.getRowsBySourceId("alice", "id1", { include_filtered: true })).map((r) => r.miles)).toEqual([71000]);
+    expect((await cache.getRowsBySourceId("alice", "id1", { min_cabin_pct: 70 })).map((r) => r.miles)).toEqual([72000]);
+    expect((await cache.getRowsBySourceId("bob", "id1", {})).map((r) => r.miles)).toEqual([5]);
+    expect(await cache.getRowsBySourceId("alice", "missing", {})).toEqual([]);
+    expect(await cache.getRowsBySourceId("alice", "", {})).toEqual([]);
+    await expect(cache.getRowsBySourceId("", "id1", {})).rejects.toBeInstanceOf(RangeError);
+  });
+
+  it("updateRowFees touches only the three fee columns, and never inserts (#52)", async () => {
+    const cache = createSqliteAvailabilityCache(testDbWithUsers(USERS));
+    const j = row({ cabin: "J" });
+    await cache.putRows("alice", [j, row({ cabin: "J", miles: 71000, include_filtered: true })]);
+    await cache.putRows("bob", [row({ cabin: "J", miles: 5 })]);
+    const fees = { fees_cents: 3400, currency: null, booking_url: "https://example.test/book" };
+    const read = async (u: string, scope = {}) => (await cache.getRowsBySourceId(u, "id1", scope))[0];
+
+    expect(await cache.updateRowFees("alice", j, fees)).toBe(true);
+    const hit = (await read("alice"))!;
+    expect([hit.fees_cents, hit.currency, hit.booking_url]).toEqual([3400, null, "https://example.test/book"]);
+    // Everything else — including the freshness the grid's mark reads — is untouched.
+    expect([hit.miles, hit.seats_left, hit.computed_last_seen, hit.fetched_at]).toEqual([j.miles, j.seats_left, j.computed_last_seen, j.fetched_at]);
+    // and it stayed inside its own scope and its own user.
+    expect((await read("alice", { include_filtered: true }))!.fees_cents).toBeNull();
+    expect((await read("bob"))!.fees_cents).toBeNull();
+
+    // No row matches → no INSERT. This is what keeps a concurrently deleted row deleted.
+    const before = await cache.getRows("alice", scope);
+    expect(await cache.updateRowFees("alice", { ...j, date: "2026-11-30" }, fees)).toBe(false);
+    expect(await cache.updateRowFees("alice", { ...j, source_id: "id-other" }, fees)).toBe(false);
+    expect(await cache.updateRowFees("alice", { ...j, min_cabin_pct: 70 }, fees)).toBe(false);
+    expect((await cache.getRows("alice", scope)).rows).toHaveLength(before.rows.length);
+  });
+
   it("keeps include_filtered rows in their own scope with their own PK", async () => {
     const cache = createSqliteAvailabilityCache(testDbWithUsers(USERS));
     await cache.putRows("u", [row({ miles: 70000 }), row({ miles: 90000, include_filtered: true })]);
