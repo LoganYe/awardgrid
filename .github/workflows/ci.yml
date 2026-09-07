@@ -201,8 +201,12 @@ jobs:
       - name: docker compose build
         run: docker compose build
 
-      - name: docker compose up -d app
-        run: docker compose up -d app
+      # `up -d` with NO service name, deliberately: it is the only thing that starts the worker
+      # container, and until #11 that container had never run anywhere — not in CI, not locally.
+      # The worker's `depends_on: condition: service_healthy` makes this block until the app's
+      # HEALTHCHECK passes, so the /api/health poll below cannot race it.
+      - name: docker compose up -d (app AND worker)
+        run: docker compose up -d
 
       - name: Wait for /api/health (up to 60 s)
         run: |
@@ -222,9 +226,36 @@ jobs:
           echo "/login -> $code"
           [ "$code" = "200" ]
 
-      - name: App logs (on failure)
+      # The worker is the surface nothing else tests. If tsx-in-the-runtime-image, the worker
+      # command line or the /data volume permissions were wrong, the app would serve the grid
+      # perfectly and no standing query would ever run — a failure nobody notices for days.
+      # `worker.start` is the last line of a successful boot (src/cli/worker-main.ts:162).
+      - name: Worker booted, on the mock transport (up to 60 s)
+        run: |
+          set -uo pipefail
+          # One JSON line proves both: stdoutLog writes
+          #   {"ts":…,"event":"worker.start","tickCron":…,"transport":"mock"}
+          # and it is the last thing a successful boot emits (src/cli/worker-main.ts:162).
+          # "mock" rather than "telegram" is the assertion that CI has no bot token, which is
+          # what keeps this smoke from ever sending a real message.
+          for i in $(seq 1 60); do
+            if docker compose logs worker 2>/dev/null | grep -q '"event":"worker.start"'; then
+              echo "worker booted after ${i}s"
+              docker compose logs worker --tail 20
+              docker compose logs worker | grep '"event":"worker.start"' | grep -q '"transport":"mock"'
+              exit $?
+            fi
+            sleep 1
+          done
+          echo "worker never logged worker.start within 60 s"
+          docker compose logs worker --tail 50
+          exit 1
+
+      - name: App and worker logs (on failure)
         if: failure()
-        run: docker compose logs app --tail 50
+        run: |
+          echo '--- app ---';    docker compose logs app --tail 50
+          echo '--- worker ---'; docker compose logs worker --tail 50
 
       - name: docker compose down -v
         if: always()
