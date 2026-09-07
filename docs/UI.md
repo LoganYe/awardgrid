@@ -301,7 +301,7 @@ To update baselines:
 
 Comparison tolerance: `maxDiffPixelRatio: 0.01`, animations disabled (`playwright.config.ts` `expect.toHaveScreenshot`).
 
-The `visual` CI job is **non-blocking** until it has been green on five consecutive runs (spec §11; the promotion is recorded in `DECISIONS.md` § 6.6). A red non-blocking job is still a finding — read it before merging.
+The `visual` CI job is **blocking** as of 2026-09-07: it was green on five consecutive `main` runs, and the promotion with those run ids is recorded in `DECISIONS.md` ("#33"). When it goes red, read the `visual-snapshots` artifact — expected, actual and diff — and decide whether the UI regressed or the baseline is stale; a stale baseline is replaced from that artifact's `-actual.png`, never regenerated on a Mac.
 
 ---
 

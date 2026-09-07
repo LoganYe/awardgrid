@@ -98,16 +98,18 @@ jobs:
             test-results
           retention-days: 7
 
-  # Spec §9 / §11: visual regression is NON-BLOCKING until it has been green five runs in a row
-  # (record the promotion in DECISIONS.md before making it required). `continue-on-error` keeps a
-  # font-rendering diff from blocking a merge while the baselines settle.
+  # Spec §9 / §11: visual regression was non-blocking until it had been green five runs in a row.
+  # It has been (2026-09-07, issue #33): 96eef58, caa4ac6, 8fcfe5a, 403dd91, 06d4476, each
+  # 24 passed / 0 failed. The comparison step is BLOCKING now; the promotion is recorded in
+  # DECISIONS 6.6 with those run ids. `continue-on-error` survives only on the generate path
+  # below, which is a one-off bootstrap and must not block.
   #
   # Baselines are Linux-only: playwright.config.ts writes them without a platform suffix, so they
   # can only be generated here. When none are committed yet, the last two steps generate a set and
   # upload it as `visual-baselines` for a human to download and commit
   # (`e2e/__screenshots__/<project>/visual.spec.ts/*.png`, reason in the commit message).
   visual:
-    name: visual (Playwright snapshots, non-blocking)
+    name: visual (Playwright snapshots)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -139,9 +141,13 @@ jobs:
             echo "No committed baselines under e2e/__screenshots__ — this run will generate them."
           fi
 
+      # Blocking as of 2026-09-07 (issue #33): five consecutive green comparisons on main —
+      # 96eef58, caa4ac6, 8fcfe5a, 403dd91, 06d4476, each 24 passed / 0 failed. `continue-on-error`
+      # is gone, so a pixel diff now turns this job red instead of being buried in its log; the
+      # artifact below is still uploaded on failure and is the evidence to read before deciding
+      # whether to fix the UI or move the baseline.
       - name: Visual regression (VISUAL=1, no network, no keys)
         if: steps.baselines.outputs.present == 'true'
-        continue-on-error: true
         run: VISUAL=1 pnpm e2e -g visual
 
       - name: Upload actual and diff images
