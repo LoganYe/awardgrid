@@ -57,6 +57,22 @@ export interface GridCell {
   reason?: string;
 }
 
+/**
+ * How a multi-cabin cell renders (docs/UI_PLAN.md §6.2b): "best" is the shipped anatomy — the
+ * best row across the selected cabins with a J/F tag — and "per_cabin" draws one line per
+ * selected cabin. It is view state, not part of the query: the grid's shape is identical either
+ * way, only the inside of the cell changes.
+ */
+export type CellLayout = "best" | "per_cabin";
+
+/** One cabin's line in a per-cabin cell; `row` is null when that cabin has nothing for this (pair, date). */
+export interface CabinSlot {
+  cabin: Cabin;
+  row: AvailabilityRow | null;
+  /** That cabin's only rows are hidden dynamic pricing (the cell "filtered" state, per cabin). */
+  filtered: boolean;
+}
+
 export type Orientation = "dates" | "routes";
 
 export interface RoutePair {

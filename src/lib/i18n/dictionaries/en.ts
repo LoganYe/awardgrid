@@ -133,6 +133,9 @@ export const en = {
   "grid.cell.trips": "Flights",
   "grid.cell.aria":
     "{origin} to {dest}, {date}, {cabin}, {miles} miles, {fees} fees, {seats} seats, {program}, seen {age} ago.",
+  "grid.cell.aria_cabin":
+    "{cabin}, {miles} miles, {fees} fees, {seats} seats, {program}, seen {age} ago.",
+  "grid.cell.aria_cabin_none": "{cabin}, no availability.",
   "grid.cell.aria_stale": "stale",
   "grid.cell.aria_unknown": "freshness unknown",
   "grid.open_in_program": "Open in program",
@@ -580,6 +583,9 @@ export const en = {
   "grid.toolbar.save_disabled_quota": "Saving is off until the seats.aero daily limit resets",
   "grid.toolbar.run_disabled_quota": "Running is off until the seats.aero daily limit resets",
   "grid.toolbar.filters": "Filters",
+  "grid.toolbar.cells": "Cells",
+  "grid.toolbar.cells_best": "Best",
+  "grid.toolbar.cells_per_cabin": "Per cabin",
   "grid.cell.filtered_title": "Dynamically priced award, hidden while dynamic pricing is off",
   "grid.cell.filtered_short": "dyn",
   "grid.header.available_one": "1 with availability",

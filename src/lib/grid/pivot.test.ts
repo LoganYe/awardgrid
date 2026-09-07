@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { NOW, makeQuery, makeRow } from "../../../test/fixtures/grid/rows";
 import {
+  bestPerCabin,
   buildGrid,
   cellAt,
   enumerateDates,
@@ -233,5 +234,77 @@ describe("buildGrid — dynamic pricing and not-fetched pairs (Phase 6)", () => 
     ]);
     expect(gridStats(grid).not_fetched_cells).toBe(3);
     expect(buildGrid([], makeQuery(), { now: NOW }).meta.not_fetched_pairs).toEqual([]);
+  });
+});
+
+describe("bestPerCabin", () => {
+  const q = makeQuery();
+  const cellOf = (rows: ReturnType<typeof makeRow>[]) => ({
+    origin: "HKG",
+    dest: "SEA",
+    date: "2026-10-15",
+    status: "ok" as const,
+    best: rows[0] ?? null,
+    all: rows,
+  });
+
+  it("returns slots in the canonical J, F order whatever order the query lists", () => {
+    const j = makeRow({ cabin: "J", miles: 60_000 });
+    const f = makeRow({ cabin: "F", miles: 80_000 });
+    expect(bestPerCabin(cellOf([f, j]), ["F", "J"], q).map((s) => s.cabin)).toEqual(["J", "F"]);
+    expect(bestPerCabin(cellOf([f, j]), ["J", "F"], q).map((s) => s.row?.miles)).toEqual([60_000, 80_000]);
+  });
+
+  it("a cabin with no rows in the cell yields a null row and is not 'filtered'", () => {
+    const j = makeRow({ cabin: "J", miles: 60_000 });
+    expect(bestPerCabin(cellOf([j]), ["J", "F"], q)[1]).toEqual({ cabin: "F", row: null, filtered: false });
+  });
+
+  it("a cabin whose only rows are hidden dynamic pricing is 'filtered' with that row", () => {
+    const j = makeRow({ cabin: "J", miles: 60_000 });
+    const dyn = makeRow({ cabin: "F", miles: 90_000, dynamic: true });
+    const hidden = bestPerCabin(cellOf([j, dyn]), ["J", "F"], q);
+    expect(hidden[1]).toMatchObject({ cabin: "F", filtered: true });
+    expect(hidden[1]?.row?.miles).toBe(90_000);
+    expect(hidden[0]).toMatchObject({ cabin: "J", filtered: false });
+    // The same input with the toggle on: the row is plainly shown, not "filtered".
+    const shown = bestPerCabin(cellOf([j, dyn]), ["J", "F"], makeQuery({ include_filtered: true }));
+    expect(shown[1]).toMatchObject({ cabin: "F", filtered: false });
+    expect(shown[1]?.row?.miles).toBe(90_000);
+  });
+
+  it("applies sort_by per cabin: fees_asc picks each cabin's lowest-fee row", () => {
+    const rows = [
+      makeRow({ cabin: "J", miles: 60_000, fees_cents: 9_000 }),
+      makeRow({ cabin: "J", miles: 70_000, fees_cents: 500 }),
+      makeRow({ cabin: "F", miles: 80_000, fees_cents: 8_000 }),
+      makeRow({ cabin: "F", miles: 95_000, fees_cents: 100 }),
+    ];
+    const byFees = bestPerCabin(cellOf(rows), ["J", "F"], makeQuery({ sort_by: "fees_asc" }));
+    expect(byFees.map((s) => s.row?.fees_cents)).toEqual([500, 100]);
+    const byMiles = bestPerCabin(cellOf(rows), ["J", "F"], makeQuery({ sort_by: "miles_asc" }));
+    expect(byMiles.map((s) => s.row?.miles)).toEqual([60_000, 80_000]);
+  });
+
+  it("one cabin yields one slot; an empty cell yields one null slot per requested cabin", () => {
+    const j = makeRow({ cabin: "J", miles: 60_000 });
+    expect(bestPerCabin(cellOf([j]), ["J"], q)).toHaveLength(1);
+    expect(bestPerCabin(cellOf([]), ["J", "F"], q)).toEqual([
+      { cabin: "J", row: null, filtered: false },
+      { cabin: "F", row: null, filtered: false },
+    ]);
+  });
+
+  it("never mutates the grid it reads: buildGrid's output is deep-equal afterwards", () => {
+    const rows = [
+      makeRow({ cabin: "F", miles: 95_000, fees_cents: 100 }),
+      makeRow({ cabin: "J", miles: 60_000, fees_cents: 9_000 }),
+      makeRow({ cabin: "J", miles: 70_000, fees_cents: 500 }),
+    ];
+    const query = makeQuery();
+    const before = buildGrid(rows, query, { now: NOW });
+    const after = buildGrid(rows, query, { now: NOW });
+    for (const line of after.cells) for (const c of line) bestPerCabin(c, query.cabins, makeQuery({ sort_by: "fees_asc" }));
+    expect(after).toEqual(before);
   });
 });

@@ -358,6 +358,19 @@ export async function setCabin(page: Page, cabin: "J" | "F" | "both"): Promise<v
   await settled(page);
 }
 
+/**
+ * Pick the cell layout: Best (one line for the best row across cabins) or Per cabin (one line
+ * each). The control only exists with more than one cabin selected, and below 768 px it lives in
+ * the Filters sheet like every other toolbar control — hence openControls/closeControls.
+ */
+export async function setCells(page: Page, cells: "best" | "per_cabin"): Promise<void> {
+  const controls = await openControls(page);
+  const name = cells === "per_cabin" ? en["grid.toolbar.cells_per_cabin"] : en["grid.toolbar.cells_best"];
+  await controls.getByRole("group", { name: en["grid.toolbar.cells"] }).getByRole("button", { name, exact: true }).click();
+  await closeControls(page);
+  await settled(page);
+}
+
 /** Toggle "Show dynamic pricing" and wait for the grid it produces. */
 export async function toggleDynamic(page: Page): Promise<void> {
   const controls = await openControls(page);

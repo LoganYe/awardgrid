@@ -23,14 +23,14 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type Ref } from "react";
 import { formatGridDate, formatRowDate } from "@/lib/grid/format";
 import { enumerateDates, enumeratePairs, transposeGrid } from "@/lib/grid/pivot";
-import type { Grid, GridCell, Orientation, RoutePair } from "@/lib/grid/types";
+import type { CellLayout, Grid, GridCell, Orientation, RoutePair } from "@/lib/grid/types";
 import { hasKey, type Locale, type Translate } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/i18n/client";
 import type { QueryObject } from "@/lib/query/schema";
 import { SEATS_SOURCES } from "@/lib/seatsaero/types";
 import { Cell, uiCellStatus } from "@/components/grid/cell";
 import { CellTooltip } from "@/components/grid/cell-tooltip";
-import { COLUMN_MIN, ROUTE_ROW_HEAD_WIDTH, ROW_HEAD_WIDTH, ROW_HEIGHT, useDensity, useFinePointer, useRovingGrid, type Density, type GridPos } from "@/components/grid/use-roving-grid";
+import { COLUMN_MIN, ROUTE_ROW_HEAD_WIDTH, ROW_HEAD_WIDTH, rowHeightFor, useDensity, useFinePointer, useRovingGrid, type Density, type GridPos } from "@/components/grid/use-roving-grid";
 
 // Re-exported for src/components/grid/index.ts, which publishes these from here.
 export { Cell } from "@/components/grid/cell";
@@ -67,6 +67,8 @@ export interface GridTableProps {
    * header counts the programs seen in the pair's cells and says so ("N with availability").
    */
   programsByPair?: Record<string, number>;
+  /** Cell layout (docs/UI_PLAN.md §6.2b): "best" (default) or one line per selected cabin. */
+  layout?: CellLayout;
   ref?: Ref<GridTableHandle>;
 }
 
@@ -263,11 +265,14 @@ function useHeaderText(grid: Grid, loading: boolean, locale: Locale, t: Translat
   );
 }
 
-export function GridTable({ grid, now, selected, onSelect, loading = false, dimmed = false, programsByPair, ref }: GridTableProps) {
+export function GridTable({ grid, now, selected, onSelect, loading = false, dimmed = false, programsByPair, layout = "best", ref }: GridTableProps) {
   const t = useT();
   const locale = useLocale();
   const density = useDensity();
-  const rowHeight = ROW_HEIGHT[density];
+  // Per-cabin cells stack one 16 px line per selected cabin, so the row grows to fit them; with
+  // one line (and in "best" layout) this is exactly today's density height.
+  const lines = layout === "per_cabin" ? grid.query.cabins.length : 1;
+  const rowHeight = rowHeightFor(density, lines);
   /*
     The sticky row-header width follows what the row headers ARE, not only the density. 72 / 80 px
     were sized for a date ("Sep 6"); in Routes orientation the same column holds a pair, and at
@@ -590,6 +595,8 @@ export function GridTable({ grid, now, selected, onSelect, loading = false, dimm
                         density={density}
                         showCabinTag={showCabinTag}
                         cabins={grid.query.cabins}
+                        layout={layout}
+                        query={grid.query}
                         row={r}
                         col={c}
                         tabbable={tabbable}

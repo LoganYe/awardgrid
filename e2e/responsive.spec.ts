@@ -10,6 +10,7 @@
  *
  * What it pins:
  *   §6 cells      three lines / two lines / one line, at 48 / 32 / 40 px rows
+ *   §6.2b cells   Per cabin: two 16 px lines, 48 / 40 / 40 px rows, and no line overflows in zh
  *   §6 drawers    push (≥ 1280) / overlay (768–1279) / sheet + bottom sheet (< 768)
  *   §6 toolbar    collapses into the "Filters" bottom sheet below 768
  *   §6 chips      wrap to several lines at 390
@@ -54,6 +55,43 @@ function cellShape(page: Page): Promise<{ rowHeight: number; lines: number }> {
   });
 }
 
+
+/**
+ * Flip the Cells toggle at the CURRENT viewport width. `e2e/states.ts` picks the inline toolbar
+ * or the Filters sheet from the PROJECT, and this spec resizes one desktop project through all
+ * three bands, so the choice has to come from the width instead.
+ */
+async function setCellsAt(page: Page, layout: "best" | "per_cabin", width: number): Promise<void> {
+  const narrow = width < 768;
+  let controls = page.getByRole("toolbar");
+  if (narrow) {
+    await controls.getByRole("button", { name: en["grid.toolbar.filters"] }).click();
+    controls = page.getByRole("dialog");
+    await expect(controls).toBeVisible();
+  }
+  const name = layout === "per_cabin" ? en["grid.toolbar.cells_per_cabin"] : en["grid.toolbar.cells_best"];
+  await controls.getByRole("group", { name: en["grid.toolbar.cells"] }).getByRole("button", { name, exact: true }).click();
+  if (narrow) {
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+  }
+  await expect(page.locator(layout === "per_cabin" ? ".ag-cabin-line" : ".ag-l1").first()).toBeAttached();
+}
+
+/** Height of the first available cell's row and the number of per-cabin lines it stacks. */
+function perCabinShape(page: Page): Promise<{ rowHeight: number; lines: number; headerHeight: number }> {
+  return page.evaluate(() => {
+    const cell = document.querySelector<HTMLElement>('td[role="gridcell"][data-state="ok"]');
+    if (!cell) throw new Error("no available cell on screen");
+    const header = document.querySelector<HTMLElement>("thead tr");
+    return {
+      rowHeight: Math.round(cell.getBoundingClientRect().height),
+      lines: cell.querySelectorAll(".ag-cabin-line").length,
+      headerHeight: Math.round(header?.getBoundingClientRect().height ?? 0),
+    };
+  });
+}
+
 test.describe("responsive", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop-light", "one pass over the three width bands");
@@ -81,6 +119,81 @@ test.describe("responsive", () => {
     // The column minimum holds at every width: the grid scrolls rather than squeezing (§3.4).
     const width = await cells(page).first().evaluate((el) => el.getBoundingClientRect().width);
     expect(width).toBeGreaterThanOrEqual(112);
+  });
+
+
+  /**
+   * §6.2b: the per-cabin cell stacks one 16 px line per cabin, so the row is max(density, 16n+8).
+   * The phone pays nothing (2 × 16 + 8 IS the 40 px touch row) and the tablet grows 32 → 40 —
+   * the one density this mode costs. The sticky header band follows the row height with it.
+   */
+  test("per-cabin cells are two 16 px lines: 40 px rows at 390 and at 1024, 48 at 1440", async ({ page }) => {
+    await resize(page, NARROW);
+    await openGridWithResults(page, "demo", CANONICAL_QUERY_EN);
+    await expect(page.locator(".ag-wrap")).toHaveAttribute("data-density", "mobile");
+    await setCellsAt(page, "per_cabin", NARROW.width);
+
+    // 390: 2 × 16 + 8 = 40, exactly --row-touch, so the phone loses no rows to the mode.
+    expect(await perCabinShape(page)).toEqual({ rowHeight: 40, lines: 2, headerHeight: 40 });
+    // The row head is still the 72 px sticky date column, and the columns still clear 112 px.
+    const head = page.locator("tbody th.ag-rowhead").first();
+    await expect(head).toHaveCSS("position", "sticky");
+    expect(Math.round((await head.boundingBox())?.width ?? 0)).toBe(72);
+    expect(await cells(page).first().evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(112);
+    // And the page still does not scroll sideways.
+    const { scrollWidth, innerWidth } = await settledOverflow(page);
+    expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
+
+    // 1024: 40, not the 32 a "best" cell gets — the one density the mode costs.
+    await resize(page, MID, "tablet");
+    expect(await perCabinShape(page)).toEqual({ rowHeight: 40, lines: 2, headerHeight: 40 });
+
+    // 1440: two 16 px lines still fit the 48 px desktop row, so nothing changes there.
+    await resize(page, WIDE, "desktop");
+    expect(await perCabinShape(page)).toEqual({ rowHeight: 48, lines: 2, headerHeight: 48 });
+
+    // Back to Best and the tablet row is 32 again: the mode costs nothing when it is off.
+    await resize(page, MID, "tablet");
+    await setCellsAt(page, "best", MID.width);
+    expect(await cellShape(page)).toEqual({ rowHeight: 32, lines: 2 });
+  });
+
+  /** §8: the zh compact age ("45分钟") is the widest per-cabin line; none of them may overflow. */
+  test("no per-cabin line overflows its cell at 390 in Chinese", async ({ page }) => {
+    await resize(page, NARROW);
+    await loginAs(page, "demo");
+    const baseURL = new URL(test.info().project.use.baseURL ?? "http://127.0.0.1:3400");
+    await page.context().addCookies([{ name: "ag_locale", value: "zh", domain: baseURL.hostname, path: "/" }]);
+    await page.goto("/grid");
+    const box = page.getByRole("textbox", { name: zh["grid.search"] });
+    await box.fill(CANONICAL_QUERY_EN);
+    await box.press("Enter");
+    await expect(page.getByRole("grid")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("grid")).not.toHaveAttribute("aria-busy", "true", { timeout: 60_000 });
+    await expect(cells(page).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+
+    const controls = page.getByRole("toolbar");
+    await controls.getByRole("button", { name: zh["grid.toolbar.filters"] }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole("group", { name: zh["grid.toolbar.cells"] }).getByRole("button", { name: zh["grid.toolbar.cells_per_cabin"], exact: true }).click();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(page.locator(".ag-cabin-line").first()).toBeAttached();
+
+    // Every line, and every line's cell, at the 112 px column the grid guarantees.
+    const overflowing = await page.evaluate(() => {
+      const out: string[] = [];
+      for (const line of document.querySelectorAll<HTMLElement>(".ag-cabin-line")) {
+        const cell = line.closest<HTMLElement>(".ag-cell-in");
+        if (line.scrollWidth > line.clientWidth + 1) out.push(`line "${(line.textContent ?? "").trim()}" ${line.scrollWidth}>${line.clientWidth}`);
+        if (cell && cell.scrollWidth > cell.clientWidth + 1) out.push(`cell "${(line.textContent ?? "").trim()}" ${cell.scrollWidth}>${cell.clientWidth}`);
+      }
+      return out;
+    });
+    expect(overflowing, "per-cabin lines wider than their cell in zh at 390").toEqual([]);
+    expect(await perCabinShape(page)).toEqual({ rowHeight: 40, lines: 2, headerHeight: 40 });
   });
 
   /**

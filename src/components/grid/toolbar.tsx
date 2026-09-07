@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { SaveQueryDialog } from "@/components/queries/SaveQueryDialog";
-import type { Orientation } from "@/lib/grid/types";
+import type { CellLayout, Orientation } from "@/lib/grid/types";
 import { htmlLang, type Translate } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/i18n/client";
 import { elapsedSeconds, searchingSentence, type SearchingQuery } from "@/components/grid/searching-status";
@@ -52,6 +52,9 @@ export interface ToolbarProps {
   orientation: Orientation;
   onOrientation: (o: Orientation) => void;
   onCabins: (cabins: Cabin[]) => void;
+  /** Cell layout (docs/UI_PLAN.md §6.2b). The control is absent below two cabins. */
+  layout: CellLayout;
+  onLayout: (l: CellLayout) => void;
   onIncludeFiltered: (value: boolean) => void;
   /** True when the dynamic-pricing scope is already cached (the toggle costs no calls); drives the muted note. */
   dynamicRowsAvailable: boolean;
@@ -84,7 +87,7 @@ function Segmented<T extends string>({ label, value, options, onChange, disabled
   );
 }
 
-function Controls({ query, orientation, onOrientation, onCabins, onIncludeFiltered, dynamicRowsAvailable, onExport, exporting, canExport = true, onAsk, disabled, quotaExceeded, stacked }: ToolbarProps & { stacked: boolean }) {
+function Controls({ query, orientation, onOrientation, onCabins, layout, onLayout, onIncludeFiltered, dynamicRowsAvailable, onExport, exporting, canExport = true, onAsk, disabled, quotaExceeded, stacked }: ToolbarProps & { stacked: boolean }) {
   const t = useT();
   const mode = cabinModeOf(query.cabins);
   const rows = (
@@ -112,6 +115,25 @@ function Controls({ query, orientation, onOrientation, onCabins, onIncludeFilter
       disabled={disabled}
     />
   );
+  /*
+    Cells: Best | Per cabin — rendered ONLY when the query asks for more than one cabin. With one
+    cabin it has nothing to do, and a permanently dead control is worse than an absent one
+    (grid-app.tsx forces the layout back to "best" whenever the cabins drop below two, so the
+    absent control can never hide a mode that is still on).
+  */
+  const cells =
+    query.cabins.length > 1 ? (
+      <Segmented<CellLayout>
+        label={t("grid.toolbar.cells")}
+        value={layout}
+        options={[
+          { value: "best", label: t("grid.toolbar.cells_best") },
+          { value: "per_cabin", label: t("grid.toolbar.cells_per_cabin") },
+        ]}
+        onChange={onLayout}
+        disabled={disabled}
+      />
+    ) : null;
   const dynamic = (
     <label className="ag-toolbar-group">
       <Switch size="sm" checked={query.include_filtered} disabled={disabled} onCheckedChange={(v) => onIncludeFiltered(v)} />
@@ -146,6 +168,12 @@ function Controls({ query, orientation, onOrientation, onCabins, onIncludeFilter
           <span>{t("grid.toolbar.cabins")}</span>
           {cabins}
         </div>
+        {cells && (
+          <div className="ag-filters-row">
+            <span>{t("grid.toolbar.cells")}</span>
+            {cells}
+          </div>
+        )}
         <div className="ag-filters-row">{dynamic}</div>
         {dynamicNote}
         <div className="ag-filters-row">
@@ -162,6 +190,8 @@ function Controls({ query, orientation, onOrientation, onCabins, onIncludeFilter
         <span className="ag-toolbar-label">{t("grid.toolbar.rows")}</span>
         {rows}
         {cabins}
+        {cells && <span className="ag-toolbar-label">{t("grid.toolbar.cells")}</span>}
+        {cells}
       </div>
       <div className="ag-toolbar-center">
         {dynamic}

@@ -182,4 +182,61 @@ test.describe("keyboard walk", () => {
     const back = await active(page);
     expect({ row: back.row, col: back.col, role: back.role }).toEqual({ ...target, role: "gridcell" });
   });
+
+  /**
+   * The same movement contract with **Cells: Per cabin** on (docs/UI_PLAN.md §6.2b). The claim
+   * the whole design rests on is that stacking cabins inside the cell changes nothing about the
+   * grid's shape: one gridcell per intersection, so ArrowDown still means the next date,
+   * PageDown still means a week, and Ctrl/Cmd+End still lands on the same corner cell.
+   */
+  test("per-cabin cells do not change what an arrow, a page or a corner key means", async ({ page }) => {
+    await loginAs(page, "demo");
+    await page.goto("/grid");
+    const box = page.getByRole("textbox", { name: en["grid.search"] });
+    await box.fill(CANONICAL_QUERY_EN);
+    await box.press("Enter");
+    const grid = page.getByRole("grid");
+    await expect(grid).toBeVisible({ timeout: 60_000 });
+    await expect(grid).not.toHaveAttribute("aria-busy", "true", { timeout: 60_000 });
+    await expect(page.locator('td[role="gridcell"][data-state="ok"]').first()).toBeVisible();
+
+    /**
+     * Land in the grid, go to the top-left corner, then walk: one down, one right, a page down,
+     * and Ctrl/Cmd+End. The corner start is what makes the two runs comparable — the roving
+     * tabindex remembers where the last walk left off, so Tab alone would not land twice in the
+     * same place.
+     */
+    async function walk(): Promise<Active[]> {
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      await tabTo(page, "the grid", (a) => a.role === "gridcell");
+      await page.keyboard.press("ControlOrMeta+Home");
+      const start = await active(page);
+      expect({ row: start.row, col: start.col }).toEqual({ row: 0, col: 0 });
+      const steps: Active[] = [start];
+      for (const key of ["ArrowDown", "ArrowRight", "PageDown", "ControlOrMeta+End"]) {
+        await page.keyboard.press(key);
+        steps.push(await active(page));
+      }
+      return steps;
+    }
+
+    const best = await walk();
+    // The deltas the walk is about, read off the "Best" run so the assertions are not guesses.
+    expect(best[1]!.row).toBe(best[0]!.row! + 1);
+    expect(best[2]!.col).toBe(best[1]!.col! + 1);
+    expect(best[3]!.row).toBe(best[2]!.row! + 7);
+
+    // Turn the mode on from the keyboard — this spec never clicks.
+    const perCabin = await tabTo(page, '"Per cabin"', (a) => a.text === en["grid.toolbar.cells_per_cabin"]);
+    expect(perCabin.tag).toBe("button");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".ag-cabin-line").first()).toBeAttached();
+
+    const stacked = await walk();
+    expect(stacked.map((a) => ({ row: a.row, col: a.col, role: a.role }))).toEqual(best.map((a) => ({ row: a.row, col: a.col, role: a.role })));
+    // The corner is the same cell, and it is a cell, not a header.
+    expect(stacked[4]!.role).toBe("gridcell");
+    expect(stacked[4]).toMatchObject({ row: best[4]!.row, col: best[4]!.col });
+  });
+
 });

@@ -15,13 +15,15 @@ import type { Translate, I18nKey } from "@/lib/i18n";
 import { hasKey } from "@/lib/i18n";
 import { formatAgeLong, tier, type Lang } from "@/lib/grid/freshness";
 import { cabinName, formatFees, formatLongDate, formatMiles, formatSeats, programShortName } from "@/lib/grid/format";
-import type { GridCell } from "@/lib/grid/types";
+import type { CabinSlot, GridCell } from "@/lib/grid/types";
 
 export interface CellAriaOptions {
   /** Cabins the grid shows; named in the label when the cell has no row of its own. */
   cabins?: readonly Cabin[];
   /** Overrides `cell.reason` for a not-fetched cell (an i18n key). */
   reason?: string;
+  /** Per-cabin layout: one clause per cabin instead of one for `cell.best`. */
+  perCabin?: readonly CabinSlot[];
 }
 
 /** Clause separators per language (full-width punctuation in zh, spec §1.3). */
@@ -84,6 +86,40 @@ function stateKey(cell: GridCell, opts: CellAriaOptions): I18nKey {
 }
 
 /**
+ * One cabin's clause: "business, 60,000 miles, $5.60 fees, 2 seats, Alaska, seen 2 hours ago."
+ * or "first, no availability.", with ", stale" / ", dynamic" appended for that cabin alone.
+ *
+ * Built and resolved PER CABIN, then joined by the caller — never composed into one sentence
+ * first. `dropClause` and `replaceClause` build their RegExp without the `g` flag, so
+ * `String.replace` rewrites the FIRST match only: two cabins' clause groups in one string would
+ * leave the second cabin's U+E000 / U+E001 / U+E002 in the text a screen reader announces. Here
+ * each sentinel appears at most once, so the non-global regex is correct by construction.
+ */
+function cabinClause(slot: CabinSlot, locale: Lang, t: Translate, now: string | number | Date): string {
+  const { sep, end } = PUNCT[locale];
+  const cabin = locale === "zh" ? cabinName(slot.cabin, t) : cabinName(slot.cabin, t).toLocaleLowerCase("en");
+  const row = slot.row;
+  if (!row) return t("grid.cell.aria_cabin_none", { cabin });
+  const age = formatAgeLong(row.computed_last_seen, now, locale);
+  let clause = t("grid.cell.aria_cabin", {
+    cabin,
+    miles: formatMiles(row.miles, locale),
+    fees: row.fees_cents === null ? SENTINEL_FEES : formatFees(row.fees_cents, row.currency, locale),
+    seats: SENTINEL_SEATS,
+    program: programShortName(row.program),
+    age: age ?? SENTINEL_AGE,
+  });
+  if (row.fees_cents === null) clause = dropClause(clause, SENTINEL_FEES);
+  clause = replaceClause(clause, SENTINEL_SEATS, formatSeats(row.seats_left, locale, t));
+  if (age === null) clause = replaceClause(clause, SENTINEL_AGE, t("grid.cell.aria_unknown"));
+  const tail: string[] = [];
+  if (tier(row.computed_last_seen, now) === "stale") tail.push(t("grid.cell.aria_stale"));
+  if (slot.filtered) tail.push(t("grid.cell.filtered"));
+  if (tail.length === 0) return clause;
+  return `${stripEnd(clause, locale)}${sep}${tail.join(sep)}${end}`;
+}
+
+/**
  * The cell's `aria-label`. `now` is the clock the ages are measured against (inject in tests).
  * Available and filtered cells describe `cell.best`; every other state names the state.
  */
@@ -96,6 +132,13 @@ export function cellAriaLabel(
 ): string {
   const { sep, end } = PUNCT[locale];
   const best = cell.best;
+  // Per-cabin layout: the route/date head, then one resolved clause per cabin. `head(cell, [], …)`
+  // is the head with its (now empty) cabin clause already dropped, which is exactly what is wanted:
+  // the cabins are named by the clauses that follow.
+  if (opts.perCabin && (cell.status === "ok" || cell.status === "filtered")) {
+    const joiner = locale === "zh" ? "" : " ";
+    return `${head(cell, [], locale, t)}${end}${joiner}${opts.perCabin.map((slot) => cabinClause(slot, locale, t, now)).join(joiner)}`;
+  }
   if ((cell.status === "ok" || cell.status === "filtered") && best) {
     const tr = tier(best.computed_last_seen, now);
     const age = formatAgeLong(best.computed_last_seen, now, locale);
