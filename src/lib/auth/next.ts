@@ -1,6 +1,7 @@
 /**
- * The ONLY auth file that touches next/*. Kept tiny and untested; everything it calls is a
- * plain function with tests in session.ts / users.ts.
+ * The ONLY auth file that touches next/*. Kept tiny; only `getCurrentUser`'s per-request
+ * memoisation is unit-tested (next.test.ts), because that is the one thing here that is not a
+ * plain call — everything else it reaches is a plain function with tests in session.ts / users.ts.
  *
  * Next 16: `cookies()` from next/headers is async; `redirect()` throws, so it must not sit
  * inside a try/catch. Cookie mutation is only allowed in Server Functions and Route Handlers.
@@ -8,17 +9,30 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { NextResponse } from "next/server";
+import { cache } from "react";
 import { SESSION_COOKIE, cookieOptions, cookieSecureFromEnv, getSessionUser } from "@/lib/auth/session";
 import type { User } from "@/lib/auth/users";
 import { getDb } from "@/lib/db/client";
 
-/** The signed-in user for the current request, or null. Safe in pages, layouts and handlers. */
-export async function getCurrentUser(): Promise<User | null> {
+/**
+ * The signed-in user for the current request, or null. Safe in pages, layouts and handlers.
+ *
+ * Wrapped in React `cache()`: the root layout (src/app/layout.tsx:34) asks for the user on every
+ * request and the page it renders asks again, so unmemoised every hit pays two identical
+ * better-sqlite3 session reads — and, when the session expires between them, `getSessionUser`
+ * deletes the row on the first read (session.ts:55-58), so the layout and the page could answer
+ * differently inside one request. One request, one lookup, one answer.
+ *
+ * Only React's "react-server" build memoises; the default build's `cache()` is a passthrough, so
+ * this is a no-op in a route handler and in vitest. next.test.ts installs the same async
+ * dispatcher Next's Flight server installs rather than hand-writing a stand-in for it.
+ */
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   return getSessionUser(getDb(), token);
-}
+});
 
 /** Like getCurrentUser but redirects to /login when nobody is signed in. */
 export async function requireUser(): Promise<User> {

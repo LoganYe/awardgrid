@@ -96,7 +96,9 @@ Reads `DATABASE_PATH`. Never prints hashes, keys or session tokens.
 ## Adding a friend
 
 1. `pnpm admin invite --for alice` → one single-use code.
-2. Send them the code and the URL. They open `/register`, pick a username and password (argon2id), enter the code.
+2. Send them the code and the URL. The bare host now says what this is, that there is no public signup, and that they
+   must bring their own paid seats.aero Pro key; `/register?code=…` takes them straight to the form. They pick a
+   username and password (argon2id) and enter the code.
 3. They open **Settings → API keys** and paste their own seats.aero Pro key. Saving costs one seats.aero call (validation)
    on *their* quota; the UI then shows only `••••` + the last four characters. Optional Duffel / Ignav keys are used
    only by the Ask lane.
@@ -147,15 +149,16 @@ The system prompt allows search, compare and explain only — never book, log in
 
 ## UI
 
-Five pages (`/grid`, `/queries`, `/settings`, `/login`, `/register`, plus `/legal`) built on one small design system:
-eleven colour tokens per theme in `src/styles/tokens.css`, one sans with tabular figures and a CJK fallback stack, a
-13/14/16/20 px scale, no logos and no brand colours. `docs/UI.md` is the working manual (tokens, component map, how to
-add a string or a token, responsive rules, the a11y floor); `docs/UI_PLAN.md` is the design record behind it.
+Seven pages — `/grid`, `/queries` and `/settings` behind a session, `/login`, `/register` and `/legal` reachable
+without one, and the signed-out front door at `/` — built on one small design system: eleven colour tokens per theme in `src/styles/tokens.css`, one
+sans with tabular figures and a CJK fallback stack, a 13/14/16/20 px scale, no logos and no brand colours.
+`docs/UI.md` is the working manual (tokens, component map, how to add a string or a token, responsive rules, the a11y
+floor); `docs/UI_PLAN.md` is the design record behind it.
 
 - **Themes.** Light and dark, default following the system. The top bar's theme control is a text button that cycles
   System → Light → Dark; Settings → Language and theme has the explicit radios. The choice is stored in the `ag_theme`
   cookie (per device, read in the root layout so there is no flash) and in `users.theme` (per account, seeding a new
-  device). Language is EN / 中文 in the same bar; both dictionaries are complete (569 keys each).
+  device). Language is EN / 中文 in the same bar; both dictionaries are complete (601 keys each).
 - **Keyboard.** The grid is one tab stop with a roving focus: **arrows** move a cell, **Home / End** jump to the ends of
   the row, **Ctrl/Cmd+Home / End** to the grid corners, **PageUp / PageDown** move 7 rows (one week), **Enter** or
   **Space** opens the cell drawer, **Esc** closes whichever drawer is open and returns focus to the cell that opened it.
@@ -247,7 +250,8 @@ fixtures, `scripts/`, `vendor/`, `src/` and `data/runtime/` never land in `.next
 ## Repo map
 
 ```
-src/app/            Next.js App Router: /grid /settings /queries /login /register /legal + /api/* route handlers
+src/app/            Next.js App Router: / (the signed-out front door) /grid /settings /queries /login /register
+                    /legal + /api/* route handlers
 src/components/     grid (query box, chips, table, cell drawer), ask drawer, queries, settings, shell (header/footer), ui
 src/lib/query/      places seed loader, deterministic bilingual parser, LLM structured-output fallback, QueryObject (zod)
 src/lib/seatsaero/  typed Partner API client (/search /availability /trips/{id} /routes), quota, cache, routes catalog, find planner

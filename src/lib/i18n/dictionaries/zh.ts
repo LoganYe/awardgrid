@@ -44,6 +44,19 @@ export const zh: Record<keyof typeof en, string> = {
   "footer.version": "v{version}",
   "common.go_to_grid": "前往表格",
 
+  // ---- front door (6.10: the signed-out page at /; the h1 is app.tagline, reused) ----
+  "home.lead":
+    "用中文或英文写下出发地、目的地和日期。awardgrid 返回一张表格：每格是最便宜的里程票，含里程数、税费、余位、售票的里程计划，以及数据的新鲜程度。",
+  "home.invite.label": "仅限邀请",
+  "home.invite.body": "没有公开注册。你需要本站管理员提供的邀请码。",
+  "home.key.label": "你自己的密钥",
+  "home.key.body":
+    "每次搜索都使用你自己的 seats.aero Pro 密钥。登录后在设置里添加。本站没有公用密钥，也没有服务器密钥。",
+  "home.limits.label": "它不做的事",
+  "home.limits.body": "它只读取 seats.aero 的缓存数据。它不会替你打开航司网站，也不会索取航司或银行密码。",
+  "home.login_link": "登录",
+  "home.register_link": "用邀请码创建账号",
+
   // ---- auth pages ----
   "auth.login.title": "登录",
   "auth.login.subtitle": "仅限邀请。搜索使用你自己的 seats.aero 密钥。",

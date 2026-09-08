@@ -353,6 +353,23 @@ test.describe("responsive", () => {
     });
   }
 
+  /**
+   * The front door is signed out, so it cannot ride the PAGES loop above — that loop calls
+   * `loginAs`, which on `/` would exercise the 307 to /grid instead of the page. This describe
+   * runs on desktop-light, so the floor here comes from the `(max-width: 767px)` arm of
+   * globals.css:262; the `(pointer: coarse)` arm is measured on the mobile projects in
+   * e2e/home.spec.ts.
+   */
+  test("touch targets are at least 40 px at 390 on / signed out", async ({ page }) => {
+    await resize(page, NARROW);
+    await page.context().clearCookies();
+    await page.goto("/");
+    // The tagline, not just "an h1": /login has one too, so a `/` that went back to redirecting
+    // would leave this measuring the login form and still passing.
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(en["app.tagline"]);
+    expect(await smallTargets(page)).toEqual([]);
+  });
+
   test("touch targets are at least 40 px at 390 inside the drawers and the Filters sheet", async ({ page }) => {
     await resize(page, NARROW);
     await openGridWithResults(page, "demo", CANONICAL_QUERY_EN);
@@ -432,10 +449,13 @@ test.describe("responsive", () => {
     });
   }
 
-  test("no horizontal page overflow at 390 on /login and /register", async ({ page }) => {
+  /** `/` joins the two auth routes here: this loop is the file's signed-out sweep, and never logs in. */
+  test("no horizontal page overflow at 390 on /, /login and /register", async ({ page }) => {
     await resize(page, NARROW);
-    for (const route of ["/login", "/register"]) {
+    await page.context().clearCookies();
+    for (const route of ["/", "/login", "/register"]) {
       await page.goto(route);
+      expect(new URL(page.url()).pathname, `${route} redirected`).toBe(route);
       const { scrollWidth, innerWidth, offenders } = await settledOverflow(page);
       expect(scrollWidth, `${route} scrolls sideways; the boxes past the edge are: ${offenders.join(" | ") || "none — check a margin or a fixed width"}`).toBeLessThanOrEqual(innerWidth);
     }
@@ -531,7 +551,8 @@ test.describe("i18n floor", () => {
     await page.context().addCookies([{ name: "ag_locale", value: "zh", domain: baseURL.hostname, path: "/" }]);
   }
 
-  for (const route of [...PAGES, "/login", "/register"]) {
+  // "/" is signed out like the two auth routes; the signed-in PAGES all need loginAs first.
+  for (const route of [...PAGES, "/", "/login", "/register"]) {
     test(`no English leaks into zh on ${route}`, async ({ page }) => {
       if (route === "/grid") {
         await loginAs(page, "demo");
@@ -543,9 +564,10 @@ test.describe("i18n floor", () => {
         await expect(page.getByRole("grid")).toBeVisible({ timeout: 60_000 });
         await expect(page.getByRole("grid")).not.toHaveAttribute("aria-busy", "true", { timeout: 60_000 });
       } else {
-        if (route !== "/login" && route !== "/register") await loginAs(page, "demo");
+        if (route !== "/" && route !== "/login" && route !== "/register") await loginAs(page, "demo");
         await useChinese(page);
         await page.goto(route);
+        expect(new URL(page.url()).pathname, `${route} redirected`).toBe(route);
       }
       await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
 

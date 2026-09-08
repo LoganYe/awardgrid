@@ -2,7 +2,7 @@
  * axe-core audit of every page and every state (Phase 6.6, spec §8: "WCAG AA contrast in both
  * themes … zero serious/critical violations").
  *
- * Matrix: login · register · legal · grid-results · the eight chip editors · cell drawer · Ask
+ * Matrix: the front door at / · login · register · legal · grid-results · the eight chip editors · cell drawer · Ask
  * drawer · quota · no-key · empty results · parse failure · queries (list, expanded, edit
  * drawer, empty) · settings — each on **desktop-light, desktop-dark and mobile-light**. Dark
  * and light are separate runs because contrast is the violation these catch and the two themes
@@ -138,7 +138,18 @@ test.describe("axe", () => {
     await applyTheme(page);
   });
 
-  // ---- auth and legal ----
+  // ---- the front door, auth and legal ----
+
+  /**
+   * `/` signed out (docs/UI_PLAN.md §6.10). The context is fresh, so no session cookie exists and
+   * the page renders rather than redirecting; the wire-level proof of that is in home.spec.ts.
+   */
+  test("home", async ({ page }) => {
+    await page.context().clearCookies();
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: en["app.tagline"] })).toBeVisible();
+    await audit(page, "home");
+  });
 
   test("login", async ({ page }) => {
     await page.goto("/login");

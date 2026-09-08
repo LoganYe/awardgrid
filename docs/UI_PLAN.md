@@ -387,6 +387,54 @@ Sections are separated by the 16/24 heading and 24 px of space only. Rows inside
 ```
 Register adds Invite code above Username and the hint "At least 8 characters" under Password (turns `--fg` when satisfied; no meter). No card, no border, no shadow.
 
+### 6.10 Front door (`/`, signed out only; 880 px column, left-aligned, `py-8`)
+
+```
+awardgrid                                        EN 中文  System   48 top bar, signed out
+─────────────────────────────────────────────────────────────────   1 px --line
+One question, one grid of award seats                              20/28 --fg (app.tagline)
+
+Ask in Chinese or English for a set of origins, destinations       14/20 --fg, max 72ch
+and dates. awardgrid returns one table: the cheapest award
+seat in each cell, with the miles, the fees, the seats left,
+the program that sells it, and how old the data is.
+
+Invite only                                                        16/24 600
+There is no public signup. You need an invite code from            8 below the label
+whoever runs this server.
+
+Your own key                                                       16/24 600
+Every search runs on your own seats.aero Pro key. You add it
+in settings after you log in. There is no shared key and no
+server key.
+
+What it does not do                                                16/24 600
+It reads the seats.aero cache and nothing else. It never opens
+an airline site for you, and it never asks for an airline or
+bank password.
+
+┌──────────┐
+│  Log in  │  Create account with an invite                        36 h, --bg on --fg;
+└──────────┘                                                       link --accent, 16 gap
+─────────────────────────────────────────────────────────────────   1 px --line
+Data: seats.aero │ v0.2.0 │ Legal                                  32, unchanged footer
+```
+Blocks are separated by 24 px of space and nothing else. The same single column at 390 px, where only the action row reflows — the primary button goes full width and the register link becomes its own row under it, each 40 px:
+
+```
+One question, one grid of award seats          h1 wraps to two lines (56)
+Ask in Chinese or English for a set of …
+Invite only / There is no public signup …
+Your own key / Every search runs on …
+What it does not do / It reads the …
+┌───────────────────────────────────────┐
+│               Log in                  │      40, full width
+└───────────────────────────────────────┘
+Create account with an invite                  40 row, --accent
+Data: seats.aero │ v0.2.0 │ Legal              footer already grows to hold its 40 px target
+```
+The page is signed-out only: `/` redirects a signed-in visitor to `/grid`, the single hop it has always been, and the body below never renders for them. It is capped at one title, one lead, three blocks and two links — that cap is the specification, not a first draft. No rules between blocks (§4 gives a border only where two kinds of information meet, and §6.8 Settings is the precedent: heading, space, rows, no cards); the block labels are `h2` at 16/24 600, not 12 px muted, because §3 has a role for a section heading and a heading below body size is a tell; the paragraphs cap at 72ch, because 880 px at 14 px is about 100 characters. Both controls render through `Button` with `nativeButton={false} render={<Link/>}` so they carry `data-slot="button"` and clear the 40 px touch floor — the primitive stamps `role="button"` on the emitted `<a>`, so they are announced as buttons, and a bare `<a class="link">` here would match no rule in the touch block. The page reads no user data, so it has no empty state and nothing on it varies by user, key or quota. Not on it, deliberately: no screenshot or example grid, no feature list, no price and no link to where the Pro plan is sold, no program or airline name, no `?code=` forwarding, and no session-dependent content of any kind.
+
 ## 7. Interaction rules
 
 - **Chip modified state:** editing any chip sets `modified`; the edited chip gets a 1 px `--accent` outline (replacing its `--line-strong` border), a `Run` button appears at the row end, the toolbar disables, the grid dims to 80 % with the "Run to refresh" strip. Enter in the query bar or the Run button re-runs; `Reset to parsed` restores the parser output and clears the state. Chips are the single source of truth; the URL `?q=` updates on run, not on every edit.
@@ -419,7 +467,7 @@ Active voice, the same verb through the whole flow, errors say what happened and
 | 14 | Account section | "Sign out everywhere" + "Ends every session of this account…" | "Log out everywhere" (same verb as the menu) | 「在所有设备上退出登录」 |
 | 15 | Any "WORD — fragment" string (`error.network`, `grid.share_hint`, `ask.subtitle`, zh `——` strings) | "Network error — please try again." / "网络错误——请检查连接后重试。" | Two sentences: "Couldn't reach awardgrid. Check your connection and retry." | 「无法连接 awardgrid，请检查网络后重试。」 |
 
-Also: "Saved queries" nav label becomes "Queries" (the page title stays "Standing queries"); the Ask button reads "Ask" and the send button "Send"; delete confirms with the verb "Delete", never "Confirm"; "Log out" not "Sign out" everywhere. No string joins two clauses with an em dash (en) or `——` (zh): split into two sentences or use `，`. Page subtitles that explain the product ("Your own keys, your own quota…", "Private, invite-only. Bring your own seats.aero key.", "Standing queries run on your own key on a schedule…") are removed; a page title needs no pitch under it. Please/sorry never appear.
+Also: "Saved queries" nav label becomes "Queries" (the page title stays "Standing queries"); the Ask button reads "Ask" and the send button "Send"; delete confirms with the verb "Delete", never "Confirm"; "Log out" not "Sign out" everywhere. No string joins two clauses with an em dash (en) or `——` (zh): split into two sentences or use `，`. Page subtitles that explain the product ("Your own keys, your own quota…", "Private, invite-only. Bring your own seats.aero key.", "Standing queries run on your own key on a schedule…") are removed; a page title needs no pitch under it. Scoped exemption (§6.10): the ban holds on every page a user reaches after signing in; the signed-out front door is the one screen where the product has been explained nowhere else, and its three blocks state constraints and limitations, never benefit claims. Please/sorry never appear.
 
 ## 9. Screenshots and visual regression
 
@@ -453,7 +501,7 @@ Reviewed axis by axis with the question the spec asks: *would any generic data a
 | Separators | Middle dots between meta (`$5.60 · 2 · direct`, `oldest 3d ago · newest 26m ago`, footer) | Cells justify fees left and seats right with space; drawers use sentences; the footer uses a 1 px vertical rule. No `·` remains anywhere. |
 | Arrows and glyphs on controls | `→` after link text; `▶`, `▾`, icons on buttons | Route headers use `→` because it is the data. **Revised in review:** the `▶ Run` and `Filters ▾` drawn in the first draft were the tell; both are plain words now. Toolbar buttons, nav and the top bar carry no icons; the theme toggle is a word. The user-menu chevron is the one functional glyph. |
 | Numbering | 01/02/03 markers on sections or steps | None; run history, program lists and suggestions are unnumbered lists. |
-| Headings | One accented word, or a hero title with a subtitle pitch under it | 20/28 page titles in `--fg`, plain words, no color, and no subtitle: the current "Your own keys, your own quota…" and "Private, invite-only…" lines are removed (§8). |
+| Headings | One accented word, or a hero title with a subtitle pitch under it | 20/28 page titles in `--fg`, plain words, no color, and no subtitle: the current "Your own keys, your own quota…" and "Private, invite-only…" lines are removed (§8). The signed-out front door (§6.10) is the one exemption, and its blocks are constraints, not a pitch. |
 | Cards | Every section is a bordered rounded card with a title and description; the auth form is a card | Cards removed: Settings sections are heading + rows, chips are inline, the drawer's program rows are separated by rules, auth is a bare column. Borders remain only between different kinds of information. |
 | Empty states | Centered dashed box with an illustration or icon and a button | A left-aligned sentence and a link button, no box, no icon (`Open settings`, `Go to grid`). |
 | Icons | An icon on every button and nav item | None outside the freshness marks (which are data) and the user-menu chevron. |
@@ -484,6 +532,7 @@ Reviewed axis by axis with the question the spec asks: *would any generic data a
 - **The per-cabin line is the mobile line** (issue #35): cabin tag, miles, the `dyn` tag, mark + age, and not the program name. _Why:_ that exact line is already shipped at the 112 px minimum column in both languages; adding the program would make it ellipse to a stub at the floor, which is worse than naming the program in the tooltip, the drawer and the aria label.
 - **The cabin layout is view state and is not in `?q=`** (issue #35): like `orientation` it lives in `grid-app.tsx`. _Why:_ `?q=` encodes the query a run answered; the toolbar controls the view. _Cost, accepted:_ a J-vs-F comparison cannot be handed over as a link.
 - **Column-header count** (6.2 review): "N programs" is the routes catalog's monitoring count and appears only when the catalog knows every requested program; otherwise the header reads "N with availability" from the cells.
+- **The front door branches on the session** (HANDOFF §3): `/` renders a signed-out arrival page (§6.10) and redirects a signed-in user to `/grid`, the single hop it is today. §6.1 is untouched — the wordmark still links to `/grid`, the nav stays three items, and `/` carries no nav underline because it is not a signed-in destination. `getCurrentUser` (`src/lib/auth/next.ts`) becomes `cache()`-wrapped so the layout's read and the page's read are one session lookup. `/` is deliberately absent from the §9 capture matrix and the visual subset. _Why:_ a static text page with no user-varying content is covered by axe and the responsive floor, and the §9 baselines are Linux-CI-only, so the dev host cannot regenerate a capture it would add.
 
 ## 12. What the current UI gets wrong against this plan (from `docs/screenshots/v0.2/before/`)
 
@@ -538,3 +587,8 @@ Every change made to this document by the review, with the reason.
 ### Revision from issue #18 (mixed-cabin availability)
 
 - **Eighth chip added: Mixed cabin** (issue #18; §6.2, §6.2a, §6.4 amended). `min_cabin_pct` (0-100, default 100) changes what seats.aero returns and is part of the cache scope, so an itinerary flown in business with one regional economy leg comes back as nothing and the grid renders an unexplained `none`. It was placed at index 6 — after Direct only, before Sort, keeping the two search-shaping toggles together and Sort last as the only display-only chip — and not in the toolbar beside "Show dynamic pricing", although that is the closer structural precedent. Two reasons. The toolbar acts at once (`commit` → `runFind`, `grid-app.tsx:195`), which is right for a boolean and wrong for a value the user finds by trial against a 1000-call daily budget; and `include_filtered` can live there only because its effect is self-evidencing in the grid via the `dyn` cell tag, while a mixed-cabin result carries no cell-level mark and its only evidence is the drawer badge behind "Show flights". §6.4:391 requires the chips to be the single source of truth for what the grid was asked; a results-changing field the chips did not show would have contradicted that in substance. "Seven chips in the spec's order", confirmed unchanged in the 6.0 and 6.1 passes, is now eight.
+
+### Revision from the homepage entry point (HANDOFF §3)
+
+- **§6.10 added: the front door at `/`.** The product had no entry point — `/` redirected to `/grid`, which bounced a signed-out visitor to a password form that explained neither the invite requirement nor the paid seats.aero Pro key the invitee has to bring. §8's subtitle ban gained a scoped exemption and §10's Headings row a pointer to it, because a page that explains the product is exactly what both rules forbid on every page a signed-in user reaches; the exemption is scoped to the one screen where the product has been explained nowhere else. `docs/COPY.md` rule 6 carries the same exemption, since it states the ban a third time. `/` is deliberately not in §9's capture matrix or the visual subset, and §11 says so rather than leaving the omission to be read as an oversight. §8, §10 and §11 amended above.
+- **The secondary control needs `h-auto px-0` written out.** `variant="link"` sets them in `src/components/ui/button.tsx`, but cva emits size classes after variant classes and `cn` keeps the last conflicting utility, so the variant's own height and padding are dropped and the "link" renders as a 32 px padded box. Measured against the repo's real cva and cn; `variant="link"` had no other user in `src/`, so nothing had exercised it.
