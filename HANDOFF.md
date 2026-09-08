@@ -1,6 +1,6 @@
 # awardgrid — handoff
 
-**Written 2026-09-08. `main` is `e716963`, clean, level with `origin`, no open pull requests.**
+**Written 2026-09-08, against `main` at `e716963` — the head of the ledger in part 1, and the last product commit before this file existed.**
 
 This is the document to read before touching this repository. It has three parts:
 
