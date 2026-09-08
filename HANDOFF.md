@@ -34,7 +34,7 @@ The eight boundaries in the kickoff brief's §0.2 are not style preferences and 
 
 ## 1. What has shipped
 
-Fifteen pull requests since v0.2.0. They fall into four groups.
+Fifteen pull requests of product work since v0.2.0, in four groups. A sixteenth commit sits on main above them — #59, which added this file; `git log --oneline v0.2.0..main` therefore returns 16, and the sixteenth is the document you are reading.
 
 ### The v0.2.0 review — looking at what was actually built
 
@@ -188,7 +188,7 @@ CI jobs (.github/workflows/ci.yml, on push to main and on every pull_request) �
 None is a *required* check in GitHub's branch-protection sense: `gh api repos/LoganYe/awardgrid/branches/main/protection` returns 403 ("Upgrade to GitHub Pro or make this repository public"), recorded in #55 rather than papered over.
 
 
-Scope: 15 commits on main after tag v0.2.0 (b0acca1, 2026-09-06 09:05 -0700), listed by `git log --oneline v0.2.0..main`. Every one is a squashed merge of a numbered PR: #38, #39, #40, #41, #42, #43, #44, #45, #46, #53, #54, #55, #56, #57, #58. Nothing merged outside a PR.
+Scope: 15 commits on main after tag v0.2.0 (b0acca1, 2026-09-06 09:05 -0700), listed by `git log --oneline v0.2.0..main`. Every one is a squashed merge of a numbered PR: #38, #39, #40, #41, #42, #43, #44, #45, #46, #53, #54, #55, #56, #57, #58. Nothing merged outside a PR. #59 (this file) is the sixteenth and is not counted above, because it ships no product change.
 
 Issues closed in this window (gh issue list --state closed): #18, #19, #30, #31, #32, #33, #34, #35, #36, #37, #49, #52. #19 was closed by hand and recorded as a watch item in BACKLOG.md (:105) by #53, not fixed. #33 was closed by #55 with an explicit carve-out (branch protection unavailable on this plan). #11 is still open after #54 — the PR did the CI half and left the real-machine half.
 
