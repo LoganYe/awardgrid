@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
   // tests and fixtures (fake keys), scripts, the vendored toolkit, docs, the local SQLite database and
   // cache, sources, and repo docs/config. Kickoff §9 Phase-2 self-acceptance
   // (scripts/check-no-secrets-in-bundle.sh, run in CI) greps the whole .next/ tree for fixture key strings.
+  // Root markdown is excluded BY NAME, so a new root .md file is traced in until it is listed here.
+  // That is what the CI grep is for: HANDOFF.md quotes the fixture password and failed it until listed.
   // Note: Next copies a local .env / .env.production into .next/standalone by design (independent of
   // tracing); .dockerignore keeps them out of the image.
   outputFileTracingExcludes: {
@@ -42,6 +44,7 @@ const nextConfig: NextConfig = {
       "./CLAUDE.md",
       "./DECISIONS.md",
       "./FINAL_REPORT.md",
+      "./HANDOFF.md",
       "./README.md",
       "./Dockerfile",
       "./docker-compose.yml",
