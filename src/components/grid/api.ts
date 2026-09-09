@@ -2,10 +2,10 @@
  * Typed browser-side calls to the grid API. Every failure becomes an `ApiFailure` value
  * (never a throw) so the page can render the matching empty state.
  */
-import type { Grid, Orientation } from "@/lib/grid/types";
-import { isNotice, type Notice } from "@/lib/notices";
-import type { QueryObject } from "@/lib/query/schema";
-import type { Provenance } from "@/lib/query/deterministic";
+import type { Grid, Orientation } from "@awardgrid/core/grid/types";
+import { isNotice, type Notice } from "@awardgrid/core/notices";
+import type { QueryObject } from "@awardgrid/core/query/schema";
+import type { Provenance } from "@awardgrid/core/query/deterministic";
 import type { QuotaSnapshot, TripsForUserResult } from "@/lib/server/find";
 
 export type ApiFailureCode = "unauthorized" | "invalid_body" | "no_key" | "quota" | "parse" | "seatsaero" | "internal" | "network";

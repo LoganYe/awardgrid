@@ -8,7 +8,7 @@
  * straight through and never logged.
  */
 import type { SavedQuery } from "@/lib/db/schema";
-import type { Locale } from "@/lib/i18n";
+import type { Locale } from "@awardgrid/core/i18n";
 import type { SendResult } from "@/lib/notify/transport";
 
 // ---------------------------------------------------------------------------

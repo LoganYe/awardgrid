@@ -15,7 +15,7 @@
 import { DiffCells } from "@/components/queries/diff-cells";
 import { absoluteTime, relativeTime, runResultText } from "@/components/queries/format";
 import type { QueryDetails } from "@/components/queries/api";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 
 export interface RunHistoryProps {
   id: string;

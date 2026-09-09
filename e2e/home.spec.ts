@@ -12,8 +12,8 @@
  * emitted `<a>`: `getByRole("link")` would find neither of them.
  */
 import type { Page } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
-import { zh } from "../src/lib/i18n/dictionaries/zh";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 import { expect, loginAs, queryBox, test } from "./fixtures";
 import { E2E_PASSWORD } from "./users";
 

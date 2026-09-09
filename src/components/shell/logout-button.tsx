@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { clearAskSession } from "@/components/ask/history";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 
 /**

@@ -15,7 +15,7 @@
  * the re-render the virtualizer triggers.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { clampPosition, isNavigationKey, moveFocus, type CellPosition } from "@/lib/grid/keyboard";
+import { clampPosition, isNavigationKey, moveFocus, type CellPosition } from "@awardgrid/core/grid/keyboard";
 
 // ---------------------------------------------------------------------------
 // Density (spec §6): ≥ 1280 desktop, 768–1279 tablet, < 768 mobile. SSR default: desktop.

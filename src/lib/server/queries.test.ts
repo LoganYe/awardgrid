@@ -10,10 +10,10 @@ import { eq } from "drizzle-orm";
 import { apiUsage, queryRuns, savedQueries } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
 import { setKey } from "@/lib/keys";
-import { QueryObject } from "@/lib/query/schema";
-import type { Route } from "@/lib/seatsaero/types";
-import { fakeFetch, jsonResponse, textResponse } from "../../../test/fixtures/seatsaero/helpers";
-import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "../../../test/fixtures/seatsaero/generate-synthetic";
+import { QueryObject } from "@awardgrid/core/query/schema";
+import type { Route } from "@awardgrid/core/seatsaero/types";
+import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
+import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "@awardgrid/core/test-fixtures/seatsaero/generate-synthetic";
 import {
   createSavedQuery,
   lastRunDiff,

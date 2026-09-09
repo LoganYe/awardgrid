@@ -6,7 +6,7 @@
  *
  * Unset in production → returns undefined → the real global fetch is used unchanged.
  */
-import { SEATS_AERO_BASE_URL } from "@/lib/seatsaero/client";
+import { SEATS_AERO_BASE_URL } from "@awardgrid/core/seatsaero/client";
 
 export function seatsFetchFromEnv(env: Record<string, string | undefined> = process.env): typeof fetch | undefined {
   const base = env.SEATS_AERO_BASE_URL?.trim();

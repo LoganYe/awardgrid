@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { routesCache } from "@/lib/db/schema";
 import { createSqliteRoutesStore } from "@/lib/db/stores/routes";
 import { testDbWithUsers } from "@/lib/db/stores/testing";
-import { SeatsAeroClient } from "@/lib/seatsaero/client";
-import { ROUTES_TTL_MS, RoutesCatalog } from "@/lib/seatsaero/routes";
-import type { Route } from "@/lib/seatsaero/types";
-import { fakeFetch, jsonResponse } from "../../../../test/fixtures/seatsaero/helpers";
+import { SeatsAeroClient } from "@awardgrid/core/seatsaero/client";
+import { ROUTES_TTL_MS, RoutesCatalog } from "@awardgrid/core/seatsaero/routes";
+import type { Route } from "@awardgrid/core/seatsaero/types";
+import { fakeFetch, jsonResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 
 const USERS = ["alice", "bob"];
 

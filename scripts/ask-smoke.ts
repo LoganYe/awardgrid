@@ -30,7 +30,7 @@ import { runAsk } from "@/lib/ask/session";
 import { askModelFromEnv } from "@/lib/ask/options";
 import { pluginRootExists } from "@/lib/ask/skills";
 import type { AskContext, AskEvent } from "@/lib/ask/types";
-import type { QueryObject } from "@/lib/query/schema";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { DEFAULT_OUT, buildPlugin } from "./build-plugin";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FileRoutesStore, cliUserId, defaultRoutesCachePath } from "@/cli/routes-store";
-import type { RoutesEntry } from "@/lib/seatsaero/routes";
+import type { RoutesEntry } from "@awardgrid/core/seatsaero/routes";
 
 /** In-memory "disk" shared between store instances, like two CLI processes sharing one file. */
 function disk(initial: Record<string, string> = {}) {

@@ -9,8 +9,8 @@
 import { and, eq, lt, sql } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
 import { routesCache } from "@/lib/db/schema";
-import type { RoutesEntry, RoutesStore } from "@/lib/seatsaero/routes";
-import { RoutesResponse } from "@/lib/seatsaero/types";
+import type { RoutesEntry, RoutesStore } from "@awardgrid/core/seatsaero/routes";
+import { RoutesResponse } from "@awardgrid/core/seatsaero/types";
 
 export interface SqliteRoutesStore extends RoutesStore {
   /** Delete entries with `fetched_at < olderThanIso`; `userId` null/undefined = every user. */

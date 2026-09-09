@@ -25,13 +25,13 @@ import {
   users,
 } from "@/lib/db/schema";
 import { getDecryptedKey, listKeys } from "@/lib/keys";
-import { QueryObject } from "@/lib/query/schema";
-import type { Route } from "@/lib/seatsaero/types";
+import { QueryObject } from "@awardgrid/core/query/schema";
+import type { Route } from "@awardgrid/core/seatsaero/types";
 import { findGridForUser } from "@/lib/server/find";
 import { getTodayUsage } from "@/lib/server/usage";
 import { DEV_PASSWORD, DEV_USERS, seedDevDb } from "../../scripts/seed-dev";
-import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "../fixtures/seatsaero/generate-synthetic";
-import { fakeFetch, jsonResponse, textResponse } from "../fixtures/seatsaero/helpers";
+import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "@awardgrid/core/test-fixtures/seatsaero/generate-synthetic";
+import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 
 const TEST_MASTER_KEY = parseMasterKey("a".repeat(64));
 const NOW = new Date("2026-10-01T12:00:00Z");

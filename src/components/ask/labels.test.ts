@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { AskCellContext } from "@/app/api/ask/wire";
 import { cellPillLabel, formatPillDateRange, gridPillLabel, routeCount, toolLabel, toolLabels, TOOL_LABEL_KEYS } from "./labels";
-import { en } from "@/lib/i18n/dictionaries/en";
-import { zh } from "@/lib/i18n/dictionaries/zh";
-import { translator } from "@/lib/i18n";
-import { QueryObject } from "@/lib/query/schema";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
+import { translator } from "@awardgrid/core/i18n";
+import { QueryObject } from "@awardgrid/core/query/schema";
 
 const t = translator("en");
 const tz = translator("zh");

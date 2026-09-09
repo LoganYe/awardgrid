@@ -9,8 +9,8 @@ import { openTestDb, type Db } from "@/lib/db/client";
 import { apiUsage, availabilityCache } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
 import { setKey } from "@/lib/keys";
-import { QueryObject, type QueryObjectInput } from "@/lib/query/schema";
-import { SOURCE_NAMES, type Route, type TripsResponse } from "@/lib/seatsaero/types";
+import { QueryObject, type QueryObjectInput } from "@awardgrid/core/query/schema";
+import { SOURCE_NAMES, type Route, type TripsResponse } from "@awardgrid/core/seatsaero/types";
 import { createSqliteAvailabilityCache } from "@/lib/db/stores/cache";
 import {
   NOT_FETCHED_REASON,
@@ -28,12 +28,12 @@ import {
   summarizeTrip,
   utcToday,
 } from "@/lib/server/find";
-import { notice } from "@/lib/notices";
-import { enumeratePairs } from "@/lib/grid/pivot";
-import { compareRows } from "@/lib/grid/ranking";
-import { SeatsAeroHttpError } from "@/lib/seatsaero/client";
-import { fakeFetch, jsonResponse, loadFixture, textResponse } from "../../../test/fixtures/seatsaero/helpers";
-import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "../../../test/fixtures/seatsaero/generate-synthetic";
+import { notice } from "@awardgrid/core/notices";
+import { enumeratePairs } from "@awardgrid/core/grid/pivot";
+import { compareRows } from "@awardgrid/core/grid/ranking";
+import { SeatsAeroHttpError } from "@awardgrid/core/seatsaero/client";
+import { fakeFetch, jsonResponse, loadFixture, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
+import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "@awardgrid/core/test-fixtures/seatsaero/generate-synthetic";
 
 const MASTER = Buffer.from("0f".repeat(32), "hex");
 const ALICE_KEY = "alice_pro_key_SECRET_a1b2c3";

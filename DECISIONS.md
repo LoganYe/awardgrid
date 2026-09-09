@@ -1033,3 +1033,84 @@ Full evidence in `docs/PHASE0.md`; the spike is `spikes/phase0-native-http/`, bu
   non-commercial use `LEGAL.md:3` already describes. Distribution is a different act.
   `docs/PIVOT.md` §0 — whether seats.aero permits an app built on their non-commercial Partner API —
   is untouched by anything measured here and still gates the pivot.
+
+### Phase 1 — `packages/core`, and the tests that were not allowed to change
+
+- **The hard requirement was met, and git can prove it.** `packages/core` holds the six modules
+  (`seatsaero`, `query`, `grid`, `qr`, `i18n`, `notices`) and its 25 test files run **281 tests, the
+  same 281 that passed before the move, with not one byte edited**. `git diff --find-renames` records
+  73 of the moved paths as pure renames with 0 insertions and 0 deletions. The kickoff's rule —
+  a PR that edits any `*.test.ts` under `packages/core` is rejected on sight — is therefore not a
+  promise in a commit message; it is checkable with one command. Totals are unchanged end to end:
+  829 app + 281 core = 1,110, exactly the count before the split.
+
+- **The package mirrors the repo's layout (`src/lib/…`, `test/fixtures/…`, `data/…`) because the
+  constraint leaves no alternative, not because it is tidy.** Nine core tests reach their fixtures by
+  relative path and `query/places.ts:16` reads `../../../data/places.json`, which mirroring fixes for
+  free. The decisive file is `grid/ascii.test.ts:8`, which does
+  `readFileSync(new URL("../../../test/fixtures/grid/…", import.meta.url))` — a **runtime filesystem
+  read**. No `resolve.alias`, no tsconfig path and no bundler config can intercept it, so those three
+  golden `.txt` files must physically sit three directories above the test. A symlink was the only
+  other candidate and is worse: Vite and `tsc` both resolve symlinks by default, so the fixture's
+  module identity would become a path inside the ROOT tsconfig's `include`, re-importing the very
+  alias collision described below.
+
+- **The `@` alias now belongs to the tests alone, and the package's own sources use relative
+  imports.** This was forced by a measured failure, not taste: `paths` is a property of the
+  *program*, not the file's directory, so when the root `tsc` follows an app import into the package
+  it applies the ROOT `"@/*": ["./src/*"]` map to the package's internal imports — which resolve into
+  the app's `src/`, where those modules no longer exist. 95 specifiers across 27 core source files
+  were rewritten to relative paths. *Why not the obvious fix:* adding
+  `"@/*": ["./src/*", "./packages/core/src/*"]` to the root also compiles, and is a trap — it
+  silently shadows, so a straggling `@/lib/grid/pivot` in app code would typecheck green forever and
+  the migration would stop proving its own completeness. Deleting `src/lib/grid/` is what makes every
+  un-migrated import a hard error. The relative-import form is also the honest one: a package that
+  ships source should not require its consumers to surrender their `@` namespace, and the Capacitor
+  shell can now consume the core with no resolver config at all.
+
+- **The app imports `@awardgrid/core/<module>`; 293 specifiers across 133 files were rewritten,
+  and that churn was the point.** The cheaper option — mapping `@/lib/seatsaero/*` at the root and
+  touching no app code — was rejected because it creates no dependency edge, cannot be enforced, and
+  would leave a directory with a `package.json` rather than a package. 31 of those specifiers were
+  *relative* (`../src/lib/i18n/dictionaries/en` in the e2e suite) and invisible to any `@/lib` search;
+  they are the ones a rewrite like this loses.
+
+- **`src/lib/i18n/server.ts` stayed in the app — it is the only file in all six modules coupled to
+  Next.** Measured: the six modules' entire external surface is `zod`, `@anthropic-ai/sdk`, `react`,
+  one `node:fs` in a test, and that single `next/headers`. Every `@/` import inside them already
+  pointed back into the six; not one reached `auth`, `db`, `server` or `keys`. PIVOT §1's "the core
+  is already portable" holds.
+
+- **The boundary is enforced by lint in both directions, because measuring it once proves nothing
+  about the next commit.** `packages/core` may not import `next/*`, `server-only` or `@/*`; the app
+  may not import the six old `@/lib/…` roots. Both rules were verified to actually fire against
+  deliberate violations, and to leave `@/lib/i18n/server` alone. Module roots are listed under
+  `paths` rather than `patterns` because glob groups use gitignore semantics, where excluding
+  `@/lib/i18n` also excludes everything beneath it and a `!@/lib/i18n/server` negation cannot
+  re-include it.
+
+- **Three ways the split could have gone green while being broken, all closed.** `pnpm test` would
+  have run 84 files and exited 0 while executing none of the 281 core tests — the root vitest
+  `include` never matched `packages/**`, and `--passWithNoTests` would have suppressed the only
+  signal; `test` and `typecheck` now run the package too, and the package's own runner omits
+  `--passWithNoTests`, so a zero-match include exits 1 (verified). `pnpm typecheck` would have
+  stopped covering the 25 core test files entirely, since nothing imports them. And the Docker image
+  would have built and then died on first import: `node_modules/@awardgrid/core` is a workspace
+  symlink into `packages/`, which the runtime stage never copied.
+
+- **The Dockerfile needed three changes and only CI can confirm them.** The deps stage now copies
+  `packages/core/package.json` before `pnpm install --frozen-lockfile`, or `workspace:*` cannot
+  resolve; the runtime stage copies `/app/packages` so the tsx-run worker and CLIs can resolve the
+  core; and `COPY /app/data ./data` is **gone**, because `data/`'s only tracked file was
+  `places.json` and moving it leaves a directory that does not exist in the build context — that
+  `COPY` would have failed the build outright. `.dockerignore` also gained `**/node_modules`: the
+  bare form matches only the top-level entry, so the workspace member's own host-specific pnpm
+  symlinks would otherwise ride into the build context. _Not verified here:_ Docker is not installed
+  on this machine, so these are reasoned from the file and rest on CI's `docker-smoke` job. The
+  mechanism most likely to break — `tsx` resolving `@awardgrid/core` at runtime — **is** verified
+  locally: `test/integration/find-entrypoint.test.ts` spawns the real `tsx` binary and passes.
+
+- **What was verified locally:** 1,110 tests, `tsc` clean across app and package, `eslint` at 0
+  errors (the one pre-existing TanStack warning unchanged), `next build`, the secret-in-bundle grep,
+  and the standalone server actually booted — `/`, `/login` and `/api/health` all 200, which is the
+  check that catches a core that resolves at build time and fails at runtime.

@@ -5,7 +5,7 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { QueryObject } from "@/lib/query/schema";
+import { QueryObject } from "@awardgrid/core/query/schema";
 import { getServerDb } from "@/lib/server/db";
 import { findGridForUser, gridError, gridErrorResponse, userFromRequest } from "@/lib/server/find";
 import { readJson } from "@/lib/server/http";

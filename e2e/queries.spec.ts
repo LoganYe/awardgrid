@@ -15,7 +15,7 @@
  * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
 import type { Locator, Page } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
 import { applyTheme, expect, projectSuffix, test } from "./fixtures";
 import { E2E_SAVED_QUERY_NAME } from "./users";
 

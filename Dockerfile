@@ -21,7 +21,12 @@ FROM base AS deps
 # (better-sqlite3 via prebuild-install). This stage is not part of the runtime image.
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+# The repo is a pnpm workspace since Phase 1 (docs/PIVOT.md §6). Every workspace member's
+# manifest must be present before install, or the root's "@awardgrid/core": "workspace:*"
+# cannot resolve. Manifest only — the sources arrive with the COPY . . in the build stage, so
+# editing core code does not bust this cache layer.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/core/package.json ./packages/core/
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # ---- build: pruned toolkit plugin (build/plugin) + Next standalone output (.next/standalone) ----
@@ -57,12 +62,18 @@ COPY --from=build --chown=node:node /app/public ./public
 # install, not a production prune). Keep it that way.
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 # Worker / CLI sources (tsx resolves "@/..." through tsconfig.json), drizzle migrations
-# (src/lib/db/client.ts reads <cwd>/drizzle), places seed, built plugin, and LEGAL.md (rendered by
-# /legal from <cwd>/LEGAL.md at request time).
+# (src/lib/db/client.ts reads <cwd>/drizzle), built plugin, and LEGAL.md (rendered by /legal from
+# <cwd>/LEGAL.md at request time).
 COPY --from=build --chown=node:node /app/src ./src
 COPY --from=build --chown=node:node /app/scripts ./scripts
 COPY --from=build --chown=node:node /app/drizzle ./drizzle
-COPY --from=build --chown=node:node /app/data ./data
+# packages/: node_modules/@awardgrid/core is a workspace SYMLINK into this directory. The Next
+# server does not need it (transpilePackages bundles the core into the server chunks), but the
+# worker and the CLIs run TypeScript through tsx and resolve "@awardgrid/core/*" at runtime, so
+# without this the symlink dangles and `pnpm worker` dies on its first import.
+# This also carries the places seed, which moved here from ./data in Phase 1 — ./data no longer
+# exists in the build context at all, which is why it is no longer copied.
+COPY --from=build --chown=node:node /app/packages ./packages
 COPY --from=build --chown=node:node /app/build/plugin ./build/plugin
 COPY --from=build --chown=node:node /app/package.json /app/tsconfig.json /app/drizzle.config.ts /app/LEGAL.md ./
 

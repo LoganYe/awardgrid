@@ -4,8 +4,8 @@
  * The three suggested questions (spec §3.6). Clicking one fills the input rather than sending,
  * so the user can edit it first and still sees exactly what will be asked.
  */
-import type { I18nKey } from "@/lib/i18n";
-import { useT } from "@/lib/i18n/client";
+import type { I18nKey } from "@awardgrid/core/i18n";
+import { useT } from "@awardgrid/core/i18n/client";
 
 export const ASK_SUGGESTION_KEYS: readonly I18nKey[] = ["ask.suggestion.cheapest_program", "ask.suggestion.good_price", "ask.suggestion.combine_trip"];
 

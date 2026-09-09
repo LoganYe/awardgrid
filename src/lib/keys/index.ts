@@ -19,8 +19,8 @@ import {
   SeatsAeroNetworkError,
   SeatsAeroResponseError,
   type SeatsAeroCallListener,
-} from "@/lib/seatsaero/client";
-import { type QuotaStore, utcDayKey } from "@/lib/seatsaero/quota";
+} from "@awardgrid/core/seatsaero/client";
+import { type QuotaStore, utcDayKey } from "@awardgrid/core/seatsaero/quota";
 
 export type { KeyProvider };
 export { KEY_PROVIDERS };

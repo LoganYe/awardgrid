@@ -11,8 +11,8 @@
  */
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { I18nKey } from "@/lib/i18n";
-import { useT } from "@/lib/i18n/client";
+import type { I18nKey } from "@awardgrid/core/i18n";
+import { useT } from "@awardgrid/core/i18n/client";
 
 /** The three examples, per language, from the dictionaries. */
 export const EXAMPLE_KEYS: readonly I18nKey[] = ["grid.example.one", "grid.example.two", "grid.example.three"];

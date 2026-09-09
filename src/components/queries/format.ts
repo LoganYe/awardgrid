@@ -6,10 +6,10 @@
  * server and client code.
  */
 import { formatPillDateRange } from "@/components/ask/labels";
-import { intlLocale, type FormatLocale } from "@/lib/grid/format";
-import type { AvailabilityRow, GridCell } from "@/lib/grid/types";
-import { hasKey, type Translate } from "@/lib/i18n";
-import type { Cabin, QueryObject } from "@/lib/query/schema";
+import { intlLocale, type FormatLocale } from "@awardgrid/core/grid/format";
+import type { AvailabilityRow, GridCell } from "@awardgrid/core/grid/types";
+import { hasKey, type Translate } from "@awardgrid/core/i18n";
+import type { Cabin, QueryObject } from "@awardgrid/core/query/schema";
 // Type-only: the runtime module pulls node-cron, which must never reach the browser bundle.
 import type { CronDescription as ScheduleShape } from "@/lib/scheduler/cron";
 

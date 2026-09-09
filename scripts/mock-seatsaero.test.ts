@@ -3,7 +3,7 @@
  * one test per scenario key plus the include_filtered / routes / trips contracts the app relies on.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { Availability, SearchResponse, TripsResponse } from "@/lib/seatsaero/types";
+import { Availability, SearchResponse, TripsResponse } from "@awardgrid/core/seatsaero/types";
 import { DEMO_UNMONITORED_ORIGIN } from "../fixtures/demo/generate";
 import { DEMO_KEYS, DEMO_PARTIAL_PROGRAM, createMockServer, type MockHandle } from "./mock-seatsaero";
 

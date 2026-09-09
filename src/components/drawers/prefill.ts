@@ -11,7 +11,7 @@
  * Pure module — no React, no network. Unit tested in prefill.test.ts.
  */
 import { cabinSummary, NAME_MAX_LENGTH } from "@/components/queries/format";
-import { MAX_SPAN_DAYS, type QueryObject } from "@/lib/query/schema";
+import { MAX_SPAN_DAYS, type QueryObject } from "@awardgrid/core/query/schema";
 
 /** ±3 days around the cell (spec §3.5) — a 7-day window. */
 export const PREFILL_WINDOW_DAYS = 3;

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import pkg from "../../../package.json";
-import { translator, type Locale } from "@/lib/i18n";
+import { translator, type Locale } from "@awardgrid/core/i18n";
 
 /**
  * One 32 px line on every page: "Data: seats.aero" │ the version │ Legal. The version is read

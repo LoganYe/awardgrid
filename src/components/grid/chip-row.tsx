@@ -18,8 +18,8 @@
  */
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
-import { useLocale, useT } from "@/lib/i18n/client";
-import type { QueryObject } from "@/lib/query/schema";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { CabinsEditor } from "@/components/grid/chip-editors/cabins-editor";
 import { ChipPopover, type ChipState } from "@/components/grid/chip-editors/chip-popover";
 import { DatesEditor } from "@/components/grid/chip-editors/dates-editor";

@@ -1,0 +1,52 @@
+{
+  "name": "@awardgrid/core",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Runtime-independent core: seats.aero client, query parsing, grid, QR, i18n, notices. No server dependencies; every shell (Next, Capacitor/iOS, desktop, extension) consumes this.",
+  "license": "MIT",
+  "//": "Raw TypeScript, no build step. Every consumer already compiles TS (Next via transpilePackages, Vite, vitest), so shipping source keeps one copy of the truth and no dist/ to fall out of date.",
+  "___exports": "No '.' entry on purpose: a root barrel over six modules would collide names (`Route` exists in both seatsaero and grid types). Consumers import the module they mean.",
+  "exports": {
+    "./seatsaero": "./src/lib/seatsaero/index.ts",
+    "./seatsaero/*": "./src/lib/seatsaero/*.ts",
+    "./query": "./src/lib/query/index.ts",
+    "./query/*": "./src/lib/query/*.ts",
+    "./grid": "./src/lib/grid/index.ts",
+    "./grid/*": "./src/lib/grid/*.ts",
+    "./grid/deeplinks": "./src/lib/grid/deeplinks/index.ts",
+    "./grid/deeplinks/*": "./src/lib/grid/deeplinks/*.ts",
+    "./qr": "./src/lib/qr/index.ts",
+    "./qr/*": "./src/lib/qr/*.ts",
+    "./i18n": "./src/lib/i18n/index.ts",
+    "./i18n/client": "./src/lib/i18n/client.tsx",
+    "./i18n/dictionaries/*": "./src/lib/i18n/dictionaries/*.ts",
+    "./i18n/*": "./src/lib/i18n/*.ts",
+    "./notices": "./src/lib/notices.ts",
+    "./data/places.json": "./data/places.json",
+    "./test-fixtures/*.json": "./test/fixtures/*.json",
+    "./test-fixtures/*": "./test/fixtures/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.123.0",
+    "zod": "^4.5.4"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "typescript": "^5",
+    "vitest": "^5.0.0"
+  }
+}

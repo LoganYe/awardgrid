@@ -12,7 +12,7 @@
  * Desktop projects only; the numbers are printed so the run log carries them.
  */
 import type { Page } from "@playwright/test";
-import type { QueryObject } from "../src/lib/query/schema";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { applyTheme, expect, gridQueryHref, isoDaysFromToday, loginAs, projectSuffix, test } from "./fixtures";
 
 // Spec §3.4 states the budget for a mid-range laptop. GitHub's shared runners are slower and

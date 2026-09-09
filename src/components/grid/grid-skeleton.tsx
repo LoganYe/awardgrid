@@ -8,8 +8,8 @@
  * The shimmer is a single pass and becomes static under prefers-reduced-motion (grid-styles.css).
  */
 import { useMemo } from "react";
-import type { CellLayout, Orientation } from "@/lib/grid/types";
-import type { QueryObject } from "@/lib/query/schema";
+import type { CellLayout, Orientation } from "@awardgrid/core/grid/types";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { GridTable, skeletonGridFor } from "@/components/grid/grid-table";
 
 export interface GridSkeletonProps {

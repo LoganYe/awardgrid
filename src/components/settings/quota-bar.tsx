@@ -8,8 +8,8 @@
  * from getTodayUsage() in the server page.
  */
 import { stateFor, type QuotaState } from "@/components/shell/quota-indicator-state";
-import { htmlLang } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { htmlLang } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 
 export interface QuotaView {

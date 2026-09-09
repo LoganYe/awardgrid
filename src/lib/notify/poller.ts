@@ -14,7 +14,7 @@
  * chat ids, tokens or usernames: the `onError` hook receives a category string only.
  */
 import type { Db } from "@/lib/db/client";
-import { t, type Locale } from "@/lib/i18n";
+import { t, type Locale } from "@awardgrid/core/i18n";
 import {
   consumeTelegramLinkToken,
   findUserByChatId,

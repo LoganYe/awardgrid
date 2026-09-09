@@ -30,8 +30,8 @@
 import { and, asc, eq, gte, inArray, like, lt, lte, notLike, sql } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
 import { availabilityCache, cacheCoverage, type AvailabilityCacheRow } from "@/lib/db/schema";
-import type { AvailabilityRow } from "@/lib/grid/types";
-import { Cabin, DEFAULT_MIN_CABIN_PCT } from "@/lib/query/schema";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
+import { Cabin, DEFAULT_MIN_CABIN_PCT } from "@awardgrid/core/query/schema";
 import {
   minFetchedAt,
   rowInScope,
@@ -40,7 +40,7 @@ import {
   type CacheQuery,
   type CachedRows,
   type CoverageRecord,
-} from "@/lib/seatsaero/cache";
+} from "@awardgrid/core/seatsaero/cache";
 
 // ---------------------------------------------------------------------------
 // Encoding helpers (exported for tests and for anyone inspecting the tables)

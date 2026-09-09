@@ -1,6 +1,10 @@
 # Build context for Dockerfile. vendor/ (toolkit submodule) is REQUIRED — do not ignore it.
 # build/ and .next/ are regenerated inside the image (pnpm build:plugin && pnpm build).
+# Both forms: a bare `node_modules` matches only the top-level entry, so the workspace member's
+# own node_modules (packages/core/node_modules, full of host-specific pnpm symlinks) needs the
+# glob or it would ride into the build context and shadow the image's install.
 node_modules
+**/node_modules
 .next
 build
 tsconfig.tsbuildinfo

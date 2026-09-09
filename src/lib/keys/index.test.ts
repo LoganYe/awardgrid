@@ -18,8 +18,8 @@ import {
   setKey,
   validateSeatsAeroKey,
 } from "@/lib/keys";
-import { InMemoryQuotaStore } from "@/lib/seatsaero/quota";
-import { fakeFetch, jsonResponse, loadFixture, textResponse } from "../../../test/fixtures/seatsaero/helpers";
+import { InMemoryQuotaStore } from "@awardgrid/core/seatsaero/quota";
+import { fakeFetch, jsonResponse, loadFixture, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 
 const T0 = new Date("2026-09-06T10:00:00Z");
 const MASTER = Buffer.from("0f".repeat(32), "hex");

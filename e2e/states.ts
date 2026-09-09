@@ -18,8 +18,8 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
-import { zh } from "../src/lib/i18n/dictionaries/zh";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 import { availableCells, CANONICAL_QUERY_EN, CANONICAL_QUERY_ZH, expect, loginAs, projectSuffix, submitQuery, test, type E2eUsername } from "./fixtures";
 import { SHOT_ROOT, shotFile, type MatrixPage } from "./matrix";
 

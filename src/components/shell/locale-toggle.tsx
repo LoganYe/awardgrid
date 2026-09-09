@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, LOCALES, type Locale } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, LOCALES, type Locale } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 
 /** Write the `ag_locale` cookie (readable by the server layout) — no PUT /api/settings here. */

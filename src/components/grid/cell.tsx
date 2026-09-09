@@ -22,14 +22,14 @@
  * program names are the short text names from src/lib/grid/format.ts — never a logo or color.
  */
 import { memo } from "react";
-import { cellAriaLabel } from "@/lib/grid/aria";
-import { formatAge, formatAgeCompact, tier } from "@/lib/grid/freshness";
-import { formatFees, formatMiles, formatSeats, programShortName } from "@/lib/grid/format";
-import { bestPerCabin } from "@/lib/grid/pivot";
-import { programDisplayName } from "@/lib/grid/ranking";
-import type { AvailabilityRow, CabinSlot, CellLayout, CellStatus, FreshnessTier, GridCell } from "@/lib/grid/types";
-import { hasKey, type Locale, type Translate } from "@/lib/i18n";
-import type { Cabin, QueryObject } from "@/lib/query/schema";
+import { cellAriaLabel } from "@awardgrid/core/grid/aria";
+import { formatAge, formatAgeCompact, tier } from "@awardgrid/core/grid/freshness";
+import { formatFees, formatMiles, formatSeats, programShortName } from "@awardgrid/core/grid/format";
+import { bestPerCabin } from "@awardgrid/core/grid/pivot";
+import { programDisplayName } from "@awardgrid/core/grid/ranking";
+import type { AvailabilityRow, CabinSlot, CellLayout, CellStatus, FreshnessTier, GridCell } from "@awardgrid/core/grid/types";
+import { hasKey, type Locale, type Translate } from "@awardgrid/core/i18n";
+import type { Cabin, QueryObject } from "@awardgrid/core/query/schema";
 import { FreshnessMark } from "@/components/grid/freshness-mark";
 import type { Density } from "@/components/grid/use-roving-grid";
 

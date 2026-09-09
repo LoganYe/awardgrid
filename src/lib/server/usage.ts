@@ -11,7 +11,7 @@ import { dailyCapUsd, reserveAsk } from "@/lib/ask/budget";
 import type { DbConn } from "@/lib/auth/clock";
 import { SEATS_AERO_PROVIDER } from "@/lib/db/stores/quota";
 import { apiUsage } from "@/lib/db/schema";
-import { nextUtcMidnight, SEATS_AERO_DAILY_LIMIT, softLimitFromEnv, utcDayKey } from "@/lib/seatsaero/quota";
+import { nextUtcMidnight, SEATS_AERO_DAILY_LIMIT, softLimitFromEnv, utcDayKey } from "@awardgrid/core/seatsaero/quota";
 import { stateFor, type QuotaState } from "@/components/shell/quota-indicator-state";
 
 export interface TodayUsage {

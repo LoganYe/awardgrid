@@ -10,8 +10,8 @@
  */
 import type { AskCellContext } from "@/app/api/ask/wire";
 import { cellPillLabel, gridPillLabel } from "@/components/ask/labels";
-import { useLocale, useT } from "@/lib/i18n/client";
-import type { QueryObject } from "@/lib/query/schema";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { cn } from "@/lib/utils";
 
 export interface ContextPillsProps {

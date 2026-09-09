@@ -9,7 +9,7 @@
  *   parseSnapshot(json)          cells_json → CellSnapshot[] (tolerant: garbage → [])
  */
 import { createHash } from "node:crypto";
-import type { AvailabilityRow } from "@/lib/grid/types";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
 import type { CellSnapshot, DiffOptions, PriceDrop, SnapshotDiff } from "./types";
 
 export const CELL_KEY_SEPARATOR = "|";

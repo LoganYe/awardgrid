@@ -5,7 +5,7 @@ import { Nav } from "@/components/shell/nav";
 import { QuotaIndicator } from "@/components/shell/quota-indicator";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { UserMenu } from "@/components/shell/user-menu";
-import { translator, type Locale } from "@/lib/i18n";
+import { translator, type Locale } from "@awardgrid/core/i18n";
 
 /**
  * The 48 px top bar (spec §2, docs/UI_PLAN.md §6.1). Text only — no logo, no icons.

@@ -1,7 +1,19 @@
 # awardgrid as a client app — transition specification
 
-**Status: specified, not built. Nothing in this document has been implemented.**
-It is the brief for a separate session. Written 2026-09-09 against `568b9ae`.
+Written 2026-09-09 against `568b9ae` as a brief for a separate session.
+
+**Status, updated 2026-09-10.** Phases 0 and 1 are built; §0 is still unanswered.
+
+| | |
+|---|---|
+| **§0 — does seats.aero permit distribution?** | **Still open.** No email sent. It gates distribution, not development. |
+| **Phase 0 — the native-HTTP premise** | **Done, and it holds.** `docs/PHASE0.md`; spike in `spikes/phase0-native-http/`. Two findings changed the Phase 2 design: `AbortSignal` does not cancel the native request (an abandoned search still spends quota), while `readTimeout`/`connectTimeout` do work and are the fix. |
+| **Phase 1 — the package split** | **Done.** `packages/core` holds the six modules; its 281 tests moved and pass unedited (`git diff --find-renames` shows pure renames). The boundary is lint-enforced both ways. Rationale in `DECISIONS.md` § "Phase 1". |
+| **Phases 2–5** | Not started. |
+
+Everything below is the original specification, kept as written. Where the build measured
+something the spec inferred, the phase document says so — §2's note that `AbortSignal` may not be
+honoured is now a measurement, not a caution.
 
 The proposal, in the owner's words:
 

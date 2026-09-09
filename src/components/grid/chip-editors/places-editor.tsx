@@ -15,7 +15,7 @@
  */
 import { useId, useMemo, useState, type KeyboardEvent } from "react";
 import { Input } from "@/components/ui/input";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 import { EditorNote } from "@/components/grid/chip-editors/chip-popover";
 import {

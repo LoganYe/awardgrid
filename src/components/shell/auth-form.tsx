@@ -7,8 +7,8 @@ import { clearAskSession } from "@/components/ask/history";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { errorText } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { errorText } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 
 export type AuthMode = "login" | "register";

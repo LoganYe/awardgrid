@@ -10,9 +10,9 @@ import {
   encodeProgramsKey,
 } from "@/lib/db/stores/cache";
 import { testDbWithUsers } from "@/lib/db/stores/testing";
-import type { AvailabilityRow } from "@/lib/grid/types";
-import { InMemoryAvailabilityCache, coverageSatisfies, uncoveredPairs, type CoverageRecord } from "@/lib/seatsaero/cache";
-import type { Cabin } from "@/lib/query/schema";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
+import { InMemoryAvailabilityCache, coverageSatisfies, uncoveredPairs, type CoverageRecord } from "@awardgrid/core/seatsaero/cache";
+import type { Cabin } from "@awardgrid/core/query/schema";
 
 const USERS = ["alice", "bob", "u"];
 

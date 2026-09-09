@@ -10,13 +10,13 @@
  * state; the no-key and failure states replace it.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { transposeGrid } from "@/lib/grid/pivot";
-import type { AvailabilityRow, CellLayout, Grid, GridCell, Orientation } from "@/lib/grid/types";
-import { useLocale, useT } from "@/lib/i18n/client";
-import { MAX_SPAN_DAYS, type Cabin, type QueryObject } from "@/lib/query/schema";
-import type { Provenance } from "@/lib/query/deterministic";
+import { transposeGrid } from "@awardgrid/core/grid/pivot";
+import type { AvailabilityRow, CellLayout, Grid, GridCell, Orientation } from "@awardgrid/core/grid/types";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import { MAX_SPAN_DAYS, type Cabin, type QueryObject } from "@awardgrid/core/query/schema";
+import type { Provenance } from "@awardgrid/core/query/deterministic";
 import type { QuotaSnapshot, TripsForUserResult } from "@/lib/server/find";
-import { noticeKey } from "@/lib/notices";
+import { noticeKey } from "@awardgrid/core/notices";
 import { apiExport, apiFind, apiParse, uiNotices, type ApiFailure, type UiNotice } from "@/components/grid/api";
 import { CellDrawer } from "@/components/grid/cell-drawer/cell-drawer";
 import { ChipRow } from "@/components/grid/chip-row";

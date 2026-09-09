@@ -2,7 +2,7 @@
 
 /** Direct only editor (spec §3.2): one switch. */
 import { Switch } from "@/components/ui/switch";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 
 export interface DirectEditorProps {
   value: boolean;

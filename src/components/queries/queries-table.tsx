@@ -31,8 +31,8 @@ import {
   type SavedQuerySummary,
 } from "@/components/queries/api";
 import { formatDate } from "@/components/settings/api";
-import { errorText } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { errorText } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import "@/components/queries/queries.css";
 
 export interface QueriesTableProps {

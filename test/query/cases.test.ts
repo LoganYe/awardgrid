@@ -4,12 +4,12 @@
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { noticeText } from "@/lib/notices";
-import { addDays, formatISODate, parseISODate } from "@/lib/query/dates";
-import { parseDeterministic } from "@/lib/query/deterministic";
-import { ParseError, type ParserClient, type ParserRequest } from "@/lib/query/llm";
-import { parseQuery } from "@/lib/query/parse";
-import type { QueryObjectLLM } from "@/lib/query/schema";
+import { noticeText } from "@awardgrid/core/notices";
+import { addDays, formatISODate, parseISODate } from "@awardgrid/core/query/dates";
+import { parseDeterministic } from "@awardgrid/core/query/deterministic";
+import { ParseError, type ParserClient, type ParserRequest } from "@awardgrid/core/query/llm";
+import { parseQuery } from "@awardgrid/core/query/parse";
+import type { QueryObjectLLM } from "@awardgrid/core/query/schema";
 
 interface Expect {
   origins?: string[];

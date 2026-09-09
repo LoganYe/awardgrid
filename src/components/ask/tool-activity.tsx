@@ -9,7 +9,7 @@
  */
 import { useEffect, useId, useRef, useState } from "react";
 import { toolLabels } from "@/components/ask/labels";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 
 export interface ToolActivityProps {
   /** Raw tool names in first-seen order. */

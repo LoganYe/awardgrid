@@ -10,9 +10,9 @@
  */
 import type { AskUsageResponse } from "@/app/api/ask/wire";
 import { formatUsd } from "@/components/ask/context";
-import { useLocale, useT } from "@/lib/i18n/client";
-import { intlLocale } from "@/lib/grid/format";
-import type { Locale } from "@/lib/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import { intlLocale } from "@awardgrid/core/grid/format";
+import type { Locale } from "@awardgrid/core/i18n";
 import { cn } from "@/lib/utils";
 
 /**

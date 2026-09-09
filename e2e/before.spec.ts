@@ -10,7 +10,7 @@
  * regenerated; run this spec with E2E_BEFORE_DIR=<scratch dir> to check it still passes.
  * Copy is read from the en dictionary so the 6.1 i18n audit did not break the assertions.
  */
-import { en } from "../src/lib/i18n/dictionaries/en";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
 import { applyTheme, beforeShot, closeDrawer, expect, openAskDrawer, openCellDrawer, openGridWithResults, queryBox, submitQuery, test } from "./fixtures";
 import { E2E_SAVED_QUERY_NAME } from "./users";
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { apiUsage } from "@/lib/db/schema";
 import { SEATS_AERO_PROVIDER, createSqliteQuotaStore } from "@/lib/db/stores/quota";
 import { testDbWithUsers } from "@/lib/db/stores/testing";
-import { Quota, QuotaExceededError } from "@/lib/seatsaero/quota";
+import { Quota, QuotaExceededError } from "@awardgrid/core/seatsaero/quota";
 
 const USERS = ["alice", "bob", "carol", "u"];
 

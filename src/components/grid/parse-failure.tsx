@@ -8,9 +8,9 @@
  * The raw text is not echoed here: it stays in the query bar directly above ("the raw text
  * preserved in the bar", §6.2), so repeating it would put the same sentence on screen twice.
  */
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 import type { ApiFailure } from "@/components/grid/api";
-import type { I18nKey } from "@/lib/i18n";
+import type { I18nKey } from "@awardgrid/core/i18n";
 
 /** `missing` field names from /api/parse → one sentence each, deduped (both date bounds are "the dates"). */
 export function missingSentenceKeys(missing: readonly string[] | undefined): I18nKey[] {

@@ -3,7 +3,7 @@
  * exists only to be handed to `buildAskOptions` (→ the SDK subprocess env) and is never
  * serialized, logged, or placed in an event.
  */
-import type { QueryObject } from "@/lib/query/schema";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 
 /** Decrypted per-user provider keys. seats.aero is mandatory (no key → `no_key`, never a fallback). */
 export interface AskKeys {

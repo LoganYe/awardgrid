@@ -27,7 +27,7 @@ import { BottomSheetHandle } from "@/components/drawers/bottom-sheet";
 import { drawerMode, isModalMode, type DrawerMode, type MobilePresentation } from "@/components/drawers/use-drawer-state";
 import { useDensity } from "@/components/grid/use-roving-grid";
 import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 import "./drawer.css";
 

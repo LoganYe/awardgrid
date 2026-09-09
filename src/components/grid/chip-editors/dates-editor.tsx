@@ -19,8 +19,8 @@
  * live region, so the selection is announced without looking at the fill.
  */
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { intlLocale } from "@/lib/grid/format";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { intlLocale } from "@awardgrid/core/grid/format";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 import { EditorNote } from "@/components/grid/chip-editors/chip-popover";
 import { summarizeDates } from "@/components/grid/chips-model";

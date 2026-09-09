@@ -6,7 +6,7 @@ import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { LogoutButton } from "@/components/shell/logout-button";
 import { Nav } from "@/components/shell/nav";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 
 /**

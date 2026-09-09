@@ -19,8 +19,8 @@ import { useId, useMemo, useState, useSyncExternalStore, type FormEvent } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { errorText } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { errorText } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import { apiJson } from "./api";
 import { NativeSelect } from "./native-select";
 import { SettingsNotice, SettingsSection } from "./section";

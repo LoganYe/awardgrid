@@ -9,10 +9,10 @@
  * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
 import type { Locator, Page } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
-import { interpolate } from "../src/lib/i18n";
-import { SEATS_SOURCES, SOURCE_NAMES } from "../src/lib/seatsaero/types";
-import { zh } from "../src/lib/i18n/dictionaries/zh";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { interpolate } from "@awardgrid/core/i18n";
+import { SEATS_SOURCES, SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 import { applyTheme, CANONICAL_QUERY_EN, CANONICAL_QUERY_ZH, expect, loginAs, projectIndex, projectSuffix, submitQuery, test, type E2eUsername } from "./fixtures";
 import { E2E_SLOW_USERS } from "./users";
 

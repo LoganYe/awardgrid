@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AvailabilityRow } from "@/lib/grid/types";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
 import { cellKey, cellsHash, diffSnapshots, parseCellKey, parseSnapshot, serializeSnapshot, snapshot } from "./diff";
 import type { CellSnapshot } from "./types";
 

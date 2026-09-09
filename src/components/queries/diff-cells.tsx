@@ -17,9 +17,9 @@
  */
 import { Cell } from "@/components/grid/cell";
 import { useDensity } from "@/components/grid/use-roving-grid";
-import { formatRowDate } from "@/lib/grid/format";
-import type { AvailabilityRow } from "@/lib/grid/types";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { formatRowDate } from "@awardgrid/core/grid/format";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import { diffGridCell } from "@/components/queries/format";
 import "@/components/grid/grid-styles.css";
 

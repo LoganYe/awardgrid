@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PREFILL_WINDOW_DAYS, prefillFromCell, prefillNameFromCell } from "@/components/drawers/prefill";
 import { NAME_MAX_LENGTH } from "@/components/queries/format";
-import { MAX_SPAN_DAYS, QueryObject } from "@/lib/query/schema";
+import { MAX_SPAN_DAYS, QueryObject } from "@awardgrid/core/query/schema";
 
 const BASE: QueryObject = {
   origins: ["HKG", "PVG", "NRT", "ICN"],

@@ -22,10 +22,10 @@
  * Pure and locale-only so it can be unit-tested without a DOM (vitest runs `src/**\/*.test.ts`
  * in a node environment); the component that renders it lives in `toolbar.tsx`.
  */
-import { intlLocale } from "@/lib/grid/format";
-import type { I18nKey, Locale, TranslateVars } from "@/lib/i18n";
-import type { QueryObject } from "@/lib/query/schema";
-import { SEATS_SOURCES, SOURCE_NAMES } from "@/lib/seatsaero/types";
+import { intlLocale } from "@awardgrid/core/grid/format";
+import type { I18nKey, Locale, TranslateVars } from "@awardgrid/core/i18n";
+import type { QueryObject } from "@awardgrid/core/query/schema";
+import { SEATS_SOURCES, SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
 
 /** All the sentence needs from the query being run; null while there is no query to describe. */
 export type SearchingQuery = Pick<QueryObject, "programs"> | null;

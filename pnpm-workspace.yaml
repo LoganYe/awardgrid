@@ -1,3 +1,10 @@
+# The repo became a real workspace in Phase 1 of the client-app pivot (docs/PIVOT.md §6):
+# `packages/core` is the runtime-independent core every shell consumes. Until then this file
+# carried only `allowBuilds` and had no `packages:` key, so nothing was actually linked.
+packages:
+  - "."
+  - "packages/*"
+
 allowBuilds:
   better-sqlite3: true
   esbuild: true

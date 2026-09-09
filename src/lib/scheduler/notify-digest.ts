@@ -5,7 +5,7 @@
  * `defaultFormatDigest` (./digest.ts) stays as the dependency-free fallback.
  */
 import { formatDigest, type DigestCell, type DigestDiff } from "@/lib/notify/format";
-import { Cabin } from "@/lib/query/schema";
+import { Cabin } from "@awardgrid/core/query/schema";
 import { parseCellKey } from "./diff";
 import type { CellSnapshot, DigestFormatter, DigestInput, SnapshotDiff } from "./types";
 

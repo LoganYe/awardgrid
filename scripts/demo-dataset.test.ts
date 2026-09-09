@@ -5,7 +5,7 @@
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { Availability, Route, SEATS_SOURCES, TripsResponse } from "@/lib/seatsaero/types";
+import { Availability, Route, SEATS_SOURCES, TripsResponse } from "@awardgrid/core/seatsaero/types";
 import {
   DEMO_ANCHOR,
   DEMO_DAYS,

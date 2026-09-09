@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { t } from "@/lib/i18n";
-import { SEATS_SOURCES, SOURCE_NAMES } from "@/lib/seatsaero/types";
+import { t } from "@awardgrid/core/i18n";
+import { SEATS_SOURCES, SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
 import {
   elapsedSeconds,
   programList,

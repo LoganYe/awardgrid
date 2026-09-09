@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 
 /** Grid · Queries · Settings — three text links, the current one underlined (spec §2). */

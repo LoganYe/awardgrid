@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Native modules and the Agent SDK (which spawns a subprocess) must not be bundled.
   serverExternalPackages: ["better-sqlite3", "@node-rs/argon2", "@anthropic-ai/claude-agent-sdk"],
+  // @awardgrid/core ships raw TypeScript with no build step (docs/PIVOT.md §6 Phase 1), so Next
+  // has to compile it rather than treat it as a prebuilt dependency. One copy of the truth, and
+  // no dist/ that can drift from source. This also preserves the "use client" directive in
+  // i18n/client.tsx across the package boundary.
+  transpilePackages: ["@awardgrid/core"],
   // No telemetry, no third-party analytics (kickoff §10). Also keep the image header-light.
   poweredByHeader: false,
   // Only image-free UI is used (no logos); disable the optimizer so no remote hosts are ever contacted.

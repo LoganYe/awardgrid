@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPlaces } from "@/lib/query/places";
+import { buildPlaces } from "@awardgrid/core/query/places";
 import {
   DEFAULT_PLACES_INDEX,
   MAX_SEARCH_RESULTS,

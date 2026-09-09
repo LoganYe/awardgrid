@@ -12,9 +12,9 @@
  * when the grid URL alone is too long (it embeds the whole QueryObject, `raw_text` included)
  * the link falls back to `shortUrl` — the saved-queries page on the same origin by default.
  */
-import { DEEPLINK_CAVEAT, formatAge, programDisplayName } from "@/lib/grid";
-import type { AvailabilityRow } from "@/lib/grid/types";
-import { t, type Locale } from "@/lib/i18n";
+import { DEEPLINK_CAVEAT, formatAge, programDisplayName } from "@awardgrid/core/grid";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
+import { t, type Locale } from "@awardgrid/core/i18n";
 import { TELEGRAM_MAX_MESSAGE_CHARS } from "@/lib/notify/transport";
 
 export const MAX_DIGEST_LINES = 15;

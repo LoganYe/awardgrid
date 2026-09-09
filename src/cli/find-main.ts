@@ -23,8 +23,8 @@ import {
   resolveParserModel,
   type ParseQueryResult,
   type ParserClient,
-} from "@/lib/query";
-import type { QueryObject } from "@/lib/query";
+} from "@awardgrid/core/query";
+import type { QueryObject } from "@awardgrid/core/query";
 import {
   InMemoryAvailabilityCache,
   InMemoryQuotaStore,
@@ -38,9 +38,9 @@ import {
   softLimitFromEnv,
   type Route,
   type SearchResponse as SearchResponseT,
-} from "@/lib/seatsaero";
-import { buildGrid, renderAscii, toCsv, type Grid, type Orientation } from "@/lib/grid";
-import type { Lang } from "@/lib/grid/freshness";
+} from "@awardgrid/core/seatsaero";
+import { buildGrid, renderAscii, toCsv, type Grid, type Orientation } from "@awardgrid/core/grid";
+import type { Lang } from "@awardgrid/core/grid/freshness";
 import { FileRoutesStore, cliUserId, defaultRoutesCachePath } from "@/cli/routes-store";
 
 /** Exit codes: 0 ok · 2 parse problem · 3 quota · 4 API/config error · 1 unexpected. */

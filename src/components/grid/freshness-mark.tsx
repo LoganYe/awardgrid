@@ -8,8 +8,8 @@
  * Shape and color token per tier come from FRESHNESS_SPEC in src/lib/grid/freshness.ts — this
  * file only draws.
  */
-import { markFor, type FreshnessMarkShape } from "@/lib/grid/freshness";
-import type { FreshnessTier } from "@/lib/grid/types";
+import { markFor, type FreshnessMarkShape } from "@awardgrid/core/grid/freshness";
+import type { FreshnessTier } from "@awardgrid/core/grid/types";
 
 /** Text glyphs for places that cannot render SVG (the cell drawer today; CSV/ASCII have their own). */
 export const FRESHNESS_GLYPH: Record<FreshnessTier, string> = { fresh: "●", aging: "◐", stale: "○", unknown: "○" };

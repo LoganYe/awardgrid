@@ -23,7 +23,7 @@ import {
   validateSeatsAeroKey,
   type KeySummary,
 } from "@/lib/keys";
-import { Quota, QuotaExceededError, softLimitFromEnv } from "@/lib/seatsaero/quota";
+import { Quota, QuotaExceededError, softLimitFromEnv } from "@awardgrid/core/seatsaero/quota";
 import { getServerDb } from "@/lib/server/db";
 import { BodyError, jsonError, readJson } from "@/lib/server/http";
 import { seatsFetchFromEnv } from "@/lib/server/seats-fetch";

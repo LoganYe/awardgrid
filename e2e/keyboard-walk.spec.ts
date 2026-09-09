@@ -15,7 +15,7 @@
  * pins that they exist and axe.spec.ts audits them at both widths.
  */
 import type { Page } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
 import { CANONICAL_QUERY_EN, expect, loginAs, test } from "./fixtures";
 
 /**

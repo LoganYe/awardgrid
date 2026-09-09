@@ -9,7 +9,7 @@
  *   - `AskWireEvent`     the loosely-typed event shape the drawer parses back from `data:`.
  */
 import { z } from "zod";
-import { QueryObject } from "@/lib/query/schema";
+import { QueryObject } from "@awardgrid/core/query/schema";
 
 export const ASK_PROMPT_MAX = 2000;
 

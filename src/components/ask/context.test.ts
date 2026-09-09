@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { QueryObject } from "@/lib/query/schema";
-import type { GridCell } from "@/lib/grid/types";
+import { QueryObject } from "@awardgrid/core/query/schema";
+import type { GridCell } from "@awardgrid/core/grid/types";
 import { addToolName, buildAskContext, cellContextFromCell, formatUsd } from "./context";
 
 const query = QueryObject.parse({

@@ -22,11 +22,11 @@ import { apiUsage, queryRuns, savedQueries, users, type SavedQuery } from "@/lib
 import { seedUsers } from "@/lib/db/stores/testing";
 import { setKey } from "@/lib/keys";
 import { MockTransport } from "@/lib/notify";
-import { QueryObject } from "@/lib/query/schema";
+import { QueryObject } from "@awardgrid/core/query/schema";
 import { DEFAULT_CRON } from "@/lib/scheduler";
-import type { Availability, Route, SearchResponse } from "@/lib/seatsaero/types";
-import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS } from "../fixtures/seatsaero/generate-synthetic";
-import { fakeFetch, jsonResponse, loadFixture, textResponse } from "../fixtures/seatsaero/helpers";
+import type { Availability, Route, SearchResponse } from "@awardgrid/core/seatsaero/types";
+import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS } from "@awardgrid/core/test-fixtures/seatsaero/generate-synthetic";
+import { fakeFetch, jsonResponse, loadFixture, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 
 const MASTER_HEX = "0f".repeat(32);
 const ALICE_KEY = "alice_pro_key_SECRET_a1b2c3";
