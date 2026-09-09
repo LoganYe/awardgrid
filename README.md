@@ -190,6 +190,13 @@ Any non-empty key is accepted by the mock, so the seeded fake keys "work" and no
 refuses to run with `NODE_ENV=production`; the fake key strings are exactly what `scripts/check-no-secrets-in-bundle.sh`
 greps the build for.
 
+## Deployed at `awardgrid.dowhiz.com`
+
+A Cloudflare Tunnel from the dev Mac, not a host on Cloudflare: rendering `/` alone traces two native
+N-API binaries (`better-sqlite3`, `@node-rs/argon2`), which their runtime cannot load. Two LaunchAgents
+keep `next start` (loopback only) and `cloudflared` running. **`docs/DEPLOYMENT.md`** has the shape, the
+restart commands, the DNS rollback and what is deliberately not running (Cloudflare Access, the worker).
+
 ## Docker Compose
 
 ```sh

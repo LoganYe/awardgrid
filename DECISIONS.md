@@ -909,3 +909,51 @@ are referenced nowhere in `src/` — and so was `app.tagline`, which is now the 
   and a viewport-height capture may cut it off), but enough that bumping 0.2.0 would turn a text
   page into a rebaseline, and rebaselining is Linux-CI-only. There is no CHANGELOG and no bump
   convention to honour.
+
+### The deployment: a Cloudflare Tunnel from the dev Mac, not a host on Cloudflare
+
+- **The app cannot run on Cloudflare's own runtime, and that is not a configuration problem.**
+  Rendering `/` alone traces two native N-API binaries — `.next/server/app/page.js.nft.json` lists
+  167 files, of which `@node-rs/argon2-darwin-arm64/argon2.darwin-arm64.node` and
+  `better-sqlite3/prebuilds/darwin-arm64.node` are `.node` addons. workerd cannot load either, so
+  there is no "just the homepage" subset that avoids native code. Cloudflare Containers was the
+  other candidate and is ruled out for a different reason: its disk is ephemeral by design, and
+  this product keeps users, sessions, encrypted seats.aero keys and saved queries in the single
+  SQLite file at `DATABASE_PATH`. A static export is unavailable too — `output: "export"` is a
+  whole-app switch and `src/lib/i18n/server.ts:11` calls `cookies()` on every render, so every
+  route is dynamic. What ships instead: `next start` bound to `127.0.0.1:3000` on the dev Mac,
+  published by `cloudflared` at `awardgrid.dowhiz.com`. _Why:_ zero code change, and the repo was
+  already built for it — `src/lib/server/rate-limit.ts:161` reads `cf-connecting-ip` behind
+  `TRUST_PROXY_HEADERS`.
+
+- **`dowhiz.com` moved to Cloudflare nameservers wholesale, because subdomain delegation is
+  Enterprise-only.** Cloudflare's own documentation states it twice: "Subdomain setup is only
+  available for Enterprise accounts." So serving `awardgrid.dowhiz.com` through a Tunnel meant
+  moving the zone that also carries Google Workspace mail, a Postmark inbound MX, a Vercel apex
+  and `www`, and `api` / `staging` on Azure. Two things made that safe rather than reckless.
+  The import used GoDaddy's **BIND zone export**, not Cloudflare's scanner — the scanner looks for
+  "common" records and would have missed `20260202230003pm._domainkey` (the Postmark DKIM key) and
+  `dc-aa8e722993._spfm`, the SPF macro host the apex SPF includes by name; DMARC is `p=quarantine`,
+  so a broken SPF chain would have quarantined real mail silently. And every record was diffed
+  against the live zone by querying both nameservers **before** the switch: 16 of 16 matched.
+  DNSSEC was confirmed off at the registry first, which is the failure that takes a domain dark.
+  _Why:_ the risk was not that the migration was hard, it was that a missing record fails silently
+  and days later. Measuring beats trusting the importer.
+
+- **Every imported record is DNS-only; only `awardgrid` is proxied.** Cloudflare turns proxying on
+  by default, which would have put Vercel, Azure and Postmark behind its edge uninvited. Proxying
+  is required for the Tunnel hostname and for nothing else here. _Cost, accepted:_ the rest of the
+  domain gets Cloudflare DNS and no Cloudflare protection, which is exactly what it had before.
+
+- **Cloudflare Access is specified but NOT set up, and the gap is recorded rather than papered
+  over.** Activating Zero Trust — free at this scale — requires a billing address, a payment method
+  and accepting terms, which is the owner's to do. Until then the login page is reachable by anyone
+  with the URL. What guards it meanwhile was probed against the live site, not assumed: a bad
+  invite returns 400, an unknown login 401, registration is capped at 20 attempts per IP per
+  15 minutes (`register/route.ts:5`), and the invite keyspace is 64^12. The app is not exploitable;
+  it is merely visible.
+
+- **The scheduler is deliberately not running.** No `pnpm worker` LaunchAgent, so standing queries
+  do not run and no Telegram digest is sent. _Why:_ issue #47 — standing queries freeze their dates
+  and go silent within 92 days — is unfixed, and starting the worker would begin accumulating runs
+  against that defect rather than surfacing it. `docs/DEPLOYMENT.md` says so plainly.
