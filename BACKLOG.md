@@ -97,6 +97,7 @@ comment that points here).
 
 ## Auth / UI / ops
 
+- The three owner questions HANDOFF §3.6 asks about the front door are unanswered: whether `/` should be reachable at all without a session, whether a friend is ever sent the bare host rather than `/register?code=…`, and whether naming "seats.aero Pro" in plain text with no link and no price is the disclosure the owner wants. The page was built on the instruction to deliver §3.3 in full; a "no" to the first replaces it with a one-line redirect. (HANDOFF §3.6, DECISIONS "#63"; issue #63)
 - DB-backed (shared) login rate limiter: `src/lib/server/rate-limit.ts` is in-memory per process, fine for one app container, wrong for two. (DECISIONS Phase 2 "Login rate limiting")
 - ~~Dropdown user menu in the header~~ — shipped in 6.1 (`user-menu.tsx`: username + account line + Log out). Links to Settings / Queries / Legal live in the nav and the mobile menu instead.
 - Verify the grid on a real phone: 6.6 photographs and asserts it at 390 × 844 in a desktop browser's emulation, but sticky-column behaviour, momentum scrolling and touch targets have never been checked on physical hardware. (§8)
@@ -119,7 +120,7 @@ comment that points here).
 - Duffel / Ignav keys are stored but only used by the Ask lane; a cash-price column in the grid would use them in the fast lane (prerequisite for `cpp_desc`).
 - Record price drops per run: `query_runs` counts new and dropped cells only, so a stored run whose sole change was a price drop is summarised from `notified` ("prices dropped") rather than a count. The expanded row rebuilds the real drops from the snapshots, so only the per-run summary is approximate. Same migration shape as `calls_used` (drizzle/0002), which is now done and can be copied.
 - Diff cells cannot offer "Show flights" or a booking link: `cells_json` snapshots keep only key + miles + fees + seats + last-seen, so the rebuilt `AvailabilityRow` has no `source_id`, `booking_url`, airlines or currency. Widening the snapshot (or storing the row id) would make the expanded row's cells as actionable as the grid's. (DECISIONS 6.5)
-- `error.wrong_password` and `saved.edit.chips_locked` are now unused in both dictionaries (the password route answers `invalid_current`; PATCH accepts `query`), as is `saved.subtitle` (the Queries page dropped its subtitle per §8). Sweep them in a single i18n pass rather than one at a time.
+- `error.wrong_password` and `saved.edit.chips_locked` are now unused in both dictionaries (the password route answers `invalid_current`; PATCH accepts `query`), as is `saved.subtitle` (the Queries page dropped its subtitle per §8). `auth.login.subtitle` and `auth.register.subtitle` are orphans too: the front door at `/` reused `app.tagline` and left those two, so `/login` and `/register` still explain nothing (issue #63). Sweep them in a single i18n pass rather than one at a time.
 - The Telegram link route mints a deep link only when a bot token is configured; with just `TELEGRAM_BOT_USERNAME` set it could hand out a link and let the QR render without a running bot. `e2e/settings.spec.ts` stubs that one POST until then. (DECISIONS 6.5)
 
 ## Release-window mode (documented, not built)

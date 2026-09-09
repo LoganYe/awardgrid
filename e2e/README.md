@@ -115,7 +115,7 @@ loader, so it must not import Next.js or the database).
   backdrop covers only the first viewport height (fixed-position overlay); the drawer itself is
   intact. The PNGs are the record of the v0.1 UI and are never regenerated: to prove the spec
   still passes against a newer UI it writes to `test-results/before/` (gitignored) by default; the committed record under `docs/screenshots/v0.2/before/` was captured once in 6.0 and is never regenerated (set `E2E_BEFORE_DIR` explicitly to write elsewhere).
-- `axe.spec.ts` — `@axe-core/playwright` (WCAG 2.x A/AA tags) on login, register, legal, grid
+- `axe.spec.ts` — `@axe-core/playwright` (WCAG 2.x A/AA tags) on the front door at `/`, login, register, legal, grid
   results, the eight chip editors, the cell drawer, the Ask drawer, quota, no key, empty results,
   parse failure, manual mode, queries (list, expanded row, edit drawer, empty) and settings, on
   **desktop-light, desktop-dark and mobile-light** (dark is audited too because contrast is the

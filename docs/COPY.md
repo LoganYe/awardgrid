@@ -20,7 +20,10 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
    self-hoster is the reader and the fix is that exact identifier.
 5. **Empty states invite action.** A sentence plus a link button: "No standing queries yet. Save one from
    the grid." + "Go to grid". No box, no icon, no "nothing here".
-6. **No filler.** No page subtitles that pitch the product, no "Note that", no "Simply".
+6. **No filler.** No page subtitles that pitch the product, no "Note that", no "Simply". One scoped
+   exemption: the signed-out front door at `/` (`home.*`, UI_PLAN §6.10) is the only screen where the
+   product has been explained nowhere else, and its three blocks state constraints — invite only, your
+   own key, what it does not do — never benefit claims.
 7. **No glyphs doing a word's job inside a string.** No "→" or "->" (routes are rendered by components
    from data: `SEA → NRT` is a column header, never dictionary text); no " · " joining meta fragments
    (write two facts as two sentences or separate them with a comma); no "..." (use "…"); no em dash
@@ -107,7 +110,7 @@ only when the language model filled a field.
    `quota`, `theme`); the middle segments are the section or component; the last names the thing.
    Controls end in a verb or control name (`.run`, `.submit`, `_cta`, `.open_link`); the lint treats those
    as labels (no trailing period, capitalised first word).
-2. Append it to **both** `en.ts` and `zh.ts` with the same `{placeholders}` (569 keys each today; `i18n.test.ts` fails
+2. Append it to **both** `en.ts` and `zh.ts` with the same `{placeholders}` (601 keys each today; `i18n.test.ts` fails
    the moment they diverge). Reuse a glossary term; do not coin a second word for a concept that has one.
 3. Never put text in JSX. Render with `t("key")` (server: `getT()` from `@/lib/i18n/server`; client:
    `useT()` from `@/lib/i18n/client`). Compose data in components (`SEA → NRT`, `60,000`), words in the

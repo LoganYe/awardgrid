@@ -6,7 +6,7 @@ This is the document to read before touching this repository. It has three parts
 
 1. [What has shipped](#1-what-has-shipped) — every change, and the defect each one closed.
 2. [For the next agent](#2-for-the-next-agent) — the environment, the house rules, and the open work in the order I would take it.
-3. [The homepage entry point](#3-the-homepage-entry-point) — a requirement to build, because the product does not have one.
+3. [The homepage entry point](#3-the-homepage-entry-point) — the specification the front door was built from, and what changed against it.
 
 Everything below was verified against the repository and the GitHub API while writing it. Where a number appears, it was read, not remembered.
 
@@ -192,7 +192,7 @@ Scope: the 15 product commits on main after tag v0.2.0 (b0acca1, 2026-09-06 09:0
 
 Issues closed in this window (gh issue list --state closed): #18, #19, #30, #31, #32, #33, #34, #35, #36, #37, #49, #52. #19 was closed by hand and recorded as a watch item in BACKLOG.md (:105) by #53, not fixed. #33 was closed by #55 with an explicit carve-out (branch protection unavailable on this plan). #11 is still open after #54 — the PR did the CI half and left the real-machine half.
 
-Twelve issues remain open: #11–#17, #20, #47, #48, #50, #51. Three of them (#50, #51, and #48's re-measurement) were created by the work in this window rather than inherited: #50 in particular records that `cell.best` is best-across-cabins, a gap #46's per-cabin cells exposed.
+Twelve issues remained open when this was written: #11–#17, #20, #47, #48, #50, #51. (#63, the front door of part 3, was filed after it.) Three of them (#50, #51, and #48's re-measurement) were created by the work in this window rather than inherited: #50 in particular records that `cell.best` is best-across-cabins, a gap #46's per-cabin cells exposed.
 
 Gate-number caveat, and it matters for reading the evidence fields: the "Gates" line each PR body quotes is a local run, and it does not always match the CI run on the merge commit. #46 claims 1042 unit / 542 e2e while CI run 34104426383 read 106 test files and 546 e2e passed; #57 claims 1089 unit and #58 claims 1084, while CI on #58's merge commit read 1101 passed / 2 skipped. Where the two disagree I have quoted both and marked which is which. The gates_now figures are all from CI run 34154055151 or from re-reading the tree, never from a PR body.
 
@@ -264,7 +264,7 @@ These are enforced by the repo, not by taste. A change that breaks one will be c
 
 - Fake secrets stay low-entropy so gitleaks stays quiet, and nothing real is ever on a screenshot: the e2e master key is 64 × `e`, the passwords are `demo-password-1` / `password123`, and the seeded seats.aero keys (`demo-key-normal`, `demo-key-slow`, …) are scenario selectors for the mock. Quoting one of those literals in a **root** file is a merge blocker in a way that is easy to miss: `next.config.ts` excludes root markdown from `.next/standalone` **by name**, so a new root `.md` is traced into the build output and `scripts/check-no-secrets-in-bundle.sh` greps it. This very document failed CI that way and had to be added to `outputFileTracingExcludes`.
 
-- UI work is bound by docs/UI_PLAN.md and the tokens in src/styles/tokens.css: achromatic tokens plus the freshness colours only, no shadows, no logos, wordmarks or brand colours anywhere, sentence case in both languages, and "Data: seats.aero" stays visible. New copy goes through docs/COPY.md's glossary and both dictionaries — `src/lib/i18n/i18n.test.ts` fails on unequal key sets or mismatched placeholders (592 keys each today).
+- UI work is bound by docs/UI_PLAN.md and the tokens in src/styles/tokens.css: achromatic tokens plus the freshness colours only, no shadows, no logos, wordmarks or brand colours anywhere, sentence case in both languages, and "Data: seats.aero" stays visible. New copy goes through docs/COPY.md's glossary and both dictionaries — `src/lib/i18n/i18n.test.ts` fails on unequal key sets or mismatched placeholders (601 keys each today).
 
 - The accessibility floor is enforced, not aspirational: `e2e/axe.spec.ts` asserts zero serious or critical WCAG 2.x A/AA violations by default across desktop-light, desktop-dark and mobile-light, and writes the per-impact counts to docs/screenshots/v0.2/axe-summary.json (currently zero at every impact). `E2E_AXE_STRICT=0` is a reporting escape hatch for debugging, not a way to land a violation.
 
@@ -373,7 +373,7 @@ Each of these is stalled on a credential, a purchase or a machine. None of them 
 
 ## 3. The homepage entry point
 
-**Status: specified, not built.** This is a requirement for the next agent, and it carries three questions only the owner can answer — they are at the end, and the third one may make half the work unnecessary.
+**Status: built for issue #63, 2026-09-09.** What follows is the specification it was built from, kept as written; the decisions taken against it — including the acceptance criteria that turned out not to be achievable as worded, and the two that contradicted each other — are in `DECISIONS.md` under "#63", and the page itself is `src/app/page.tsx` with `docs/UI_PLAN.md` §6.10. The three questions at the end are still the owner's, and are still unanswered: the build proceeded on an instruction to deliver §3.3 in full.
 
 ### 3.1 What exists today
 
@@ -528,7 +528,7 @@ Needed, three small edits. (1) Add §6.10 "Front door (/)" with the two wirefram
 
 ### 3.6 Three questions for the owner
 
-These are decisions I should not make for you. The third one is the one to answer first — a "no" to it makes most of §3.3 unnecessary and replaces it with a one-line change.
+These are decisions I should not make for you, and building the page did not make them. The first one is the one to answer first — a "no" to it replaces all of §3.3 with the one-line redirect quoted inside it. All three are open, and are carried in BACKLOG.md so they do not live only here.
 
 1. Should `/` be reachable at all without a session? README.md:206 binds port 3000 to 127.0.0.1 behind Tailscale or Cloudflare Access and layout.tsx sets robots index:false, so this is never a public page — but it does state to anyone who clears the perimeter that this instance exists, is invite-only, and needs a paid key. The alternative is one line, `redirect(user ? "/grid" : "/login")`, which also fixes today's double hop. This is a privacy call, not a design one.
 
@@ -547,7 +547,7 @@ These are decisions I should not make for you. The third one is the one to answe
 
 ## 5. If you only do one thing
 
-Answer question 3 in §3.6 — whether `/` should be reachable without a session at all. If the answer is that you always send friends `/register?code=…`, then the front door has no visitor, and the right change is one line:
+This said: answer question 1 in §3.6 — whether `/` should be reachable without a session at all — and build §3.3 only if the answer is yes. The page shipped instead, on an instruction to deliver §3.3 in full, so the question is now about keeping it rather than writing it. If you always send friends `/register?code=…`, the front door has no visitor and the whole of §3.3 collapses to one line:
 
 ```tsx
 export default async function Home() {

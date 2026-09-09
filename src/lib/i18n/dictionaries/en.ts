@@ -46,6 +46,20 @@ export const en = {
   "footer.version": "v{version}",
   "common.go_to_grid": "Go to grid",
 
+  // ---- front door (6.10: the signed-out page at /; the h1 is app.tagline, reused) ----
+  "home.lead":
+    "Ask in Chinese or English for a set of origins, destinations and dates. awardgrid returns one table: the cheapest award seat in each cell, with the miles, the fees, the seats left, the program that sells it, and how old the data is.",
+  "home.invite.label": "Invite only",
+  "home.invite.body": "There is no public signup. You need an invite code from whoever runs this server.",
+  "home.key.label": "Your own key",
+  "home.key.body":
+    "Every search runs on your own seats.aero Pro key. You add it in settings after you log in. There is no shared key and no server key.",
+  "home.limits.label": "What it does not do",
+  "home.limits.body":
+    "It reads the seats.aero cache and nothing else. It never opens an airline site for you, and it never asks for an airline or bank password.",
+  "home.login_link": "Log in",
+  "home.register_link": "Create account with an invite",
+
   // ---- auth pages ----
   "auth.login.title": "Log in",
   "auth.login.subtitle": "Invite only. Searches run on your own seats.aero key.",

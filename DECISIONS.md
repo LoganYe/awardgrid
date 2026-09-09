@@ -785,3 +785,127 @@ existing store. No migration: the columns exist.
   `maxDiffPixelRatio: 0.01` only the last one fails, so exactly one baseline has to be regenerated on
   Linux CI: `e2e/__screenshots__/mobile-light/visual.spec.ts/grid-cell-drawer.png`. The desktop pair
   passes at two thirds of its budget, which is worth knowing the next time that shot moves.
+
+### #63 The front door: `/` branches on the session
+
+The product had no entry point. `src/app/page.tsx` was `redirect("/grid")`, and `/grid` bounced an
+unauthenticated visitor to `/login` — a password form that says nothing about what this is, that
+there is no public signup, or that every search runs on a paid seats.aero Pro key the invitee has
+to bring themselves. `README.md`'s step 2 is "send them the code and the URL", and the key
+requirement first appears at step 3, after argon2id and a consumed single-use invite. The two
+dictionary strings that would have said so, `auth.login.subtitle` and `auth.register.subtitle`,
+are referenced nowhere in `src/` — and so was `app.tagline`, which is now the front door's `h1`.
+**This closes the disclosure gap at `/` only.** The two auth subtitles are still orphans and
+`/login` still explains nothing; that is a separate i18n sweep, recorded in BACKLOG.md.
+
+- **`/` is a session branch on one route, not a route group, a middleware or a new nav item.**
+  Signed in it is `redirect("/grid")` — the single hop it has always been, and the primary user
+  opens this app to search. Signed out it renders the arrival page. The alternative considered was
+  a signed-in dashboard at `/` (standing queries, last-run diffs, a `?text=` box): it moves
+  `listSavedQueries` and the per-row `lastRunDiff` N+1 that `/queries` pays onto the search path,
+  needs a second query surface `/grid` does not have, and contradicts UI_PLAN §6.1's three-item
+  nav (the wordmark links to `/grid`, and `NAV_ITEMS` drives the underline, so a home destination
+  would have none). Its "unread" accent was also not backed by data: `query_runs.notified` records
+  that the Telegram digest went out, not that anyone read it. The signed-out half costs a
+  signed-in user nothing, because they never render it.
+
+- **`getCurrentUser` is wrapped in React `cache()`, and that is a prerequisite rather than an
+  optimisation.** `src/app/layout.tsx:34` reads the user on every request and the page below it
+  reads again. Two identical better-sqlite3 session reads per hit is the small half. The real
+  reason is that two unmemoised reads happen at two different instants, so a session that expires
+  between them answers signed-in to the layout and signed-out to the page — a signed-in top bar
+  over a page that decided the visitor is not. (`getSessionUser` also deletes the expired row on
+  whichever read is first past expiry, `session.ts:55-58`; the memoised version pays that once
+  instead of twice, but the delete is a side effect, not the cause of the disagreement.)
+  `getLocale` also reads a cookie twice per request and is deliberately **not** wrapped: it
+  parses a cookie value with no I/O and no side effect, so memoising it would buy nothing and
+  would put a second `cache()` in the codebase for symmetry rather than for a reason.
+  _Cost, accepted:_ the cache stores the rejection too, so `layout.tsx`'s `.catch(() => null)`
+  no longer shields the page's own lookup from a transient failure. That is why `page.tsx` has its
+  own catch: without it, a SQLite blip would 500 the app's root URL.
+
+- **The signed-out page is the disclosure, and the cap is the specification.** One title, one lead,
+  three blocks, two links, and no more. Not on it, each for a reason: no screenshot or example
+  grid; no feature list, changelog or user count; no price and no link to where the Pro plan is
+  sold — naming the plan in plain text is the disclosure the invitee needs, and linking to the
+  page that sells it is the funnel boundary 6 forbids; no analytics and no cookie banner; no
+  airline or program name; no session-dependent content, so there is no "you still need a key"
+  banner duplicating `grid.empty.no_key`; and no `?code=` forwarding, because an invite code is a
+  single-use secret and a redirect hop would write it into the access log of the app's root URL.
+  `/?code=…` is ignored: never read, never rendered.
+
+- **"Byte-identical markup for `/?code=…`" was not achievable, and the acceptance criterion is
+  corrected rather than quietly dropped.** Measured against a production build on this Mac, not
+  predicted: the two documents differ by 87 bytes and the code appears **three times** in the
+  inline flight payload — `"c":["","?code=…"]`, `"q":"?code=…"` and the page segment key
+  `__PAGE__?{"code":"…"}`. Next serialises the request's canonical URL and its search into every
+  dynamic document; declaring no `searchParams` does not prevent it, because it is router state,
+  not the page's props. What is true, and is what the criterion was protecting: the rendered
+  `<main>` is byte-identical, the value appears in no visible text, and the page never reads it.
+  For scale, `/register?code=…` — the link the operator actually sends — embeds the same code
+  **five** times today, so `/?code=…` is strictly less exposure than the existing path, not new
+  exposure. `e2e/home.spec.ts` asserts the achievable statement.
+
+- **Acceptance criteria 12 and 13 contradicted each other; 13 wins.** Criterion 13 requires both
+  controls to render through `Button` with `nativeButton={false} render={<Link/>}`, and criterion
+  12 says the page "imports nothing that is a client component" — but `@base-ui/react/button` is
+  marked `"use client"`, so `Button` is a client boundary and `/` is the first server component in
+  the repo to render one. 13 wins because it is the criterion with a user-visible consequence: the
+  primitive emits `data-slot="button"`, which `globals.css:262` grows to `--row-touch` under
+  `(max-width: 767px), (pointer: coarse)`, and that rule is the entire reason both controls clear
+  40 px on a phone. Criterion 12 is read as what it was protecting: the page declares no
+  `"use client"` of its own, no `searchParams`, no fetch and no client state. Worth knowing for
+  the next reader: the spec justified `Button` by claiming a bare `<a class="link">` "would fail
+  `e2e/responsive.spec.ts`'s measured floor". It would not — that file's `smallTargets` helper
+  implements WCAG 2.5.8's inline-link exception and skips such an anchor. It would silently
+  **be** under the floor while passing. The conclusion holds; the stated reason was the wrong one.
+
+- **The secondary control needs `className="h-auto px-0"` spelled out.** `variant="link"` sets both
+  in `button.tsx`, but cva emits size classes after variant classes and `cn` keeps the last
+  conflicting utility, so tailwind-merge drops them and the control renders as a 32 px padded box
+  with a centred label. Measured by running the repo's own cva and cn against the real variant
+  table. `variant="link"` had no other user anywhere in `src/`, so nothing had ever exercised it.
+
+- **`/` is deliberately absent from the capture matrix and the visual baselines.** `e2e/matrix.ts`
+  types its pages as a closed union, and `scripts/screenshot-index.ts --strict --check` fails on a
+  declared state with no PNG on disk — so declaring `/` without landing captures would break the
+  `checks` job, and the captures could not be landed honestly anyway: `toHaveScreenshot` baselines
+  carry no platform suffix and are generated on Linux CI only. What `/` gets instead is the axe
+  audit on desktop-light, desktop-dark and mobile-light, the 40 px floor at 390 px on
+  desktop-light (`responsive.spec.ts`, where only the width arm of the touch rule fires) and at
+  874 px on the mobile projects, where the width arm is out of range and `(pointer: coarse)` holds
+  the floor alone (`home.spec.ts`; 874 px is the landscape width issue #32 was filed about), the
+  zh-leak sweep, and a wire-level spec for the redirect and the three bad cookie states.
+
+- **A `/` test that does not name the page is a test of `/login`.** An adversarial pass over this
+  change found that all three additions to `e2e/responsive.spec.ts` — the 40 px floor, the 390 px
+  overflow sweep and the zh-leak sweep — passed unchanged when `src/app/page.tsx` was reverted to a
+  redirect, because each only asserted "an h1 is visible" and `/login` has one too. They now assert
+  the tagline, or the pathname after the navigation, and were watched to fail against the reverted
+  page. The same pass found the mobile 40 px test proving nothing the desktop one did not: at
+  390 px the `(max-width: 767px)` arm of the touch rule already matches, so `(pointer: coarse)` was
+  never isolated. It measures at 874 px now, and asserts both media queries before it measures.
+
+- **UI_PLAN §8's no-subtitle rule gains one scoped exemption, written into all three places it is
+  stated.** The rule — "page subtitles that explain the product are removed; a page title needs no
+  pitch under it" — is in UI_PLAN §8, again in §10's Headings row, and a third time as rule 6 of
+  `docs/COPY.md`. Amending one and leaving the others would have shipped the contradiction the
+  amendment exists to prevent. The exemption is scoped: the ban holds on every page a user reaches
+  after signing in, and the front door's three blocks are constraints and limitations, never
+  benefit claims.
+
+- **The nine new strings needed no allowlist edit, which was checked rather than assumed.**
+  `home.login_link` and `home.register_link` already match `CONTROL_KEY_PATTERNS`
+  (`copy-allowlist.ts:61`), so they are linted as control labels — capitalised, no trailing period
+  — and "seats.aero", "awardgrid", "Ask" and "Pro" are already in `PROPER_NOUNS`, which is what
+  carries `home.lead` and `home.key.body` past the Title-Case check. Eight of the nine en values
+  become leak candidates in `e2e/responsive.spec.ts`'s zh sweep on every page, not just `/` — all
+  but `home.login_link`, whose "Log in" is five letters and under that helper's floor. The sweep
+  was run over all seven routes it covers and none leaks.
+
+- **No version bump.** `footer.tsx` renders `footer.version` from `package.json`, so the string is
+  painted into every committed capture and Linux baseline whose frame reaches the footer — not all
+  298 and all 24 (the 52 frozen v0.1 shots under `before/` carry a footer with no version at all,
+  and a viewport-height capture may cut it off), but enough that bumping 0.2.0 would turn a text
+  page into a rebaseline, and rebaselining is Linux-CI-only. There is no CHANGELOG and no bump
+  convention to honour.
