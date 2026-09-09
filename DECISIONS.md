@@ -1198,3 +1198,75 @@ Full detail in `apps/ios/README.md`; the app runs on a simulator today.
 
 - **§0 is still unanswered and now matters more.** Phase 2's output is the thing that would be
   distributed. Building it is still the author's own personal use; listing it is not.
+
+### Phase 3 — the design system, the landing site, the app screens
+
+Full rationale in `packages/tokens/README.md`.
+
+- **Not one existing token value changed, and that was forced rather than chosen.**
+  `src/styles/tokens.test.ts` asserts the exact hex of all eleven colours, and 24 Playwright
+  baselines plus 298 screenshots are pixel-compared by a **blocking** CI job whose baselines can
+  only be generated on Linux CI. A redesign that moved `--bg` would be unverifiable from the machine
+  making it. So Phase 3 is additive: `packages/tokens/tokens.css` is a `git mv` with **0 insertions
+  and 0 deletions**, and everything new is a new token name. This is also exactly what PIVOT §4 asks
+  for — "Change values, add tokens, rename nothing" — and §4 helpfully puts colour on the *shared*
+  side of the fork, so no new colour was needed at all.
+
+- **The tokens became a package because there were already two palettes.** Phase 2 shipped eight
+  hand-picked hexes in `apps/ios/src/styles.css` that merely resembled the app's. That is a
+  duplicate of a contrast-verified system, and the next person to adjust a colour would have
+  adjusted one of the two. `packages/tokens` is now read by the Next app, the Capacitor shell and
+  the landing site.
+
+- **Two surface modes, taken from the reference's own behaviour rather than its look.**
+  `restful.dowhiz.com` is glass throughout — `backdrop-filter: blur(18px)`, stacked translucent
+  gradients, `0 24px 60px` shadows, 28px radii — and its two DATA components (`.fact-table`,
+  `.compare-table`) switch every bit of it off: no blur, no shadow, flat fill, 1px hairlines,
+  `overflow-x: auto`. Its radii already fork without being named as a system (28px glass, 20px
+  data). That instinct is what `[data-surface="flat"]` / `[data-surface="rich"]` encodes. Both
+  blocks set every token rather than inheriting, because a flat island has to nest inside a rich
+  page — the grid on an onboarding screen — and a partial override would leak the outer blur inward.
+
+- **A shadow in rich mode is a recorded departure, not an oversight.** `FINAL_REPORT.md:179` lists
+  "no cards, no shadows anywhere" among the generic-template tells this product deliberately passed.
+  Flat mode keeps that rule; rich mode reintroduces a shadow only on marketing and onboarding
+  surfaces, which did not exist when the rule was written. It is composed from black at low alpha
+  rather than from `--fg`: in dark, `--fg` is near-white and a shadow built from it lightens instead
+  of darkens — the same inversion `tokens.css` already records for `--scrim`.
+
+- **What was NOT copied from Restful, each for a stated reason.** Its colours (`#ffdb76` cream on an
+  ink-to-navy gradient is precisely the "cream + serif + terracotta" tell). Its muted text
+  (`#8aa0a3` against a ground that runs to light navy). Its `-0.08em` display tracking — awardgrid
+  sets three-letter IATA codes in headlines and `SEA`/`NRT` collide at that tracking, so
+  `--tracking-display` is `-0.02em`. And its absence of `prefers-reduced-motion` guards.
+
+- **No webfont is named.** `docs/UI_PLAN.md:514` rejected a network font dependency, and the repo's
+  convention is to self-host with the licence beside the binary. A system serif stack needs neither
+  — `ui-serif` is New York on Apple platforms, a real display serif — and both stacks carry an
+  explicit CJK serif, without which a Chinese eyebrow silently loses the serif voice in half the
+  product. Inter is copied into `apps/ios/public/fonts/` with its licence rather than re-downloaded,
+  because PIVOT §4 requires the data face to stay exactly what the web app ships: its tabular
+  figures and CJK-after-Latin `unicode-range` stack are load-bearing.
+
+- **The landing site ships zero JavaScript and makes zero network requests.** 7.6 KB of HTML and
+  5.6 KB of CSS, with the palette inlined from `@awardgrid/tokens` at build time so it cannot drift.
+  `LEGAL.md` promises "no telemetry or analytics", and a marketing page is exactly where that
+  promise usually quietly dies, so there is no script tag at all to argue about later.
+
+- **The landing page carries NO App Store badge, and says why on the page.** `docs/PIVOT.md` §0 is
+  unanswered: seats.aero's Partner API is licensed for non-commercial personal use and nobody has
+  confirmed that permits a distributed app. A "Download on the App Store" button would assert a
+  listing that may not be permitted to exist. The page has a "Where this is up to" section stating
+  the position plainly instead — which is both the honest option and the one that needs no rewrite
+  when the answer arrives.
+
+- **"Invite only" is gone from the copy and nothing else is.** PIVOT §4: "The voice does not
+  change." The front door's blocks carry over almost verbatim; the one that had to go said there is
+  no public signup and you need an invite from whoever runs the server, which was true of a shared
+  host and is false of an app with no server. The "what it does not do" table got *longer*, not
+  shorter — it now also names the absent schedule guarantee and the absence of any key of ours.
+
+- **`contrast.mjs` is a manual pre-landing gate, not a CI step.** Worth writing down because it is
+  easy to assume otherwise: `grep` finds no reference to it in `.github/`, `package.json` or
+  `scripts/`. It was run for this change and passes. What CI actually enforces for a11y is
+  `e2e/axe.spec.ts` across desktop-light, desktop-dark and mobile-light.

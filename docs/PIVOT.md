@@ -2,7 +2,7 @@
 
 Written 2026-09-09 against `568b9ae` as a brief for a separate session.
 
-**Status, updated 2026-09-10.** Phases 0, 1 and 2 are built; §0 is still unanswered.
+**Status, updated 2026-09-10.** Phases 0-3 are built; §0 is still unanswered.
 
 | | |
 |---|---|
@@ -10,7 +10,8 @@ Written 2026-09-09 against `568b9ae` as a brief for a separate session.
 | **Phase 0 — the native-HTTP premise** | **Done, and it holds.** `docs/PHASE0.md`; spike in `spikes/phase0-native-http/`. Two findings changed the Phase 2 design: `AbortSignal` does not cancel the native request (an abandoned search still spends quota), while `readTimeout`/`connectTimeout` do work and are the fix. |
 | **Phase 1 — the package split** | **Done.** `packages/core` holds the six modules; its 281 tests moved and pass unedited (`git diff --find-renames` shows pure renames). The boundary is lint-enforced both ways. Rationale in `DECISIONS.md` § "Phase 1". |
 | **Phase 2 — the shell** | **Done.** `apps/ios` runs on a simulator: native-HTTP adapter with its startup assertion, Keychain key storage, in-memory cache with a JSON snapshot, quota reconciled against `X-RateLimit-Remaining`. 44 tests, no device needed. `apps/ios/README.md`. |
-| **Phases 3–5** | Not started. Phase 3 is the design system and the real grid components. |
+| **Phase 3 — the design system** | **Done.** `packages/tokens` is one palette read by all three surfaces, with the two surface modes of §4; `sites/landing` is a static page with zero JavaScript and no App Store badge (see §0); `apps/ios` renders a real grid on the shared tokens. `packages/tokens/README.md`. |
+| **Phases 4–5** | Not started. Phase 4 is watches, honestly labelled; Phase 5 is Ask on the Messages API. |
 
 Everything below is the original specification, kept as written. Where the build measured
 something the spec inferred, the phase document says so — §2's note that `AbortSignal` may not be

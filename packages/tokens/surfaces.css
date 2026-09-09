@@ -1,0 +1,114 @@
+/*
+ * Two surface modes (docs/PIVOT.md §4).
+ *
+ * The brief: "One token file, two surface modes. Colour, type, motion and spacing shared;
+ * **radius, blur and elevation fork**." This file is the fork. It adds tokens and changes none:
+ * `tokens.css` keeps its eleven colours and their exact hex values, because
+ * `src/styles/tokens.test.ts` asserts them literally and 24 committed Playwright baselines plus
+ * 298 screenshots are pixel-compared against them in a BLOCKING CI job whose baselines can only be
+ * regenerated on Linux CI. A redesign that moved a colour would be unverifiable from a Mac.
+ *
+ * Where the two modes come from, and why this is not just taste:
+ *
+ *   restful.dowhiz.com is the design reference, and it contains its own answer. Its marketing
+ *   surfaces are glass — blurred, translucent, elevated — and its two DATA components
+ *   (.fact-table, .compare-table) switch all of that off: no blur, no shadow, 1px hairlines,
+ *   horizontal scroll. That instinct is right and it is the one worth copying. Glass behind a
+ *   column of mileage numbers costs legibility and buys nothing.
+ *
+ * So:
+ *   [data-surface="flat"]  the grid, and anything inside .ag-scroll. The DEFAULT for the app shell.
+ *   [data-surface="rich"]  landing, onboarding, key setup, settings headers, empty states.
+ *
+ * Both blocks set every token rather than inheriting, because a flat island must be able to nest
+ * inside a rich page — the grid on an onboarding screen is exactly that — and a mode that only
+ * overrode some tokens would leak the outer mode's blur into the inner one.
+ *
+ * What is deliberately NOT copied from Restful:
+ *   - its colours. `FINAL_REPORT.md:179` records that this product passed a "generic-template
+ *     tells" check that names "no cream + serif + terracotta" — Restful's exact signature. Adopting
+ *     it would make awardgrid look like Restful rather than like Restful's sibling.
+ *   - its muted text, which measures below AA. Every pair here is an existing token pair already
+ *     verified by `docs/ui-plan-assets/contrast.mjs`.
+ *   - its lack of `prefers-reduced-motion` guards. See the bottom of this file; CI asserts that
+ *     nothing animates under `reduce`.
+ */
+
+:root,
+[data-surface="flat"] {
+  /* ---- flat: data. Hairlines and right angles, nothing between the reader and the number. ---- */
+  --surface-radius: var(--radius-grid);
+  --surface-blur: 0px;
+  --surface-shadow: none;
+  --surface-bg: var(--bg);
+  --surface-bg-raised: var(--bg-raised);
+  --surface-border-width: 1px;
+  --surface-border-color: var(--line);
+  /* Padding is part of the mode: dense for data, generous for marketing. */
+  --surface-pad: var(--space-3);
+  --surface-gap: var(--space-2);
+}
+
+[data-surface="rich"] {
+  /* ---- rich: marketing and onboarding. Room to breathe, and a soft edge. ---- */
+  --surface-radius: 14px;
+  --surface-blur: 12px;
+  /*
+   * A shadow at all is a departure from `FINAL_REPORT.md:179` ("no cards, no shadows anywhere"),
+   * which was decided for the DATA app and is kept there — flat mode above still has none. It is
+   * reintroduced only on marketing and onboarding surfaces, which did not exist when that rule was
+   * written. Composed from black at low alpha rather than from --fg: in dark, --fg is near-white
+   * and a "shadow" built from it lightens instead of darkens, which is the same inversion
+   * `tokens.css` records for --scrim.
+   */
+  --surface-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.06);
+  --surface-bg: var(--bg);
+  --surface-bg-raised: var(--bg-raised);
+  --surface-border-width: 1px;
+  --surface-border-color: var(--line);
+  --surface-pad: var(--space-6);
+  --surface-gap: var(--space-4);
+}
+
+/*
+ * The two type faces the app does not have, added for marketing only.
+ *
+ * Inter stays the DATA face untouched: its tabular figures and the CJK-after-Latin unicode-range
+ * stack are load-bearing for a grid of mileage numbers and a bilingual UI, and PIVOT §4 says so
+ * explicitly. --font-display is for headlines >= 20px; --font-eyebrow is for eyebrow labels only.
+ *
+ * Both carry an explicit CJK fallback. Without it a Chinese eyebrow silently loses the serif
+ * voice — half the product, in this repo's case — because the Latin serif has no CJK coverage and
+ * the browser substitutes whatever it likes.
+ */
+/*
+ * No webfont is named here on purpose. `docs/UI_PLAN.md:514` rejected a network font dependency,
+ * and the repo's convention (see public/fonts/) is to self-host with the licence beside the
+ * binary — which Inter does. A system stack needs neither: no network, no binary to licence-audit,
+ * and `ui-serif` resolves to New York on Apple platforms, which is a real display serif rather
+ * than a fallback. If a specific face is wanted later, adding the woff2 plus its LICENSE is a
+ * small separate change and this stack becomes its fallback unaltered.
+ */
+:root {
+  --font-display: ui-serif, Georgia, "Songti SC", "SimSun", "Noto Serif CJK SC", serif;
+  --font-eyebrow: ui-serif, Georgia, "Songti SC", "SimSun", "Noto Serif CJK SC", serif;
+
+  /*
+   * Restful sets display tracking at -0.08em. PIVOT §4: pull it back, because awardgrid sets
+   * three-letter IATA codes in headlines and "SEA" / "NRT" collide at that tracking — the letters
+   * touch and the code stops reading as a code.
+   */
+  --tracking-display: -0.02em;
+  --tracking-eyebrow: 0.02em;
+}
+
+/*
+ * Nothing animates under `reduce`. The repo's e2e suite asserts this, and Restful ships no such
+ * guard — one of the two named reasons its CSS cannot be copied wholesale.
+ */
+@media (prefers-reduced-motion: reduce) {
+  [data-surface="rich"],
+  [data-surface="flat"] {
+    --surface-blur: 0px;
+  }
+}

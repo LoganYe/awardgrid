@@ -53,7 +53,7 @@ export function SettingsScreen() {
     <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 640, margin: "0 auto" }}>
       <section>
         <h2 style={{ fontSize: 15, margin: "0 0 6px" }}>seats.aero Pro key</h2>
-        <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--muted)" }}>
+        <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--fg-muted)" }}>
           Your own key, stored in this device&apos;s Keychain and sent only to seats.aero. awardgrid
           has no key of its own and no server to route through. Generate one on the API tab of your{" "}
           seats.aero settings page.
@@ -74,9 +74,9 @@ export function SettingsScreen() {
             style={{
               flex: "1 1 100%",
               padding: 9,
-              borderRadius: 8,
+              borderRadius: "var(--radius-control)",
               border: "1px solid var(--line)",
-              background: "var(--surface)",
+              background: "var(--bg-raised)",
               color: "var(--fg)",
             }}
           />
@@ -85,10 +85,10 @@ export function SettingsScreen() {
             disabled={!draft.trim()}
             style={{
               padding: "9px 16px",
-              borderRadius: 8,
+              borderRadius: "var(--radius-control)",
               border: "none",
               background: draft.trim() ? "var(--accent)" : "var(--line)",
-              color: draft.trim() ? "#fff" : "var(--muted)",
+              color: draft.trim() ? "var(--bg)" : "var(--fg-muted)",
               fontWeight: 600,
             }}
           >
@@ -105,10 +105,10 @@ export function SettingsScreen() {
             style={{
               marginTop: 8,
               padding: "6px 12px",
-              borderRadius: 8,
+              borderRadius: "var(--radius-control)",
               border: "1px solid var(--line)",
               background: "transparent",
-              color: "var(--danger)",
+              color: "var(--error)",
               fontSize: 13,
             }}
           >
@@ -119,7 +119,7 @@ export function SettingsScreen() {
 
       <section>
         <h2 style={{ fontSize: 15, margin: "0 0 6px" }}>Cached data</h2>
-        <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--muted)" }}>
+        <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--fg-muted)" }}>
           Award results are cached on this device for 45 minutes so repeating a search costs no
           seats.aero calls. Clearing it costs one cold search, nothing more. This does not touch
           your key.
@@ -131,7 +131,7 @@ export function SettingsScreen() {
           }}
           style={{
             padding: "6px 12px",
-            borderRadius: 8,
+            borderRadius: "var(--radius-control)",
             border: "1px solid var(--line)",
             background: "transparent",
             fontSize: 13,
@@ -144,7 +144,7 @@ export function SettingsScreen() {
       {status ? (
         <p
           role={status.ok ? "status" : "alert"}
-          style={{ margin: 0, fontSize: 13, color: status.ok ? "var(--ok)" : "var(--danger)" }}
+          style={{ margin: 0, fontSize: 13, color: status.ok ? "var(--fresh)" : "var(--error)" }}
         >
           {status.text}
         </p>

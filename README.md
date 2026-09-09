@@ -263,6 +263,12 @@ fixtures, `scripts/`, `vendor/`, `src/` and `data/runtime/` never land in `.next
 src/app/            Next.js App Router: / (the signed-out front door) /grid /settings /queries /login /register
                     /legal + /api/* route handlers
 src/components/     grid (query box, chips, table, cell drawer), ask drawer, queries, settings, shell (header/footer), ui
+packages/tokens/    @awardgrid/tokens — ONE palette, read by the web app, the shell and the landing site.
+                    tokens.css (colour/type/motion/spacing, values frozen by tests + visual baselines)
+                    surfaces.css (the two surface modes of PIVOT §4: radius/blur/elevation fork)
+apps/ios/           @awardgrid/ios — the Capacitor client shell (PIVOT §6 Phase 2). Runs on the
+                    user's own seats.aero key, in their device's Keychain. No server of ours.
+sites/landing/      the static landing page (PIVOT §2). Zero JavaScript, zero network requests.
 packages/core/      @awardgrid/core — the runtime-independent core every shell consumes (docs/PIVOT.md §2).
                     Ships raw TypeScript, no build step, no server dependencies. Imported as
                     "@awardgrid/core/<module>"; `src/lib/i18n/server.ts` stays in the app because it is
@@ -279,7 +285,7 @@ src/lib/ask/        SDK options, env isolation, tool gate, budget hold, streamin
 src/lib/server/     request-side helpers (find, trips, usage, origin/CSRF, rate limit)   src/lib/i18n/server.ts  getLocale() (next/headers)
 src/cli/            find (grid), admin, worker, migrate         src/proxy.ts   same-origin guard for /api/*
 scripts/            build-plugin, plugin-manifest, mock-seatsaero, seed-dev, ask-smoke, check-no-secrets-in-bundle.sh
-src/styles/         tokens.css — every colour, size, radius and duration the UI uses (docs/UI.md §1)
+src/styles/         app-only CSS; the tokens themselves live in packages/tokens (docs/UI.md §1)
 test/               fixtures/, integration/ (CLI, two users, scheduler harness), ask/, query/
 e2e/                Playwright suite + harness docs      fixtures/demo/   synthetic demo dataset for the DEMO=1 mock
 docs/UI.md          UI manual (design system, component map, procedures)   docs/UI_PLAN.md   the design record

@@ -10,7 +10,7 @@ export default defineConfig([
     // of dist/ that `cap sync` writes into App/public, and DerivedData holds another. Linting a
     // 650 KB bundle three times over made eslint itself crash with
     // "RangeError: Invalid string length" while formatting its report.
-    "apps/*/dist/**", "apps/*/ios/**"]),
+    "apps/*/dist/**", "apps/*/ios/**", "sites/*/dist/**"]),
   {
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],

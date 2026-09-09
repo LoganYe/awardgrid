@@ -1,47 +1,48 @@
 /*
- * Deliberately minimal. PIVOT §6 puts the design system in Phase 3 ("tokens with two surface
- * modes, contrast-verified, then the landing site, then the app screens"), and inventing a
- * throwaway visual language here would be work Phase 3 has to undo.
+ * The shell's stylesheet.
  *
- * What IS set now is the part Phase 3 cannot retrofit cheaply: the safe-area insets, the
- * system font stack, and `color-scheme` so the OS paints form controls and scrollbars correctly
- * in dark mode.
+ * Phase 2 shipped an ad-hoc palette here — eight hand-picked hexes that happened to look like the
+ * app's. That was a duplicate of a contrast-verified design system, and duplicates of a palette are
+ * how a design system drifts: the next person to adjust a colour adjusts one of the two copies.
+ * Phase 3 deletes it. Everything below now reads `packages/tokens`, the same file the web app and
+ * the landing site read.
  */
+@import "@awardgrid/tokens/tokens.css";
+@import "@awardgrid/tokens/surfaces.css";
+
+/*
+ * Inter, self-hosted, byte-identical to the web app's copy (public/fonts/, licence beside it).
+ * PIVOT §4: "Inter unchanged as the data face (tabular figures and the CJK-after-Latin
+ * unicode-range stack are load-bearing)". The unicode-range is what makes a bilingual grid work —
+ * Latin and punctuation come from Inter, CJK falls through to the platform face rather than being
+ * rendered by a font that has no glyphs for it.
+ */
+@font-face {
+  font-family: "InterVariable";
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0100-024F, U+2000-206F, U+20A0-20CF, U+2190-2199, U+2212, U+2026;
+}
+
 :root {
+  /* So the OS paints form controls and scrollbars for the active theme. */
   color-scheme: light dark;
-  --bg: #f0f1f4;
-  --surface: #ffffff;
-  --fg: #111318;
-  --muted: #5c5f66;
-  --line: #d7d8dc;
-  --accent: #1b5fb4;
-  --danger: #b3261e;
-  --ok: #0a7f3f;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14161a;
-    --surface: #1c1f25;
-    --fg: #eceef2;
-    --muted: #9aa0aa;
-    --line: #2e333b;
-    --accent: #7aa9ee;
-    --danger: #f2b8b5;
-    --ok: #6ddc9b;
-  }
-}
-
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 /*
- * A flex child's default `min-width: auto` refuses to shrink below its content, so the key input
- * next to the Save button pushed the whole page wider than the display — which pushed Save itself
- * off the right edge where it could not be tapped. `min-width: 0` lets it shrink; the body guard
- * makes any future instance of the same mistake visible as clipping rather than as a silently
- * unreachable control.
+ * A flex child's default `min-width: auto` refuses to shrink below its content, so an input beside
+ * a button pushed the whole page wider than the display — which pushed the button off the right
+ * edge where it could not be tapped. Found on a simulator in Phase 2; the guards on html/body make
+ * any repeat visible as clipping rather than as a silently unreachable control.
  */
 input,
 textarea {
@@ -49,10 +50,6 @@ textarea {
   max-width: 100%;
 }
 
-/*
- * Both html and body: focusing an input makes iOS scroll the DOCUMENT to reveal the caret, and a
- * guard on `body` alone does not stop the scrolling element above it.
- */
 html,
 body {
   overflow-x: hidden;
@@ -63,14 +60,18 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font: 15px/1.45 -apple-system, system-ui, "Segoe UI", sans-serif;
+  font-family:
+    "InterVariable", ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
 }
 
 /*
  * Safe-area insets go on the CHROME, not on `body`. Padding the body instead adds the notch and
- * home-indicator heights on top of a 100dvh shell, which pushes the footer — and with it the
- * "Data: seats.aero" attribution LEGAL.md requires on every screen showing award data — off the
- * bottom of the display where nobody can read it.
+ * home-indicator heights on top of a 100dvh shell, which pushed the footer — and with it the
+ * "Data: seats.aero" attribution LEGAL.md requires — off the bottom of the display.
  */
 .chrome-top {
   padding-top: max(10px, env(safe-area-inset-top));
@@ -81,25 +82,115 @@ body {
 }
 
 .chrome-x {
-  padding-left: max(16px, env(safe-area-inset-left));
-  padding-right: max(16px, env(safe-area-inset-right));
+  padding-left: max(var(--space-4), env(safe-area-inset-left));
+  padding-right: max(var(--space-4), env(safe-area-inset-right));
 }
 
-/* Tabular figures are load-bearing for a grid of mileage numbers. */
+/* Tabular figures are load-bearing for a column of mileage numbers. */
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
-button {
+button,
+input,
+textarea {
   font: inherit;
   color: inherit;
 }
 
-input {
-  font: inherit;
+/* ---- the two surface modes, applied ---- */
+
+/*
+ * The app shell defaults to FLAT (PIVOT §4). Data is the point of this app, and the grid must not
+ * sit behind glass. `rich` is opt-in, on the surfaces that are prose rather than numbers.
+ */
+.ag-surface {
+  background: var(--surface-bg-raised);
+  border: var(--surface-border-width) solid var(--surface-border-color);
+  border-radius: var(--surface-radius);
+  box-shadow: var(--surface-shadow);
+  padding: var(--surface-pad);
 }
 
-/* The repo's CI asserts that nothing animates under `reduce`; start as we mean to go on. */
+.ag-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: var(--surface-border-width) solid var(--surface-border-color);
+  border-radius: var(--surface-radius);
+  background: var(--surface-bg);
+}
+
+.ag-eyebrow {
+  font-family: var(--font-eyebrow);
+  font-size: var(--type-meta);
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--fg-muted);
+  margin: 0 0 var(--space-1);
+}
+
+.ag-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: var(--tracking-display);
+  font-weight: 500;
+  margin: 0 0 var(--space-2);
+}
+
+/* ---- the grid, flat by definition ---- */
+.ag-grid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-grid th,
+.ag-grid td {
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.ag-grid thead th {
+  background: var(--bg-raised);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.ag-grid tbody th {
+  font-weight: 600;
+  /* The route column stays put while the dates scroll under it. */
+  position: sticky;
+  left: 0;
+  background: var(--bg);
+}
+
+.ag-grid .miles {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.ag-grid .meta,
+.ag-grid .none {
+  color: var(--fg-muted);
+}
+
+/* Freshness, using the palette's three dedicated tokens. */
+.ag-fresh {
+  color: var(--fresh);
+}
+.ag-aging {
+  color: var(--aging);
+}
+.ag-stale {
+  color: var(--stale);
+}
+
+/* The repo's CI asserts that nothing animates under `reduce`. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -109,4 +200,16 @@ input {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

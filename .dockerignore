@@ -25,6 +25,7 @@ data/runtime
 # Phase-0 throwaway spike: never part of the server image.
 spikes
 apps
+sites
 coverage
 .vitest-cache
 **/.DS_Store

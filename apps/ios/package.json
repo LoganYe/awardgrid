@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The awardgrid client shell (docs/PIVOT.md §6 Phase 2): a Capacitor app that runs on the user's own seats.aero key, with no server of ours anywhere.",
+  "description": "The awardgrid client shell (docs/PIVOT.md \u00a76 Phase 2): a Capacitor app that runs on the user's own seats.aero key, with no server of ours anywhere.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -16,6 +16,7 @@
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.0",
     "@awardgrid/core": "workspace:*",
+    "@awardgrid/tokens": "workspace:*",
     "@capacitor/core": "8.5.1",
     "@capacitor/filesystem": "8.1.3",
     "@capacitor/ios": "8.5.1",

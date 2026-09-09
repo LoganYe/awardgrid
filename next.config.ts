@@ -44,6 +44,7 @@ const nextConfig: NextConfig = {
       // The client shells (docs/PIVOT.md §6 Phase 2). apps/ios carries its own node_modules, a
       // generated Xcode project and DerivedData; the Next server reads none of it.
       "./apps/**",
+      "./sites/**",
       "./vendor/**",
       "./docs/**",
       "./data/runtime/**",

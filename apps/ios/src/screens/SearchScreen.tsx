@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import type { ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
+import { GridTable } from "../components/GridTable";
 
 const EXAMPLES = [
   "HKG, SHA to SEA, next 30 days, business and first",
@@ -71,7 +72,7 @@ export function SearchScreen() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 900, margin: "0 auto" }}>
-      <label htmlFor="q" style={{ fontSize: 13, color: "var(--muted)" }}>
+      <label htmlFor="q" style={{ fontSize: 13, color: "var(--fg-muted)" }}>
         Search awards
       </label>
       <textarea
@@ -82,9 +83,9 @@ export function SearchScreen() {
         style={{
           font: "inherit",
           padding: 10,
-          borderRadius: 8,
+          borderRadius: "var(--radius-control)",
           border: "1px solid var(--line)",
-          background: "var(--surface)",
+          background: "var(--bg-raised)",
           color: "var(--fg)",
           resize: "vertical",
         }}
@@ -96,10 +97,10 @@ export function SearchScreen() {
           disabled={busy || hasKey === false}
           style={{
             padding: "9px 18px",
-            borderRadius: 8,
+            borderRadius: "var(--radius-control)",
             border: "none",
             background: busy || hasKey === false ? "var(--line)" : "var(--accent)",
-            color: busy || hasKey === false ? "var(--muted)" : "#fff",
+            color: busy || hasKey === false ? "var(--fg-muted)" : "var(--bg)",
             fontWeight: 600,
           }}
         >
@@ -107,7 +108,7 @@ export function SearchScreen() {
         </button>
         {/* No cancel button, on purpose — see the note at the top of this file. */}
         {quota ? (
-          <span className="tabular" style={{ fontSize: 12, color: "var(--muted)" }}>
+          <span className="tabular" style={{ fontSize: 12, color: "var(--fg-muted)" }}>
             seats.aero calls today: {quota.used} of {quota.softLimit}
           </span>
         ) : null}
@@ -123,8 +124,8 @@ export function SearchScreen() {
               fontSize: 12,
               borderRadius: 999,
               border: "1px solid var(--line)",
-              background: "var(--surface)",
-              color: "var(--muted)",
+              background: "var(--bg-raised)",
+              color: "var(--fg-muted)",
             }}
           >
             {e}
@@ -143,7 +144,7 @@ export function SearchScreen() {
 
       {value ? (
         <>
-          <div style={{ fontSize: 12, color: "var(--muted)" }} className="tabular">
+          <div style={{ fontSize: 12, color: "var(--fg-muted)" }} className="tabular">
             {value.served_from_cache
               ? `Served from this device's cache${checked ? ` · last checked ${checked}` : ""}`
               : `${value.api_calls_used} seats.aero call${value.api_calls_used === 1 ? "" : "s"}${checked ? ` · checked ${checked}` : ""}`}
@@ -167,31 +168,14 @@ function Callout({ tone, children }: { tone: "warn" | "danger"; children: React.
       style={{
         margin: 0,
         padding: "8px 10px",
-        borderRadius: 8,
+        borderRadius: "var(--radius-control)",
         border: "1px solid var(--line)",
-        borderLeft: `3px solid ${tone === "danger" ? "var(--danger)" : "var(--muted)"}`,
-        background: "var(--surface)",
+        borderLeft: `3px solid ${tone === "danger" ? "var(--error)" : "var(--fg-muted)"}`,
+        background: "var(--bg-raised)",
         fontSize: 13,
       }}
     >
       {children}
     </p>
-  );
-}
-
-/**
- * A placeholder table over the core's `Grid`. Phase 3 replaces this with the real virtualised
- * grid from `src/components/grid/` — this exists to prove the pipeline renders, nothing more.
- */
-function GridTable({ grid }: { grid: { rows?: unknown[]; cells?: unknown } }) {
-  const rows = Array.isArray(grid.rows) ? grid.rows : [];
-  return (
-    <div style={{ overflowX: "auto", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)" }}>
-      <pre className="tabular" style={{ margin: 0, padding: 12, fontSize: 11, lineHeight: 1.4 }}>
-        {rows.length === 0
-          ? "No availability for that query. The call worked — this route and date window simply has nothing cached at seats.aero."
-          : JSON.stringify(grid, null, 1).slice(0, 4000)}
-      </pre>
-    </div>
   );
 }

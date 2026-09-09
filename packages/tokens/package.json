@@ -1,0 +1,13 @@
+{
+  "name": "@awardgrid/tokens",
+  "version": "0.2.0",
+  "private": true,
+  "description": "The design tokens every surface shares: the Next app, the Capacitor shell and the landing site. Colour, type, motion and spacing are one file; radius, blur and elevation fork by surface mode (docs/PIVOT.md §4).",
+  "license": "MIT",
+  "//": "CSS only, no build step and no JS entry point. It exists so there is exactly one copy of the palette: three surfaces reading three copies is how a design system drifts.",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./surfaces.css": "./surfaces.css"
+  },
+  "files": ["tokens.css", "surfaces.css"]
+}

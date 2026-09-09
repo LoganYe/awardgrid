@@ -1,0 +1,229 @@
+/*
+ * The landing site's stylesheet. It adds layout; it invents no colour.
+ *
+ * Every colour here is a token from packages/tokens/tokens.css, which is the palette the app has
+ * shipped since v0.2 and which `docs/ui-plan-assets/contrast.mjs` verifies. That is the whole
+ * reason the tokens moved into a package in Phase 3: three surfaces reading three copies of a
+ * palette is how a design system drifts, and a marketing page is usually the first copy to drift.
+ *
+ * The page is data-surface="rich"; the two tables inside it are data-surface="flat".
+ */
+@import "@awardgrid/tokens/tokens.css";
+@import "@awardgrid/tokens/surfaces.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    "InterVariable", ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: clamp(var(--space-6), 6vw, var(--space-8)) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(var(--space-8), 7vw, 64px);
+}
+
+/* ---- eyebrows: the ONLY place the serif appears (PIVOT §4) ---- */
+.eyebrow {
+  font-family: var(--font-eyebrow);
+  font-size: var(--type-meta);
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--fg-muted);
+  margin: 0 0 var(--space-2);
+  /*
+   * Sentence case, not tracked-out ALL CAPS. FINAL_REPORT.md:179 lists "tracked-out ALL-CAPS
+   * eyebrows" as one of the generic-template tells this product deliberately passed; adopting one
+   * on the marketing page would undo that where it is most visible.
+   */
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  /* >= 20px, per PIVOT §4: the display face is for headlines, never for data. */
+  font-size: clamp(32px, 7vw, 52px);
+  line-height: 1.1;
+  /* -0.02em, not Restful's -0.08em: awardgrid sets three-letter IATA codes and SEA/NRT collide. */
+  letter-spacing: var(--tracking-display);
+  font-weight: 500;
+  margin: 0 0 var(--space-4);
+}
+
+.lead {
+  font-size: 18px;
+  color: var(--fg);
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* ---- the rich surfaces ---- */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--surface-gap);
+}
+
+.facts article,
+.status {
+  background: var(--surface-bg-raised);
+  border: var(--surface-border-width) solid var(--surface-border-color);
+  border-radius: var(--surface-radius);
+  box-shadow: var(--surface-shadow);
+  padding: var(--surface-pad);
+}
+
+.facts article p:last-child,
+.status p:last-child {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.status h2,
+.limits h2 {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 3.5vw, 26px);
+  letter-spacing: var(--tracking-display);
+  font-weight: 500;
+  margin: 0 0 var(--space-3);
+}
+
+/*
+ * ---- the flat surfaces ----
+ * These sit inside a rich page and must not inherit its blur, radius or shadow, which is why
+ * [data-surface="flat"] re-asserts every token rather than overriding a subset.
+ */
+.ag-scroll {
+  overflow-x: auto;
+  /* A table is the one thing allowed to scroll sideways; the page itself never does. */
+  -webkit-overflow-scrolling: touch;
+  border: var(--surface-border-width) solid var(--surface-border-color);
+  border-radius: var(--surface-radius);
+  background: var(--surface-bg);
+  box-shadow: var(--surface-shadow);
+}
+
+.ag-preview,
+.fact-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--type-meta);
+  /* Tabular figures: a column of mileage numbers must align on the digit. */
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-preview th,
+.ag-preview td,
+.fact-table th,
+.fact-table td {
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ag-preview thead th {
+  background: var(--bg-raised);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ag-preview tbody th {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.ag-preview b {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.ag-preview span {
+  color: var(--fg-muted);
+}
+
+.ag-preview .none {
+  color: var(--fg-muted);
+}
+
+.ag-preview tr:last-child th,
+.ag-preview tr:last-child td,
+.fact-table tr:last-child th,
+.fact-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.fact-table th {
+  white-space: nowrap;
+  width: 1%;
+  color: var(--fg);
+}
+
+.fact-table td {
+  color: var(--fg-muted);
+}
+
+.attribution {
+  /* LEGAL.md: every screen showing award data carries "Data: seats.aero". */
+  font-size: var(--type-meta);
+  color: var(--fg-muted);
+  margin: var(--space-2) 0 0;
+}
+
+footer {
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-8);
+  padding: var(--space-6) var(--space-4);
+  color: var(--fg-muted);
+  font-size: var(--type-meta);
+}
+
+footer p {
+  max-width: 68ch;
+  margin: 0 auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* CI asserts that nothing animates under `reduce`; there is nothing to animate here, and this
+   keeps it that way if something is added later. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

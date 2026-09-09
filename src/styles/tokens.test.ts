@@ -1,5 +1,5 @@
 /**
- * Guards on src/styles/tokens.css (docs/UI_PLAN.md §2): the light and dark palettes define the
+ * Guards on packages/tokens/tokens.css (docs/UI_PLAN.md §2): the light and dark palettes define the
  * same set of tokens (both dark copies), the plan's hex values are the ones shipped, and no
  * airline or loyalty-program name (a brand-color hint) appears anywhere in the file.
  */
@@ -7,7 +7,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-const css = readFileSync(path.join(import.meta.dirname, "tokens.css"), "utf8");
+const TOKENS = path.join(import.meta.dirname, "..", "..", "packages", "tokens", "tokens.css");
+const css = readFileSync(TOKENS, "utf8");
 
 /** Return the declaration blocks whose selector matches `selector` (first-level `{ … }` only). */
 function blocks(selector: RegExp): string[] {

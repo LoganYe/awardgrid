@@ -24,7 +24,7 @@ function Chrome({ services }: { services: AppServices }) {
           alignItems: "center",
           paddingBottom: 10,
           borderBottom: "1px solid var(--line)",
-          background: "var(--surface)",
+          background: "var(--bg-raised)",
         }}
       >
         <strong style={{ fontSize: 16 }}>awardgrid</strong>
@@ -39,7 +39,7 @@ function Chrome({ services }: { services: AppServices }) {
               end={to === "/"}
               style={({ isActive }) => ({
                 textDecoration: "none",
-                color: isActive ? "var(--accent)" : "var(--muted)",
+                color: isActive ? "var(--accent)" : "var(--fg-muted)",
                 fontWeight: isActive ? 600 : 400,
               })}
             >
@@ -59,7 +59,7 @@ function Chrome({ services }: { services: AppServices }) {
       */}
       <footer
         className="chrome-bottom chrome-x"
-        style={{ paddingTop: 10, borderTop: "1px solid var(--line)", color: "var(--muted)", fontSize: 12, background: "var(--surface)" }}
+        style={{ paddingTop: 10, borderTop: "1px solid var(--line)", color: "var(--fg-muted)", fontSize: 12, background: "var(--bg-raised)" }}
       >
         Data: seats.aero · your own key, on this device
       </footer>
@@ -96,12 +96,12 @@ export function App() {
           a missing native bridge must fail loudly at launch, not silently at the first search
           where it would look like a seats.aero outage.
         */}
-        <p style={{ color: "var(--danger)" }}>{error}</p>
+        <p style={{ color: "var(--error)" }}>{error}</p>
       </div>
     );
   }
 
-  if (!services) return <div style={{ padding: 24, color: "var(--muted)" }}>Starting…</div>;
+  if (!services) return <div style={{ padding: 24, color: "var(--fg-muted)" }}>Starting…</div>;
 
   const router = createHashRouter([
     {

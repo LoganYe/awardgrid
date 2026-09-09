@@ -7,6 +7,8 @@ packages:
   # Shells. apps/ios is the Capacitor client (docs/PIVOT.md §6 Phase 2); more may follow
   # (desktop, extension). Each consumes @awardgrid/core and owns no core logic of its own.
   - "apps/*"
+  # The static landing site (docs/PIVOT.md §2). It consumes @awardgrid/tokens and nothing else.
+  - "sites/*"
 
 allowBuilds:
   better-sqlite3: true
