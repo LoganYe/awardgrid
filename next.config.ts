@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
   // has to compile it rather than treat it as a prebuilt dependency. One copy of the truth, and
   // no dist/ that can drift from source. This also preserves the "use client" directive in
   // i18n/client.tsx across the package boundary.
+  //
+  // The rule this encodes, which matters more than the line itself: @awardgrid/core must NEVER be
+  // added to serverExternalPackages above. Doing so would leave the standalone server to
+  // require() raw .ts at runtime — a build that succeeds and a server that dies on first request.
+  // The two lists are also mutually exclusive: Next throws E173 at build start if a package
+  // appears in both, so the mistake is at least loud.
   transpilePackages: ["@awardgrid/core"],
   // No telemetry, no third-party analytics (kickoff §10). Also keep the image header-light.
   poweredByHeader: false,
@@ -35,6 +41,9 @@ const nextConfig: NextConfig = {
       "./src/**",
       "./scripts/**",
       "./spikes/**",
+      // The client shells (docs/PIVOT.md §6 Phase 2). apps/ios carries its own node_modules, a
+      // generated Xcode project and DerivedData; the Next server reads none of it.
+      "./apps/**",
       "./vendor/**",
       "./docs/**",
       "./data/runtime/**",

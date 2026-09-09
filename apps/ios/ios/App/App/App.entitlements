@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Keychain access group. Without this (and without code signing) every SecItemAdd fails with
+	  OSStatus -34018, errSecMissingEntitlement — which is exactly what a CODE_SIGNING_ALLOWED=NO
+	  simulator build produced: the Settings screen reported "An OS error occurred (-34018)" the
+	  first time a key was saved on device.
+
+	  $(AppIdentifierPrefix) is substituted at build time with the team prefix, so this stays
+	  correct without hard-coding a team id into the repo.
+	-->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.dowhiz.awardgrid</string>
+	</array>
+</dict>
+</plist>

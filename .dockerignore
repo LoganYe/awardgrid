@@ -24,6 +24,7 @@ CLAUDE.md
 data/runtime
 # Phase-0 throwaway spike: never part of the server image.
 spikes
+apps
 coverage
 .vitest-cache
 **/.DS_Store

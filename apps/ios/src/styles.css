@@ -1,0 +1,112 @@
+/*
+ * Deliberately minimal. PIVOT §6 puts the design system in Phase 3 ("tokens with two surface
+ * modes, contrast-verified, then the landing site, then the app screens"), and inventing a
+ * throwaway visual language here would be work Phase 3 has to undo.
+ *
+ * What IS set now is the part Phase 3 cannot retrofit cheaply: the safe-area insets, the
+ * system font stack, and `color-scheme` so the OS paints form controls and scrollbars correctly
+ * in dark mode.
+ */
+:root {
+  color-scheme: light dark;
+  --bg: #f0f1f4;
+  --surface: #ffffff;
+  --fg: #111318;
+  --muted: #5c5f66;
+  --line: #d7d8dc;
+  --accent: #1b5fb4;
+  --danger: #b3261e;
+  --ok: #0a7f3f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --surface: #1c1f25;
+    --fg: #eceef2;
+    --muted: #9aa0aa;
+    --line: #2e333b;
+    --accent: #7aa9ee;
+    --danger: #f2b8b5;
+    --ok: #6ddc9b;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/*
+ * A flex child's default `min-width: auto` refuses to shrink below its content, so the key input
+ * next to the Save button pushed the whole page wider than the display — which pushed Save itself
+ * off the right edge where it could not be tapped. `min-width: 0` lets it shrink; the body guard
+ * makes any future instance of the same mistake visible as clipping rather than as a silently
+ * unreachable control.
+ */
+input,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/*
+ * Both html and body: focusing an input makes iOS scroll the DOCUMENT to reveal the caret, and a
+ * guard on `body` alone does not stop the scrolling element above it.
+ */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.45 -apple-system, system-ui, "Segoe UI", sans-serif;
+}
+
+/*
+ * Safe-area insets go on the CHROME, not on `body`. Padding the body instead adds the notch and
+ * home-indicator heights on top of a 100dvh shell, which pushes the footer — and with it the
+ * "Data: seats.aero" attribution LEGAL.md requires on every screen showing award data — off the
+ * bottom of the display where nobody can read it.
+ */
+.chrome-top {
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+
+.chrome-bottom {
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+
+.chrome-x {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+/* Tabular figures are load-bearing for a grid of mileage numbers. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input {
+  font: inherit;
+}
+
+/* The repo's CI asserts that nothing animates under `reduce`; start as we mean to go on. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

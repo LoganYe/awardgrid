@@ -1,6 +1,6 @@
 /**
  * Phase 0 evidence server. Runs on the Mac; the iOS Simulator shares the host network stack,
- * so the app reaches it at http://localhost:3999.
+ * so the app reaches it at http://localhost:4599.
  *
  * Phase 0's acceptance says: "You state explicitly how you proved the call went over native
  * HTTP and not the WebView." Screenshots of a rendered grid cannot prove that. This can:
@@ -23,7 +23,14 @@
  */
 import { createServer } from "node:http";
 
-const PORT = Number(process.env.PORT ?? 3999);
+/**
+ * NOT 3999. That is `E2E_MOCK_PORT` (playwright.config.ts:21), and Playwright runs its mock
+ * seats.aero with `reuseExistingServer: !isCI` — so a probe server left running on 3999 gets
+ * silently adopted as the mock, answers every seats.aero path with `{ok:true}`, and the whole
+ * e2e suite fails with "seats.aero returned an error (response)". That happened; it cost an
+ * hour and looked exactly like a regression in the app.
+ */
+const PORT = Number(process.env.PORT ?? 4599);
 
 /** @type {Array<Record<string, unknown>>} */
 const log = [];

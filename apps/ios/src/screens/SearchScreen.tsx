@@ -1,0 +1,197 @@
+/**
+ * The search screen.
+ *
+ * Deliberately plain: PIVOT §6 puts the design system and the real grid components in Phase 3,
+ * and the `ApiResult` contract in `src/search/search.ts` is what makes that a small diff rather
+ * than a rewrite. What this screen does own is the honesty rules, which are not cosmetic:
+ *
+ *   - **No cancel button.** Phase 0 measured that `AbortSignal` does not cancel a native request
+ *     (docs/PHASE0.md §3): the promise rejects, the request completes, the quota call is spent.
+ *     A "Cancel" that implied the search had been called off would be a lie about the user's
+ *     money, so the search is bounded by a native timeout instead and simply cannot be recalled.
+ *   - **"Last checked", never "next check".** PIVOT §3: "Never print a next-run time." Nothing
+ *     here promises a cadence, because iOS cannot honour one.
+ *   - **Freshness is reported from the data**, not from when the button was pressed —
+ *     `fetched_at_min` is the oldest row in the answer, so a cache hit says so honestly.
+ */
+import { useCallback, useEffect, useState } from "react";
+import { useOutletContext } from "react-router";
+import type { AppServices } from "../app/bootstrap";
+import type { ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
+
+const EXAMPLES = [
+  "HKG, SHA to SEA, next 30 days, business and first",
+  "SFO to NRT next 60 days business",
+  "LHR to JFK, next 2 weeks, first",
+];
+
+/** "2 h ago" from an ISO timestamp. Past tense only — this never extrapolates forwards. */
+function agoLabel(iso: string | null, now: Date): string | null {
+  if (!iso) return null;
+  const ms = now.getTime() - Date.parse(iso);
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} h ago`;
+  return `${Math.floor(hours / 24)} d ago`;
+}
+
+export function SearchScreen() {
+  const services = useOutletContext<AppServices>();
+  const [text, setText] = useState(EXAMPLES[0]!);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<ApiResult<FindValue> | null>(null);
+  const [quota, setQuota] = useState<QuotaSnapshotView | null>(null);
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void services.keys.get().then((k) => setHasKey(Boolean(k)));
+    void services.engine.quotaView().then(setQuota);
+  }, [services]);
+
+  const run = useCallback(async () => {
+    setBusy(true);
+    try {
+      const key = await services.keys.get();
+      const res = await services.engine.search(text, key);
+      setResult(res);
+      setQuota(await services.engine.quotaView());
+      // A search is the moment worth persisting: it is the only thing that spends quota.
+      await services.persist();
+    } finally {
+      setBusy(false);
+    }
+  }, [services, text]);
+
+  const value = result?.ok ? result.value : null;
+  const failure = result && !result.ok ? result : null;
+  const checked = value ? agoLabel(value.fetched_at_min, new Date()) : null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 900, margin: "0 auto" }}>
+      <label htmlFor="q" style={{ fontSize: 13, color: "var(--muted)" }}>
+        Search awards
+      </label>
+      <textarea
+        id="q"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={2}
+        style={{
+          font: "inherit",
+          padding: 10,
+          borderRadius: 8,
+          border: "1px solid var(--line)",
+          background: "var(--surface)",
+          color: "var(--fg)",
+          resize: "vertical",
+        }}
+      />
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <button
+          onClick={() => void run()}
+          disabled={busy || hasKey === false}
+          style={{
+            padding: "9px 18px",
+            borderRadius: 8,
+            border: "none",
+            background: busy || hasKey === false ? "var(--line)" : "var(--accent)",
+            color: busy || hasKey === false ? "var(--muted)" : "#fff",
+            fontWeight: 600,
+          }}
+        >
+          {busy ? "Searching…" : "Run"}
+        </button>
+        {/* No cancel button, on purpose — see the note at the top of this file. */}
+        {quota ? (
+          <span className="tabular" style={{ fontSize: 12, color: "var(--muted)" }}>
+            seats.aero calls today: {quota.used} of {quota.softLimit}
+          </span>
+        ) : null}
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {EXAMPLES.map((e) => (
+          <button
+            key={e}
+            onClick={() => setText(e)}
+            style={{
+              padding: "4px 8px",
+              fontSize: 12,
+              borderRadius: 999,
+              border: "1px solid var(--line)",
+              background: "var(--surface)",
+              color: "var(--muted)",
+            }}
+          >
+            {e}
+          </button>
+        ))}
+      </div>
+
+      {hasKey === false ? (
+        <Callout tone="danger">
+          No seats.aero key yet. Add your own Pro key in <strong>Settings</strong> — awardgrid has no
+          key of its own and never will.
+        </Callout>
+      ) : null}
+
+      {failure ? <Callout tone="danger">{failure.message ?? failure.error}</Callout> : null}
+
+      {value ? (
+        <>
+          <div style={{ fontSize: 12, color: "var(--muted)" }} className="tabular">
+            {value.served_from_cache
+              ? `Served from this device's cache${checked ? ` · last checked ${checked}` : ""}`
+              : `${value.api_calls_used} seats.aero call${value.api_calls_used === 1 ? "" : "s"}${checked ? ` · checked ${checked}` : ""}`}
+          </div>
+          {value.warnings.map((w) => (
+            <Callout key={w} tone="warn">
+              {w}
+            </Callout>
+          ))}
+          <GridTable grid={value.grid} />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function Callout({ tone, children }: { tone: "warn" | "danger"; children: React.ReactNode }) {
+  return (
+    <p
+      role={tone === "danger" ? "alert" : undefined}
+      style={{
+        margin: 0,
+        padding: "8px 10px",
+        borderRadius: 8,
+        border: "1px solid var(--line)",
+        borderLeft: `3px solid ${tone === "danger" ? "var(--danger)" : "var(--muted)"}`,
+        background: "var(--surface)",
+        fontSize: 13,
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+/**
+ * A placeholder table over the core's `Grid`. Phase 3 replaces this with the real virtualised
+ * grid from `src/components/grid/` — this exists to prove the pipeline renders, nothing more.
+ */
+function GridTable({ grid }: { grid: { rows?: unknown[]; cells?: unknown } }) {
+  const rows = Array.isArray(grid.rows) ? grid.rows : [];
+  return (
+    <div style={{ overflowX: "auto", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)" }}>
+      <pre className="tabular" style={{ margin: 0, padding: 12, fontSize: 11, lineHeight: 1.4 }}>
+        {rows.length === 0
+          ? "No availability for that query. The call worked — this route and date window simply has nothing cached at seats.aero."
+          : JSON.stringify(grid, null, 1).slice(0, 4000)}
+      </pre>
+    </div>
+  );
+}

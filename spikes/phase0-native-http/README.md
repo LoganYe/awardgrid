@@ -18,7 +18,7 @@ is the harness that is wrong. So the proof is made from **outside** the app.
 
 `probe-server.mjs` runs on the Mac and copies seats.aero's CORS posture: it returns JSON and
 not one `Access-Control-*` header. The iOS Simulator shares the host's network stack, so the
-app reaches it at `http://localhost:3999`. The server writes down what actually arrived.
+app reaches it at `http://localhost:4599`. The server writes down what actually arrived.
 
 The two stacks are not disguisable from each other at the wire:
 

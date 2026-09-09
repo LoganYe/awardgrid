@@ -13,7 +13,7 @@
 import { Capacitor } from "@capacitor/core";
 import { assertNativeHttpAvailable, nativeFetch } from "./nativeFetch";
 
-export const PROBE_ORIGIN = "http://localhost:3999";
+export const PROBE_ORIGIN = "http://localhost:4599";
 export const SEATS_AERO_BASE = "https://seats.aero/partnerapi/";
 
 export type ProbeStatus = "pass" | "fail" | "inconclusive" | "pending" | "running";

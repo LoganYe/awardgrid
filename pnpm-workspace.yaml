@@ -4,6 +4,9 @@
 packages:
   - "."
   - "packages/*"
+  # Shells. apps/ios is the Capacitor client (docs/PIVOT.md §6 Phase 2); more may follow
+  # (desktop, extension). Each consumes @awardgrid/core and owns no core logic of its own.
+  - "apps/*"
 
 allowBuilds:
   better-sqlite3: true

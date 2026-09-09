@@ -23,7 +23,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<!-- Phase 0 only. App Transport Security blocks cleartext HTTP, and probe-server.mjs runs on
-	     plain http://localhost:3999 (the Simulator shares the host's network stack, so this
+	     plain http://localhost:4599 (the Simulator shares the host's network stack, so this
 	     reaches the Mac). The exception is scoped to localhost: HTTPS enforcement everywhere
 	     else, including seats.aero, is untouched. A shipping app must not carry this key. -->
 	<key>NSAppTransportSecurity</key>

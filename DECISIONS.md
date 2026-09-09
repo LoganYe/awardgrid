@@ -1114,3 +1114,87 @@ Full evidence in `docs/PHASE0.md`; the spike is `spikes/phase0-native-http/`, bu
   errors (the one pre-existing TanStack warning unchanged), `next build`, the secret-in-bundle grep,
   and the standalone server actually booted — `/`, `/login` and `/api/health` all 200, which is the
   check that catches a core that resolves at build time and fails at runtime.
+
+- **The e2e suite is green, and the failure that looked like a Phase 1 regression was not one.**
+  A first run showed 50 failures, all "seats.aero returned an error (response)". The cause was the
+  **Phase 0 probe server still listening on port 3999** — which is `E2E_MOCK_PORT`
+  (`playwright.config.ts:21`). Playwright starts its mock with `reuseExistingServer: !isCI`, the
+  probe server answers `/healthz` 200 like everything else, so it was silently adopted as the mock
+  seats.aero and replied `{ok:true}` to every API path — a schema failure by construction. It had
+  served 63 requests by the time it was caught. With it killed, the suite is **583 passed, 145
+  skipped, 0 failed in 12.1 minutes**. The spike's default port moved to 4599 with the reason
+  written at the top of `probe-server.mjs`, because the next person to leave it running deserves
+  better than an hour of debugging a regression that is not there.
+
+### Phase 2 — the client shell
+
+Full detail in `apps/ios/README.md`; the app runs on a simulator today.
+
+- **`apps/ios` is a shell and owns no core logic.** Parsing, planning, the cache scope algebra and
+  the grid are all `@awardgrid/core`. What is new here is the ~700 lines the core cannot supply: a
+  native transport, the Keychain, a device quota counter, JSON snapshots, and a single-user
+  replacement for `src/lib/server/find.ts`'s 709 lines of multi-user orchestration. **44 tests, no
+  device and no network**, using the same recorded seats.aero fixtures the core tests use — which
+  is what Phase 1's `test-fixtures` subpath export was for.
+
+- **Phase 0's measurements are encoded in the code, not just in a document.** The adapter ALWAYS
+  sends a native `connectTimeout`/`readTimeout` and never trusts `AbortSignal` to stop anything,
+  because Phase 0 measured that abort leaves the request running to completion. The product
+  consequence is stated where it will be read: **the search screen has no cancel button.** A cancel
+  that implied the call had been called off would be a lie about the user's quota, since the call
+  completes and is charged either way.
+
+- **The Keychain needs an entitlement even on the Simulator — found by running it, not by reading.**
+  A `CODE_SIGNING_ALLOWED=NO` build has no entitlements, and the first key save returned
+  `OSStatus -34018` (`errSecMissingEntitlement`) on screen. `ios/App/App/App.entitlements` now
+  carries `keychain-access-groups` and is wired to the App target in `project.pbxproj`; builds pass
+  `CODE_SIGN_IDENTITY="-"`. _Why it matters beyond the fix:_ nothing in the unit tests could have
+  caught it — `MemoryKeyStore` passes happily — and the app would have shipped with a key store
+  that silently refuses to store keys.
+
+- **`afterFirstUnlockThisDeviceOnly`, and the `ThisDeviceOnly` half is the deliberate part.**
+  `afterFirstUnlock` so a background refresh (PIVOT §3's "watch") can read the key while the screen
+  is locked; `…ThisDeviceOnly` because the plain form migrates through encrypted backups, and a key
+  pasted into one phone should not reappear on a restored device. The user can paste it again;
+  that is the cheaper mistake.
+
+- **The quota rule is written as one line of arithmetic, because "trust the header" is ambiguous
+  enough to be a bug factory.** `used(day) = max(local count, 1000 − X-RateLimit-Remaining)`,
+  monotonic within the day. Two things fell out of testing it rather than reasoning about it:
+  `runFind` **refunds** unused reservations with a negative `increment`, which walked the count back
+  below the header's floor — so the store now keeps a per-day floor a refund cannot cross; and the
+  rate-limit observer had to move OUT of the native adapter and become a wrapper around whatever
+  transport is in use, because an injected transport (a test today, a desktop or extension shell
+  tomorrow) silently lost the reconciliation while still appearing to work.
+
+- **`InMemoryAvailabilityCache` gained `snapshot()`/`restore()` in core rather than a mirror in the
+  shell.** Its state is in `#private` fields, so persistence had to live either inside the class or
+  as a parallel copy in the shell. A parallel copy would have meant re-deriving `rowKey`/`rowMatches`
+  semantics by hand, and the `include_filtered` / `min_cabin_pct` scopes are exactly where that goes
+  quietly wrong — two rows for the same program/pair/date/cabin at different scopes are different
+  rows, not duplicates. Added as **a new test file** (`cache-snapshot.test.ts`, 7 tests): the
+  kickoff forbids editing an existing core test, and this adds a capability rather than changing
+  encoded behaviour. Core is now 26 files / 288 tests, the original 281 untouched.
+
+- **The bundle carries `@anthropic-ai/sdk` and the grid lane never uses it.** `query/llm.ts` imports
+  the SDK as a *value* (`instanceof Anthropic.AnthropicError`), and `query/parse.ts` imports from
+  `query/llm.ts`, so importing `parseQuery` pulls it in — ~650 KB total. _Accepted for now, with the
+  remedy recorded:_ import `query/deterministic` + `query/schema` directly and reimplement
+  `parseQuery`'s ~45-line tail. Not done here, because duplicating that tail is a divergence risk
+  for a cost that does not yet hurt on a phone.
+
+- **Two layout bugs that only a device could show.** The safe-area insets were on `body`, which
+  added the notch and home-indicator heights on top of a `100dvh` shell and pushed the
+  "Data: seats.aero" attribution — a `LEGAL.md` requirement — off the bottom of the screen. And a
+  flex child's default `min-width: auto` made the key input refuse to shrink, widening the page
+  until the Save button sat off the right edge, untappable. Both are fixed and commented; the second
+  is why the key input and its button now stack rather than sit side by side.
+
+- **What is deliberately NOT built.** No watches (iOS cannot honour a schedule; PIVOT §3), no Ask
+  lane (PIVOT §3 defers it to v1.1 and the grid lane needs no Anthropic key), no device SQLite
+  (PIVOT §6 says it can wait), and no design system or real grid components — PIVOT §6 puts those in
+  Phase 3, and `src/search/search.ts` keeps the `ApiResult`/`ApiFailureCode` shape from
+  `src/components/grid/api.ts` exactly so that port is a small diff rather than a rewrite.
+
+- **§0 is still unanswered and now matters more.** Phase 2's output is the thing that would be
+  distributed. Building it is still the author's own personal use; listing it is not.

@@ -203,6 +203,70 @@ export class InMemoryAvailabilityCache implements AvailabilityCacheStore {
     list.push(...records.map((r) => ({ ...r, cabins: [...r.cabins], programs: r.programs ? [...r.programs] : null })));
     this.#coverage.set(userId, list);
   }
+
+  /**
+   * Plain-object view of everything held, for a client shell that has to survive being closed
+   * (docs/PIVOT.md §6 Phase 2: "in-memory cache with a JSON snapshot"). Pure — it does no I/O
+   * and knows nothing about where the bytes go; the shell owns that.
+   *
+   * This lives here rather than in the shell so that persistence cannot drift from the scope
+   * algebra. A shell that kept its own parallel copy of the rows would be re-deriving
+   * `rowKey`/`rowMatches` semantics by hand, and the include_filtered / min_cabin_pct scopes are
+   * exactly where that goes quietly wrong.
+   */
+  snapshot(): CacheSnapshot {
+    return {
+      version: CACHE_SNAPSHOT_VERSION,
+      users: [...this.#rows.keys(), ...this.#coverage.keys()]
+        .filter((id, i, all) => all.indexOf(id) === i)
+        .map((userId) => ({
+          userId,
+          rows: [...(this.#rows.get(userId)?.values() ?? [])],
+          coverage: this.#coverage.get(userId) ?? [],
+        })),
+    };
+  }
+
+  /**
+   * Replace the contents with a snapshot. Returns the number of rows restored. A snapshot whose
+   * version does not match is DISCARDED rather than migrated: the cost of throwing it away is one
+   * cold search, and the cost of misreading an old shape is serving rows under the wrong scope.
+   */
+  restore(snapshot: CacheSnapshot | null | undefined): number {
+    this.#rows.clear();
+    this.#coverage.clear();
+    if (!snapshot || snapshot.version !== CACHE_SNAPSHOT_VERSION || !Array.isArray(snapshot.users)) return 0;
+    let restored = 0;
+    for (const entry of snapshot.users) {
+      if (!entry || typeof entry.userId !== "string") continue;
+      const m = this.#rowsOf(entry.userId);
+      for (const r of entry.rows ?? []) {
+        m.set(rowKey(r), { ...r, airlines: [...r.airlines] });
+        restored += 1;
+      }
+      if (entry.coverage?.length) {
+        this.#coverage.set(
+          entry.userId,
+          entry.coverage.map((c) => ({ ...c, cabins: [...c.cabins], programs: c.programs ? [...c.programs] : null })),
+        );
+      }
+    }
+    return restored;
+  }
+}
+
+/** Bump when the shape of a persisted row or coverage record changes; old snapshots are dropped. */
+export const CACHE_SNAPSHOT_VERSION = 1;
+
+export interface CacheSnapshotUser {
+  userId: string;
+  rows: AvailabilityRow[];
+  coverage: CoverageRecord[];
+}
+
+export interface CacheSnapshot {
+  version: number;
+  users: CacheSnapshotUser[];
 }
 
 export function minFetchedAt(rows: readonly AvailabilityRow[]): string | null {

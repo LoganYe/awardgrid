@@ -5,7 +5,12 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "out/**", "build/**", "vendor/**", "next-env.d.ts", "drizzle/**", "e2e-report/**", "test-results/**", "playwright/.cache/**", "spikes/**"]),
+  globalIgnores([".next/**", "out/**", "build/**", "vendor/**", "next-env.d.ts", "drizzle/**", "e2e-report/**", "test-results/**", "playwright/.cache/**", "spikes/**",
+    // The shells' build output. `apps/ios/ios/**` holds the generated Xcode project plus a COPY
+    // of dist/ that `cap sync` writes into App/public, and DerivedData holds another. Linting a
+    // 650 KB bundle three times over made eslint itself crash with
+    // "RangeError: Invalid string length" while formatting its report.
+    "apps/*/dist/**", "apps/*/ios/**"]),
   {
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
