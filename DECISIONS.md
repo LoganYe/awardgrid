@@ -1270,3 +1270,28 @@ Full rationale in `packages/tokens/README.md`.
   easy to assume otherwise: `grep` finds no reference to it in `.github/`, `package.json` or
   `scripts/`. It was run for this change and passes. What CI actually enforces for a11y is
   `e2e/axe.spec.ts` across desktop-light, desktop-dark and mobile-light.
+
+- **e2e proves Phase 3 moved nothing: 583 passed, 145 skipped, 0 failed, 11.5 min — identical to
+  the pre-Phase-3 baseline.** Getting there took one false alarm worth recording, because it is the
+  second instance of the same trap. A run against a reused server produced **160 failures in 2.0
+  hours** that looked precisely like a design regression: muted text computing to `rgb(255,255,255)`
+  in dark, strict-mode violations from duplicated controls. The build was never wrong — the built
+  CSS carried `--fg-muted:#5c5c5c` light and `#a3a3a3` in both dark copies throughout. What was
+  wrong is that `playwright.config.ts:78` sets `reuseExistingServer: !isCI`, Playwright adopted a
+  `next start` left from an earlier run, and `.next/` had been rebuilt underneath it — so every
+  stylesheet 404'd and the pages rendered unstyled.
+
+- **`e2e/global-setup.ts` now catches that, and the guard was verified to fire.** It fetches
+  `/login`, requests every stylesheet the HTML references, and fails with an explicit explanation if
+  any 404s. Tested both ways: against a server serving a deleted stylesheet it fails with
+  `"the server on … is serving a STALE build"`; against a correctly-serving app it is silent. The
+  previous docstring claimed to cover "reuseExistingServer edge cases" while only checking that a
+  build existed on disk — which is exactly the check that cannot see this.
+
+- **Port 3000 is the live deployment, not a test server, and the guard's message says so.**
+  `docs/DEPLOYMENT.md` runs the public site with `next start` on `127.0.0.1:3000` behind a Cloudflare
+  Tunnel, kept alive by the `com.awardgrid.app` LaunchAgent. e2e uses **3400** (app) and **3999**
+  (mock). While diagnosing the above, that distinction was missed and the production process was
+  killed three times; the LaunchAgent restarted it within seconds each time and the site returned 200
+  locally and through the tunnel afterwards, but the confusion is worth naming here so the next
+  person clearing "stale" servers checks the port first.
