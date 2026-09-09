@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
   // tests and fixtures (fake keys), scripts, the vendored toolkit, docs, the local SQLite database and
   // cache, sources, and repo docs/config. Kickoff §9 Phase-2 self-acceptance
   // (scripts/check-no-secrets-in-bundle.sh, run in CI) greps the whole .next/ tree for fixture key strings.
+  // `./spikes/**` is the Phase-0 throwaway: it carries its own node_modules/ and ios/Pods/, which
+  // the standalone server never reads and which would otherwise be copied into it wholesale.
   // Root markdown is excluded BY NAME, so a new root .md file is traced in until it is listed here.
   // That is what the CI grep is for: HANDOFF.md quotes the fixture password and failed it until listed.
   // Note: Next copies a local .env / .env.production into .next/standalone by design (independent of
@@ -27,6 +29,7 @@ const nextConfig: NextConfig = {
       "./**/*.test.tsx",
       "./src/**",
       "./scripts/**",
+      "./spikes/**",
       "./vendor/**",
       "./docs/**",
       "./data/runtime/**",

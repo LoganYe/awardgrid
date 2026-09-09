@@ -18,6 +18,8 @@ CLAUDE.md
 **/*.sqlite
 **/*.sqlite3
 data/runtime
+# Phase-0 throwaway spike: never part of the server image.
+spikes
 coverage
 .vitest-cache
 **/.DS_Store

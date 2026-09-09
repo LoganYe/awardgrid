@@ -44,6 +44,15 @@ next-env.d.ts
 /AGENTS.md
 /CLAUDE.md
 
+# Phase-0 Capacitor spike: CocoaPods, Xcode and the synced web build are all regenerated
+# by `pnpm build && npx cap sync ios`. `dist/` and `node_modules/` are already covered above.
+spikes/**/ios/App/Pods/
+spikes/**/ios/App/App/public/
+spikes/**/ios/App/Podfile.lock
+spikes/**/ios/DerivedData/
+spikes/**/*.xcworkspace/xcuserdata/
+spikes/**/*.xcodeproj/xcuserdata/
+
 # Playwright (pnpm e2e)
 e2e-report/
 test-results/

@@ -957,3 +957,79 @@ are referenced nowhere in `src/` — and so was `app.tagline`, which is now the 
   do not run and no Telegram digest is sent. _Why:_ issue #47 — standing queries freeze their dates
   and go silent within 92 days — is unfixed, and starting the worker would begin accumulating runs
   against that defect rather than surfacing it. `docs/DEPLOYMENT.md` says so plainly.
+
+## Phase 0 — the client-app pivot (spec: `docs/PIVOT.md`)
+
+### The native-HTTP premise, measured
+
+Full evidence in `docs/PHASE0.md`; the spike is `spikes/phase0-native-http/`, built to be deleted.
+
+- **The premise holds: a Capacitor app reaches seats.aero over native HTTP, and a WebView in the
+  same app cannot.** Both were run against the *same URL, seconds apart, in one build*. WKWebView
+  `fetch()` → `TypeError: Load failed` (334 ms). The native adapter → **HTTP 401 with 17 readable
+  response headers** (426 ms). The 401 is the point rather than a disappointment: that probe sends
+  a deliberately invalid key, because what it tests is reachability, not authorisation, and a
+  CORS-blocked request can report neither a status nor a header. _Why it was done as a differential:_
+  a rendered grid does not say which stack fetched it, and the kickoff warned that a debugger-hosted
+  run can execute `fetch` in a browser context and fail with CORS — looking like the premise is
+  wrong when it is the harness that is wrong. Having both outcomes in one run is what makes either
+  interpretable.
+
+- **The proof is made from outside the app, because an app cannot certify its own networking.**
+  `probe-server.mjs` copies seats.aero's CORS posture exactly — JSON, and not one `Access-Control-*`
+  header — and records what arrives. It logged the WebView as `origin: capacitor://localhost` +
+  `sec-fetch-mode: cors` + an `AppleWebKit/605.1.15` UA, and the adapter as
+  `App/1 CFNetwork/3860.600.12 Darwin/25.3.0` with **no `Origin` and no `Sec-Fetch-*` at all**.
+  That is a `URLSession` signature; WebKit always announces an origin on a cross-origin fetch and
+  cannot be made not to. _Why:_ this converts "we believe it went native" into an observation by a
+  third party that watched both requests land.
+
+- **`AbortSignal` does not cancel the native request — only the promise — and the difference is
+  quota.** Abort fired at 800 ms; the JS promise rejected at 803 ms with `AbortError`; **the server
+  completed the entire 6 000 ms response at 6 002 ms** (reproduced at 6 003 ms). So an abandoned
+  search still spends one of the 1 000 daily Pro-key calls, invisibly. This is not a theoretical
+  gap: `src/lib/seatsaero/client.ts:312-313` builds its 20 s budget from an `AbortController` and
+  `:327` classifies the failure by reading `signal.aborted`, and that whole mechanism is a no-op
+  against the native transport. Ported unchanged it would stop the waiting but not the spending.
+
+- **Native timeouts DO work, and they are the fix.** `readTimeout`/`connectTimeout` of 1 500 ms
+  against a 6 000 ms hold: the server observed the client hang up at **1 507 ms** (reproduced at
+  1 503 ms). The socket really closed. _Consequence, and it is a constraint rather than a preference:_
+  the Phase-2 adapter must translate the client's timeout budget into native timeouts.
+  `AbortController` alone fails silently, and the failure is invisible until the quota runs out early.
+
+- **`CapacitorHttp.enabled` stays FALSE, and that is load-bearing rather than tidy.** Enabling it
+  monkey-patches `window.fetch`; PIVOT §2 rejected relying on that patch because it falls back to
+  WebView fetch in some call shapes. Keeping it off bought two things: `window.fetch` stayed the
+  genuine WKWebView fetch, so the control probe is a real control and not a patched impostor —
+  without this the whole differential would be circular — and nothing can reach seats.aero except
+  explicitly through `src/nativeFetch.ts`.
+
+- **CocoaPods, not SPM, and only because SPM did not work here.** `npx cap add ios` defaults to SPM
+  on Capacitor 8. On this machine `xcodebuild` resolved and checked out `capacitor-swift-pm` 8.5.1
+  and then sat at 0 % CPU with no open socket while `Capacitor.xcframework.zip` never downloaded —
+  three clean attempts, caches cleared between them. The same zip fetches in 5 s with `curl`
+  (6.6 MB, HTTP 200), so the network is not the cause. `--packagemanager CocoaPods` ran
+  `pod install` in 5.07 s and built first time. _Recorded as an operational caveat, not a law:_
+  one machine is not a sample, but Phase 2 should not assume the SPM default works.
+
+- **P4's negative result is reported as a failing probe, not a passing measurement.** An earlier
+  build marked it PASS because the *measurement* succeeded, which put a green tick next to
+  "the native request kept running". _Why it was changed:_ a probe suite whose ticks certify that
+  it ran rather than that the thing works is worse than no suite.
+
+- **The live authenticated query (P6) is outstanding, and the reason is recorded rather than worked
+  around.** The owner's seats.aero key is on this machine, AES-256-GCM encrypted in
+  `data/runtime/awardgrid.db` under `MASTER_KEY`. Automated decryption of the credential store was
+  refused by the environment's safety classifier and was **not** circumvented. _Why that is the
+  right outcome:_ "decrypt the key store and use the result" should need a human in the loop even
+  under a broad grant of authority. The key was never read, printed or written. What stays unproven
+  is narrow — the authenticated response body, the row shape, and `X-RateLimit-Remaining` — since
+  reachability, TLS, routing and header readability are all already measured by the 401.
+  `spikes/phase0-native-http/README.md` carries the one command that closes it.
+
+- **Phase 0 did not need the §0 legal answer; Phase 1 onward does.** Running this spike is the
+  author using their own Pro key on their own machine, which is exactly the personal,
+  non-commercial use `LEGAL.md:3` already describes. Distribution is a different act.
+  `docs/PIVOT.md` §0 — whether seats.aero permits an app built on their non-commercial Partner API —
+  is untouched by anything measured here and still gates the pivot.
