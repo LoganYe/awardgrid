@@ -80,6 +80,53 @@ describe("createNativeFetch", () => {
     expect(sent.readTimeout).toBe(1500);
   });
 
+  it("sends a per-instance timeoutMs as both native timeouts, and other instances keep their own", async () => {
+    const request = vi.fn(deps().request);
+    const f = createNativeFetch({ deps: deps({ request }), timeoutMs: 90_000 });
+    await f("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    const sent = request.mock.calls[0]![0] as Record<string, unknown>;
+    // iOS reads connectTimeout ?? readTimeout into one idle interval (HttpRequestHandler.swift:203-205).
+    // Sending the same value as both keeps this adapter's meaning independent of that precedence.
+    expect(sent.connectTimeout).toBe(90_000);
+    expect(sent.readTimeout).toBe(90_000);
+
+    // A second adapter does not share the first one's value: seats.aero keeps its 20 s.
+    const other = vi.fn(deps().request);
+    await createNativeFetch({ deps: deps({ request: other }) })("https://seats.aero/partnerapi/search");
+    const seats = other.mock.calls[0]![0] as Record<string, unknown>;
+    expect([seats.connectTimeout, seats.readTimeout]).toEqual([DEFAULT_NATIVE_TIMEOUT_MS, DEFAULT_NATIVE_TIMEOUT_MS]);
+  });
+
+  it("passes a string POST body with a lower-case content-type through unchanged", async () => {
+    const request = vi.fn(deps().request);
+    const f = createNativeFetch({ deps: deps({ request }) });
+    // What the Anthropic SDK hands a fetch: JSON already serialised, under a lower-case header name.
+    const body = JSON.stringify({ model: "claude-opus-5", messages: [{ role: "user", content: "Tōkyō — 東京   \"quoted\"" }] });
+    await f("https://api.anthropic.com/v1/messages", { method: "post", headers: { "content-type": "application/json" }, body });
+
+    const sent = request.mock.calls[0]![0] as Record<string, unknown>;
+    expect(sent.method).toBe("POST");
+    // The very string, not a re-serialisation of it: Capacitor turns a string body into its UTF-8 bytes
+    // before any JSON handling (CapacitorUrlRequest.swift:184-186) ...
+    expect(sent.data).toBe(body);
+    // ... but only sets httpBody when it finds a Content-Type (:215-221). Its lookup lower-cases the
+    // stored keys and the key it asks for (:118-124), so this header is found as sent.
+    expect(sent.headers).toEqual({ "content-type": "application/json" });
+  });
+
+  it("turns a Headers instance into a plain record, because a Headers crosses the bridge as {}", async () => {
+    const request = vi.fn(deps().request);
+    const f = createNativeFetch({ deps: deps({ request }) });
+    const headers = new Headers({ "X-Api-Key": "test-key-not-real", "anthropic-version": "2023-06-01", "Content-Type": "application/json" });
+    // The failure this prevents: a Headers object has no own enumerable properties.
+    expect(JSON.stringify(headers)).toBe("{}");
+
+    await f("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: "{}" });
+    const sent = request.mock.calls[0]![0] as { headers: Record<string, string> };
+    expect(Object.getPrototypeOf(sent.headers)).toBe(Object.prototype);
+    expect(sent.headers).toEqual({ "x-api-key": "test-key-not-real", "anthropic-version": "2023-06-01", "content-type": "application/json" });
+  });
+
   it("refuses an already-aborted signal before crossing the bridge", async () => {
     const request = vi.fn(deps().request);
     const f = createNativeFetch({ deps: deps({ request }) });

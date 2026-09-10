@@ -47,6 +47,20 @@ function fakeSeatsAero(searchBody: unknown) {
   return fakeFetch((req) => (req.url.pathname.endsWith("/routes") ? jsonResponse([]) : jsonResponse(searchBody)));
 }
 
+/** Get Routes for one program, monitoring each origin to SEA. A bare array, as the real endpoint sends. */
+function monitoredRoutes(source: string, origins: readonly string[]) {
+  return origins.map((origin) => ({
+    ID: `${source}-${origin}`,
+    OriginAirport: origin,
+    OriginRegion: "Asia",
+    DestinationAirport: "SEA",
+    DestinationRegion: "North America",
+    NumDaysOut: 330,
+    Distance: 5000,
+    Source: source,
+  }));
+}
+
 function engine(fetchImpl: typeof fetch, store = new DeviceQuotaStore()) {
   return new SearchEngine({
     fetchImpl,
@@ -154,5 +168,47 @@ describe("SearchEngine", () => {
     expect(second.value.served_from_cache).toBe(true);
     expect(second.value.api_calls_used).toBe(0);
     expect(fetchImpl.calls.length).toBe(callsAfterFirst);
+  });
+
+  it("tells the grid which pairs seats.aero does not monitor, so their cells do not read as empty", async () => {
+    // Rows for HKG only, and Get Routes answers an empty list for every program: runFind reports
+    // the pair with no rows as not monitored (packages/core/src/lib/seatsaero/find.ts:360-377).
+    const fetchImpl = fakeSeatsAero({ data: [availability("2026-10-05")], hasMore: false });
+    const res = await engine(fetchImpl).search("HKG, PVG to SEA next 30 days business", KEY);
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const { grid } = res.value;
+    const statuses = (origin: string) => new Set(grid.cells.flat().filter((c) => c.origin === origin).map((c) => c.status));
+    expect(grid.meta.unmonitored_pairs.map((p) => p.key)).toEqual(["PVG-SEA"]);
+    expect(statuses("PVG")).toEqual(new Set(["unmonitored"]));
+    // A pair with rows is never "not monitored": its other dates were checked and had nothing.
+    expect(statuses("HKG")).toEqual(new Set(["ok", "none"]));
+  });
+
+  it("marks the pairs a truncated pull may never have reached as not fetched, not as empty", async () => {
+    // Every Cached Search page claims there is more, so runFind stops at its page cap and warns
+    // (find.ts:418-424). Get Routes says every pair IS monitored, so the gap cannot be explained as
+    // "not monitored": for the pairs with no rows the only honest state is not fetched.
+    const fetchImpl = fakeFetch((req) =>
+      req.url.pathname.endsWith("/routes")
+        ? jsonResponse(monitoredRoutes(req.url.searchParams.get("source")!, ["HKG", "PVG", "SHA"]))
+        : jsonResponse({ data: [availability("2026-10-05")], hasMore: true, cursor: 1 }),
+    );
+    // SHA is also the Shanghai metro code, so the parser asks for PVG and SHA as well as HKG.
+    const res = await engine(fetchImpl).search("HKG, SHA to SEA next 30 days business", KEY);
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const { grid, notices } = res.value;
+    expect(notices.map((n) => n.code)).toContain("find.truncated_search");
+    const cells = grid.cells.flat();
+    const statuses = (origin: string) => new Set(cells.filter((c) => c.origin === origin).map((c) => c.status));
+    expect(grid.meta.not_fetched_pairs.map((p) => `${p.pair.origin}-${p.pair.dest}`)).toEqual(["PVG-SEA", "SHA-SEA"]);
+    expect(statuses("PVG")).toEqual(new Set(["not_fetched"]));
+    expect(statuses("SHA")).toEqual(new Set(["not_fetched"]));
+    expect(cells.find((c) => c.origin === "SHA")?.reason).toBe("grid.cell.not_fetched");
+    expect(statuses("HKG")).toEqual(new Set(["ok", "none"]));
+    expect(grid.meta.unmonitored_pairs).toEqual([]);
   });
 });

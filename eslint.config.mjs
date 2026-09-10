@@ -42,6 +42,10 @@ export default defineConfig([
               message:
                 "Inside packages/core, use a relative import. The '@' alias resolves against the CONSUMING project, so an aliased import here silently resolves into the app's src/ and breaks `next build`. (The 25 moved *.test.ts files are the deliberate exception — they keep '@/lib/…' and are resolved by this package's own vitest/tsconfig alias, because rewriting a core test is forbidden.)",
             },
+            {
+              group: ["@capacitor/*"],
+              message: "packages/core must never know about Capacitor; inject transports from the shell.",
+            },
           ],
         },
       ],
@@ -94,6 +98,27 @@ export default defineConfig([
               ],
               message:
                 "These moved to packages/core in Phase 1 (docs/PIVOT.md §6). Import '@awardgrid/core/<module>/<file>' instead. '@/lib/i18n/server' is the one that stayed, and is still correct.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The iOS shell never builds an Anthropic client itself. pnpm's isolation does not keep the SDK out:
+    // the root package depends on it (package.json:41), so it resolves from apps/ios too. The one factory,
+    // createAskClient in @awardgrid/core/ask, refuses the WebView's fetch; a direct `new Anthropic()` here
+    // would silently use it. Tests are covered as well: they script HTTP responses instead of importing
+    // the SDK's error classes.
+    files: ["apps/ios/src/**/*.ts", "apps/ios/src/**/*.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@anthropic-ai/sdk", "@anthropic-ai/sdk/*"],
+              message: "Anthropic calls go through @awardgrid/core/ask's createAskClient, which refuses the WebView fetch.",
             },
           ],
         },

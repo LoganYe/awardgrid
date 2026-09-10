@@ -28,8 +28,12 @@ const TIER_CLASS: Record<string, string> = {
 function Cell({ cell, now }: { cell: GridCell; now: Date }) {
   const best = cell.best;
   if (!best) {
-    // An empty cell and an unfetched one are different facts and must not look the same.
-    return <span className="none">{cell.status === "not_fetched" ? "not checked" : "—"}</span>;
+    // Checked and empty, never fetched, and not tracked by seats.aero are three different facts and
+    // must not look the same. "not monitored" comes from runFind's Get Routes check
+    // (packages/core/src/lib/seatsaero/find.ts:360-377); "not checked" from a pull that stopped
+    // early (seatsaero/not-fetched.ts).
+    const label = cell.status === "not_fetched" ? "not checked" : cell.status === "unmonitored" ? "not monitored" : "—";
+    return <span className="none">{label}</span>;
   }
   const tier = freshnessTier(best.fetched_at, now);
   return (
@@ -43,14 +47,34 @@ function Cell({ cell, now }: { cell: GridCell; now: Date }) {
   );
 }
 
-export function GridTable({ grid, now = new Date() }: { grid: Grid; now?: Date }) {
-  const hasAny = grid.cells.some((row) => row.some((c) => c.best));
+/**
+ * The sentence shown INSTEAD of the table, or null when the table should render. Exported so the
+ * cases are tested without a DOM (grid-message.test.ts).
+ *
+ *   every cell `none`         the call worked and seats.aero has nothing cached for this window
+ *   every cell `unmonitored`  seats.aero tracks none of these pairs for the programs asked, so "no
+ *                             availability" would state the wrong fact
+ *   anything else             null. A mix of states, or a pull that did not reach every pair, has to
+ *                             show which cell is which, so the table renders with its per-cell labels.
+ */
+export function emptyGridMessage(grid: Grid): string | null {
+  const cells = grid.cells.flat();
+  if (cells.every((c) => c.status === "none")) {
+    return "No availability for that query. The call worked — this route and date window simply has nothing cached at seats.aero right now.";
+  }
+  if (cells.every((c) => c.status === "unmonitored")) {
+    return "Nothing to show for this query. seats.aero does not monitor these routes for the programs searched.";
+  }
+  return null;
+}
 
-  if (!hasAny) {
+export function GridTable({ grid, now = new Date() }: { grid: Grid; now?: Date }) {
+  const message = emptyGridMessage(grid);
+
+  if (message) {
     return (
       <p className="ag-surface" style={{ margin: 0 }}>
-        No availability for that query. The call worked — this route and date window simply has
-        nothing cached at seats.aero right now.
+        {message}
       </p>
     );
   }

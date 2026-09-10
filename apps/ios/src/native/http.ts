@@ -10,10 +10,11 @@
  *      readable headers. So `capacitor.config.ts` leaves `CapacitorHttp.enabled` FALSE — the global
  *      `fetch` patch is not relied on — and nothing reaches seats.aero except through this file.
  *
- *   2. **`AbortSignal` does not cancel a native request; `readTimeout` does.** Measured: abort at
+ *   2. **`AbortSignal` does not cancel a native request; a native timeout does.** Measured: abort at
  *      800 ms, promise rejected at 803 ms, and the server still completed its full 6 000 ms
  *      response at 6 002 ms. A native timeout, by contrast, closed the socket at 1 507 ms against
- *      the same 6 000 ms hold.
+ *      the same 6 000 ms hold. That run set both timeout options to 1 500 ms, which iOS reads as ONE
+ *      idle interval (see NativeFetchInit below), so "timeout" here means that interval, not a total.
  *
  *      This is a quota fact, not a latency curiosity. `SeatsAeroClient` bounds requests with an
  *      `AbortController` (`client.ts:312`) and reads `signal.aborted` to classify the failure
@@ -34,10 +35,26 @@ export class NativeHttpUnavailableError extends Error {
   }
 }
 
+/**
+ * `RequestInit` plus CapacitorHttp's two timeout options, which on iOS are not two settings.
+ *
+ * Capacitor reads `connectTimeout ?? readTimeout` into ONE `URLRequest.timeoutInterval`
+ * (HttpRequestHandler.swift:203-205), so `readTimeout` is ignored whenever `connectTimeout` is set;
+ * this adapter sends the same value as both. Apple defines that interval as an IDLE interval, reset
+ * to 0 whenever bytes arrive (NSURLRequest.h:281-290, iOS 26.5 SDK), not a total budget: a response
+ * that keeps sending bytes is not cut by it, a silent one is. Phase 0's 1,507 ms timeout against a
+ * 6,000 ms hold fits that reading, because /slow sent nothing while it held.
+ *
+ * A string `body` crosses unchanged. Capacitor sets `httpBody` only when it finds a Content-Type
+ * header (CapacitorUrlRequest.swift:215-221); its lookup lower-cases the stored keys and the key it
+ * asks for (:118-124), so a lower-case `content-type` counts; and a string body becomes its UTF-8
+ * bytes before any JSON or form handling (:184-186). Both Swift files are in
+ * @capacitor/ios/Capacitor/Capacitor/Plugins/.
+ */
 export interface NativeFetchInit extends RequestInit {
-  /** iOS: URLSessionConfiguration.timeoutIntervalForRequest, ms. */
+  /** iOS: the idle URLRequest.timeoutInterval, ms. Wins over `readTimeout` when both are set. */
   connectTimeout?: number;
-  /** iOS: URLSessionConfiguration.timeoutIntervalForResource, ms. */
+  /** iOS: the same single idle interval, used only when `connectTimeout` is absent, ms. */
   readTimeout?: number;
 }
 

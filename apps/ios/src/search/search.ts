@@ -25,7 +25,8 @@ import {
   SeatsAeroNetworkError,
   SeatsAeroResponseError,
 } from "@awardgrid/core/seatsaero/client";
-import { runFind } from "@awardgrid/core/seatsaero/find";
+import { pairsOf, runFind } from "@awardgrid/core/seatsaero/find";
+import { notFetchedPairsFrom } from "@awardgrid/core/seatsaero/not-fetched";
 import { Quota, QuotaExceededError } from "@awardgrid/core/seatsaero/quota";
 import { RoutesCatalog } from "@awardgrid/core/seatsaero/routes";
 
@@ -159,7 +160,15 @@ export class SearchEngine {
       return {
         ok: true,
         value: {
-          grid: buildGrid(result.rows, parsed.query),
+          // Empty cells carry their reason, as the web grid's do (src/lib/server/find.ts:387-412): a
+          // pair seats.aero does not monitor, or one a truncated pull may never have reached, must
+          // not read the same as a pair that was checked and had nothing. `pairsOf` is the pair list
+          // runFind itself walked (find.ts:257); the web's `enumeratePairs` (grid/pivot.ts:48-56)
+          // builds the identical list.
+          grid: buildGrid(result.rows, parsed.query, {
+            unmonitored_pairs: result.unmonitored_pairs,
+            not_fetched_pairs: notFetchedPairsFrom(result, pairsOf(parsed.query)),
+          }),
           query: parsed.query,
           warnings: [...parsed.warnings, ...result.warnings],
           notices: [...parsed.notices, ...result.notices],

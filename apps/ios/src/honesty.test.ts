@@ -33,6 +33,9 @@ import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 
 const SHELL_SRC = path.join(import.meta.dirname);
 const CORE_WATCH = path.join(import.meta.dirname, "..", "..", "..", "packages", "core", "src", "lib", "watch");
+// Ask's system prompt, tool descriptions and failure copy are string literals in core, not in the shell. A
+// person reads the copy, and the model repeats what the prompt and the tools tell it, so both are scanned.
+const CORE_ASK = path.join(import.meta.dirname, "..", "..", "..", "packages", "core", "src", "lib", "ask");
 const LANDING = path.join(import.meta.dirname, "..", "..", "..", "sites", "landing", "index.html");
 
 /**
@@ -322,14 +325,14 @@ const byLanguage = (keys: ReadonlyArray<keyof typeof en>) =>
   ]);
 
 describe("no cadence is ever promised", () => {
-  const files = [...sourceFiles(SHELL_SRC), ...sourceFiles(CORE_WATCH)];
+  const files = [...sourceFiles(SHELL_SRC), ...sourceFiles(CORE_WATCH), ...sourceFiles(CORE_ASK)];
 
   it("scans a real amount of source, so an empty glob cannot pass vacuously", () => {
     expect(files.length).toBeGreaterThan(10);
     expect(landingTexts().length).toBeGreaterThan(10);
   });
 
-  it("no user-visible string in the shell or the watch module promises a cadence", () => {
+  it("no user-visible string in the shell, the watch module or the Ask module promises a cadence", () => {
     const offenders: string[] = [];
     for (const file of files) {
       for (const { text, line } of extract(file).strings) {
@@ -559,7 +562,7 @@ describe("no background check is claimed while none is built", () => {
     if (WATCH_CHECKS.inBackground) return; // a background check that exists may be described
 
     const offenders: string[] = [];
-    for (const file of [...sourceFiles(SHELL_SRC), ...sourceFiles(CORE_WATCH)]) {
+    for (const file of [...sourceFiles(SHELL_SRC), ...sourceFiles(CORE_WATCH), ...sourceFiles(CORE_ASK)]) {
       for (const { text, line } of extract(file).strings) {
         for (const c of claims(text)) offenders.push(`${path.relative(SHELL_SRC, file)}:${line} ${JSON.stringify(text)} matches ${c}`);
       }

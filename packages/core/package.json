@@ -27,7 +27,9 @@
     "./test-fixtures/*.json": "./test/fixtures/*.json",
     "./test-fixtures/*": "./test/fixtures/*.ts",
     "./watch": "./src/lib/watch/index.ts",
-    "./watch/*": "./src/lib/watch/*.ts"
+    "./watch/*": "./src/lib/watch/*.ts",
+    "./ask": "./src/lib/ask/index.ts",
+    "./ask/*": "./src/lib/ask/*.ts"
   },
   "scripts": {
     "test": "vitest run",
