@@ -2,7 +2,7 @@
 
 Written 2026-09-09 against `568b9ae` as a brief for a separate session.
 
-**Status, updated 2026-09-10.** Phases 0-3 are built; §0 is still unanswered.
+**Status, updated 2026-09-10.** Phases 0-4 are built; §0 is still unanswered.
 
 | | |
 |---|---|
@@ -301,6 +301,9 @@ site, then the app screens.
 | 6 | Web version: unhosted desktop app, browser extension, or run-it-yourself? All three work; a hosted static SPA does not. | §2 |
 
 ## What this document does not claim
+
+> **Amended 2026-09-10.** This section was written before Phase 0. Phases 0-4 have since been built
+> and measured; the status table at the top says what, and where the evidence is.
 
 It has not been implemented, and no line of the pivot has been written. The CORS measurements, the
 line counts and the 255 passing tests were executed. The App Store precedents, the WKWebView CORS
