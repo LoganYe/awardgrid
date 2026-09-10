@@ -8,7 +8,14 @@
  *   diffSnapshots(prev, next)    { new, dropped, price_drops, unchanged }
  *   parseSnapshot(json)          cells_json → CellSnapshot[] (tolerant: garbage → [])
  */
-import { createHash } from "node:crypto";
+// The ONE change this file needed to leave the server (docs/PIVOT.md §3). `node:crypto` does not
+// exist in a WebView, and @noble/hashes is an audited, zero-dependency, SYNCHRONOUS sha256 whose
+// output is byte-identical to `createHash("sha256")` — verified across ASCII, long input and CJK
+// before this swap. Byte-identical matters beyond tidiness: `query_runs.cells_hash` rows already
+// written by the web app stay valid, so no standing query reports a spurious change. The Web
+// Crypto alternative (`crypto.subtle.digest`) is async and would have forced this whole module,
+// and its callers, to become async for no gain.
+import { sha256 } from "@noble/hashes/sha2.js";
 import type { AvailabilityRow } from "@awardgrid/core/grid/types";
 import type { CellSnapshot, DiffOptions, PriceDrop, SnapshotDiff } from "./types";
 
@@ -59,7 +66,8 @@ export function snapshot(rows: readonly AvailabilityRow[]): CellSnapshot[] {
 /** Stable identity of a snapshot: sha256 of "key:miles" lines in key order (input order irrelevant). */
 export function cellsHash(cells: readonly CellSnapshot[]): string {
   const lines = [...cells].sort(byKey).map((c) => `${c.key}:${c.miles}`);
-  return createHash("sha256").update(lines.join("\n")).digest("hex");
+  const digest = sha256(new TextEncoder().encode(lines.join("\n")));
+  return Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /** Round to 2 decimals without float noise (12.345 → 12.35). */

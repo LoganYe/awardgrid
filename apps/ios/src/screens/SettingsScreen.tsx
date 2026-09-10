@@ -126,7 +126,8 @@ export function SettingsScreen() {
         </p>
         <button
           onClick={async () => {
-            await services.snapshots.clearAll();
+            // Memory and disk, and nothing else: quota spent today and the user's watches survive.
+            await services.clearCache();
             setStatus({ text: "Cached results cleared. Your key is untouched.", ok: true });
           }}
           style={{

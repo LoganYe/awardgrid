@@ -6,7 +6,7 @@
  */
 import { formatDigest, type DigestCell, type DigestDiff } from "@/lib/notify/format";
 import { Cabin } from "@awardgrid/core/query/schema";
-import { parseCellKey } from "./diff";
+import { parseCellKey } from "@awardgrid/core/watch/diff";
 import type { CellSnapshot, DigestFormatter, DigestInput, SnapshotDiff } from "./types";
 
 /** A snapshot cell as the digest formatter wants it; null when the key is malformed. */

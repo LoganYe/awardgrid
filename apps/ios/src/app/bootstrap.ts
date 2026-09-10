@@ -14,16 +14,35 @@ import { createNativeFetch } from "../native/http";
 import { type KeyStore, keychain } from "../native/keychain";
 import { SnapshotStore } from "../store/persistence";
 import { DeviceQuotaStore } from "../store/quota-store";
+import { WatchStore } from "../store/watch-store";
 import { SearchEngine } from "../search/search";
+import { type WatchCheckResult, checkWatches } from "../watch/runner";
 
 export interface AppServices {
   engine: SearchEngine;
   cache: InMemoryAvailabilityCache;
   quotaStore: DeviceQuotaStore;
+  watches: WatchStore;
   snapshots: SnapshotStore;
   keys: KeyStore;
-  /** Persist whatever has changed. Cheap to call; skips the quota write when nothing moved. */
+  /** Persist whatever has changed. Cheap to call; skips the quota and watch writes when nothing moved. */
   persist(): Promise<void>;
+  /**
+   * Empty the availability cache, in memory AND on disk. Quota and watches are left alone.
+   * See `SnapshotStore.clearCache` for why both halves are required.
+   */
+  clearCache(): Promise<void>;
+  /**
+   * Check every watch that may be checked, once, now. Concurrent calls share one run: opening the
+   * app twice in quick succession must not spend seats.aero calls on the same watches twice.
+   */
+  checkWatches(): Promise<WatchCheckResult[]>;
+  /** The outcomes of the most recent run, in memory only. Skips (no key, low quota) live here. */
+  lastWatchRun(): readonly WatchCheckResult[];
+  /** Subscribe to "the watches changed"; returns the unsubscribe function. */
+  onWatchesChanged(listener: () => void): () => void;
+  /** Tell subscribers the watches changed, after a screen edits the store itself. */
+  notifyWatchesChanged(): void;
 }
 
 export interface BootstrapOptions {
@@ -68,11 +87,13 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
 
   const cache = new InMemoryAvailabilityCache();
   const quotaStore = new DeviceQuotaStore();
+  const watches = new WatchStore();
 
-  // Warm start. Both are best-effort: a missing or corrupt snapshot costs one cold search, and
-  // must never stop the app from launching.
+  // Warm start. All best-effort: a missing or corrupt snapshot costs one cold search (or, for
+  // watches, an empty list), and must never stop the app from launching.
   cache.restore(await snapshots.loadCache());
   quotaStore.restore(await snapshots.loadQuota());
+  watches.restore(await snapshots.loadWatches());
 
   // The observer wraps whatever transport we end up with, rather than living inside the native
   // adapter. Putting it in the adapter looked tidier and was wrong: any other transport — a test
@@ -90,18 +111,66 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     now,
   });
 
+  const persist = async (): Promise<void> => {
+    await snapshots.saveCache(cache.snapshot());
+    if (quotaStore.dirty) {
+      await snapshots.saveQuota(quotaStore.snapshot(now()));
+      quotaStore.markClean();
+    }
+    if (watches.dirty) {
+      await snapshots.saveWatches(watches.snapshot());
+      watches.markClean();
+    }
+  };
+
+  const listeners = new Set<() => void>();
+  const notify = () => {
+    for (const listener of listeners) {
+      try {
+        listener();
+      } catch {
+        // One broken subscriber must not stop the others hearing about the change.
+      }
+    }
+  };
+
+  let lastRun: WatchCheckResult[] = [];
+  let inFlight: Promise<WatchCheckResult[]> | null = null;
+
   return {
     engine,
     cache,
     quotaStore,
+    watches,
     snapshots,
     keys,
-    async persist() {
-      await snapshots.saveCache(cache.snapshot());
-      if (quotaStore.dirty) {
-        await snapshots.saveQuota(quotaStore.snapshot(now()));
-        quotaStore.markClean();
-      }
+    persist,
+    async clearCache() {
+      // Memory first: if the file went first and a persist() landed in between, it would write
+      // the rows straight back — which is precisely the Phase 2 bug this replaces.
+      cache.restore(null);
+      await snapshots.clearCache();
     },
+    checkWatches() {
+      if (inFlight) return inFlight;
+      inFlight = (async () => {
+        try {
+          const results = await checkWatches({ engine, store: watches, apiKey: await keys.get(), now });
+          await persist();
+          lastRun = results;
+          notify();
+          return results;
+        } finally {
+          inFlight = null;
+        }
+      })();
+      return inFlight;
+    },
+    lastWatchRun: () => lastRun,
+    onWatchesChanged(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    notifyWatchesChanged: notify,
   };
 }

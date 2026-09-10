@@ -30,7 +30,7 @@ import { apiUsage, queryRuns, savedQueries, users } from "@/lib/db/schema";
 import { SEATS_AERO_PROVIDER } from "@/lib/db/stores/quota";
 import { removeKey, setKey } from "@/lib/keys";
 import type { QueryObject } from "@awardgrid/core/query/schema";
-import { cellsHash } from "@/lib/scheduler/diff";
+import { cellsHash } from "@awardgrid/core/watch/diff";
 import type { CellSnapshot } from "@/lib/scheduler/types";
 import { utcDayKey } from "@awardgrid/core/seatsaero/quota";
 import { createSavedQuery, listSavedQueries } from "@/lib/server/queries";

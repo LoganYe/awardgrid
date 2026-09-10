@@ -73,6 +73,14 @@ function parse<T>(raw: string | null): T | null {
   }
 }
 
+/**
+ * watches.json — the user's watches and their baselines. Unlike the cache this is the user's own
+ * data, not a copy of seats.aero's, so nothing that "clears cached results" may remove it.
+ */
+export const WATCHES_FILE = "watches.json";
+
+type WatchSnapshot = import("./watch-store").WatchSnapshot;
+
 export class SnapshotStore {
   readonly #files: FileStore;
 
@@ -96,9 +104,29 @@ export class SnapshotStore {
     await this.#files.write(QUOTA_FILE, JSON.stringify(snapshot));
   }
 
-  /** Used by "clear cached data" in Settings. Deliberately does NOT touch the Keychain. */
-  async clearAll(): Promise<void> {
+  async loadWatches(): Promise<WatchSnapshot | null> {
+    return parse<WatchSnapshot>(await this.#files.read(WATCHES_FILE));
+  }
+
+  async saveWatches(snapshot: WatchSnapshot): Promise<void> {
+    await this.#files.write(WATCHES_FILE, JSON.stringify(snapshot));
+  }
+
+  /**
+   * The file half of "Clear cached results" in Settings. It removes the availability cache and
+   * NOTHING else — which is a correction, not the original behaviour.
+   *
+   * Phase 2 shipped this as `clearAll()`, removing cache.json AND quota.json. Two things were wrong
+   * with that. Forgetting the quota counter meant clearing cached results silently forgot calls
+   * already spent today, while the confirmation told the user only that results were cleared. And
+   * removing a file was never enough on its own: the in-memory cache still held every row, and the
+   * next `persist()` — which runs after every search — wrote them straight back. So the claim
+   * "Cached results cleared" stopped being true within one search. `AppServices.clearCache` now
+   * empties the in-memory cache first and then calls this.
+   *
+   * Quota survives, watches survive, and the Keychain is never touched.
+   */
+  async clearCache(): Promise<void> {
     await this.#files.remove(CACHE_FILE);
-    await this.#files.remove(QUOTA_FILE);
   }
 }

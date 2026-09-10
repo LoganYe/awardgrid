@@ -11,7 +11,8 @@ Written 2026-09-09 against `568b9ae` as a brief for a separate session.
 | **Phase 1 — the package split** | **Done.** `packages/core` holds the six modules; its 281 tests moved and pass unedited (`git diff --find-renames` shows pure renames). The boundary is lint-enforced both ways. Rationale in `DECISIONS.md` § "Phase 1". |
 | **Phase 2 — the shell** | **Done.** `apps/ios` runs on a simulator: native-HTTP adapter with its startup assertion, Keychain key storage, in-memory cache with a JSON snapshot, quota reconciled against `X-RateLimit-Remaining`. 44 tests, no device needed. `apps/ios/README.md`. |
 | **Phase 3 — the design system** | **Done.** `packages/tokens` is one palette read by all three surfaces, with the two surface modes of §4; `sites/landing` is a static page with zero JavaScript and no App Store badge (see §0); `apps/ios` renders a real grid on the shared tokens. `packages/tokens/README.md`. |
-| **Phases 4–5** | Not started. Phase 4 is watches, honestly labelled; Phase 5 is Ask on the Messages API. |
+| **Phase 4 — watches** | **Done, without the background half.** Watches check when the app opens or returns to the foreground, and at no other time; §3 carries an amendment with the verified reasons there is no background check. `apps/ios/src/honesty.test.ts` fails CI on any string that promises a cadence or claims a background check. `DECISIONS.md` § "Phase 4". |
+| **Phase 5** | Not started. Ask, rebuilt on the Messages API. |
 
 Everything below is the original specification, kept as written. Where the build measured
 something the spec inferred, the phase document says so — §2's note that `AbortSignal` may not be
@@ -175,6 +176,25 @@ with one change — it imports `createHash` from `node:crypto`.
 
 **Never print a next-run time.** Print "last checked 2 h ago" and "checks in the background when iOS
 allows". Promising a cadence the OS will not honour is the one lie this product must not tell.
+
+> **Amended 2026-09-10, Phase 4 — there is no background check, so the background half of this
+> section is superseded.** Verified from the plugin's own source rather than its README
+> (`@capacitor/background-runner` 3.0.0). Its runtime's `Response` exposes only `ok`, `status`, `url`,
+> `text()` and `json()` — no response headers (`ios/Sources/RunnerEngine/JSResponse.swift`) — so a
+> background watch would spend the user's quota without ever reading `X-RateLimit-Remaining`, which
+> §2 says to trust over the local counter. Its JavaScriptCore context installs `fetch`, timers,
+> `crypto` and text codecs but no `AbortController` and no `process`
+> (`ios/Sources/RunnerEngine/Context.swift:110-119`), so the core's client and its cache-TTL default
+> would throw before the first request; the engine would need porting to run there. Its own storage is
+> `UserDefaults.standard` (`CapacitorAPI/KV.swift:12`); keeping the key in the Keychain is possible,
+> but only through native Swift that reads the item and passes it in memory to
+> `BackgroundRunner.shared.execute(config:inputArgs:)`. And no background task runs in the Simulator,
+> where this project is verified. So watches check when the app is opened or returns to the
+> foreground, and at no other time; the UI says "There is no background check" rather than "checks in
+> the background when iOS allows", and `apps/ios/src/honesty.test.ts` fails CI if any string in
+> the app or on the landing page claims otherwise. If a background check is ever wanted, the honest
+> route is a native Swift `BGAppRefreshTask` that reads the existing Keychain item — and the rule
+> above still holds: never print a next-run time. `DECISIONS.md` § Phase 4.
 
 **Lost: cross-device continuity.** Saved queries, diff baselines and the quota counter become local.
 CloudKit's private database is the honest answer for the first two and still counts as no host of

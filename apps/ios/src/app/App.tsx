@@ -6,14 +6,37 @@
  * so a browser-history route survives navigation but not a reload or a cold launch into a deep
  * link. A hash route needs no rewrite at all, and still leaves real URLs available for the
  * share/deep-link work in a later phase, which a memory router would foreclose.
+ *
+ * This is also where watches are checked: once when the app opens and again each time it returns
+ * to the foreground, and at no other time. There is no background check (../watch/capabilities.ts).
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, RouterProvider, createHashRouter } from "react-router";
 import { type AppServices, bootstrap } from "./bootstrap";
 import { SearchScreen } from "../screens/SearchScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
+import { WatchesScreen } from "../screens/WatchesScreen";
+
+/**
+ * How many watches have changes the user has not looked at yet.
+ *
+ * An external store, not state plus a listener: when the app reloads onto #/watches, the Watches screen
+ * mounts in the same commit as this chrome, its effect runs first (child effects before parent effects)
+ * and clears the changes before a listener here would exist. `useSyncExternalStore` re-reads after
+ * subscribing, so the count cannot be left stale.
+ */
+function useUnseenCount(services: AppServices): number {
+  const subscribe = useCallback((onChange: () => void) => services.onWatchesChanged(onChange), [services]);
+  return useSyncExternalStore(subscribe, () => services.watches.all().filter((w) => w.unseen).length);
+}
 
 function Chrome({ services }: { services: AppServices }) {
+  const unseen = useUnseenCount(services);
+  const nav: Array<[string, string]> = [
+    ["/", "Search"],
+    ["/watches", unseen > 0 ? `Watches (${unseen})` : "Watches"],
+    ["/settings", "Settings"],
+  ];
   return (
     <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
       <header
@@ -29,13 +52,10 @@ function Chrome({ services }: { services: AppServices }) {
       >
         <strong style={{ fontSize: 16 }}>awardgrid</strong>
         <nav style={{ display: "flex", gap: 12 }} aria-label="Main navigation">
-          {[
-            ["/", "Search"],
-            ["/settings", "Settings"],
-          ].map(([to, label]) => (
+          {nav.map(([to, label]) => (
             <NavLink
               key={to}
-              to={to!}
+              to={to}
               end={to === "/"}
               style={({ isActive }) => ({
                 textDecoration: "none",
@@ -75,17 +95,45 @@ export function App() {
     bootstrap().then(setServices, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
-  // Persist on the way out. `pagehide` rather than `beforeunload`: iOS fires the former when the
-  // app is backgrounded, which is the moment that actually matters on a phone.
   useEffect(() => {
     if (!services) return;
-    const flush = () => void services.persist();
-    window.addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") flush();
-    });
-    return () => window.removeEventListener("pagehide", flush);
+    // Check watches now that the app is open…
+    void services.checkWatches();
+
+    // …persist on the way out, and check again on the way back in. `pagehide` and a hidden
+    // visibility state are what iOS delivers when the app is backgrounded. The Phase 2 version added
+    // an anonymous visibilitychange listener it could never remove; these are named so they are.
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") void services.persist();
+      else void services.checkWatches();
+    };
+    const onPageHide = () => void services.persist();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+    };
   }, [services]);
+
+  // Created once per bootstrap. Re-creating the router on every render would reset navigation.
+  const router = useMemo(
+    () =>
+      services
+        ? createHashRouter([
+            {
+              path: "/",
+              element: <Chrome services={services} />,
+              children: [
+                { index: true, element: <SearchScreen /> },
+                { path: "watches", element: <WatchesScreen /> },
+                { path: "settings", element: <SettingsScreen /> },
+              ],
+            },
+          ])
+        : null,
+    [services],
+  );
 
   if (error) {
     return (
@@ -101,18 +149,7 @@ export function App() {
     );
   }
 
-  if (!services) return <div style={{ padding: 24, color: "var(--fg-muted)" }}>Starting…</div>;
-
-  const router = createHashRouter([
-    {
-      path: "/",
-      element: <Chrome services={services} />,
-      children: [
-        { index: true, element: <SearchScreen /> },
-        { path: "settings", element: <SettingsScreen /> },
-      ],
-    },
-  ]);
+  if (!services || !router) return <div style={{ padding: 24, color: "var(--fg-muted)" }}>Starting…</div>;
 
   return <RouterProvider router={router} />;
 }

@@ -1295,3 +1295,128 @@ Full rationale in `packages/tokens/README.md`.
   killed three times; the LaunchAgent restarted it within seconds each time and the site returned 200
   locally and through the tunnel afterwards, but the confusion is worth naming here so the next
   person clearing "stale" servers checks the port first.
+
+### Phase 4 — watches, and the background check that was not built
+
+- **A watch is checked when the app opens, and at no other time — that is the feature, not a gap
+  papered over.** PIVOT §3 renamed *schedule* to *watch* because iOS has no cron. Checks run when the
+  app opens and each time it returns to the foreground (`apps/ios/src/app/App.tsx`), one watch at a
+  time with quota re-read between them. Nothing in the data model can express a schedule: `Watch` has
+  no `scheduleCron`, `nextRunAt` or `dueAt`, and `apps/ios/src/honesty.test.ts` fails CI if an
+  identifier encoding one ever appears.
+
+- **No background check, for reasons verified from source — and the first reason recorded was
+  wrong.** Before commit, PIVOT §3's amendment, `keychain.ts` and `capabilities.ts` all said that
+  `@capacitor/background-runner` would force the seats.aero key out of the Keychain, because the
+  runtime's only storage is `UserDefaults.standard` (`CapacitorAPI/KV.swift:12`). An adversarial
+  review refuted that, and the refutation checked out against the plugin's Swift:
+  `BackgroundRunner.shared.execute(config:inputArgs:)` is `public` (`BackgroundRunner.swift:72`) and
+  hands `inputArgs` to the task (`:137`, `RunnerEngine/Context.swift:41-78`), so native Swift can read
+  the Keychain and pass the key in memory. The UserDefaults claim is true of the plugin's JavaScript
+  API alone, not of the plugin. All three documents were corrected. The reasons that hold, all read in
+  the 3.0.0 source: the runtime's `Response` exposes only `ok`, `status`, `url`, `text()` and `json()`
+  (`RunnerEngine/JSResponse.swift:3-11`), so a background watch would spend quota without ever reading
+  `X-RateLimit-Remaining`; its `fetch` reads only method, headers and body (`JSFetch.swift:18-24`), so
+  it ignores an abort signal and sets no timeout, and Phase 0 measured that a timeout is the only thing
+  that bounds a native request; its context installs no `AbortController` and no `process`
+  (`Context.swift:110-119`), both of which the core reaches (`seatsaero/client.ts:312`,
+  `seatsaero/cache.ts:325`); and "Background tasks are not executed in the simulator" (plugin
+  `README.md:288`), which is where this project is verified. _Why record the wrong reason at all:_ a
+  decision that looks inevitable for a false reason is one somebody will reverse for a true one.
+
+- **The landing page had already made the claim, and can no longer make it.** Phase 3 shipped "It
+  checks when you open it, and in the background when the system allows" (`sites/landing/index.html`).
+  It now says "It checks your watches when you open the app, and at no other time. There is no
+  background check." `WATCH_CHECKS.inBackground` in `apps/ios/src/watch/capabilities.ts` is the single
+  source of truth: while it is false, the honesty test rejects any string in the shell or on the
+  landing page that claims a background check, and lets negations through ("no background check",
+  没有后台检查). A promise to reach the user when something changes is the same claim — the web app's
+  `saved.dialog.save_body` "messages you when seats appear or get cheaper" is true of a server and
+  false of this app — and is rejected the same way.
+
+- **"Never print a next-run time" is enforced by CI, not by discipline.** `apps/ios/src/honesty.test.ts`
+  reads user-visible strings through the TypeScript AST, because this repo's comments discuss the
+  banned phrases at length and a grep would flag the explanation of the rule as a violation of it. It
+  reads them as a user does: a template literal joined across its interpolations, JSX text joined
+  across inline tags, entities decoded, and on the landing page the `content`, `alt` and `title`
+  attributes as well as the text. The deny-list targets *promise forms*, not topics: "No guaranteed
+  schedule" must pass and "every 3 hours" must not, while "1,000 calls per day", 每天允许 and "Resets at
+  {time}" are quota facts. The self-test pins both directions against the web app's dictionaries by
+  key — 17 schedule strings that must be caught and 6 time-and-quota strings that must pass, each in
+  both languages — plus 23 paraphrases and 22 honest sentences. Two reviews shaped it. The first found
+  real strings a first version missed (`saved.subtitle` "on its schedule", `saved.disabled_hint`
+  「不会按频率运行」, `saved.schedule.custom`). The second found that the test split template literals
+  and JSX, so `every ${n} hours` passed in pieces; that writing "3" for the real `{hours}` placeholder
+  in the self-test had hidden that miss; that it would have rejected honest strings ("expires in 15
+  minutes", "It will check your watches when you open the app"); and that its name rule missed
+  `next_run_at`, `#nextRunAt`, `isDue` and `cron`. Each is fixed and pinned. The name rule now reads
+  declarations only, split into words, so calling a plugin's `.schedule()` is allowed and storing a
+  `nextRunAt` is not.
+
+- **定时查询 cannot become the app's name for this feature.** The web app's `saved.title` is
+  "Standing queries" / 「定时查询」, and 定时 means *on a timer* — `docs/COPY.md` pins the pairing in its
+  glossary. Renaming to "watch" in English alone would leave the promise intact in Chinese. The shell
+  is English-only today, so no Chinese string ships yet, but 定时 is in the deny-list so a translation
+  cannot reintroduce it; 关注 ("keep an eye on") is the proposed term when the shell gets i18n. The web
+  app keeps 定时查询, because it does have a real cron.
+
+- **`diff.ts` moved to the core with one change, and its hashes are byte-identical.** `createHash`
+  from `node:crypto` became `sha256` from `@noble/hashes` (audited, zero-dependency, synchronous),
+  checked identical to `node:crypto` across empty, ASCII, 1,000-character and CJK inputs before the
+  swap. `diff.test.ts` moved with zero content change and passes. Byte-identical matters beyond
+  tidiness: `query_runs.cells_hash` rows the web app already wrote stay valid, so no standing query
+  reports a spurious change. Web Crypto was rejected because it is asynchronous and would have made the
+  module and every caller asynchronous for no gain. Four snapshot/diff types moved with it;
+  `src/lib/scheduler/types.ts` re-exports them so nothing in the web app changed shape.
+
+- **Watches store the query text, which fixes the web app's issue #47 by construction.**
+  `saved_queries.query_json` stores absolute dates, so "next 30 days" freezes on the day it was saved
+  and the standing query goes silent within 92 days. A watch re-parses its text on every check. A test
+  advances the clock 100 days and asserts that the request's `start_date` moved with it.
+
+- **…and a sliding window cries wolf, as #47 itself warned.** Diffing raw snapshots of "next 30 days"
+  taken a week apart reports every date that simply aged out as a dropped seat and every date that
+  entered as a new one — on every check, forever. The issue says "dropped" must mean *dropped inside
+  the overlap*, not *no longer in the window*; `diffWithinOverlap` does exactly that, and a runner test
+  pins that aging dates alone report nothing. When the windows do not overlap at all it says nothing
+  and re-baselines, because nothing honest can be said about a gap.
+
+- **Changes accumulate until they are seen, because every check moves the baseline.** If the latest
+  result replaced the previous one, a check that found three new seats followed an hour later by a
+  quiet check would erase the three seats before anyone looked. `Watch.unseen` accumulates across
+  checks and is cleared when the Watches screen is opened; a failed check never touches it.
+
+- **Two clocks, because a failed check can cost a call without producing data.** `lastCheckedAt` is
+  the last success and is what the user sees; `lastAttemptAt` is the last attempt that may have reached
+  seats.aero and is what gates the next check. Without the split, a watch whose check returned a 500
+  would retry — and spend — on every app open. Only network, seats.aero and internal failures start it
+  (`apps/ios/src/watch/runner.ts:60`). A missing or rejected key does not, because waiting will not fix
+  it and Settings will; nor does a call refused by the local quota or a query that does not parse,
+  since neither sent a request.
+
+- **A watch respects the cache TTL and reserves headroom.** `dueForCheck` refuses inside the 45-minute
+  availability-cache TTL, since a sooner check cannot return fresher data, and when fewer than 25 calls
+  remain, so a watch can never spend the calls the user opened the app to use. Concurrent
+  `checkWatches()` calls share one run, so a quick background-and-return cannot spend twice. Watches on
+  the same route share the cache — which is why a runner test that budgeted each check at the same cost
+  failed: the later checks were cache hits and spent nothing.
+
+- **No local notifications, which is a deliberate divergence from the research recommendation.** Every
+  check happens while the user has the app open, so a change is on screen the moment it is found: a
+  count on the Watches tab, and "since you last looked" on the watch. A notification could be shown
+  then — `@capacitor/local-notifications` 8.3.1 presents banners in the foreground by default
+  (`LocalNotificationsHandler.swift:66-71`) — but it would repeat what the tab already says, and the
+  permission prompt it needs tells the user to expect alerts while the app is closed, which this app
+  cannot send. Notifications belong with a background check, if one is ever built.
+
+- **"Clear cached results" had been false since Phase 2, and was found while wiring watches.**
+  `SnapshotStore.clearAll` deleted `cache.json` but never emptied the in-memory cache, so the next
+  `persist()` — which runs after every search — wrote every row straight back. It also deleted
+  `quota.json`, forgetting calls already spent today while telling the user only that results were
+  cleared. `AppServices.clearCache` now empties memory first, then the file, and touches neither quota
+  nor watches; four tests in `apps/ios/src/app/bootstrap-watches.test.ts` pin it.
+
+- **`build-plugin.test.ts`'s determinism check was a timeout, not non-determinism.** It failed with
+  "Test timed out in 15000ms" at 17.6 s while Xcode was building alongside it, even in isolation.
+  With a 120 s budget it passes 26/26 in 13.7 s, and none of its inputs changed. That one test runs two
+  full builds, so it now has a 60 s budget with the reason beside it rather than the repo-wide 15 s.

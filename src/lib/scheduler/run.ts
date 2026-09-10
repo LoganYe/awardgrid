@@ -41,7 +41,7 @@ import { SeatsAeroError, SeatsAeroHttpError } from "@awardgrid/core/seatsaero/cl
 import { QuotaExceededError } from "@awardgrid/core/seatsaero/quota";
 import { findGridForUser } from "@/lib/server/find";
 import { defaultFormatDigest } from "./digest";
-import { cellsHash, diffSnapshots, parseSnapshot, serializeSnapshot, snapshot } from "./diff";
+import { cellsHash, diffSnapshots, parseSnapshot, serializeSnapshot, snapshot } from "@awardgrid/core/watch/diff";
 import { inQuietHours } from "./quiet-hours";
 import {
   FETCH_FAILURE_REASONS,

@@ -375,7 +375,11 @@ describe.skipIf(!haveSource)("build-plugin against vendor/travel-hacking-toolkit
     } finally {
       fs.rmSync(out2, { recursive: true, force: true });
     }
-  });
+    // Two full builds of the vendored toolkit in one test. The repo-wide 15 s budget
+    // (vitest.config.ts) held on an idle machine and timed out at 17.6 s while Xcode was building
+    // alongside it. The assertion was never the problem: given room it passes in about 14 s, so the
+    // budget is sized for the work rather than for a quiet machine.
+  }, 60_000);
 
   it("validatePlugin passes on the fresh build and rejects tampered outputs", () => {
     expect(validatePlugin(out).problems).toEqual([]);

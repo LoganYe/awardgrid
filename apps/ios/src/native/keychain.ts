@@ -19,9 +19,13 @@ const KEY = "seats_aero_api_key";
 /**
  * Available after the first unlock following a reboot, and bound to this device.
  *
- * `afterFirstUnlock…` rather than `whenUnlocked…` because a background refresh (PIVOT §3's "watch")
- * may need the key while the screen is locked, and an item that is unreadable then would make the
- * watch fail silently at exactly the moment it is supposed to work.
+ * `afterFirstUnlock…` rather than `whenUnlocked…` was chosen in Phase 2 for a background watch that
+ * might need the key while the screen is locked. Phase 4 built no background check (the verified
+ * reasons are in src/watch/capabilities.ts). The setting is kept: it is harmless for a foreground app,
+ * and it is exactly what a native Swift background check would need — that route reads this item from
+ * the Keychain and hands the key to the task in memory, so the key would not have to move anywhere
+ * weaker. But it is no longer justified by a feature that exists, and this comment should not pretend
+ * otherwise.
  *
  * `…ThisDeviceOnly` rather than the plain form because the plain form migrates to a new device via
  * encrypted backups. An API key the user pasted into one phone should not silently reappear on a

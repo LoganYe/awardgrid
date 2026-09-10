@@ -7,7 +7,7 @@
  * is replaced by the saved-queries page on the same origin.
  */
 import { TELEGRAM_MAX_MESSAGE_CHARS } from "@/lib/notify/transport";
-import { parseCellKey } from "./diff";
+import { parseCellKey } from "@awardgrid/core/watch/diff";
 import type { CellSnapshot, DigestFormatter, DigestInput } from "./types";
 
 export const DIGEST_MAX_LINES = 25;

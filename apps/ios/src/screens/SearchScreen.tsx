@@ -46,6 +46,7 @@ export function SearchScreen() {
   const [result, setResult] = useState<ApiResult<FindValue> | null>(null);
   const [quota, setQuota] = useState<QuotaSnapshotView | null>(null);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [watchMessage, setWatchMessage] = useState<string | null>(null);
 
   useEffect(() => {
     void services.keys.get().then((k) => setHasKey(Boolean(k)));
@@ -54,6 +55,7 @@ export function SearchScreen() {
 
   const run = useCallback(async () => {
     setBusy(true);
+    setWatchMessage(null);
     try {
       const key = await services.keys.get();
       const res = await services.engine.search(text, key);
@@ -64,6 +66,34 @@ export function SearchScreen() {
     } finally {
       setBusy(false);
     }
+  }, [services, text]);
+
+  /**
+   * Watch the query exactly as typed. The TEXT is stored, not the parsed dates, so "next 30 days"
+   * keeps meaning the next 30 days — the fix for the web app's issue #47, where a standing query
+   * froze its dates and went silent once they passed.
+   */
+  const watchThis = useCallback(async () => {
+    const trimmed = text.trim();
+    const added = services.watches.add({
+      id: crypto.randomUUID(),
+      name: trimmed.length > 60 ? `${trimmed.slice(0, 59)}…` : trimmed,
+      text: trimmed,
+      lastCheckedAt: null,
+      baseline: [],
+      dropThresholdPct: 10,
+      enabled: true,
+      createdAt: new Date().toISOString(),
+    });
+    if (!added.ok) {
+      setWatchMessage(
+        added.reason === "duplicate" ? "You are already watching this search." : "You have reached the limit of 20 watches.",
+      );
+      return;
+    }
+    setWatchMessage("Watching this search. It is checked when you open the app.");
+    await services.persist();
+    services.notifyWatchesChanged();
   }, [services, text]);
 
   const value = result?.ok ? result.value : null;
@@ -107,12 +137,31 @@ export function SearchScreen() {
           {busy ? "Searching…" : "Run"}
         </button>
         {/* No cancel button, on purpose — see the note at the top of this file. */}
+        {value ? (
+          <button
+            onClick={() => void watchThis()}
+            style={{
+              padding: "9px 14px",
+              borderRadius: "var(--radius-control)",
+              border: "1px solid var(--line)",
+              background: "transparent",
+            }}
+          >
+            Watch this search
+          </button>
+        ) : null}
         {quota ? (
           <span className="tabular" style={{ fontSize: 12, color: "var(--fg-muted)" }}>
             seats.aero calls today: {quota.used} of {quota.softLimit}
           </span>
         ) : null}
       </div>
+
+      {watchMessage ? (
+        <p role="status" style={{ margin: 0, fontSize: 13, color: "var(--fg-muted)" }}>
+          {watchMessage}
+        </p>
+      ) : null}
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {EXAMPLES.map((e) => (

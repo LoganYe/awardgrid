@@ -25,7 +25,9 @@
     "./notices": "./src/lib/notices.ts",
     "./data/places.json": "./data/places.json",
     "./test-fixtures/*.json": "./test/fixtures/*.json",
-    "./test-fixtures/*": "./test/fixtures/*.ts"
+    "./test-fixtures/*": "./test/fixtures/*.ts",
+    "./watch": "./src/lib/watch/index.ts",
+    "./watch/*": "./src/lib/watch/*.ts"
   },
   "scripts": {
     "test": "vitest run",
@@ -34,6 +36,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",
+    "@noble/hashes": "2.4.0",
     "zod": "^4.5.4"
   },
   "peerDependencies": {
