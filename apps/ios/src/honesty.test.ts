@@ -458,6 +458,11 @@ describe("the deny-list is precise in both directions", () => {
     "Served from this device's cache",
     "next 30 days",
     "Every search runs on your own key",
+    // Ask's Stop, spend and pause copy (design §8.1), worded to fit the scan rather than the scan loosened.
+    "Stop sends nothing more. It cannot recall a request already sent.",
+    "Stopped. Nothing more will be sent for this question. The request already sent to Anthropic still finishes and may be billed.",
+    "Your Anthropic organization has reached its spend limit.",
+    "Paused while you were away from awardgrid.",
     "上次查看：2 小时前",
     "打开应用时查看",
     "几分钟后再试",
@@ -551,6 +556,9 @@ describe("no background check is claimed while none is built", () => {
     // Reaching the user when something changes needs a check that runs without them.
     /(?<!\b(?:not|never|cannot|can't|won't)\s)\b(?:notif(?:y|ies)|alerts?|messages?|pings?|emails?)\s+you\s+(?:when|as\s+soon\s+as|the\s+moment)\b/i,
     /\b(?:get|be)\s+notified\s+(?:when|as\s+soon\s+as|the\s+moment)\b/i,
+    // The same promise without the word "notify". Ask's copy and prompt must never make it; an answer that does
+    // gets a note from core/ask/guard.ts, because model output is not scanned here.
+    /\b(?:I|we)(?:'ll|\s+will)\s+let\s+you\s+know\s+(?:when|as\s+soon\s+as|if)\b/i,
     /(?<!没有)(?<!不)(?<!无)后台(?:查看|检查|刷新|运行|更新)/,
     /(?<!不)(?:时|就|会|将)(?:通知|提醒)(?:你|您)/,
   ];
@@ -579,6 +587,7 @@ describe("no background check is claimed while none is built", () => {
     "It checks for changes when iOS allows",
     "Background refresh keeps your watches current",
     "We'll alert you when prices drop",
+    "We'll let you know when a seat opens",
     "Get notified as soon as a seat opens",
     "应用会在后台检查",
     "后台刷新",
@@ -598,6 +607,7 @@ describe("no background check is claimed while none is built", () => {
     "awardgrid cannot notify you when a seat opens.",
     "Shows error messages when the key is missing",
     "There is no background check, so a change is found the next time you open the app, not when it happens.",
+    "Paused while you were away from awardgrid.",
     "没有后台检查",
     "打开应用时才会看到变化",
   ])("allows %j", (phrase) => {
