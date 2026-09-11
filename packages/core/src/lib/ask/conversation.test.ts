@@ -30,6 +30,8 @@ const USER: Anthropic.MessageParam = { role: "user", content: [{ type: "text", t
 const THINKING = { type: "thinking", thinking: "", signature: "synthetic_signature_not_from_anthropic" } as const;
 const TOOL_USE = { type: "tool_use", id: "toolu_synthetic_1", name: "search_awards", input: { origins: ["SEA"] }, caller: { type: "direct" } } as const;
 const TEXT = { type: "text", text: "Alaska has 2 seats at 75,000 miles.", citations: null } as const;
+const EMPTY_TEXT = { type: "text", text: "", citations: null } as const;
+const WHITESPACE_TEXT = { type: "text", text: " \n\t ", citations: null } as const;
 
 const assistant = (...content: ReadonlyArray<{ type: string }>): Anthropic.MessageParam => ({
   role: "assistant",
@@ -74,6 +76,7 @@ const LOOKUP: FlightsLookup = {
   id: "2PPrELk9WcfJaNREWEPXypvhXAD",
   cabin: "J",
   program: "alaska",
+  looked_up_at: "2026-09-10T14:30:00.000Z",
   booking_url: "https://www.alaskaair.com/search?from=SEA&to=NRT",
   trips_total: 1,
   trips: [
@@ -124,8 +127,8 @@ describe("commitQuestion", () => {
     expect(c.committed).toEqual([...before, ...question]);
   });
 
-  it("commits an answer that holds only a thinking block", () => {
-    expect(shouldCommit(response("end_turn", THINKING))).toBe(true);
+  it("commits an answer with one text block that says something, whatever blank or thinking blocks sit beside it", () => {
+    expect(shouldCommit(response("end_turn", THINKING, WHITESPACE_TEXT, TEXT))).toBe(true);
   });
 
   it.each<[string, QuestionEnd]>([
@@ -136,6 +139,11 @@ describe("commitQuestion", () => {
     ["pause_turn", response("pause_turn", TEXT)],
     ["no stop reason", response(null, TEXT)],
     ["a response with no content at all", response("end_turn")],
+    // Nothing Claude could read back as an answer: the question ends empty or truncated, and is not committed.
+    ["end_turn whose only block is empty text", response("end_turn", EMPTY_TEXT)],
+    ["end_turn whose only block is whitespace", response("end_turn", WHITESPACE_TEXT)],
+    ["end_turn with only a thinking block", response("end_turn", THINKING)],
+    ["max_tokens with only a thinking block", response("max_tokens", THINKING)],
     ["stopped", { ended: "stopped" }],
     ["failed", { ended: "failed" }],
     ["deadline", { ended: "deadline" }],

@@ -276,6 +276,11 @@ describe("a question that needs no tool", () => {
   });
 
   it("refuses a question that is empty or too long, or a full conversation, before anything is sent", async () => {
+    const empty = start([{ script: "text" }], { question: " \n\t " });
+    expect(await empty.done).toEqual({ status: "not_started", reason: "empty", message: "Type a question for Claude first." });
+    expect(empty.model.send).not.toHaveBeenCalled();
+    expect(empty.events).toEqual([]);
+
     const tooLong = start([{ script: "text" }], { question: "x".repeat(1001) });
     expect(await tooLong.done).toEqual({ status: "not_started", reason: "too_long", message: "A question may be at most 1,000 characters, and this one has 1,001." });
     expect(tooLong.model.send).not.toHaveBeenCalled();
@@ -450,8 +455,18 @@ describe("stop reasons", () => {
     },
   });
 
+  const blankText = (message: Anthropic.Message) => {
+    for (const block of message.content) if (block.type === "text") block.text = " \n ";
+  };
+  const thinkingOnlyCutOff = (message: Anthropic.Message) => {
+    message.content = message.content.filter((block) => block.type === "thinking");
+    message.stop_reason = "max_tokens";
+  };
+
   it.each<[string, Reply, Partial<Record<string, unknown>>]>([
     ["stop_sequence", withStop("text", "stop_sequence"), { status: "answered", committed: true }],
+    ["end_turn whose only text is whitespace", { script: "text", edit: blankText }, { status: "empty", committed: false }],
+    ["max_tokens with only a thinking block", { script: "thinking_text", edit: thinkingOnlyCutOff }, { status: "truncated", committed: false }],
     ["max_tokens with text only", { script: "max_tokens_text" }, { status: "truncated", committed: true }],
     ["max_tokens with a trailing tool_use", { script: "max_tokens_tool_use" }, { status: "truncated", committed: false }],
     ["refusal", { script: "refusal" }, { status: "refused", committed: false, texts: [] }],
@@ -676,6 +691,28 @@ describe("retryLastRequest", () => {
 
     expect(await failed.retryLastRequest()).toMatchObject({ status: "request_limit", committed: false });
     expect(h.raw).toHaveLength(MAX_MODEL_REQUESTS);
+  });
+
+  it("is refused when the resend would be the last request, which an identical resend could not send with tool_choice none and the closing text", async () => {
+    const replies: Reply[] = [...Array.from({ length: MAX_MODEL_REQUESTS - 2 }, toolUseSearch), { error: () => errors.overloaded529 }, { script: "text" }];
+    const h = start(replies);
+    const failed = failedOf(await h.done);
+    expect(failed).toMatchObject({ canRetry: false, usage: { requests: MAX_MODEL_REQUESTS - 1 }, failure: { code: "overloaded", retryable: true } });
+    expect(h.wire.at(-1)!.tool_choice).toEqual({ type: "auto" });
+    expect(json(h.wire.at(-1))).not.toContain(ASK_CLOSING_TEXT);
+
+    expect(await failed.retryLastRequest()).toBe(failed);
+    expect(h.raw).toHaveLength(MAX_MODEL_REQUESTS - 1);
+  });
+
+  it("still offers Try again one request earlier, and the resend is sent as the next request", async () => {
+    const replies: Reply[] = [...Array.from({ length: MAX_MODEL_REQUESTS - 3 }, toolUseSearch), { error: () => errors.overloaded529 }, { script: "text" }];
+    const h = start(replies);
+    const failed = failedOf(await h.done);
+    expect(failed).toMatchObject({ canRetry: true, usage: { requests: MAX_MODEL_REQUESTS - 2 } });
+
+    expect(await failed.retryLastRequest()).toMatchObject({ status: "answered", usage: { requests: MAX_MODEL_REQUESTS - 1 } });
+    expect(h.raw).toHaveLength(MAX_MODEL_REQUESTS - 1);
   });
 
   it("sends nothing for a failure resending cannot fix", async () => {

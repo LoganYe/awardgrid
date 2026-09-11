@@ -83,7 +83,7 @@ export const ASK_TOOLS: Anthropic.Tool[] = deepFreeze([
     name: SEARCH_AWARDS,
     strict: true,
     description:
-      "Reads award availability that seats.aero has cached, for every combination of origins and destinations over a date window. Accepts airport codes and metro codes (TYO means NRT and HND). Returns the cheapest rows by miles, each with an id for get_flights, the program, miles, seats, whether it is direct, the airlines and the age of the data in minutes. Pairs seats.aero does not monitor, and pairs that were not read in full, are listed separately: say so rather than reporting no availability for them. Uses up to 4 seats.aero calls, or none when this device already has the answer cached. A window longer than 92 days, more than 12 airport pairs, or a search too wide for the calls left is refused with a reason.",
+      "Reads award availability that seats.aero has cached, for every combination of origins and destinations over a date window. Accepts airport codes and metro codes (TYO means NRT and HND). Returns the cheapest rows by miles, each with an id for get_flights, the program, miles, seats, whether it is direct, the airlines and the age of the data in minutes. Pairs seats.aero does not monitor, and pairs that were not read in full, are listed separately: say so rather than reporting no availability for them. Uses up to 4 seats.aero calls, or none when this device already has the answer cached. A result read from this device's cache (from_cache true) cannot tell whether the pull that filled the cache was cut short, so it lists no pairs as not read in full. A window longer than 92 days, more than 12 airport pairs, or a search too wide for the calls left is refused with a reason.",
     input_schema: {
       type: "object",
       additionalProperties: false,
@@ -104,7 +104,7 @@ export const ASK_TOOLS: Anthropic.Tool[] = deepFreeze([
     name: GET_FLIGHTS,
     strict: true,
     description:
-      "Lists the itineraries behind one row that search_awards returned in this conversation: flight numbers, departure and arrival times in each airport's local time, stops, taxes and fees, remaining seats, and the program's booking link. Uses exactly one seats.aero call, or none when the same row and cabin were already looked up in this conversation. Only ids returned by search_awards in this conversation are accepted.",
+      "Lists the itineraries behind one row that search_awards returned in this conversation: flight numbers, departure and arrival times in each airport's local time, stops, taxes and fees, remaining seats, and the program's booking link. Uses exactly one seats.aero call, or none when the same row and cabin were already looked up in this conversation; either way the result gives how many minutes ago it was looked up. Only ids returned by search_awards in this conversation are accepted.",
     input_schema: {
       type: "object",
       additionalProperties: false,
@@ -126,7 +126,9 @@ const SearchInput = z.strictObject({
   cabins: z.array(Cabin),
   programs: z.array(SeatsProgram).nullable(),
   direct_only: z.boolean(),
-  max_miles: z.number().int().nullable(),
+  // Refused below 1, before any call: the filter runs locally after runFind (searchAwards), so a limit like -1 would
+  // still spend the pull's calls to return rows_total 0.
+  max_miles: z.number().int().min(1, "must be at least 1, or null for no limit").nullable(),
 });
 
 const FlightsInput = z.strictObject({ availability_id: z.string(), cabin: Cabin });
@@ -181,6 +183,8 @@ export interface FlightsLookup {
   cabin: Cabin;
   /** The program of the cached row the id belongs to, or null when this device no longer holds that row. */
   program: string | null;
+  /** ISO time the lookup came back, by the injected clock. A string, so a memo saved with the conversation still reports its real age_min in a later question. */
+  looked_up_at: string;
   booking_url: string | null;
   trips_total: number;
   trips: FlightTrip[];
@@ -270,7 +274,9 @@ export interface ToolRun {
 export interface ToolUsage {
   /** tool_use blocks handled, refused ones included, up to MAX_TOOL_CALLS. */
   toolCalls: number;
+  /** search_awards calls whose input passed validation, toward MAX_SEARCHES_PER_QUESTION. */
   searches: number;
+  /** get_flights calls whose input and id passed validation, memo hits included, toward MAX_FLIGHTS_PER_QUESTION. */
   flights: number;
   /** seats.aero requests this question's tools sent. */
   seatsCalls: number;
@@ -305,12 +311,15 @@ interface Attempt {
  * QUESTION_SEATS_CALL_CAP seats.aero calls. `state` is the conversation's and outlives it.
  *
  * Every tool_use block counts as a tool call once it is under that limit, whatever happens next, because each is a
- * step Claude spent; the per-tool counts likewise count every call past their own check. A block past a limit gets
- * limit_reached and does not run.
+ * step Claude spent. The per-tool counts are narrower: only a call whose input passed validation counts toward its
+ * tool's limit, so malformed input Claude can fix does not use up the searches or lookups the fix needs. A block past
+ * a limit gets limit_reached and does not run.
  */
 export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunner {
   const used: ToolUsage = { toolCalls: 0, searches: 0, flights: 0, seatsCalls: 0 };
   const secrets = [port.apiKey, ...(port.secrets ?? [])];
+  /** Mask first, then cap, as errors.ts:84 does, so the cut can never leave part of a key showing. */
+  const quote = (text: string): string => capQuote(scrubSecrets(text, secrets));
   const questionLeft = () => Math.max(0, QUESTION_SEATS_CALL_CAP - used.seatsCalls);
 
   const step = (tool: string, over: Partial<ToolStep> = {}): ToolStep => ({
@@ -420,10 +429,8 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
         question_calls_left: questionLeft(),
       });
     }
-    used.searches += 1;
-
     const parsed = SearchInput.safeParse(input);
-    if (!parsed.success) return refuse(toolUseId, base, "invalid_input", `The search could not be read: ${issuesText(parsed.error)}.`);
+    if (!parsed.success) return refuse(toolUseId, base, "invalid_input", `The search could not be read: ${quote(issuesText(parsed.error))}.`);
     const inp = parsed.data;
 
     // Metro codes expand before anything else, so a pair count and a cache scope are always about airports.
@@ -458,13 +465,15 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
       raw_text: "",
       language: "en",
     });
-    if (!checked.success) return refuse(toolUseId, base, "invalid_input", `The search could not be read: ${issuesText(checked.error)}.`);
+    if (!checked.success) return refuse(toolUseId, base, "invalid_input", `The search could not be read: ${quote(issuesText(checked.error))}.`);
     const query = checked.data;
     const s = { ...base, search: echo(query) };
 
     const now = port.now();
     const today = utcDayKey(now);
     if (query.date_to < today) return refuse(toolUseId, s, "invalid_input", `The dates are before today (${today}).`);
+    // Counted only here, once the input is a search that could run; every check after this one is about budget.
+    used.searches += 1;
 
     // Re-read now: a grid search or a watch may have spent calls since the last tool.
     const quotaRemaining = await port.quota.remaining(port.userId);
@@ -543,19 +552,20 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
         question_calls_left: questionLeft(),
       });
     }
-    used.flights += 1;
-
     const parsed = FlightsInput.safeParse(input);
-    if (!parsed.success) return refuse(toolUseId, base, "invalid_input", `The lookup could not be read: ${issuesText(parsed.error)}.`);
+    if (!parsed.success) return refuse(toolUseId, base, "invalid_input", `The lookup could not be read: ${quote(issuesText(parsed.error))}.`);
     const { availability_id: id, cabin } = parsed.data;
     if (!AVAILABILITY_ID.test(id) || !state.seenIds.has(id)) {
       return refuse(toolUseId, base, "unknown_id", "get_flights accepts only ids that search_awards returned in this conversation.");
     }
+    // Counted once the id is one this conversation returned, as a search counts once its input is valid; a memo hit counts too.
+    used.flights += 1;
 
     const key = flightsMemoKey(id, cabin);
     const earlier = state.flightsMemo.get(key);
     if (earlier) {
-      const payload = flightsPayload(earlier, { calls: 0, questionLeft: questionLeft(), todayLeft: await port.quota.remaining(port.userId) }, true);
+      // Aged by the clock now: the memo outlives the question, and ask.json outlives the session.
+      const payload = flightsPayload(earlier, { calls: 0, questionLeft: questionLeft(), todayLeft: await port.quota.remaining(port.userId) }, port.now(), true);
       return finish(toolUseId, { ...base, fromMemo: true, program: earlier.program }, payload, false);
     }
 
@@ -582,25 +592,29 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
     if (res === undefined) return seatsFailure(toolUseId, s, failure, guard, "lookup");
 
     const inCabin = res.trips.filter((t) => cabinLetter(t.cabin) === cabin).sort((a, b) => a.miles - b.miles || a.fees_cents - b.fees_cents);
+    const lookedUpAt = port.now();
     const lookup: FlightsLookup = {
       id,
       cabin,
       program,
+      looked_up_at: lookedUpAt.toISOString(),
       booking_url: res.booking_url,
       trips_total: inCabin.length,
       trips: inCabin.slice(0, FLIGHT_TRIPS_RETURNED).map(flightTrip),
     };
     state.flightsMemo.set(key, lookup);
     if (lookup.booking_url !== null) state.bookingUrls.add(lookup.booking_url);
-    const payload = flightsPayload(lookup, { calls: guard.sent(), questionLeft: questionLeft(), todayLeft: await port.quota.remaining(port.userId) }, false);
+    const payload = flightsPayload(lookup, { calls: guard.sent(), questionLeft: questionLeft(), todayLeft: await port.quota.remaining(port.userId) }, lookedUpAt, false);
     return finish(toolUseId, { ...s, calls: guard.sent() }, payload, false);
   }
 
   return {
     async run(block) {
-      const tool = String(block.name);
       const attempt: Attempt = { calls: 0 };
+      // Assigned inside the try, so even a name String() cannot convert resolves to tool_failed instead of rejecting.
+      let tool = "a tool";
       try {
+        tool = String(block.name);
         if (used.toolCalls >= MAX_TOOL_CALLS) {
           return refuse(block.id, step(tool), "limit_reached", `One question may make at most ${MAX_TOOL_CALLS} tool calls.`, {
             question_calls_left: questionLeft(),
@@ -625,13 +639,15 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
 // Helpers
 // ---------------------------------------------------------------------------
 
-function flightsPayload(lookup: FlightsLookup, spent: { calls: number; questionLeft: number; todayLeft: number }, fromMemo: boolean) {
+/** `now` ages the lookup: 0 for one just made, and its real age for a memo hit, however many questions ago it was made. */
+function flightsPayload(lookup: FlightsLookup, spent: { calls: number; questionLeft: number; todayLeft: number }, now: Date, fromMemo: boolean) {
   return {
     id: lookup.id,
     cabin: lookup.cabin,
     program: lookup.program,
     spent: { seats_aero_calls: spent.calls, question_calls_left: spent.questionLeft, today_calls_left: spent.todayLeft },
     ...(fromMemo ? { from_memo: true } : {}),
+    age_min: ageMinutes(lookup.looked_up_at, now),
     booking_url: lookup.booking_url,
     trips_total: lookup.trips_total,
     trips: lookup.trips,
@@ -676,7 +692,7 @@ function cabinLetter(name: string): Cabin | undefined {
   return CABIN_NAME_TO_LETTER[name as CabinName];
 }
 
-/** Whole minutes since the row was last seen, by the injected clock. A clock behind the data reads 0, never negative; an unreadable time reads null. */
+/** Whole minutes since `iso` (a row's last sighting, or a lookup's time), by the injected clock. A clock behind it reads 0, never negative; an unreadable time reads null. */
 function ageMinutes(iso: string, now: Date): number | null {
   const then = Date.parse(iso);
   if (!Number.isFinite(then)) return null;
@@ -748,19 +764,34 @@ function unique<T>(items: readonly T[]): T[] {
   return items.filter((item, i) => items.indexOf(item) === i);
 }
 
+/** zod's issues as one line, not yet quoted: the runner's quote() masks it before it is capped. */
 function issuesText(error: z.ZodError): string {
-  return quote(error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; "));
+  return error.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; ");
 }
 
+/** Said in place of an error's own words when it has none that can be read. */
+const UNREADABLE_ERROR = "the error could not be read as text";
+
+/**
+ * What an error says. Total, because run() promises never to reject and calls this inside its own catch: a thrown
+ * value String() cannot convert (Object.create(null) has no toString), or one that reads as nothing but whitespace,
+ * gets a fixed sentence instead of a second throw or an empty quote.
+ */
 function errorText(err: unknown): string {
-  if (err instanceof Error) return err.message || err.name;
-  return String(err);
+  try {
+    const text: unknown = err instanceof Error ? err.message || err.name : String(err);
+    if (typeof text === "string" && text.trim().length > 0) return text;
+  } catch {
+    // Reading or converting the thrown value threw; the fixed sentence stands in for it.
+  }
+  return UNREADABLE_ERROR;
 }
 
 /** Longest text quoted from an error into one result, in code points, as errors.ts caps Anthropic's and the OS's words. */
 const QUOTE_CAP = 300;
 
-function quote(text: string): string {
+/** Cut by code points, so an astral character is never split. Only the runner's quote() calls it, on masked text. */
+function capQuote(text: string): string {
   const chars = Array.from(text.trim());
   return chars.length <= QUOTE_CAP ? chars.join("") : `${chars.slice(0, QUOTE_CAP - 1).join("")}…`;
 }

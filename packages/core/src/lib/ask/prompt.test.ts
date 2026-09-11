@@ -3,8 +3,8 @@
  *
  * The system prompt sits near the front of every request's cache prefix, so these tests pin that it is the same
  * bytes whenever and however it is loaded, and that nothing which varies (a date, a search, a key) ever gets into
- * it. The user turn is where those things go, and its exact text is pinned against the design's example. The clock
- * is always injected.
+ * it. The user turn is where those things go, and its exact text is pinned against the design's example, with the
+ * one phrase prompt.ts corrects (coverage also depends on programs and direct_only). The clock is always injected.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { promisesFollowUp } from "./guard";
@@ -88,7 +88,7 @@ describe("buildUserTurn", () => {
           text:
             "Context from awardgrid, not written by the person:\n" +
             "Today's date is 2026-09-10 (UTC).\n" +
-            'The person\'s last search on the Search screen, which they chose to include: {"origins":["SEA"],"destinations":["NRT","HND"],"date_from":"2026-10-01","date_to":"2026-10-30","cabins":["J"],"programs":null,"direct_only":false}. search_awards with the same airports, dates and cabins reads it from this device\'s cache while it is fresh.',
+            'The person\'s last search on the Search screen, which they chose to include: {"origins":["SEA"],"destinations":["NRT","HND"],"date_from":"2026-10-01","date_to":"2026-10-30","cabins":["J"],"programs":null,"direct_only":false}. search_awards with the same search reads it from this device\'s cache while it is fresh.',
         },
         { type: "text", text: QUESTION },
       ],

@@ -90,6 +90,11 @@ export interface UserTurnOptions {
 /**
  * The user message that opens a question: a context block written by awardgrid, then the trimmed question, then
  * the closing text when asked for. Built fresh on every call.
+ *
+ * The search line differs from design §3.4 in one phrase. The design says a search "with the same airports, dates
+ * and cabins" reads from the cache, but coverage is keyed on programs and direct_only too (coverage.ts
+ * askCacheScope), so an all-flights search after a direct-only grid search is not read from it. "The same search"
+ * is exact.
  */
 export function buildUserTurn(opts: UserTurnOptions): Anthropic.MessageParam {
   const checked = checkQuestion(opts.question);
@@ -97,7 +102,7 @@ export function buildUserTurn(opts: UserTurnOptions): Anthropic.MessageParam {
   const searchLine =
     opts.lastSearch === null
       ? "The person did not include a search."
-      : `The person's last search on the Search screen, which they chose to include: ${searchContextJson(opts.lastSearch)}. search_awards with the same airports, dates and cabins reads it from this device's cache while it is fresh.`;
+      : `The person's last search on the Search screen, which they chose to include: ${searchContextJson(opts.lastSearch)}. search_awards with the same search reads it from this device's cache while it is fresh.`;
   const context = ["Context from awardgrid, not written by the person:", `Today's date is ${utcDayKey(opts.today)} (UTC).`, searchLine].join("\n");
   return {
     role: "user",

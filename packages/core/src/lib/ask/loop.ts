@@ -17,7 +17,9 @@
  *      question bound, ASK_QUESTION_LIMIT_MS, only stops a new step from starting: a request already sent may be
  *      billed, and is never abandoned for it.
  *   4. NOTHING IS RETRIED UNASKED. A retryable failure offers retryLastRequest, which resends the identical
- *      parameters when the person asks, and counts toward MAX_MODEL_REQUESTS like any request.
+ *      parameters when the person asks, and counts toward MAX_MODEL_REQUESTS like any request. It is not offered
+ *      when the resend would be the question's last request, which must go out with tool_choice none and the
+ *      closing text that an identical resend of an earlier request does not carry.
  *
  * Everything the loop needs from the app arrives in `deps`: the clock, timers, whether the app is hidden, and the
  * watch runner's idle signal. Nothing here reads a global, so loop.test.ts drives it with fake timers.
@@ -112,12 +114,17 @@ export type AskOutcome =
   | (Ended & {
       status: "failed";
       failure: QuestionFailure;
-      /** failure.retryable, and a request is left in this question's MAX_MODEL_REQUESTS. */
+      /**
+       * failure.retryable, a request is left in this question's MAX_MODEL_REQUESTS, and the resend would not be the
+       * last of them. The last request goes out with tool_choice none and the closing text (design §3.10); an
+       * identical resend of an earlier request carries neither, and could spend the final request on a tool call
+       * that never runs.
+       */
       canRetry: boolean;
       /**
-       * Resend the identical last request and carry on from it. Sends nothing when the failure is not retryable
-       * (resolves with this same outcome) or when every request is used (resolves "request_limit"). One call per
-       * failure; the outcome it resolves with offers its own.
+       * Resend the identical last request and carry on from it. When every request is used it sends nothing and
+       * resolves "request_limit"; when canRetry is false for any other reason it sends nothing and resolves with
+       * this same outcome. One call per failure; the outcome it resolves with offers its own.
        */
       retryLastRequest(): Promise<AskOutcome>;
     })
@@ -204,9 +211,11 @@ export async function runQuestion(opts: RunQuestionOptions): Promise<AskOutcome>
   });
 
   const failed = (failure: QuestionFailure): AskOutcome => {
-    const canRetry = failure.retryable && usage.requests < MAX_MODEL_REQUESTS;
-    const failedAtMs = deps.now().getTime();
     const resend = lastParams;
+    // Identical params cannot become the closing request params(true) builds, so that resend is refused instead.
+    const resendWouldBeLast = usage.requests + 1 >= MAX_MODEL_REQUESTS && resend?.tool_choice?.type !== "none";
+    const canRetry = failure.retryable && usage.requests < MAX_MODEL_REQUESTS && !resendWouldBeLast;
+    const failedAtMs = deps.now().getTime();
     let used = false;
     const outcome: AskOutcome = {
       status: "failed",
@@ -218,6 +227,7 @@ export async function runQuestion(opts: RunQuestionOptions): Promise<AskOutcome>
         used = true;
         if (!failure.retryable || resend === null) return outcome;
         if (usage.requests >= MAX_MODEL_REQUESTS) return finish({ status: "request_limit", ...snapshot() });
+        if (!canRetry) return outcome;
         if (conversation.committed.length !== history.length) {
           throw new Error("The conversation has moved on since this question failed, so its last request cannot be resent.");
         }

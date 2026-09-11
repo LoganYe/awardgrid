@@ -36,7 +36,10 @@ describe("askLinkHref", () => {
       "//evil.invalid",
       "javascript:alert(1)",
       "data:text/html,<script>",
+      // A backslash is "/" to the URL parser: the web lane's three backslash cases (src/components/ask/markdown.test.ts:16-18).
       "/\\evil.invalid",
+      "/\\/evil.invalid",
+      "\\\\evil.invalid",
       "https://evil.invalid\\@www.aa.com/",
       "mailto:a@b.c",
       "https://www.aa.com/a b",

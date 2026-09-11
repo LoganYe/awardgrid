@@ -92,21 +92,21 @@ describe("seatsAllowance", () => {
 });
 
 describe("planSearchSpend", () => {
-  it("25 left today is quota_reserve, even for a search the cache could answer", () => {
-    for (const covered of [false, true]) {
-      expect(planSearchSpend({ covered, estimate: 1, allowance: 12, quotaRemaining: 25 })).toEqual({
+  it("25 left today is quota_reserve for a search that needs calls; one the cache answers still runs, guarded at 0", () => {
+    for (const quotaRemaining of [25, 3, 0]) {
+      expect(planSearchSpend({ covered: false, estimate: 1, allowance: 12, quotaRemaining })).toEqual({
         run: false,
         refuse: "quota_reserve",
-        quotaRemaining: 25,
+        quotaRemaining,
         estimate: null,
       });
+      expect(planSearchSpend({ covered: true, estimate: 1, allowance: 12, quotaRemaining })).toEqual({ run: true, maxPages: 1, maxRoutesCalls: 0, guard: 0 });
     }
   });
 
-  it("a question with no calls left is limit_reached, even for a search the cache could answer", () => {
-    for (const covered of [false, true]) {
-      expect(planSearchSpend({ covered, estimate: 1, allowance: 0, quotaRemaining: 950 })).toEqual({ run: false, refuse: "limit_reached" });
-    }
+  it("a question with no calls left is limit_reached for a search that needs calls; one the cache answers still runs, guarded at 0", () => {
+    expect(planSearchSpend({ covered: false, estimate: 1, allowance: 0, quotaRemaining: 950 })).toEqual({ run: false, refuse: "limit_reached" });
+    expect(planSearchSpend({ covered: true, estimate: 1, allowance: 0, quotaRemaining: 950 })).toEqual({ run: true, maxPages: 1, maxRoutesCalls: 0, guard: 0 });
   });
 
   it("a covered search runs with one page and no Get Routes call, guarded at the allowance, however wide it is", () => {
@@ -221,17 +221,24 @@ describe("planSearchSpend", () => {
           for (let estimate = 1; estimate <= 6; estimate++) {
             const plan = planSearchSpend({ covered, estimate, allowance, quotaRemaining });
             if (!plan.run) {
+              // A read the cache answers costs no call, so no limit refuses it.
+              expect(covered).toBe(false);
               refusals += 1;
               continue;
             }
             runs += 1;
             const ceiling = Math.min(allowance, quotaRemaining - ASK_QUOTA_RESERVE);
+            if (covered) {
+              // One page at most, no Get Routes call, and a guard at what is left, never below 0.
+              expect(plan).toEqual({ run: true, maxPages: 1, maxRoutesCalls: 0, guard: Math.max(0, ceiling) });
+              continue;
+            }
             expect(plan.maxPages + plan.maxRoutesCalls).toBeLessThanOrEqual(plan.guard);
             expect(plan.guard).toBeLessThanOrEqual(ceiling);
             expect(plan.maxPages).toBeGreaterThanOrEqual(1);
             expect(plan.maxPages).toBeLessThanOrEqual(SEARCH_PAGE_CAP);
             expect(plan.maxRoutesCalls).toBeLessThanOrEqual(SEARCH_ROUTES_CAP);
-            if (!covered) expect(plan.maxPages).toBeGreaterThanOrEqual(estimate);
+            expect(plan.maxPages).toBeGreaterThanOrEqual(estimate);
           }
         }
       }

@@ -34,7 +34,7 @@ export const CONVERSATION_FILE_VERSION = 1;
 /**
  * How a question ended (design §3.6, §6.4).
  *
- *   answered, empty, truncated  a response ended the question; only these can be committed
+ *   answered, empty, truncated  a response ended the question; only one of these with text can be committed
  *   refused                      stop_reason "refusal"
  *   too_long                     stop_reason "model_context_window_exceeded"
  *   stopped                      the person pressed Stop
@@ -137,7 +137,7 @@ export function newConversation(opts: { id: string; now: () => Date }): Conversa
 
 /** How a question ended, as far as the history is concerned: with a response, or without one that may be kept. */
 export type QuestionEnd =
-  | { ended: "response"; stopReason: Anthropic.StopReason | null; content: ReadonlyArray<{ type: string }> }
+  | { ended: "response"; stopReason: Anthropic.StopReason | null; content: ReadonlyArray<{ type: string; text?: unknown }> }
   | { ended: "stopped" | "failed" | "deadline" | "request_limit" };
 
 /**
@@ -145,15 +145,22 @@ export type QuestionEnd =
  * no tool_use block. A tool_use with no tool_result after it would make the next request invalid, and a refusal's
  * partial output is to be discarded (claude-api shared/model-migration.md, "refusal").
  *
- * One narrowing of the design's table: a response with no content blocks at all is not committed. It adds nothing
- * Claude could read back, and the Messages API documentation says nothing about accepting an assistant turn with
- * empty content in the middle of a history, so committing one would risk every later question for no gain. An
- * answer with only a thinking block is not empty in this sense, and is committed.
+ * One narrowing of the design's table: the response must also carry at least one text block with more than
+ * whitespace in it, the test loop.ts uses to tell an answer from an empty one. A response with no content, only
+ * blank text or only a thinking block adds nothing Claude could read back as an answer, and the Messages API
+ * documentation says nothing about accepting such an assistant turn in the middle of a history, so committing one
+ * would risk every later question for no gain. The question still ends as empty or truncated; only the history
+ * leaves it out.
  */
 export function shouldCommit(end: QuestionEnd): boolean {
   if (end.ended !== "response") return false;
-  if (end.content.length === 0 || end.content.some((block) => block.type === "tool_use")) return false;
+  if (end.content.some((block) => block.type === "tool_use") || !end.content.some(isAnswerText)) return false;
   return end.stopReason === "end_turn" || end.stopReason === "stop_sequence" || end.stopReason === "max_tokens";
+}
+
+/** A text block with more than whitespace in it: the blocks loop.ts textsOf shows as an answer. */
+function isAnswerText(block: { type: string; text?: unknown }): boolean {
+  return block.type === "text" && typeof block.text === "string" && block.text.trim().length > 0;
 }
 
 /**
@@ -352,6 +359,7 @@ const FlightsLookupFile = z.looseObject({
   id: z.string(),
   cabin: Cabin,
   program: z.string().nullable(),
+  looked_up_at: z.string(),
   booking_url: z.string().nullable(),
   trips_total: Count,
   trips: z.array(z.looseObject({})),

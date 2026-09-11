@@ -32,6 +32,45 @@ describe("an answer that promises a follow-up is marked", () => {
   ])("also catches %j", (text) => {
     expect(promisesFollowUp(text)).toBe(true);
   });
+
+  it.each([
+    // Offers the design's list let through.
+    "Would you like me to check again later?",
+    "Do you want me to look again tomorrow?",
+    "I will keep you posted.",
+    "I'll keep you updated",
+    "I'd be happy to monitor this route.",
+    "Would you like me to monitor this route?",
+    "I'll search again tomorrow and tell you what changed.",
+    "I can check again in a few days.",
+    "我稍后再帮你查",
+  ])("catches the other ways a model offers it: %j", (text) => {
+    expect(promisesFollowUp(text)).toBe(true);
+  });
+});
+
+describe("searching again inside the conversation, and honest refusals, are not promises", () => {
+  it.each([
+    // The person can ask for these in the same conversation, so the note would be wrong under them.
+    "Would you like me to search again with a wider date range?",
+    "If you'd like me to search again, just ask another question.",
+    "Let me know and I'll search again.",
+    "I can look again at nearby airports such as EWR.",
+    "No business seats on those dates. I'll search again with first class included.",
+    "The app will search again only when you ask.",
+    // Words the patterns contain, used for something else.
+    "I'd be happy to track down the exact flight numbers.",
+    "I'm glad to alert you to one caveat: these fees are estimates.",
+    // Refusals with the negation a word before the verb.
+    "我不会稍后再帮你查",
+    "awardgrid 不会稍后再帮你查",
+    "我没办法稍后再帮你查",
+    "我无法在稍后再帮你查",
+    "我不会通知你",
+    "我不会持续关注这条航线",
+  ])("allows %j", (text) => {
+    expect(promisesFollowUp(text)).toBe(false);
+  });
 });
 
 describe("an ordinary or honest answer is left alone", () => {
@@ -53,6 +92,11 @@ describe("an ordinary or honest answer is left alone", () => {
     "我无法通知你",
     "The cheapest business seats are on Alaska: 75,000 miles from SEA to NRT.",
     "",
+    // Near the widened patterns, and still ordinary or honest.
+    "Would you like me to look up the flights?",
+    "I'd be happy to explain how Alaska's partner awards work.",
+    "你可以稍后再查看航空公司官网",
+    "awardgrid 无法稍后再帮你查",
   ])("also allows %j", (text) => {
     expect(promisesFollowUp(text)).toBe(false);
   });

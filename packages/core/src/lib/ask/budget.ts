@@ -12,12 +12,13 @@
  *      spend the SUM, so planSearchSpend keeps maxPages + maxRoutesCalls within the allowance, never maxPages
  *      alone. A plan that capped only the pages could overshoot by the Get Routes call.
  *
- * The guard backs that arithmetic at the transport, and the plan is built so that it never trips. When it does
- * trip, two things follow from SeatsAeroClient rather than from this file. The refusal reaches runFind wrapped as
- * a SeatsAeroNetworkError (client.ts:326-330), so `refused()` is how a caller tells the two apart. And the client
- * still reports the refused request to its call listener (client.ts:349-352), so runFind charges the local quota
- * for a request that never left (find.ts:314-316, :382-383). That errs toward spending less, which is why the
- * guard is the backstop and not the plan.
+ * The guard backs that arithmetic at the transport, and the plan is built so that it never trips, save in one race:
+ * a search the cache covered, planned with no call left to spend, whose coverage expires before runFind reads it
+ * (planSearchSpend, step 1). When it does trip, two things follow from SeatsAeroClient rather than from this file.
+ * The refusal reaches runFind wrapped as a SeatsAeroNetworkError (client.ts:326-330), so `refused()` is how a caller
+ * tells the two apart. And the client still reports the refused request to its call listener (client.ts:349-352), so
+ * runFind charges the local quota for a request that never left (find.ts:314-316, :382-383). That errs toward
+ * spending less, which is why the guard is the backstop and not the plan.
  */
 import { ASK_QUOTA_RESERVE, QUESTION_SEATS_CALL_CAP, SEARCH_PAGE_CAP, SEARCH_ROUTES_CAP } from "./limits";
 
@@ -72,10 +73,13 @@ export interface PlanSearchSpendOptions {
 /**
  * The spend plan for one search_awards call, in the order the checks bite:
  *
- *   1. Nothing above the reserve is left → quota_reserve, even for a search the cache could answer.
- *   2. The question has no calls left → limit_reached.
- *   3. Covered → maxPages 1, maxRoutesCalls 0, guarded at the allowance. runFind then spends nothing; the one page
- *      only matters if the coverage expired between the check and the run, and it still fits the allowance.
+ *   1. Covered → maxPages 1, maxRoutesCalls 0, guarded at the allowance, or at 0 when nothing is left. runFind
+ *      answers from the cache and sends nothing (find.ts:280-303), so neither the reserve nor the question's limit
+ *      is a reason to refuse a read that costs no call. The one page only matters if the coverage expired between
+ *      the check and the run: the guard then lets out at most what is left, and with nothing left it refuses the
+ *      request, which the runner reports as limit_reached (tools.ts seatsFailure).
+ *   2. Nothing above the reserve is left → quota_reserve.
+ *   3. The question has no calls left → limit_reached.
  *   4. The estimate reaches into the reserve → quota_reserve.
  *   5. maxPages = min(SEARCH_PAGE_CAP, allowance). Fewer pages than the estimate → too_wide: a pull cut short is
  *      still recorded as full coverage (find.ts:331-335), so a search is refused rather than truncated by design.
@@ -84,11 +88,11 @@ export interface PlanSearchSpendOptions {
  */
 export function planSearchSpend(opts: PlanSearchSpendOptions): SearchSpendPlan {
   const reserveLeft = opts.quotaRemaining - ASK_QUOTA_RESERVE;
-  if (reserveLeft < 1) return { run: false, refuse: "quota_reserve", quotaRemaining: opts.quotaRemaining, estimate: null };
   // An allowance computed from an older quota read could exceed what is above the reserve now; the reserve wins.
   const allowance = Math.min(opts.allowance, reserveLeft);
+  if (opts.covered) return { run: true, maxPages: 1, maxRoutesCalls: 0, guard: Math.max(0, allowance) };
+  if (reserveLeft < 1) return { run: false, refuse: "quota_reserve", quotaRemaining: opts.quotaRemaining, estimate: null };
   if (allowance < 1) return { run: false, refuse: "limit_reached" };
-  if (opts.covered) return { run: true, maxPages: 1, maxRoutesCalls: 0, guard: allowance };
   if (reserveLeft < opts.estimate) {
     return { run: false, refuse: "quota_reserve", quotaRemaining: opts.quotaRemaining, estimate: opts.estimate };
   }

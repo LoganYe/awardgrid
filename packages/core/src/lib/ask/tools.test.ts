@@ -16,6 +16,7 @@ import { InMemoryQuotaStore, Quota, QuotaExceededError } from "../seatsaero/quot
 import { RoutesCatalog } from "../seatsaero/routes";
 import { SEATS_SOURCES, type Route, type SearchResponse, type Trip, type TripsResponse } from "../seatsaero/types";
 import { fakeFetch, jsonResponse, loadFixture, textResponse, type FakeHandler } from "../../../test/fixtures/seatsaero/helpers";
+import { newConversation, parseConversation, serializeConversation } from "./conversation";
 import { ASK_TOOLS, GET_FLIGHTS, SEARCH_AWARDS, createToolRunner, type FlightTrip, type SeatsPort, type ToolRun, type ToolRunState } from "./tools";
 
 vi.mock("../seatsaero/find", async (importOriginal) => {
@@ -70,6 +71,7 @@ interface FlightsBody {
   program: string | null;
   spent: { seats_aero_calls: number; question_calls_left: number; today_calls_left: number };
   from_memo?: true;
+  age_min: number | null;
   booking_url: string | null;
   trips_total: number;
   trips: FlightTrip[];
@@ -235,6 +237,25 @@ describe("ASK_TOOLS", () => {
     expect(flights.cabin.enum).toEqual(Cabin.options);
   });
 
+  it("describes both tools in the design's words (§4.1, §4.2), plus what a cache read cannot tell and how old a lookup is", () => {
+    const designSearch =
+      "Reads award availability that seats.aero has cached, for every combination of origins and destinations over a date window. Accepts airport codes and metro codes (TYO means NRT and HND). Returns the cheapest rows by miles, each with an id for get_flights, the program, miles, seats, whether it is direct, the airlines and the age of the data in minutes. Pairs seats.aero does not monitor, and pairs that were not read in full, are listed separately: say so rather than reporting no availability for them. Uses up to 4 seats.aero calls, or none when this device already has the answer cached. A window longer than 92 days, more than 12 airport pairs, or a search too wide for the calls left is refused with a reason.";
+    const designFlights =
+      "Lists the itineraries behind one row that search_awards returned in this conversation: flight numbers, departure and arrival times in each airport's local time, stops, taxes and fees, remaining seats, and the program's booking link. Uses exactly one seats.aero call, or none when the same row and cabin were already looked up in this conversation. Only ids returned by search_awards in this conversation are accepted.";
+    // A cache hit carries no notices (find.ts:280-303) and coverage keeps no record of a pull cut short (find.ts:332),
+    // so a result from cache has nothing to list as not read in full; "search_awards results" shows it happening.
+    const cacheRead =
+      "A result read from this device's cache (from_cache true) cannot tell whether the pull that filled the cache was cut short, so it lists no pairs as not read in full.";
+    const search = designSearch.replace("already has the answer cached. ", `already has the answer cached. ${cacheRead} `);
+    const flights = designFlights.replace(
+      "already looked up in this conversation. ",
+      "already looked up in this conversation; either way the result gives how many minutes ago it was looked up. ",
+    );
+    expect(search).not.toBe(designSearch);
+    expect(flights).not.toBe(designFlights);
+    expect(ASK_TOOLS.map((tool) => tool.description)).toEqual([search, flights]);
+  });
+
   it("serializes byte-identically when built again, and cannot be changed in place", async () => {
     const bytes = JSON.stringify(ASK_TOOLS);
     vi.resetModules();
@@ -277,6 +298,33 @@ describe("the runner's results", () => {
     const run = await h.call(SEARCH_AWARDS, searchInput());
     expect(content<ErrorBody>(run)).toEqual({ error: "tool_failed", message: "awardgrid could not run search_awards: coverage store unavailable.", seats_aero_calls: 0 });
     expect(run.step).toMatchObject({ tool: SEARCH_AWARDS, outcome: "tool_failed", calls: 0 });
+  });
+
+  it("never rejects, even when a store throws a value that cannot be turned into text", async () => {
+    class OpaqueCoverage extends InMemoryAvailabilityCache {
+      override async getCoverage(): Promise<never> {
+        // No prototype, so no toString: String() throws on it.
+        throw Object.create(null);
+      }
+    }
+    const h = await harness({ cache: new OpaqueCoverage() });
+    const run = await h.call(SEARCH_AWARDS, searchInput());
+    expect(content<ErrorBody>(run)).toEqual({ error: "tool_failed", message: "awardgrid could not run search_awards: the error could not be read as text.", seats_aero_calls: 0 });
+    expect(run.step).toMatchObject({ tool: SEARCH_AWARDS, outcome: "tool_failed", calls: 0 });
+  });
+
+  it("masks a key before it caps the error it quotes, so a key the cap would cut through never shows in part", async () => {
+    // 285 characters, then the Anthropic key: a cap at 300 before masking would keep the key's first 14 characters.
+    const words = "x".repeat(285);
+    class LeakyCoverage extends InMemoryAvailabilityCache {
+      override async getCoverage(): Promise<never> {
+        throw new Error(`${words}${ANTHROPIC_KEY}`);
+      }
+    }
+    const h = await harness({ cache: new LeakyCoverage() });
+    const run = await h.call(SEARCH_AWARDS, searchInput());
+    expect(content<ErrorBody>(run)).toEqual({ error: "tool_failed", message: `awardgrid could not run search_awards: ${words}••••.`, seats_aero_calls: 0 });
+    expect(run.result.content).not.toContain(ANTHROPIC_KEY.slice(0, 6));
   });
 
   it("an unknown tool gets unknown_tool, counts as a tool call, and spends nothing", async () => {
@@ -327,6 +375,9 @@ describe("search_awards refuses before spending anything", () => {
     { name: "a cabin letter that does not exist", input: searchInput({ cabins: ["Z"] }), code: "invalid_input", message: /^The search could not be read: cabins\.0: / },
     { name: "a property the schema does not declare", input: { ...searchInput(), include_filtered: true }, code: "invalid_input", message: /include_filtered/ },
     { name: "text instead of an input object", input: "SFO to Tokyo in business", code: "invalid_input", message: /^The search could not be read: / },
+    // The filter runs after the pull, so a limit no row can meet would otherwise spend calls to return nothing.
+    { name: "max_miles 0", input: searchInput({ max_miles: 0 }), code: "invalid_input", message: "The search could not be read: max_miles: must be at least 1, or null for no limit." },
+    { name: "a negative max_miles", input: searchInput({ max_miles: -1 }), code: "invalid_input", message: "The search could not be read: max_miles: must be at least 1, or null for no limit." },
   ])("$name: $code", async ({ input, code, message }) => {
     const h = await harness();
     const run = await h.call(SEARCH_AWARDS, input);
@@ -339,6 +390,8 @@ describe("search_awards refuses before spending anything", () => {
     expect(run.step).toMatchObject({ outcome: code, calls: 0 });
     expect(await spent(h)).toEqual({ fetches: 0, used: 0, persists: 0 });
     expect(runFind).not.toHaveBeenCalled();
+    // A tool call Claude spent, but not one of the question's 4 searches: the fix it needs is still allowed to run.
+    expect(h.runner.usage()).toEqual({ toolCalls: 1, searches: 0, flights: 0, seatsCalls: 0 });
   });
 
   it("upper-cases and expands metro codes, once each, before the search goes out", async () => {
@@ -380,6 +433,44 @@ describe("search_awards spends within the question's budget", () => {
     expect(await spent(h)).toEqual(before);
     expect(run.step).toMatchObject({ outcome: "ok", calls: 0, fromCache: true });
     expect(vi.mocked(runFind).mock.calls.map(([o]) => [o.maxPages, o.maxRoutesCalls, o.ttlMinutes])).toEqual([[1, 0, 45]]);
+  });
+
+  it("with 25 calls left today, a search this device already holds still answers, with no call", async () => {
+    // The grid lane's own pull takes the day from 924 calls used to 925. The reserve refuses a search that needs a call, not a read.
+    const h = await harness({ used: 924 });
+    await seedCache(h, searchInput());
+    const before = await spent(h);
+    expect(before.used).toBe(925);
+
+    const run = await h.call(SEARCH_AWARDS, searchInput());
+    const res = content<SearchBody>(run);
+    expect(res.spent).toEqual({ seats_aero_calls: 0, from_cache: true, question_calls_left: 12, today_calls_left: 25 });
+    expect(res.rows.length).toBeGreaterThan(0);
+    expect(run.step).toMatchObject({ outcome: "ok", calls: 0, fromCache: true });
+    expect(await spent(h)).toEqual(before);
+    expect(vi.mocked(runFind).mock.calls.map(([o]) => [o.maxPages, o.maxRoutesCalls])).toEqual([[1, 0]]);
+  });
+
+  it("once the question has spent all 12 calls, a search this device already holds still answers, with no call", async () => {
+    const h = await harness({ handler: seatsAero({ search: endless }) });
+    const first = searchInput({ destinations: ["JFK", "NRT"] });
+    // 4 and 4 calls in two searches, 3 in three lookups, then 1 in a search held to the question's last call.
+    const a = content<SearchBody>(await h.call(SEARCH_AWARDS, first));
+    await h.call(SEARCH_AWARDS, searchInput({ destinations: ["LHR", "NRT"] }));
+    for (const row of a.rows.slice(0, 3)) await h.call(GET_FLIGHTS, { availability_id: row[0], cabin: "J" });
+    const last = content<SearchBody>(await h.call(SEARCH_AWARDS, searchInput({ origins: ["SEA"], destinations: ["JFK"] })));
+    expect(last.spent).toMatchObject({ seats_aero_calls: 1, question_calls_left: 0 });
+    expect(h.runner.usage()).toMatchObject({ searches: 3, flights: 3, seatsCalls: 12 });
+    const before = await spent(h);
+
+    // The first search again. Its pull was cut short but still recorded as coverage (find.ts:332), so it is covered.
+    const run = await h.call(SEARCH_AWARDS, first);
+    const res = content<SearchBody>(run);
+    expect(res.spent).toEqual({ seats_aero_calls: 0, from_cache: true, question_calls_left: 0, today_calls_left: 950 - before.used });
+    expect(res.rows.length).toBeGreaterThan(0);
+    expect(run.step).toMatchObject({ outcome: "ok", calls: 0, fromCache: true });
+    expect(vi.mocked(runFind).mock.lastCall?.[0]).toMatchObject({ maxPages: 1, maxRoutesCalls: 0 });
+    expect(await spent(h)).toEqual(before);
   });
 
   it("an uncovered search with the question's 12 calls left gets 3 pages and 1 Get Routes call, over a guarded transport", async () => {
@@ -587,6 +678,19 @@ describe("search_awards results", () => {
     expect(h.fetch.calls.map((c) => c.url.pathname)).toEqual(["/partnerapi/search", "/partnerapi/search", "/partnerapi/search", "/partnerapi/routes"]);
     expect(res.spent).toMatchObject({ seats_aero_calls: 4, from_cache: false, question_calls_left: 8 });
   });
+
+  it("the same pull read again from cache lists no pair as not read in full, which is why search_awards' description says a cache read cannot tell", async () => {
+    const h = await harness({ handler: seatsAero({ search: endless }) });
+    const args = searchInput({ destinations: ["JFK", "NRT"] });
+    expect(content<SearchBody>(await h.call(SEARCH_AWARDS, args)).not_read_in_full).toEqual(["SFO-NRT"]);
+
+    const again = content<SearchBody>(await h.call(SEARCH_AWARDS, args));
+    expect(again.spent).toMatchObject({ seats_aero_calls: 0, from_cache: true });
+    expect(again.not_read_in_full).toEqual([]);
+    expect(ASK_TOOLS[0]!.description).toContain(
+      "A result read from this device's cache (from_cache true) cannot tell whether the pull that filled the cache was cut short, so it lists no pairs as not read in full.",
+    );
+  });
 });
 
 describe("get_flights", () => {
@@ -598,6 +702,8 @@ describe("get_flights", () => {
       expect(content<ErrorBody>(run)).toEqual({ error: "unknown_id", message: "get_flights accepts only ids that search_awards returned in this conversation." });
     }
     expect(await spent(h)).toEqual(before);
+    // Three tool calls, none of them one of the question's 3 lookups.
+    expect(h.runner.usage()).toMatchObject({ toolCalls: 4, flights: 0 });
   });
 
   it("looks up a returned id with exactly one /trips call, charges one call, and writes the fee to that cabin's row only", async () => {
@@ -609,12 +715,13 @@ describe("get_flights", () => {
     expect(await h.quota.used(USER)).toBe(before.used + 1);
     expect(h.persist).toHaveBeenCalledTimes(1);
 
-    expect(Object.keys(res)).toEqual(["id", "cabin", "program", "spent", "booking_url", "trips_total", "trips", "notes"]);
+    expect(Object.keys(res)).toEqual(["id", "cabin", "program", "spent", "age_min", "booking_url", "trips_total", "trips", "notes"]);
     expect(res).toMatchObject({
       id: ID,
       cabin: "J",
       program: "american",
       spent: { seats_aero_calls: 1, question_calls_left: 10, today_calls_left: 950 - before.used - 1 },
+      age_min: 0,
       booking_url: PRIMARY_LINK,
       trips_total: 3,
       notes: ["Times are local to each airport.", "Fees with no currency code are assumed to be USD."],
@@ -658,7 +765,7 @@ describe("get_flights", () => {
     const run = await h.call(GET_FLIGHTS, { availability_id: ID, cabin: "J" });
     const again = content<FlightsBody>(run);
     expect(await spent(h)).toEqual(before);
-    expect(Object.keys(again)).toEqual(["id", "cabin", "program", "spent", "from_memo", "booking_url", "trips_total", "trips", "notes"]);
+    expect(Object.keys(again)).toEqual(["id", "cabin", "program", "spent", "from_memo", "age_min", "booking_url", "trips_total", "trips", "notes"]);
     expect(again).toEqual({ ...first, spent: { ...first.spent, seats_aero_calls: 0 }, from_memo: true });
     expect(run.step).toMatchObject({ outcome: "ok", calls: 0, fromMemo: true, program: "american" });
 
@@ -669,6 +776,26 @@ describe("get_flights", () => {
     );
     const later = await next.run({ id: "toolu_next", name: GET_FLIGHTS, input: { availability_id: ID, cabin: "J" } });
     expect(content<FlightsBody>(later)).toMatchObject({ trips: first.trips, from_memo: true, spent: { seats_aero_calls: 0, question_calls_left: 12 } });
+    expect(await spent(h)).toEqual(before);
+  });
+
+  it("says how many minutes ago the flights were looked up: 0 just after, and the real age when a later question reads the memo back from ask.json", async () => {
+    const { h } = await afterSearch();
+    const fresh = content<FlightsBody>(await h.call(GET_FLIGHTS, { availability_id: ID, cabin: "J" }));
+    expect(fresh.age_min).toBe(0);
+    const before = await spent(h);
+
+    // Saved with the conversation and read back, as the shell does between questions, then asked about 30 minutes on.
+    const saved = { ...newConversation({ id: "conv-tools", now: () => NOW }), seenIds: h.state.seenIds, bookingUrls: h.state.bookingUrls, flightsMemo: h.state.flightsMemo };
+    const restored = parseConversation(serializeConversation(saved));
+    expect(restored).not.toBeNull();
+    const later = () => new Date(NOW.getTime() + 30 * 60_000);
+    const next = createToolRunner(
+      { userId: USER, apiKey: SEATS_KEY, fetch: h.fetch, quota: h.quota, cache: h.cache, routes: new RoutesCatalog({ now: later }), now: later, persist: h.persist },
+      restored!,
+    );
+    const memo = content<FlightsBody>(await next.run({ id: "toolu_later", name: GET_FLIGHTS, input: { availability_id: ID, cabin: "J" } }));
+    expect(memo).toMatchObject({ from_memo: true, age_min: 30, spent: { seats_aero_calls: 0 }, booking_url: fresh.booking_url, trips: fresh.trips });
     expect(await spent(h)).toEqual(before);
   });
 
@@ -755,6 +882,40 @@ describe("the question's tool limits", () => {
     expect(content<ErrorBody>(fourth)).toMatchObject({ error: "limit_reached", message: "get_flights may run at most 3 times in one question." });
     expect(await h.quota.used(USER)).toBe(used);
     expect(used).toBe(before.used + 3);
+  });
+
+  it("only a search whose input passed validation counts toward the 4: after four refused as invalid, a valid one runs", async () => {
+    const h = await harness();
+    const invalid = [
+      searchInput({ destinations: ["TOKYO"] }),
+      searchInput({ origins: ["SFO", "LAX", "SEA", "PDX", "SAN"] }),
+      searchInput({ cabins: ["Z"] }),
+      searchInput({ date_from: "2023-08-01", date_to: "2023-08-09" }),
+    ];
+    const outcomes: string[] = [];
+    for (const input of invalid) outcomes.push((await h.call(SEARCH_AWARDS, input)).step.outcome);
+    expect(outcomes).toEqual(["invalid_place", "too_wide", "invalid_input", "invalid_input"]);
+
+    const valid = await h.call(SEARCH_AWARDS, searchInput());
+    expect(valid.step).toMatchObject({ outcome: "ok", calls: 1 });
+    expect(runFind).toHaveBeenCalledTimes(1);
+    expect(h.runner.usage()).toEqual({ toolCalls: 5, searches: 1, flights: 0, seatsCalls: 1 });
+  });
+
+  it("only a lookup of an id this conversation returned counts toward the 3: after three refused, a returned id is looked up", async () => {
+    const { h } = await afterSearch();
+    const refused = [
+      { availability_id: 7, cabin: "J" },
+      { availability_id: "../trips", cabin: "J" },
+      { availability_id: "never-returned", cabin: "J" },
+    ];
+    const outcomes: string[] = [];
+    for (const input of refused) outcomes.push((await h.call(GET_FLIGHTS, input)).step.outcome);
+    expect(outcomes).toEqual(["invalid_input", "unknown_id", "unknown_id"]);
+
+    const valid = await h.call(GET_FLIGHTS, { availability_id: ID, cabin: "J" });
+    expect(valid.step).toMatchObject({ outcome: "ok", calls: 1 });
+    expect(h.runner.usage()).toMatchObject({ toolCalls: 5, searches: 1, flights: 1 });
   });
 });
 
