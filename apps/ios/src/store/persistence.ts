@@ -88,6 +88,11 @@ export class SnapshotStore {
     this.#files = files;
   }
 
+  /** The files this store reads and writes. Ask's `ask.json` (./ask-store.ts) is kept beside them. */
+  get files(): FileStore {
+    return this.#files;
+  }
+
   async loadCache(): Promise<CacheSnapshot | null> {
     return parse<CacheSnapshot>(await this.#files.read(CACHE_FILE));
   }
