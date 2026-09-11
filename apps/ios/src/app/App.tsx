@@ -10,12 +10,20 @@
  * This is also where watches are checked: once when the app opens and again each time it returns
  * to the foreground, and at no other time. There is no background check (../watch/capabilities.ts).
  */
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, RouterProvider, createHashRouter } from "react-router";
 import { type AppServices, bootstrap } from "./bootstrap";
 import { SearchScreen } from "../screens/SearchScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { WatchesScreen } from "../screens/WatchesScreen";
+
+/**
+ * Probe build only (VITE_AG_PROBES=1, apps/ios/probes/run-probes.sh): the #/probes screen and the probe transport.
+ * In every other build this is the constant false, both imports are dropped, and no probe code or probe host is in
+ * the bundle, which R1 checks.
+ */
+const PROBES = import.meta.env.VITE_AG_PROBES === "1";
+const ProbesScreen = PROBES ? lazy(() => import("../probes/ProbesScreen").then((m) => ({ default: m.ProbesScreen }))) : null;
 
 /**
  * How many watches have changes the user has not looked at yet.
@@ -92,7 +100,9 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    bootstrap().then(setServices, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+    // A probe build sends seats.aero requests to the local mock (../probes/probe-transport.ts); any other build is unchanged.
+    const booted = PROBES ? import("../probes/probe-transport").then((m) => bootstrap(m.probeBootstrapOptions())) : bootstrap();
+    booted.then(setServices, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
   useEffect(() => {
@@ -128,6 +138,18 @@ export function App() {
                 { index: true, element: <SearchScreen /> },
                 { path: "watches", element: <WatchesScreen /> },
                 { path: "settings", element: <SettingsScreen /> },
+                ...(ProbesScreen
+                  ? [
+                      {
+                        path: "probes",
+                        element: (
+                          <Suspense fallback={null}>
+                            <ProbesScreen />
+                          </Suspense>
+                        ),
+                      },
+                    ]
+                  : []),
               ],
             },
           ])
