@@ -114,8 +114,8 @@ export const MAX_CONVERSATION_FILE_BYTES = 1_500_000;
  * The native idle timeout for Anthropic requests, ms. CapacitorHttp sends one URLRequest.timeoutInterval,
  * which Apple defines as idle time that resets whenever bytes arrive (apps/ios/src/native/http.ts cites
  * HttpRequestHandler.swift:203-205 and NSURLRequest.h). A streamed request keeps bytes arriving with pings
- * and deltas. Whether those bytes still reset the interval while CapacitorHttp buffers the body is
- * measured on the Simulator before a long answer depends on it. seats.aero requests keep their 20 s.
+ * and deltas. Those bytes still reset the interval while CapacitorHttp buffers the body: on the Simulator,
+ * T1's 18 s drip completed under a 5 s timeout (docs/PHASE5.md §1.3). seats.aero requests keep their 20 s.
  */
 export const ANTHROPIC_IDLE_TIMEOUT_MS = 90_000;
 

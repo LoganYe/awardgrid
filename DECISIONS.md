@@ -19,7 +19,7 @@ Every non-trivial choice, one line each, newest at the bottom. Format:
 - **Get Routes**: exists at `GET /partnerapi/routes?source=<program>` (doc page `get-routes-1.md`, not listed in llms.txt). Fetched lazily per (user, source) with a 7-day cache, only for sources actually queried and only when a pair returned nothing, so unmonitored pairs are labelled without spending 26 calls up front. _Why:_ §4.3 requires the label; quota is precious.
 - **Pagination**: pass the first response's `cursor` back AND increment `skip` by results received; dedupe by `ID`. _Why:_ Concepts page + toolkit skill agree; cursor alone is not enough.
 - **Structured outputs for the parser**: Messages API `output_config.format = { type: "json_schema", schema }` via `client.messages.parse` + `zodOutputFormat` (`@anthropic-ai/sdk/helpers/zod`). The older `output_format` field / beta header is deprecated and not used. _Why:_ current docs; no beta header needed.
-- **Model IDs**: parser default `claude-haiku-4-5-20251001` ($1/$5 per MTok — cheapest current model; supports structured outputs); ask lane default `claude-sonnet-5` ($2/$10 — current mid-tier). Overridable via `AWARDGRID_PARSER_MODEL` / `AWARDGRID_ASK_MODEL`. _Why:_ §2 rule (cheapest that passes the fixture suite; mid-tier for ask); Haiku 4.5 retires no sooner than 2026-10-15, so the env override matters.
+- **Model IDs**: parser default `claude-haiku-4-5-20251001` ($1/$5 per MTok — cheapest current model; supports structured outputs); ask lane default `claude-sonnet-5` ($2/$10 — current mid-tier). Overridable via `AWARDGRID_PARSER_MODEL` / `AWARDGRID_ASK_MODEL`. _Why:_ §2 rule (cheapest that passes the fixture suite; mid-tier for ask); Haiku 4.5 retires no sooner than 2026-10-15, so the env override matters. _Amended by Phase 5:_ the iOS app's Ask uses `claude-opus-5`, fixed; `claude-sonnet-5` stays the web lane's default. See "Phase 5 — Ask on the Messages API" at the end of this file.
 - **SQLite driver**: `better-sqlite3` (prebuilt binaries load under the arm64 Node; Drizzle first-class support; synchronous API suits a single-file DB). `node:sqlite` rejected because Drizzle has no driver for it and it is still experimental on Node 22. _Why:_ simplest option that passes tests.
 - **argon2**: `@node-rs/argon2` (argon2id, 64 MiB, t=3). Chosen over `argon2` because napi-rs ships prebuilt binaries for darwin-arm64 and linux glibc/musl with no build scripts, which matters for the Docker image and for this Rosetta-mixed dev Mac. _Why:_ both satisfy "argon2"; this one has zero build risk.
 - **Extra tables beyond §3**: `sessions` (cookie sessions), `telegram_link_tokens` (one-time deep-link tokens), `ask_usage` (per-user daily Ask spend for the $2 cap), `cache_coverage` (so a fresh *empty* result is also served from cache within the TTL), `routes_cache` (Get Routes per user/source). `users` gained `timezone` and `locale` (quiet hours need a zone; UI has a zh-CN toggle); `invite_codes` gained `intended_for`/`created_at`; `query_runs` gained `cells_json` (diff basis). _Why:_ each is required by a §5–§8 feature; §3's columns are otherwise unchanged.
@@ -193,7 +193,7 @@ Every non-trivial choice, one line each, newest at the bottom. Format:
 - **The selection outlives the cell drawer** (`use-drawer-state.ts` gains `lastCell`): the 6.4 slot made spec §3.6's second context pill unreachable. Cell selection WAS the cell-drawer slot, and `open_ask` replaces the slot, so `Selected: SEA→NRT Oct 15 F 80,000 Alaska` could never render and the cell was never sent to the ask lane. `lastCell` is set by `open_cell`, preserved by `open_ask`, and cleared by `close` and `close_cell` (a re-run invalidates the selection). A new **"Ask about this cell"** action in the cell drawer's footer is the walk that uses it. _Why:_ the pill, the `includeCell` toggle and `cellContextFromCell` were all dead code without it.
 - **The save dialog shows the scope it will save** (`queryScopeSummary` in `components/queries/format.ts`): from the cell drawer the dialog saved one route over a ±3-day window while describing itself as re-running "this exact query", and the only visible hint was a prefilled name carrying the cell's single date. It now renders one muted line — "Watches PVG to SEA, Sep 7–13, First and Business." — and a create-from-cell body (`saved.dialog.save_body_cell`). _Why:_ §1.3 — a button says exactly what happens, before it happens.
 - **Drawer a11y and lifecycle**: initial focus skips the bottom sheet's drag handle (it is the dismiss control, and landing on it put Enter one press from closing the sheet); Escape is ignored while an IME is composing (`nativeEvent.isComposing`, as `query-bar.tsx` already does for Enter), so a zh draft survives dismissing the candidate window; the opener is re-captured on `openerKey` so a second cell clicked in push mode gets focus back; the modal modes lock body scroll (scrollbar compensated) and the scrim contains overscroll; and a leaving panel is `inert` with `pointer-events: none` on both panel and scrim, so the 200 ms exit no longer advertises a modal dialog or eats the next click.
-- **Closing the Ask drawer aborts the stream.** `AskDrawer` is rendered unconditionally (`DrawerShell` returns null internally), so the unmount cleanup never ran on close and Esc / the scrim / the X left the SSE connection and the agent session running to completion on the operator's budget. An effect keyed on `open` now takes the same path as Stop. _Why:_ `api/ask/route.ts` says an abandoned tab cannot keep spending the daily budget; only Stop was keeping that promise.
+- **Closing the Ask drawer aborts the stream.** `AskDrawer` is rendered unconditionally (`DrawerShell` returns null internally), so the unmount cleanup never ran on close and Esc / the scrim / the X left the SSE connection and the agent session running to completion on the operator's budget. An effect keyed on `open` now takes the same path as Stop. _Why:_ `api/ask/route.ts` says an abandoned tab cannot keep spending the daily budget; only Stop was keeping that promise. _Amended by Phase 5:_ in the iOS app, leaving the Ask screen does not stop a question, because the person asking pays for it rather than an operator's shared budget; Stop sends nothing more. See "Phase 5 — Ask on the Messages API" at the end of this file.
 - **One live region, and it is not the transcript.** `aria-live` wrapped every turn, so each ~150 ms text delta re-announced a half-formed sentence and the restored history announced itself wholesale. The transcript is now a plain `aria-busy` region and a one-line `role="status"` announces "Thinking…" / "Answer complete." The failure line is always mounted (`sr-only` while empty) because a live region inserted together with its text is commonly announced by nothing, and at the cap the disabled prompt box is `aria-describedby` the cost meter so the reason and reset time are read with it.
 - **`safeHref` rejects backslashes.** `/\evil.invalid` passed the same-origin-path branch and resolves to `https://evil.invalid/` under WHATWG URL parsing, so a prompt-injected link could leave the origin. Backslash joined the rejected character class.
 - **Ask history ends at log-out** (`clearAskSession()`): `sessionStorage` survives the same-tab navigation to `/login`, so on a shared machine the next user opened Ask and read the previous one's questions and answers. Cleared on log-out and again on a successful log-in, together with the `?askdemo=1` switch.
@@ -209,7 +209,7 @@ Every non-trivial choice, one line each, newest at the bottom. Format:
 - **Cell drawer footer acts on the cheapest program** in the cell (the plan's wireframe); per-program deeplinks would need a selection affordance the spec does not describe → BACKLOG.
 - **Ask history is cleared on logout and login** (`sessionStorage`), along with the demo-stream switch. _Why:_ reviewer blocker — on a shared machine the next user saw the previous user's questions and answers.
 - **Model output can only link same-origin http(s)**: `safeHref` now resolves the URL and rejects backslashes, so `/\evil.com` cannot escape the origin.
-- **Closing the Ask drawer aborts the stream** (same path as Stop), so an abandoned tab cannot keep spending the daily budget.
+- **Closing the Ask drawer aborts the stream** (same path as Stop), so an abandoned tab cannot keep spending the daily budget. _Amended by Phase 5:_ in the iOS app, leaving the Ask screen does not stop a question, because the person asking pays for it rather than an operator's shared budget; Stop sends nothing more. See "Phase 5 — Ask on the Messages API" at the end of this file.
 - **Scripted Ask stream for e2e**: `src/app/api/ask/demo` is an additive, env-gated (`ASK_DEMO_STREAM=1`), keyless fixture route that replays a fixed SSE script; the drawer uses it only with `?askdemo=1`. _Why:_ the e2e app runs without an Anthropic key, and the streaming UI still has to be screenshotted and tested offline.
 - **No icons on drawer action buttons** (Send, Stop, Show flights, Open in …): text only, per §1.2. The drawer's close control keeps its ✕.
 
@@ -1420,3 +1420,395 @@ Full rationale in `packages/tokens/README.md`.
   "Test timed out in 15000ms" at 17.6 s while Xcode was building alongside it, even in isolation.
   With a 120 s budget it passes 26/26 in 13.7 s, and none of its inputs changed. That one test runs two
   full builds, so it now has a 60 s budget with the reason beside it rather than the repo-wide 15 s.
+
+### Phase 5 — Ask on the Messages API
+
+Measurements in `docs/PHASE5.md`: §1 is the transport (step 3), §2 is Ask end to end (step 7), and §2.12 is every
+scenario run again after three fixes. Every run was on the Simulator, against the local probe server and the
+seats.aero mock, with fake keys. Anthropic itself was reached only by A1b: one request in each of the three runs of
+step 3's probe mode, §1's two (§1.7) and §2.12's one, each with a key it rejects. Nothing here ran on a device or on the owner's keys. The phase is commits
+`1f5d763` to `af44e20`.
+
+- **Ask is rebuilt as a manual Messages API tool loop in the core, run by the iOS shell on the person's own
+  Anthropic key.** The web lane runs each question as a Claude Agent SDK session, one `claude` subprocess
+  (`src/lib/ask/session.ts:2`, `:104`), which iOS cannot run. The replacement is `packages/core/src/lib/ask/`
+  (`runQuestion`, `loop.ts:134`): two strict tools over the grid lane's own seats.aero client, up to 8 questions per
+  conversation (`limits.ts:99`), answers delivered whole rather than streamed, and no native code (`apps/ios/ios` is
+  unchanged since Phase 4). The web app is untouched: `git diff e8cb8af..af44e20 -- src test e2e` is empty, and no
+  core test that existed before Phase 5 changed. The grid lane still needs no Anthropic key. Launch reads none and
+  builds no client (`apps/ios/src/app/bootstrap.ts:10-13`, `bootstrap-ask.test.ts:134`), and native HTTP is checked
+  for Ask by `restore()` and before each question, so a failure there shows Ask's wiring message and leaves Search
+  and Watches alone (`apps/ios/src/ask/ask-service.ts:31-32`).
+
+- **Answers come back whole: the request is streamed, the response is buffered.** CapacitorHttp resolves one promise
+  with the finished body and keeps no task handle (`@capacitor/ios`
+  `Capacitor/Capacitor/Plugins/HttpRequestHandler.swift:220-234`), so it can neither stream to JS nor cancel. The
+  client calls `messages.stream(params).finalMessage()` over the existing adapter
+  (`packages/core/src/lib/ask/client.ts:103`): the SDK's SSE parser and typed errors come with it, and pings and
+  deltas keep bytes arriving. Two measurements carried it (§1.3, §1.4). **T1**: under a 5 s native timeout, an 18 s
+  drip completed (server 18,004 ms) and a silent response was cut at 5,014 ms, so iOS's timeout is an idle interval
+  that bytes reset. **T2**: the SDK's request crossed the production adapter with a body sha256 equal on both sides
+  (5,289 bytes), and its buffered SSE body parsed to the fixture's tool call. Design §2.1's non-streaming fallback had
+  two triggers, a timer that bytes do not reset and a buffered body that does not parse. Neither fired, and §2.12
+  re-ran both probes with the same verdicts (18,025 ms; 5,017 ms). A native URLSession plugin that streams and can
+  cancel is filed (#68); it is promoted if the owner's-key run shows a p95 question time above 60 s.
+
+- **The SDK is used, with every default that would be wrong in a WebView overridden** (`client.ts:75-101`, each
+  override pinned through the real SDK by `client.test.ts`). `fetch` is required and the global one refused
+  (`client.ts:77-79`), because the SDK's default, `Shims.getDefaultFetch()` (SDK `client.js:114`), is the WebView's in
+  the app. `authToken: null` and an explicit `baseURL` keep `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL` out.
+  `dangerouslyAllowBrowser: true`, because the SDK otherwise refuses to construct in a WebView (`client.js:93-94`); it
+  adds `anthropic-dangerous-direct-browser-access: true` (`client.js:839`), and the danger it names, a key shipped to
+  a web page's visitors, does not arise for a key that is the person's own and goes only over native HTTP (AS4).
+  `maxRetries: 0` (the default is 2, `client.js:113`), because a retry can bill twice. `timeout` 900 s
+  (`limits.ts:135`), above the loop's own 450 s bound, so the SDK's "Request timed out." never fires first.
+  `logLevel: "off"`. One environment read has no override, `ANTHROPIC_CUSTOM_HEADERS` (`client.js:117-127`). It cannot
+  apply in the app, because the SDK reads the environment only through `globalThis.process` or `globalThis.Deno` (SDK
+  `internal/utils/env.js:12-19`), and a WKWebView has neither. A blank key is refused before any request
+  (`AskKeyMissingError`, `client.ts:80`).
+
+- **The WebView's own fetch refuses Anthropic and seats.aero; Ask reaches both over native HTTP.** `main.tsx:9` installs
+  a tripwire on the WebView's `fetch` before anything renders, and it throws before it calls the WebView's fetch
+  (`apps/ios/src/native/webview-fetch-guard.ts:53-56`). It wraps `fetch` only (`:61`). **A2** measured both hosts
+  refused with `NativeHttpRequiredError` within a millisecond; that neither request left the app is read from the
+  guard's code, not observed at either host (§1.8). The guard exists because api.anthropic.com may answer a browser
+  request (`webview-fetch-guard.ts:9-12`). **T2b** sent T2's body to the same probe-server URL through the WebView's
+  fetch: only a CORS preflight arrived, with `origin: capacitor://localhost` and `Sec-Fetch-*`, and the POST never did,
+  because that route sends no CORS headers (§1.4). Twelve seconds apart in the same log, T2's native request carried
+  neither Origin nor Sec-Fetch-*, but did carry the SDK's own user agent, `Anthropic/JS 0.123.0` (`client.js:380-382`),
+  where a plain adapter GET carries `App/1 CFNetwork/3860.600.12 Darwin/25.3.0` (A0, T1). All 21 Anthropic requests of
+  the final e2e run were `native-like`, with no Origin (§2.12).
+
+- **A readable response from the real host, but no request ID: A1b stays a FAIL.** A POST to api.anthropic.com with
+  `sk-ant-probe-invalid-000000` came back over the native adapter as a readable 401 `AuthenticationError`, after
+  1,890 ms (386 ms in §2.12's re-run). Its criterion was a non-null `requestID`, and none of the response's eight
+  headers was `request-id` (§1.7). In the same run the adapter passed on `request-id: req_probe_0064` from the probe
+  server's control 401 on `/v1/models/claude-opus-5`, the key check's path, so the adapter is not what lost it.
+  Whether a real request ID is readable on the device is left to the owner's-key checks (#12). A successful request's
+  ID is not kept at all today: `AskModel.send` returns only `finalMessage()` (`client.ts:103`), and a streamed final
+  message carries none (`loop.ts:93`, `:383-387`). Filed as #88.
+
+- **Model and parameters: `claude-opus-5`, fixed; effort `medium`; `max_tokens` 16,000; thinking left to its default; no
+  sampling parameters; no refusal fallbacks** (`limits.ts:16`, `:24`, `:32`; `loop.ts:202-211`). One model means one
+  live verification with the owner's key (`limits.ts:12-15`); letting the person choose Claude Sonnet 5 is filed
+  (#69). This supersedes `claude-sonnet-5` (the "Model IDs" entry, DECISIONS.md:22) for the iOS app only;
+  the web lane keeps it (`src/lib/ask/options.ts:18`). Opus 5 thinks when `thinking` is omitted, and `max_tokens` caps
+  thinking and text together (`limits.ts:18-23`). On Opus 5, `low` and `medium` effort are the main latency lever, and
+  latency matters most when an answer arrives whole (`limits.ts:26-31`); the owner's-key run compares it with `high` before the default is final.
+  On models released after Opus 4.6 any `temperature` but 1.0 is rejected (SDK
+  `resources/messages/messages.d.ts:3539-3541`), and `loop.test.ts:271` pins that no sampling parameter, no `thinking`
+  and no `fallbacks` is sent. Refusal fallbacks are beta only: the `fallbacks` parameter (SDK
+  `resources/beta/messages/messages.d.ts:4922`, described at `:2419-2425` of the same file), sent with the
+  `server-side-fallback-2026-07-01` header (SDK `lib/middleware.js:141`), retries a declined request on a substitute
+  model on the server, and the SDK's `betaRefusalFallbackMiddleware` does the same on the client
+  (`lib/middleware.js:124`). Either would put a second model behind a one-model verification. A refusal ends the
+  question as `refused`, with its partial text discarded (`loop.ts:268`, `:325-326`). Opting in is filed
+  (#70). The web parser's `claude-haiku-4-5-20251001` (`packages/core/src/lib/query/llm.ts:17`),
+  which DECISIONS.md:22 says retires no sooner than 2026-10-15, is never called by the iOS app
+  (`apps/ios/src/search/search.ts:132`); its retirement is filed (#86).
+
+- **Three bounds, each enforced by the loop and each named by its copy.** A request is waited on for at most 450 s, by
+  the loop's own AbortController, which records why it aborted (`limits.ts:128`, `loop.ts:257`). The native idle
+  timeout for Anthropic is 90 s, on a second adapter of its own, where seats.aero keeps 20 s (`limits.ts:120`,
+  `bootstrap.ts:141-144`). No new request or tool call starts after a question has run 300 s, and a step already out
+  is never cut short by that bound (`limits.ts:52-56`, `loop.ts:190`). Failure copy quotes the words that arrived and
+  the seconds the loop measured, and names no cause the app did not observe
+  (`packages/core/src/lib/ask/errors.ts:1-21`): a connection failure says it failed after so many seconds and may
+  still have been billed (`errors.ts:130`), and a response that arrived but could not be read says that instead
+  (`:114`). The SDK decides "timed out" by matching English text and then drops the native error (`client.js:533-534`,
+  `:568-569`), so no copy is built on its timeout class.
+
+- **Stop sends nothing more; it cannot recall what was sent.** **T4**: an abort 800 ms into a 6 s replay ended the
+  wait 1 ms later, and the server still wrote all 8 events and completed at 5,999 ms (§1.6). **E3** repeated it
+  through the service: Stop 2,003 ms into a question's second request, and the server completed that stream at
+  7,004 ms (§2.5; 2,001 and 7,001 ms in §2.12). The screen says so before Stop is pressed ("Stop sends nothing more. It
+  cannot recall a request already sent.", `apps/ios/src/ask/labels.ts:107`), and the ending has its own sentence for a
+  model request, a seats.aero search or lookup, a step that spent nothing, and the moment between steps
+  (`labels.ts:226-242`).
+
+- **Leaving the Ask screen never stops a question; leaving the app pauses it before its next step.** The service owns
+  the run and the screen only subscribes (`ask-service.ts:5-9`). That departs from the web drawer's abort-on-close
+  (DECISIONS.md:196), which protected an operator's shared budget; here the person asking pays. Before every request
+  and tool call the loop waits until awardgrid is visible (`loop.ts:184-192`) and records the pause as a step
+  ("Paused while you were away from awardgrid.", `labels.ts:140`). A request already out is left to finish. **T5**
+  left the app 3 s into a 60 s drip for 44 s, and the promise settled once, with the whole 61,440-byte body (§1.9).
+  **E7** left 3 s into a 40 s request for 27 s, and saw one terminal state and no request while away (§2.8). No step
+  boundary fell inside E7's absence, so the pause itself was not exercised on the Simulator (§2.11), and a device may
+  suspend networking differently (AS13).
+
+- **Nothing is retried automatically.** The SDK's retries are off, and the loop resends only when the person taps Try
+  again, which sends the identical parameters (`loop.ts:19-22`, `:225-237`) under "Sends the same request again. If the
+  first one reached Anthropic, both may be billed." (`labels.ts:276`). **E4**: after a 529, the resend's body sha256
+  equalled the first request's (`b8ec4e9c…`, 5,566 bytes), and the question was answered (§2.6). Try again is offered
+  only for a failure core marks retryable: a rate limit, an overload, a 5xx or a stream's error event, a connection
+  failure, an unreadable response, or the 450 s bound (`errors.ts:87-191`, `loop.ts:217`). A rejected key, a 403, a 404,
+  a 400, a 413 (A5's `a5-too-large` state, §2.2) and a spend limit (**E5**, §2.6) are not. It is not offered either when
+  the resend would become the question's last request, which must carry `tool_choice: none` and the closing text
+  (`loop.ts:216`), and it sends nothing once either key has changed in Settings (`ask-service.ts:547`).
+
+- **Follow-ups work, and the history is only ever appended to.** A question joins the resent history only when its
+  response ended in `end_turn`, `stop_sequence` or `max_tokens`, carries no `tool_use`, and has text with more than
+  whitespace in it (`packages/core/src/lib/ask/conversation.ts:143-159`). Refusals, stops, failures, and blank or
+  thinking-only answers leave it unchanged, so every later request starts with exactly the bytes sent before, earlier
+  thinking blocks included (AS9). **E6**: a follow-up's five messages began with question 1's last request and its
+  answer, hash for hash, with the system and tools hashes equal (§2.7). **E3**: after Stop and a relaunch, question 3's
+  first request carried the same two history hashes and none of the stopped question's turns (§2.5). A conversation
+  takes no new question once it holds 8 questions, once the latest committed question's last request sent more than
+  120,000 input tokens, or once `ask.json` is over 1,500,000 bytes (`conversation.ts:190-223`, `limits.ts:99-109`). The
+  conversation is saved as `ask.json` in the app's Data directory (iOS's Documents directory). A question's start, each
+  response and each tool result are on disk before the next step goes out, and a request's count is written as the
+  request is sent, without the request waiting for it (`ask-service.ts:14-24`). A question the app was closed during
+  comes back unfinished, with Ask again (**E8**, §2.9).
+
+- **What each clearing control removes, and nothing more.** Clear cached results empties the availability cache in
+  memory and on disk, and leaves the quota, the watches, both keys and `ask.json` (`bootstrap.ts:51-54`, `:219-224`;
+  `bootstrap-ask.test.ts:256`). New conversation removes `ask.json` and nothing else, and is refused while a question
+  runs (`ask-service.ts:630-641`, `apps/ios/src/store/ask-store.ts:38-41`); nothing else removes that file. Remove key
+  deletes the Anthropic Keychain item only (`apps/ios/src/native/anthropic-key.ts:54-60`), is reported only when the
+  Keychain then reads empty (`apps/ios/src/screens/SettingsScreen.tsx:100-118`), and says beside it "Removing this key
+  does not delete your Ask conversation, and search keeps working." (`labels.ts:509`). The Ask screen's own note
+  agrees: "Answers in this conversation are saved on this device until you start a new conversation."
+  (`labels.ts:432`).
+
+- **Caching follows from keeping the prefix still.** One top-level `cache_control` (`loop.ts:206`) lets the API place
+  the breakpoint on each request's last cacheable block. The system prompt and the tool definitions are constants, and
+  the tools are deep-frozen (`prompt.ts:23`, `tools.ts:83`); today's date and any included search go in the question's
+  own user turn (`prompt.ts:99-111`), so nothing that changes sits ahead of the conversation. A question's sixth
+  request goes out with `tool_choice: none` and the closing text "This is the last request for this question. Answer
+  now with what you have." (`loop.ts:209`, `:301`, `:351`; `prompt.ts:36`). A `tool_choice` change keeps the tools and
+  system cache and invalidates the messages cache (claude-api `shared/prompt-caching.md:222-226`, the table
+  `limits.ts:30` cites for effort), so that request rewrites the messages cache once, which is accepted. Effort stays
+  fixed because an effort change invalidates the messages cache too (`limits.ts:26-31`). Every §2 request hashed to
+  T2's system (`ceedb542…`) and tools (`1811d0eb…`), before and after the fixes (§2.3, §2.12). Whether real requests
+  read the cache is for the owner's-key run: the cache counts in §2's meta lines are the scripted fixtures'
+  (`packages/core/test/fixtures/ask/streams.json`), not Anthropic's. Zero cache reads across real requests would be
+  filed.
+
+- **Two tools, strict, with every bound enforced in code.** `search_awards` and `get_flights` are strict definitions
+  (`tools.ts:83-120`) with no `minimum`, `maximum`, length, item-count or `pattern` keyword (`tools.test.ts:223`):
+  strict schemas do not support the first five, and do not list `pattern` either way (`tools.ts:79-81`, AS5). Every
+  input is parsed again with core's zod (`tools.ts:123-136`, and the grid's own `QueryObject` at `:455`), and a
+  refusal spends no call. A question may make 8 tool calls, of which at most 4 searches and 3 flight lookups (`limits.ts:43-50`); one
+  search covers at most 12 airport pairs and returns the 20 cheapest rows (`limits.ts:88`, `:91`). `get_flights`
+  accepts only ids a search returned in this conversation (`tools.ts:561`), remembers each row and cabin it looked up
+  (`:567-568`), and says how many minutes ago the lookup was made (`:727`). Deferred and filed: a grid cell as Ask
+  context (#71), "Show flights" on the iOS grid (#72), a reference-data tool for
+  transfer partners, alliances and sweet spots (#73), and region exploration over Bulk Availability
+  (#74).
+
+- **seats.aero spend is bounded in code, not in the prompt.** A question spends at most 12 seats.aero calls, and one
+  search at most 3 pages plus 1 Get Routes call (`limits.ts:67`, `:75`, `:78`). runFind reserves the pages and then,
+  separately, the Get Routes calls, so `planSearchSpend` keeps `maxPages + maxRoutesCalls` within the allowance, never
+  the pages alone (`packages/core/src/lib/ask/budget.ts:4-13`, `:89-105`). The allowance is the smaller of the
+  question's calls left and today's calls above the 25 kept for the person's own searches (`budget.ts:35-39`). The
+  quota is re-read before every tool call (`tools.ts:480`), and the loop first waits for any watch run in flight
+  (`loop.ts:188`, `bootstrap.ts:167-173`). A search this device already holds is planned before any budget refusal,
+  with no route calls and a guard at whatever allowance is left, so a free cache read is never refused
+  (`budget.ts:76-80`, `:93`). A search whose estimate needs more pages than it may pull is refused rather than cut
+  short, because runFind records a truncated pull as full coverage (`budget.ts:84-85`;
+  `packages/core/src/lib/seatsaero/find.ts:332-335`). A fetch guard refuses request n+1 before it goes out
+  (`budget.ts:144-158`). It is the backstop, not the plan: SeatsAeroClient still reports a refused request and runFind
+  charges the local quota for it, which errs toward spending less (`budget.ts:15-21`). `2fa8e8b`'s message records
+  reviewer sweeps that found no spend over a cap or into the reserve; `58b705c` then let a covered search run before
+  the refusals.
+
+- **The cache check mirrors runFind instead of editing it.** The tool has to know before it runs whether runFind would
+  answer from the cache, because a covered search is budgeted differently. `find.ts` builds that scope inline and was
+  not edited in this phase (`git diff e8cb8af..af44e20 -- packages/core/src/lib/seatsaero/find.ts` is empty), so
+  `packages/core/src/lib/ask/coverage.ts:22-35` copies it. `coverage.test.ts` pins the copy to runFind itself: the
+  scope runFind hands the cache must equal `askCacheScope`, and after a real pull `coveredByCache` must predict
+  runFind's `served_from_cache` (`coverage.test.ts:1-7`).
+
+- **Cost is shown in tokens and calls, never dollars, and the app sets no dollar cap.** An entry's meta line names the
+  model, the requests, the input tokens with the part read from cache, the output tokens and the seats.aero calls
+  (`labels.ts:344-359`). A price table in a binary goes stale and cannot know the person's rate, so Settings links to
+  Anthropic's pricing page instead (`labels.ts:484-485`). The web lane's $0.50 a question and $2 a day
+  (DECISIONS.md:50-51) protected an operator's shared budget; here the person pays, and Anthropic's own spend limit
+  arrives as its own copy, with no Try again (**E5**, §2.6).
+
+- **The one lie is policed at runtime too.** The system prompt, tool descriptions and failure copy are string literals
+  in core, and `apps/ios/src/honesty.test.ts` scans them with the shell and the landing page (`honesty.test.ts:36-38`,
+  `:328`, `:573`). The prompt states rules as what awardgrid does, because several patterns match a promise even
+  inside a negation (`prompt.ts:10-11`), and it tells Claude that awardgrid cannot look again later, pointing to Watch
+  this search, which "checks when they open the app" (`prompt.ts:30`). A new pattern rejects "I'll let you know when"
+  (`honesty.test.ts:561`). Model output cannot be scanned in CI, so an entry shows a fixed note under any answer that
+  offers a later follow-up (`packages/core/src/lib/ask/guard.ts`, `labels.ts:413-419`); searching again within the
+  conversation, which the person can ask for, and negated refusals are not marked (`guard.ts:21-25`).
+
+- **"Data: seats.aero" is rendered by the app, and a link exists only for what `get_flights` returned.** The attribution
+  sits under every answer whose requests carried seats.aero data: the entry's own, or an earlier committed entry's that
+  was resent with it (`labels.ts:395-411`, since the fixes). Answers render as React elements from core's markdown
+  subset, never as HTML (`apps/ios/src/components/AnswerText.tsx`). A link exists only for a booking URL `get_flights`
+  returned in this conversation, and reads "text (host)" (`packages/core/src/lib/ask/markdown.ts:39-44`,
+  `AnswerText.tsx:16-18`). No §2 run reached `get_flights` or a booking link (§2.11).
+
+- **The Anthropic key is its own Keychain item.** `anthropic_api_key`, `whenUnlockedThisDeviceOnly`, never synced to
+  iCloud Keychain, with access and sync passed on every call so the seats.aero item's settings are untouched, and the
+  plugin's `clear()`, which would delete both keys, never called (`anthropic-key.ts:1-61`; `keychain.ts` is
+  unchanged). It is read when the Ask screen or Settings opens, to show whether one is on file (`AskScreen.tsx:61-70`,
+  `:152`; `SettingsScreen.tsx:75-78`, `:285`), and again when a question, Try again, a key check or Remove key needs
+  it (`ask-service.ts:389`, `:542`, `:664`; `SettingsScreen.tsx:103`, `:113`). Launch never reads it
+  (`bootstrap.ts:10-13`). A key is checked with `GET /v1/models/claude-opus-5`, a request that carries no question
+  (`client.ts:104-106`); whether that request is free is an assumption the copy does not state (AS1). The e2e build
+  keeps both keys in memory, so §2 did not exercise the Keychain (§2.11). The seats.aero item keeps
+  `afterFirstUnlockThisDeviceOnly`, which `keychain.ts:19-27` says no built feature justifies any more; revisiting it
+  is filed (#84).
+
+- **Settings saves before it checks.** Save stores the Anthropic key, says so, then runs the check; a failed check
+  leaves the key saved and says why, for example "The key is saved, but Anthropic did not confirm it."
+  (`SettingsScreen.tsx:84-97`, `labels.ts:531`). Check key repeats the check. The seats.aero section gains "Ask never
+  sends this key to Anthropic." (`labels.ts:514`), and its status lines now name their key ("seats.aero key removed
+  from the Keychain."). Settings' two Save and two Remove key buttons have distinct accessible names that begin with
+  their visible words (`labels.ts:497-504`).
+
+- **Ask is a screen of its own, and the nav says when a question is running.** `#/ask` reads the service through
+  `useSyncExternalStore` (`AskScreen.tsx:172`), so leaving and coming back shows the question still running, and the
+  nav reads "Ask (working)" from any screen (`apps/ios/src/app/App.tsx:53`, `:62`). Search keeps its last successful result in memory
+  only (`apps/ios/src/search/last-search.ts`) and offers "Ask Claude about this search"; the Ask screen's "Include my
+  last search" is on by default when there is one (`AskScreen.tsx:177`). There is no cell selection yet
+  (#71). **A4**: on the iPhone 17 Pro (402 pt) and the iPhone SE (375 pt) the nav stayed in one row under
+  the brand, `scrollWidth` equalled `clientWidth` in all 7 states, the footer was on screen, and the 12 controls the
+  spec names were all at least 44 pt (§2.2). Controls outside that set were not judged, and some are smaller: the nav
+  link "Ask" is 26.4 pt wide, four Settings controls that predate this phase are 32 to 41.8 pt tall, and Search's Run,
+  Watch this search and example chips are 27 to 41 pt tall (#91).
+
+- **The screen refuses before it sends.** Both keys are read when the screen opens, so a missing key shows its notice
+  and a disabled composer before any question (`AskScreen.tsx:6-9`). **A3**: with no Anthropic key, Ask showed the
+  notice with the question box, Ask and both suggestions disabled, no request reached the probe server's Anthropic
+  route, and a grid search still drew 30 dates × 3 pairs for 1 call (§2.2). A refusal sits under the composer the tap
+  came from, not after the entries (`AskScreen.tsx:16-20`). Suggestions fill the box and never send, and show only
+  while the conversation is empty. The question box holds at most 1,000 characters (`AskScreen.tsx:268`,
+  `limits.ts:59`).
+
+- **Accessibility was checked automatically, not by ear.** One visually hidden status region announces transitions
+  ("Waiting for Claude", "Searching seats.aero", "Answer ready", "Stopped", "Ask failed"), never the counter, which is
+  `aria-hidden` (`labels.ts:128-134`, `AskScreen.tsx:234`, `apps/ios/src/components/AskEntry.tsx:165`). A failure that
+  happens while the screen is open is an alert, and one already there when the screen opens is not, so it is not read
+  out again (`AskEntry.tsx:62`, `:121`; `AskScreen.tsx:12-14`). The entry list is `aria-busy` while a question runs and
+  is not a live region (`AskScreen.tsx:303`). **A5** read names, roles and the status region from the DOM in 32 states
+  on the Simulator: no unnamed control, and exactly one status region on every Ask state (§2.2). No VoiceOver pass was
+  made, on a device or on the Simulator; one is filed (#82). The shell is still English only, and
+  `honesty.test.ts:365-369` fails if a screen imports i18n before the scan covers translated strings; Chinese copy is
+  filed (#83).
+
+- **Ask was measured end to end on the Simulator with a second probe mode, and two scenarios failed their criteria.**
+  `VITE_AG_PROBES=e2e` opens `#/ask` and drives the Ask service against the probe server's scripted SSE and the
+  seats.aero mock, with fake keys in memory; the host takes a screenshot when the app asks, and nothing is tapped
+  (`apps/ios/probes/run-probes.sh --e2e`, §2.1). `df4a2da`'s message records that verifiers re-ran the procedure and
+  reproduced every verdict. Ten of twelve verdicts passed: A3, A4, A5, **E3** Stop and a relaunch, **E4** Try again
+  after a 529, **E5** the spend limit (one request, no Try again) and the rate limit (the 7-second sentence), **E6**
+  follow-ups, **E7** leaving the app, **E8** a killed process (the server saw the client hang up 3,212 ms in, and the
+  entry came back unfinished with Ask again), and **R1**.
+  - **E1 FAIL, and the behaviour stands.** A first search with zero-row pairs also spent its one Get Routes call, so
+    the step read "2 calls." and the quota line 189 of 950, where the criterion expected "1 call." and 188 (§2.3). The
+    criterion missed a call the design allows (`SEARCH_ROUTES_CAP`, one per search), and the label counted it
+    truthfully; with every route list loaded, the same search read "1 call." in E3.
+  - **E2 FAIL.** With `demo-key-partial`, Ask's one route-list call left 24 lists unloaded, so no pair could be called
+    unmonitored, and no pull was cut short, so none was "not read in full". A grid search failed outright, "seats.aero
+    unavailable (HTTP 500): {}", after 8 mock requests, because one route list answered 500 (§2.4). The iOS routes
+    catalog does not survive a failed list the way the web's `ResilientRoutesCatalog` does
+    (`src/lib/server/find.ts:122`); filed (#89), together with the not-fetched marks the iOS
+    grid still misses (#78).
+
+- **Three untrue lines the measurement found were fixed, and measured again** (`af44e20`, §2.12).
+  - **E8.** After a kill, the unfinished entry read "No requests", though the request had been sent. The service now
+    writes `ask.json` as each request goes out (`ask-service.ts:459-465`). A kill can still land before that write, so
+    an unfinished entry states its saved counts as lower bounds and never a zero it cannot vouch for
+    (`labels.ts:361-390`); the re-run read "Claude Opus 5 · at least 1 request · This question may have used more than
+    awardgrid saved before it was closed". The race itself was not reached on the Simulator; `ask-service.test.ts` and
+    `unfinished-meta.test.ts` pin it.
+  - **E2.** Ask's tool result passed on runFind's warning that route lists were skipped "to stay within today's
+    quota", with 759 calls left. `search_awards` now names the bound that ran out, Ask's per-search limit, today's
+    quota or both (`tools.ts:680-717`), and the re-run read "…because Ask lets one search make at most 1 route list
+    call, not because of today's seats.aero quota." The other wordings are pinned by `tools-routes-warning.test.ts`,
+    not measured. `find.ts`, the i18n dictionaries, the system prompt and the tool descriptions are unchanged.
+  - **E6.** A follow-up answered without a tool call showed no "Data: seats.aero", though its request resent an
+    earlier committed search's results. The attribution now also follows committed history that carried seats.aero
+    data (`labels.ts:395-411`), and the re-run showed it under the follow-up.
+
+  Every verdict is unchanged: E1 and E2 still fail, and apart from timings only those three lines differ, with the
+  rewritten warning inside later requests and the hashes it moved. Step 3's mode ran again too, and every verdict
+  matched §1, A1b's FAIL included.
+
+- **The probe build changes nothing a person installs.** Probe code exists only when `VITE_AG_PROBES` is `1` or `e2e`;
+  in every other build the flag is a constant and the imports drop out (`App.tsx:22-34`, `main.tsx:11-15`). The script
+  ends with R1 and exits 7 if a `*[Pp]robe*` or `*e2e*` chunk exists, if a `.js` file matches
+  `127.0.0.1:45|localhost:45|probe-server|sk-ant-`, or if the `.js` files differ from an `R1_BASELINE` listing
+  (`run-probes.sh:369-400`). §2's run 1 failed that hash check on an empty effect left in the normal bundle, and
+  `App.tsx` was changed until runs 2 and 3 hashed identically to a normal build of `1c6bd22` (§2.10). **A0**: the
+  Simulator's Debug build reached `http://127.0.0.1:4599` and `http://localhost:4599` with no App Transport Security key
+  (200 in 87 ms and 10 ms), so no Info.plist was changed and the script's Debug-only fallback was never applied (§1.2;
+  the Simulator uses the Mac's network stack). The harness uses ports 4599 and 4597, refuses to start if either is held
+  (`run-probes.sh:261-267`), and stops only the processes it started and their children (`:89-110`, `:371`). An `--e2e`
+  run in which a phase timed out, a wait failed or the summary did not finish exits 9 after the restore and R1; scenario
+  FAILs leave the exit at 0 (`run-probes.sh:402-409`).
+
+- **The lint boundary runs both ways.** `packages/core` may not import `@capacitor/*` (`eslint.config.mjs:46`), and
+  `apps/ios/src` may not import `@anthropic-ai/sdk` (`eslint.config.mjs:120`), so the app reaches Anthropic only
+  through core's `createAskClient`, which refuses a missing fetch and the WebView's global one (`client.ts:77-79`).
+
+- **Grid-lane defects Ask builds on were fixed where they were small, and filed where they were not.**
+  `apps/ios/src/search/search.ts:168-171` now passes the unmonitored and not-fetched pairs runFind reports to the grid,
+  so an empty cell can say which fact it is where runFind reports one, and `apps/ios/src/native/http.ts:41-46` describes
+  iOS's single idle interval (`1f5d763`). Filed: the routes catalog lives in memory only (`bootstrap.ts:149`), so every
+  launch starts with no route list loaded (#75); a watch checks the 25-call reserve only when it starts,
+  then runs with runFind's default caps of 40 pages and up to one Get Routes call per program
+  (`packages/core/src/lib/watch/watch.ts:112`, `apps/ios/src/watch/runner.ts:84`, `search.ts:149-158`, `find.ts:62`,
+  `:367`) (#76); and a truncated pull is cached as full coverage, and a later cache hit drops the
+  truncation notice (`find.ts:280-303`, `:332-335`) (#77). The grid search and watches call runFind
+  without `ttlMinutes`, so their TTL comes from `cacheTtlMinutesFromEnv` (`find.ts:255`,
+  `packages/core/src/lib/seatsaero/cache.ts:325-329`), where Ask passes `DEFAULT_CACHE_TTL_MINUTES` (`tools.ts:503`);
+  both come to 45 minutes in the app today (#87). The Get Trips and not-fetched helpers ported into core now
+  exist twice, because the web app was not touched (#79). `ARCHITECTURE.md:167` says Get Trips is cached
+  for the TTL and Get Routes for 24 h, where the web app requests Get Trips on every lookup
+  (`src/lib/server/find.ts:563`) and keeps route lists 7 days (`packages/core/src/lib/seatsaero/routes.ts:17`)
+  (#85).
+
+- **§0 is still open, and Ask widens it.** A question sends Anthropic the seats.aero results of the app's own searches
+  and flight lookups, under the person's key (`labels.ts:481-482`, and `LEGAL.md`'s Claude paragraph). Whether
+  seats.aero's terms, quoted in `docs/PIVOT.md` §0, allow that belongs to the same unanswered question; an addendum to
+  it is filed for the owner (#81), and so is an App Review demo mode for Ask, gated by §0
+  (#80; `docs/PIVOT.md` §5, Guideline 2.1).
+
+- **Copy changes.** The footer reads "Data: seats.aero · your own keys, on this device" (`App.tsx:114`). The Ask
+  subline says the app, not Claude, searches seats.aero with the person's key, which is never sent to Anthropic
+  (`labels.ts:442-443`), because design §6.3's wording read as if Claude held the key. `LEGAL.md` adds the iOS app's
+  Ask to its Claude paragraph (what a question sends, where the key goes, how long the conversation is kept, who is
+  billed), the Anthropic key to the accepted credentials, and the attribution under Ask answers; its
+  travel-hacking-toolkit paragraph now says the plugin loads into the web app's Ask, since the iOS Ask loads none. The
+  landing page's "Your own keys" article and "No airline sites" row say Ask runs on the person's own Anthropic key and
+  what it sends. `apps/ios/README.md` gains an Ask section, and `docs/PIVOT.md`'s status table names Phase 5.
+
+- **Recorded, not investigated.** The main chunk is 746,386 bytes after the fixes, 78,945 over design §10.3's 667,441
+  baseline and past its 60 KB threshold; step 7 part A added 24,971 and the fixes 2,008 (§2.10, §2.12)
+  (#92). Scrolled pages pass under the transparent status bar and the Dynamic Island, which in
+  `a3-search-grid` hides two of the grid's column headers; the header's safe-area padding dates from Phase 2 (§2.2)
+  (#90).
+
+- **Working constraint for this phase: nothing writes the repository's `.next`.** Production serves it (#67), and the
+  site went down on 2026-09-10 when that directory disappeared. Phase 5 changed no file of the web app, and CI remains
+  the place `next build` and the e2e suite run.
+
+- **What is left is the owner's.** The checks on the owner's own keys, K1-K6 (#12), have not run. They are where a
+  real request's latency and cache reads, billing after Stop, a readable request ID, effort `medium` against `high`,
+  and a device's handling of a request while awardgrid is away get measured. Live `X-RateLimit-Remaining`, which Ask's
+  reserve rests on, is still unmeasured (#13).
+
+#### Assumptions register (the docs are silent; each is stated, and each has a check)
+
+| ID | Assumption | Where it matters | Status after §2 and §2.12 |
+|---|---|---|---|
+| AS1 | `GET /v1/models/{id}` bills no tokens | The key check on Save and Check key; the copy makes no billing claim | Unchecked; the owner's Console after K3 |
+| AS2 | Bytes arriving while CapacitorHttp buffers reset iOS's timeout | The 90 s idle bound on long answers | **Measured, holds** on the Simulator (T1: an 18,004 ms drip under a 5 s timeout; 18,025 ms in §2.12) |
+| AS3 | The SDK parses a fully buffered SSE body, and a string POST body reaches the server unchanged | The whole transport | **Measured, holds** on the Simulator (T2 body sha256 equal, again in §2.12; E4's resend hashed equal to the first request; `client.test.ts`) |
+| AS4 | `anthropic-dangerous-direct-browser-access: true` changes nothing for a native request beyond CORS | The SDK in a WebView | **Measured, holds** on the Simulator for a rejected key (A1b: a normal 401 from api.anthropic.com, again in §2.12); an authenticated request is the owner's-key run's |
+| AS5 | Strict tool schemas reject what structured outputs reject; `pattern` and array bounds are avoided | Tool schemas | Pinned by `tools.test.ts:223`; the real API's answer waits for K1's first request |
+| AS6 | `usage.output_tokens` includes thinking tokens | The meta line under an answer | Unchecked; K1 against the Console |
+| AS7 | A request sent before Stop completes on the server and is billed | Stop and failure copy ("may be billed") | Server side **measured** against the probe server (T4: 5,999 ms; E3: 7,004 ms, 7,001 ms in §2.12); billing unchecked (K2) |
+| AS8 | A spend-limit 429 carries `error.details.error_code = "enforced_spend_limit_reached"` | Spend-limit copy, parsed defensively | Unit-tested (`errors.test.ts:161`); E5 rendered the copy from a scripted 429; never observed from Anthropic |
+| AS9 | Dropping an unfinished question's turns keeps committed thinking blocks valid, because the history stays a byte-identical prefix | Follow-ups after Stop or a failure | Prefix **measured** on the Simulator (E3: the same history hashes after Stop and a relaunch; E6: append-only; both again in §2.12) and pinned by `loop.test.ts:327`, `:355`; whether the real API accepts it with real thinking blocks is unchecked (K2) |
+| AS10 | `X-RateLimit-Remaining` counts calls left today | The quota rule, and Ask's 25-call reserve | Plumbing **measured** with an injected header (X1; A3: 812 remaining read as 188 of 950); the live meaning unmeasured (#13) |
+| AS11 | seats.aero's day resets at UTC midnight | Quota copy | Unchanged from Phase 2; unmeasured |
+| AS12 | ATS blocks or allows cleartext to 127.0.0.1 without an exception | The probe harness only | **Measured** on the Simulator: allowed with no key (A0, again in §2.12) |
+| AS13 | A suspended app's in-flight request completes or fails with a network error on return | Leaving-app copy | **Measured** on the Simulator only: T5 settled once, with the whole body, after 44 s away; E7 saw one terminal state and no request during 27 s away; the pause before a step not exercised (§2.11); a device is K4's |
+| AS14 | The WebView at `capacitor://localhost` is a secure context (`crypto.subtle` exists) | T2's body hash | **Measured, holds** on the Simulator (T2: `secure_context: true`) |

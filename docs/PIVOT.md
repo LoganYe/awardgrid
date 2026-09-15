@@ -2,7 +2,8 @@
 
 Written 2026-09-09 against `568b9ae` as a brief for a separate session.
 
-**Status, updated 2026-09-10.** Phases 0-4 are built; §0 is still unanswered.
+**Status, updated 2026-09-15.** Phases 0-5 are built. Phase 5's checks on the owner's own keys have
+not run, and §0 is still unanswered.
 
 | | |
 |---|---|
@@ -12,7 +13,7 @@ Written 2026-09-09 against `568b9ae` as a brief for a separate session.
 | **Phase 2 — the shell** | **Done.** `apps/ios` runs on a simulator: native-HTTP adapter with its startup assertion, Keychain key storage, in-memory cache with a JSON snapshot, quota reconciled against `X-RateLimit-Remaining`. 44 tests, no device needed. `apps/ios/README.md`. |
 | **Phase 3 — the design system** | **Done.** `packages/tokens` is one palette read by all three surfaces, with the two surface modes of §4; `sites/landing` is a static page with zero JavaScript and no App Store badge (see §0); `apps/ios` renders a real grid on the shared tokens. `packages/tokens/README.md`. |
 | **Phase 4 — watches** | **Done, without the background half.** Watches check when the app opens or returns to the foreground, and at no other time; §3 carries an amendment with the verified reasons there is no background check. `apps/ios/src/honesty.test.ts` fails CI on any string that promises a cadence or claims a background check. `DECISIONS.md` § "Phase 4". |
-| **Phase 5** | Not started. Ask, rebuilt on the Messages API. |
+| **Phase 5 — Ask on the Messages API** | **Built; live verification pending.** Ask runs in the app on the person's own Anthropic key: a Messages API tool loop in `packages/core`, two tools over the grid lane's own seats.aero client, answers delivered whole rather than streamed. Measured on the Simulator against a probe server and the seats.aero mock, with fake keys. Only one probe, A1b, reached api.anthropic.com: one request in each of the three runs of step 3's probe mode that `docs/PHASE5.md` records (§1's two and §2.12's one), each with a key Anthropic rejects. Ten of twelve end-to-end verdicts pass, and E1 and E2 fail their own criteria. The checks on the owner's real keys (K1-K6) have not run. `DECISIONS.md` § "Phase 5 — Ask on the Messages API". |
 
 Everything below is the original specification, kept as written. Where the build measured
 something the spec inferred, the phase document says so — §2's note that `AbortSignal` may not be
@@ -304,6 +305,11 @@ site, then the app screens.
 
 > **Amended 2026-09-10.** This section was written before Phase 0. Phases 0-4 have since been built
 > and measured; the status table at the top says what, and where the evidence is.
+>
+> **Amended 2026-09-15.** Phase 5 is built too. It was measured on the Simulator against a probe
+> server and the seats.aero mock, with fake keys. Only the A1b probe reached api.anthropic.com, once in
+> each of the three runs of step 3's probe mode, with a key Anthropic rejects; the checks on the
+> owner's own keys have not run.
 
 It has not been implemented, and no line of the pivot has been written. The CORS measurements, the
 line counts and the 255 passing tests were executed. The App Store precedents, the WKWebView CORS

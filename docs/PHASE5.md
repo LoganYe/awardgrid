@@ -559,7 +559,7 @@ What happened, in order:
 5. The Get Routes reservation was made after the first response had set the floor at 188, and the harness sends 812
    on every response, so the count settled at 189. Two real responses would also leave 189 (811 remaining).
 
-The singular label itself did render on the device. In E3, with every route list already loaded by E2's comparison
+The singular label itself did render on the Simulator. In E3, with every route list already loaded by E2's comparison
 search, the same search read "Searched seats.aero: SEA to NRT, HND, 2026-10-01 to 2026-10-31, business. 1 call."
 
 ```
