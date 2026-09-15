@@ -357,11 +357,57 @@ export function metaLine(usage: QuestionUsage): string {
   ].join(" · ");
 }
 
+/** Closes an unfinished entry's meta line, whose counts are lower bounds. */
+export const UNFINISHED_COUNTS = "This question may have used more than awardgrid saved before it was closed";
+
+/**
+ * The meta line for an unfinished entry, whose counts are the ones ask.json held when awardgrid was closed. They can be
+ * short: the service saves a request's count as the loop sends it, and the request does not wait for that write
+ * (ask-service.ts), and a tool call's seats.aero calls are saved only once the call finishes. So every count is worded
+ * as a lower bound, "at least", and a count saved as zero is left out rather than shown as "No requests", which may be
+ * false: a zero saved there means none was sent, or that a count had not landed. The closing sentence covers what is
+ * left out.
+ */
+export function unfinishedMetaLine(usage: QuestionUsage): string {
+  const parts = [MODEL_NAME];
+  if (usage.requests > 0) parts.push(`at least ${count(usage.requests, "request", "requests")}`);
+  if (usage.inputTokens > 0) {
+    const cached = usage.cacheReadTokens > 0 ? ` (at least ${thousands(usage.cacheReadTokens)} read from cache)` : "";
+    parts.push(`at least ${count(usage.inputTokens, "input token", "input tokens")}${cached}`);
+  }
+  if (usage.outputTokens > 0) parts.push(`at least ${count(usage.outputTokens, "output token", "output tokens")}`);
+  if (usage.seatsCalls > 0) parts.push(`seats.aero calls: at least ${thousands(usage.seatsCalls)}`);
+  parts.push(UNFINISHED_COUNTS);
+  return parts.join(" · ");
+}
+
+/**
+ * The meta line under an ended entry. Only an unfinished entry's counts can be short: every other ending writes the
+ * loop's own totals with it (ask-service.ts end), and an ending whose write did not land is read back as unfinished.
+ */
+export function entryMetaLine(entry: Pick<AskEntry, "end" | "usage">): string {
+  return entry.end?.status === "unfinished" ? unfinishedMetaLine(entry.usage) : metaLine(entry.usage);
+}
+
 export const ATTRIBUTION = "Data: seats.aero";
 
-/** Whenever the answer may rest on seats.aero data: a search was included, or a tool read seats.aero. */
-export function showsAttribution(entry: Pick<AskEntry, "includeSearch" | "steps">): boolean {
+/** Whether an entry's own requests carried seats.aero data: a search it included, or a tool read of seats.aero that answered. */
+export function carriesSeatsData(entry: Pick<AskEntry, "includeSearch" | "steps">): boolean {
   return entry.includeSearch || entry.steps.some((s) => s.kind === "tool" && s.step.outcome === "ok");
+}
+
+/**
+ * Whether an answer may rest on seats.aero data (LEGAL.md, design §8.3): its own requests carried some, or the history
+ * they resent did. Every request of a question resends the history committed before it started (core loop.ts), and
+ * only an entry that ended committed is in that history (core conversation.ts commitQuestion). So an earlier committed
+ * entry that carried seats.aero data counts, and a stopped, failed or unfinished one does not: its turns were never
+ * resent. `earlier` is the conversation's entries before this one, oldest first.
+ */
+export function showsAttribution(
+  entry: Pick<AskEntry, "includeSearch" | "steps">,
+  earlier: readonly Pick<AskEntry, "includeSearch" | "steps" | "end">[],
+): boolean {
+  return carriesSeatsData(entry) || earlier.some((e) => e.end?.committed === true && carriesSeatsData(e));
 }
 
 export const FOLLOW_UP_NOTE =

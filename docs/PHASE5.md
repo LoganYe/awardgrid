@@ -359,7 +359,9 @@ E1 expects "1 call.", and the quota line read 189 of 950 where E1 expects 188 (�
 tool result listed no unmonitored pair and no pair that was not read in full, and a grid search failed outright instead
 of marking cells "not monitored" and "not checked" (§2.4). Stop, a relaunch after Stop, Try again after a 529, the spend
 limit, the rate limit, follow-ups, leaving the app mid-request and a killed process all behaved as specified. So did the
-no-key states, the layout on both phones, and R1.
+no-key states, the layout on both phones, and R1. §2.12 re-runs every scenario after fixes to three untrue lines (E2's
+tool-result warning, E6's missing attribution, E8's meta line): every verdict is unchanged, E1 and E2 still fail, and
+apart from timings the only differences are those three lines and the rewritten warning that later requests resend.
 
 Measured 2026-09-15 (UTC) on the iPhone 17 Pro simulator from §1 (`A480530B-3036-4B12-80D4-F37A6130D898`) and on an
 iPhone SE (3rd generation) simulator this step created, `awardgrid iPhone SE (3rd generation)`
@@ -753,6 +755,182 @@ investigated here.
 - **get_flights, booking links, a truncated or refused answer, or "not checked" cells.** No script in these runs
   reached them.
 - **Real Anthropic latency, billing or request IDs**, which need the owner's key (§1.12).
+
+### 2.12 After the fixes
+
+Part B's runs found three lines where the app said something untrue:
+
+- **E2** (§2.4): the warning in Ask's tool result blamed today's quota for skipped route lists, with 759 calls left.
+- **E6** (§2.7): a follow-up answered without a tool call showed no "Data: seats.aero", though its request resent an
+  earlier committed search's results.
+- **E8** (§2.9): the relaunched unfinished entry read "No requests", though the request had been sent.
+
+Those three are fixed in the working tree on top of `df4a2da`, and the harness ran again on 2026-09-15 (UTC), on the same
+two simulators. `--e2e` ran once end to end (armed 05:38:27Z). Step 3's mode also ran once (armed 05:44:32Z), because Part
+B had moved it into `run_step3()` without running it again. Both runs exited 0 the first time, so nothing environmental
+needed fixing and no run was repeated. The raw logs are not committed.
+
+**What changed in the code.**
+
+- **E8, in the shell.** `apps/ios/src/ask/ask-service.ts` now writes `ask.json` at `request_started` too, so a sent
+  request is counted on disk. The loop emits that event as it sends, after the gate that waits for queued writes, so the
+  request does not wait for this write, and a kill can still land before it. So `apps/ios/src/ask/labels.ts` adds
+  `entryMetaLine`, which `AskEntry` uses. For an entry restored as unfinished, it states every saved count as a lower
+  bound ("at least …"). It leaves out a count saved as zero rather than stating it, and closes with "This question may
+  have used more than awardgrid saved before it was closed". Every other ending keeps `metaLine`, because those endings
+  are written with the loop's own totals. Tests: three cases in `ask-service.test.ts`, including a kill before the
+  count's write lands and a kill before a search step's calls are saved; `unfinished-meta.test.ts`; `ask-entry.test.ts`.
+- **E2, in `packages/core/src/lib/ask/tools.ts` only.** `search_awards` replaces runFind's `find.routes_skipped` warning
+  with one that names the bound that ran out: Ask's per-search route-list limit, today's quota, or both. To know which,
+  it reads the remaining-calls count runFind sized its Get Routes budget with, through a wrapper around the quota. Other
+  warnings pass through as runFind wrote them, in order. `find.ts`, the i18n dictionaries and the web app are unchanged.
+  So are the system prompt and the tool descriptions: every request below hashes to system `ceedb542…` and tools
+  `1811d0eb…`, as before. Test: `tools-routes-warning.test.ts`, a new file.
+- **E6, in the shell.** `showsAttribution(entry, earlier)` holds when the entry's own requests carried seats.aero data
+  (an included search, or a seats.aero read that answered). It also holds when any earlier entry that ended committed
+  carried such data, since only committed entries are resent. `AskScreen` hands each entry the entries before it.
+  Tests: `attribution.test.ts`, `ask-entry.test.ts`, `ask-screen.test.ts`, `labels.test.ts`.
+
+**Verdicts after the fixes.**
+
+| | Scenario | Verdict | After the fixes | Part B run 3 |
+|---|---|---|---|---|
+| **A3** | No Anthropic key | **PASS** | notice, composer and Ask disabled, 0 Anthropic requests; 30 dates × 3 pairs, 44 of 90 cells priced, 1 call, "188 of 950" | same |
+| **A4** | Layout, 17 Pro and SE | **PASS** on both | every value `summary-e2e` reports is equal to run 3's: one nav row ending at x = 351.2, scrollWidth = clientWidth in all 7 states, footer on screen, 12 named controls ≥ 44 pt, the same unjudged controls under 44 pt | same |
+| **A5** | Names, roles, status region | **PASS** | 32 states, 0 unnamed controls, the same names and status-region texts per state | same |
+| **E1** | A question end to end | **FAIL** | step "…, business. **2 calls.**"; the mock logged the search + `routes?source=eurobonus`; quota line "0 of 950", then **"189 of 950"** | same |
+| **E2** | Empty-cell reasons, `demo-key-partial` | **FAIL** | tool result `unmonitored: []`, `not_read_in_full: []`, now with **the warning naming Ask's limit**; grid search failed, "seats.aero unavailable (HTTP 500): {}", after 8 mock requests; with `demo-key-normal`: 19 calls, 30 "not monitored", 12 "—", 0 "not checked" | same, with the quota warning |
+| **E3** | Stop, then a relaunch | **PASS** | stopped 2,001 ms into request 2; server completed at 7,001 ms; stopped entry kept after the relaunch (PID 62841 → 63006); question 3's request: `a8164237…`, `dd4e44cb…`, then `d8a018fe…` | 2,003 ms; 7,004 ms |
+| **E4** | 529, then Try again | **PASS** | seq 177 answered 529 (`req_probe_0177`); resend seq 183, 5,566 bytes, sha256 `b8ec4e9c…`, equal; answered with 2 requests | same |
+| **E5** | Spend limit; rate limit | **PASS** | spend copy, 1 request, no Try again (seq 198); rate-limit copy with the 7-second sentence and Try again (seq 205) | same |
+| **E6** | Follow-ups are append-only | **PASS** | 5 messages, starting with question 1's last request + its answer; system and tools equal; message 3 now `5fbe6fcc…` (below); **"Data: seats.aero" under the follow-up** | message 3 `7f010edd…`; no attribution |
+| **E7** | Leaving mid-question | **PASS** | leave 3,218; `hidden` 4,374; back 30,215; `visible` 30,561; server-completed 39,998 (13 events, 39 pings); none logged while away; request 2 at 40,057; one terminal state, answered at 40,149; the same PID at launch and return (63151) | 3,112; 4,425; 30,134; 30,721; 39,998; 40,178; 40,337 |
+| **E8** | Process death | **PASS** | terminated 3,273 ms after the request; server `client-disconnected` at 3,396 ms, 1 of 8 events; UNFINISHED with Ask again, enabled (PID 63416 → 63455); **meta line "at least 1 request"** (below) | 3,078 ms; 3,212 ms; "No requests" |
+| **R1** | The normal bundle | **PASS** | grep 0 in all 7 `.js`; no probe or e2e chunk; all 7 hash identical to a normal build of the fixed working tree made before the run; `index-CG3Jbm-I.js` 746,386 bytes | 744,378 bytes |
+
+As in §2.8, E7's `hidden`, `visible` and terminal-state times are on the JS clock, from just before the question was
+asked; the others are from the server's line for request 1.
+
+How the two runs were compared:
+
+- **The summaries.** Run 3's log was re-derived with today's `probe-log.mjs summary-e2e`, and its JSON compared leaf by
+  leaf with this run's. A3, both A4s and A5 are equal in every value. E1 to E8 differ only in clock values, timestamps and
+  milliseconds; the mock's own response times (0 to 3 ms); one evidence seq in E7 (a host mark logged one line later);
+  E2's warning; E6's message-3 hash; and E8's meta line and saved request count.
+- **Everything the app posted.** The same comparison, over every value the app posted, differs only in random entry
+  IDs, clock fields, E6's `attribution`, E8's `meta` and `usage.requests`, and the boxes in `dom:e6-follow-up`. Those
+  boxes moved because the page is 24 pt taller: `scrollHeight` went from 1,263 to 1,287.
+- **Transport.** All 21 Anthropic requests were `POST /sse/v1/messages`, `native-like`, with
+  `user-agent: Anthropic/JS 0.123.0`, no Origin and an `x-api-key` of 27 characters, and each carried a queue label.
+- **Timings.** Every timing is within its scenario's terms: Stop about 2 s into E3's second request, and E7's leaving
+  about 3 s and returning about 30 s after its first request.
+
+**E2: the warning in the tool result.** Before (run 3, seq 80, as quoted in §2.4):
+
+```
+{"role":"user","blocks":[{"type":"tool_result","is_error":false,"chars":785,"fields":{"spent":{"seats_aero_calls":2,"from_cache":false,"question_calls_left":10,"today_calls_left":759},"rows_total":0,"unmonitored":[],"not_read_in_full":[],"warnings":["Couldn't check whether seats.aero monitors 2 empty pair(s): 24 program route list(s) skipped to stay within today's quota."]},…}]}
+```
+
+After (seq 80, the `E2-r2` request logged at 05:38:40.692Z):
+
+```
+{"role":"user","blocks":[{"type":"tool_result","is_error":false,"chars":866,"fields":{"spent":{"seats_aero_calls":2,"from_cache":false,"question_calls_left":10,"today_calls_left":759},"rows_total":0,"unmonitored":[],"not_read_in_full":[],"warnings":["Could not check whether seats.aero monitors 2 empty airport pairs: 24 program route lists were skipped because Ask lets one search make at most 1 route list call, not because of today's seats.aero quota."]},…}]}
+```
+
+What skipped the lists was Ask's one-call limit, with 759 calls left today, and the warning now says that. Nothing else
+in the tool result changed: the mock logged the same search and `routes?source=virginatlantic`, and neither list names a
+pair. So E2 still fails on its own criterion.
+
+The same sentence, with 25 lists, is in E1's, E6's and E7's second requests. Those bodies, and E2's, grew from 6,960 to
+7,041 bytes, and E6's follow-up (seq 238), which resends that tool result, from 7,490 to 7,571. The tool result is
+message 3, so its hash changed with it: `7f010edd…` → `5fbe6fcc…` in E6 (§2.7), `788b7b17…` → `18f01049…` in E1's and
+E7's second requests, `0719b778…` → `0bb18795…` in E2's. E6's check compares question 2's first request with question 1's
+last one in the same run, and it still holds.
+
+This run reached one wording only: Ask's fixed limit ran out with calls left today. The others are pinned by
+`tools-routes-warning.test.ts`, not measured: today's quota alone, the limit and the quota both, and a limit lowered
+below one call because the question's allowance went to the search's pages.
+
+**E6: the attribution under the follow-up.** The newest entry, as the app read it from the DOM. Before (run 3, seq 248):
+
+```
+{"seq":248,"at":"2026-09-15T03:53:22.154Z",…,"event":"app","probe":"E6",…,"dom":{"question":"What are the taxes and fees on the cheapest option?","steps":[],…,"attribution":null,"attribution_after_answer":false,"meta":["Claude Opus 5 · 1 request · 4,392 input tokens (3,956 read from cache) · 96 output tokens · seats.aero calls: 0"],…}}
+```
+
+After (seq 248):
+
+```
+{"seq":248,"at":"2026-09-15T05:39:02.916Z",…,"event":"app","probe":"E6",…,"dom":{"question":"What are the taxes and fees on the cheapest option?","steps":[],…,"attribution":"Data: seats.aero","attribution_after_answer":true,"meta":["Claude Opus 5 · 1 request · 4,392 input tokens (3,956 read from cache) · 96 output tokens · seats.aero calls: 0"],…}}
+```
+
+The follow-up made no seats.aero call ("seats.aero calls: 0"), and its request resent question 1's search results
+(messages 2 and 3 above). It now carries the attribution, after its answer. Question 1's entry carried it before and
+still does. Screenshot: `e6-follow-up-after-fixes.png`.
+
+**E8: the meta line after the relaunch.** In both runs the app posted `e8_request_out` (seq 303) with
+`"usage":{"requests":1,…}` in memory. Before (run 3, seq 310), the relaunch read 0 from disk:
+
+```
+{"seq":310,"at":"2026-09-15T03:54:22.857Z",…,"event":"app","probe":"E8",…,"usage":{"requests":0,…},…,"attribution":null,"attribution_after_answer":false,"meta":["Claude Opus 5 · No requests · 0 input tokens (0 read from cache) · 0 output tokens · seats.aero calls: 0"],"ending":["This question did not finish because awardgrid was closed while it ran. Requests already sent may have been billed."],…}
+```
+
+After (seq 310):
+
+```
+{"seq":310,"at":"2026-09-15T05:40:01.519Z",…,"event":"app","probe":"E8",…,"usage":{"requests":1,…},…,"attribution":null,"attribution_after_answer":false,"meta":["Claude Opus 5 · at least 1 request · This question may have used more than awardgrid saved before it was closed"],"ending":["This question did not finish because awardgrid was closed while it ran. Requests already sent may have been billed."],…}
+```
+
+The count saved at `request_started` had reached `ask.json` before the host terminated the app, 3,273 ms after the
+server logged the request. The relaunched entry holds 1 request and says "at least 1 request". It no longer states token
+counts or a seats.aero count that no response had reported. The race the fix also covers was not reached on the
+Simulator: a kill that lands before that write. There the line would read "Claude Opus 5 · This question may have used
+more than awardgrid saved before it was closed", and only unit tests pin that (`ask-service.test.ts`, which restores from
+the file as it stood when the request was handed to the transport, and `unfinished-meta.test.ts`).
+Screenshot: `e8-unfinished-after-fixes.png`.
+
+**Screenshots.** Two were added: `e6-follow-up-after-fixes.png` and `e8-unfinished-after-fixes.png`, byte for byte as
+the run wrote them. The originals stay as they were. None of this run's other 31 screenshots shows a different screen:
+
+- 20 are byte-identical to the committed ones.
+- The SE's seven differ only in the status-bar clock: 20:55 in run 3, 22:41 now. The 17 Pro's status bar reads 09:41 in
+  both runs.
+- `a3-ask-no-anthropic-key`, `a4-17pro-ask-idle` and `a4-17pro-nav-working` differ in 351 to 2,560 pixels, all along
+  the anti-aliased edges of rounded panels, and their DOM facts are equal.
+- `e7-away` caught Settings opening at a different frame of the animation. It still reads "Waiting for Claude (2 s)".
+
+**Step 3's mode, against §1.** Every verdict matches §1:
+
+| | Probe | Verdict | This run | §1 run 2 |
+|---|---|---|---|---|
+| **A0** | Native GET to both loopback hosts, no ATS key | **PASS** | 200 in 50 ms; 200 in 7 ms; both `native-like` | 87 ms; 10 ms |
+| **T1** | 5 s idle timeout vs. a 10-chunk drip | **PASS** | server-completed 18,025 ms, 10,240 bytes in JS after 18,042 ms; control cut at 5,017 ms, "The request timed out." at 5,019 ms | 18,004 ms; 5,014 ms |
+| **T2** | SDK stream over the production adapter | **PASS** | `tool_use`, fixture input, 142 tokens; no Origin, no Sec-Fetch, `Anthropic/JS 0.123.0`, key length 27; body 5,289 bytes, sha256 **`9768dfc1…4a7e6dd`** in JS and at the server; completed at 12,000 ms (13 events, 11 pings), resolved in JS after 12,050 ms | same hash; 12,001 ms; 12,083 ms |
+| **T2b** | WebView fetch, same URL and body | **PASS** | OPTIONS preflight with `origin: capacitor://localhost` and Sec-Fetch-*; no POST; `Load failed` after 5 ms | 9 ms |
+| **T3** | `event: error` mid-stream | **PASS** | `overloaded_mid_answer` after 759 ms, `req_probe_0044` | 758 ms |
+| **T4** | Stop at 800 ms into a 6 s replay | **PASS** | abort at 801 ms; JS rejected 4 ms after; the server wrote all 8 events and completed at 5,999 ms, no disconnect | 800 ms; 1 ms; 5,999 ms |
+| **A1b** | Real api.anthropic.com POST, invalid key | **FAIL** | 401 `AuthenticationError`, the same class as the probe server's 401, after 386 ms; **`requestID` null**, body `request_id` null; the same 8 headers by name, none `request-id` (`cf-ray: a3b55311dbc2ebc3-SEA`); the probe server's control 401 carried `request-id: req_probe_0064` | 1,890 ms; `…-SJC` |
+| **A2** | WebView fetch to both hosts | **PASS** | both `NativeHttpRequiredError`, 1 ms and 0 ms | same |
+| **X1** | The seats.aero rewrite | **PASS** | 200, `x-ratelimit-remaining: 812`, 1,171 bytes in 10 ms; mock logged `GET /partnerapi/routes?source=united 200` | 4 ms |
+| **T5** | Leave 3 s into a 60 s drip, return at 48 s | **PASS** | host leaves at 3,101 ms; `hidden` 4,791; host returns 48,239; `visible` 48,605; server 59,001 ms, 60 chunks; one outcome, resolved, 61,440 bytes at 59,022 ms while visible; the same PID at launch and return (66164) | 3,142; 4,918; 48,087; 48,880; 59,028 |
+| **R1** | The normal bundle | **PASS** | grep 0 in all 7 `.js`; no probe chunk; `index-CG3Jbm-I.js` 746,386 bytes | 719,407 bytes |
+
+The mode's own `summary.json`, compared leaf by leaf with §1 run 2's, differs only in timings and in values no criterion
+reads:
+
+- **Minified names.** The error constructors, such as `Cm` → `wm` for the 401, changed with the code added since step 3.
+- **Key order.** The order of keys inside the 401 and 529 messages changed, which §1.7 had already seen change between
+  runs.
+- **A0's sizes.** Its two responses were each 30 bytes longer. That response is the probe server's log so far.
+- **A1b's host.** It answered in 386 ms, not 1,890 ms, from a Cloudflare edge in SEA rather than SJC.
+
+A1b sent one request to api.anthropic.com, with `sk-ant-probe-invalid-000000`, as §1.7 describes. The run was armed once
+(seq 2), and the app consumed that arm at launch. After this mode's restore, the seven `.js` files in `apps/ios/dist`
+again hash identically to the baseline R1 used above. The main chunk's 746,386 bytes are 2,008 over §2.10's 744,378, all
+of it from these fixes, and 78,945 over design §10.3's 667,441 baseline. That is recorded, not investigated, as in §2.10.
+
+At the end the normal app was installed on both simulators. Their bundles carry the same seven `.js` names, with a
+pattern count of 0. The SE simulator was shut down by UDID. Both servers were stopped by the PIDs the scripts started,
+and ports 4599 and 4597 were free.
 
 ### Reproducing §2
 

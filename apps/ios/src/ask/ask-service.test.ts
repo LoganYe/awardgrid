@@ -541,8 +541,12 @@ describe("a question", () => {
     expect(atSend[0]?.pending).toEqual({ entryId: "id-2", startedAt: NOW.toISOString() });
     expect(atSend[0]?.entries[0]?.end).toBeNull();
 
+    // The request is counted on disk as it goes out. That save does not hold the request back: it was already sent.
+    await until(() => files.held === 1, "the save that counts the first request");
+    files.release();
     // Claude's first response asks for a search. What it returned is saved before the search goes to seats.aero.
     await until(() => files.held === 1, "the save after the first request");
+    expect(files.onDisk()?.entries[0]).toMatchObject({ texts: [], usage: { requests: 1 } });
     await turns(10);
     expect(h.seatsFetch.calls).toHaveLength(0);
     files.release();
@@ -1074,6 +1078,83 @@ describe("the conversation on disk", () => {
     await h.service.newConversation();
     reading.resolve(text);
     expect((await restoring).entries).toEqual([]);
+  });
+});
+
+describe("a question the process is killed during (docs/PHASE5.md §2.9, E8)", () => {
+  /** A relaunch: a new service over a Data directory holding exactly `disk`, the ask.json a killed process left. */
+  async function relaunch(disk: string | undefined): Promise<AskEntry[]> {
+    const files = new RecordingFiles();
+    if (disk !== undefined) await files.write(ASK_FILE, disk);
+    const h = await harness({ files });
+    return [...(await h.service.restore()).entries];
+  }
+
+  it("counts a request on disk as it goes out, so a relaunch after the kill reads at least that request", async () => {
+    const files = new HeldFiles();
+    const h = await harness({ files, replies: [{ hang: true }] });
+    const run = h.service.ask(QUESTION, false);
+    await until(() => files.held === 1, "the save that marks the question pending");
+    files.release();
+
+    // The request is out, and a save of its count is on its way to disk while the request waits for Anthropic.
+    await until(() => h.send.mock.calls.length === 1 && files.held === 1, "the request, and the save that counts it");
+    files.release();
+    await until(() => files.onDisk()?.entries[0]?.usage.requests === 1, "the count on disk");
+    expect(files.onDisk()?.pending).toEqual({ entryId: "id-2", startedAt: NOW.toISOString() });
+
+    // The process dies here, the request still out.
+    const [unfinished] = await relaunch(files.files.get(ASK_FILE));
+    expect(unfinished!.end).toMatchObject({ status: "unfinished", committed: false });
+    expect(unfinished!.usage.requests).toBe(1);
+    expect(labels.entryMetaLine(unfinished!)).toBe(`Claude Opus 5 · at least 1 request · ${labels.UNFINISHED_COUNTS}`);
+
+    files.hold = false;
+    h.service.stop();
+    expect((await run).entries[0]!.end?.status).toBe("stopped");
+  });
+
+  it("killed before that count lands, the relaunched entry never says fewer requests than were sent", async () => {
+    const files = new RecordingFiles();
+    const atSend: Array<string | undefined> = [];
+    // What is on disk at the moment the request is handed to the transport: the kill lands before the count's write.
+    const h = await harness({ files, replies: [{ hang: true }], onSend: () => atSend.push(files.files.get(ASK_FILE)) });
+    const run = h.service.ask(QUESTION, false);
+    await until(() => h.send.mock.calls.length === 1, "the request");
+
+    const [unfinished] = await relaunch(atSend[0]);
+    expect(unfinished!.end).toMatchObject({ status: "unfinished", committed: false });
+    // The race lost: the file says no request, though one was sent.
+    expect(unfinished!.usage.requests).toBe(0);
+    const line = labels.entryMetaLine(unfinished!);
+    expect(line).toBe(`Claude Opus 5 · ${labels.UNFINISHED_COUNTS}`);
+    expect(line).not.toMatch(/No requests|\b0 requests/);
+
+    h.service.stop();
+    await run;
+  });
+
+  it("killed while a search's step is on its way to disk, the relaunched entry never says fewer seats.aero calls than were made", async () => {
+    const files = new HeldFiles();
+    const h = await harness({ files, replies: [{ script: "tool_use_search" }, { script: "text" }] });
+    const run = h.service.ask(QUESTION, false);
+    for (const save of ["the pending marker", "the first request's count", "the first response"]) {
+      await until(() => files.held === 1, save);
+      files.release();
+    }
+    await until(() => h.seatsFetch.calls.length === 1 && files.held === 1, "the search, and the save of its step");
+    expect(files.onDisk()?.entries[0]?.usage).toMatchObject({ requests: 1, seatsCalls: 0 });
+
+    const [unfinished] = await relaunch(files.files.get(ASK_FILE));
+    expect(unfinished!.end?.status).toBe("unfinished");
+    const line = labels.entryMetaLine(unfinished!);
+    // The first response's usage was saved; the search's one call was made and not yet saved, so no call count is stated.
+    expect(line).toBe(`Claude Opus 5 · at least 1 request · at least 3,968 input tokens · at least 142 output tokens · ${labels.UNFINISHED_COUNTS}`);
+    expect(line).not.toContain("seats.aero calls");
+
+    files.hold = false;
+    files.release();
+    expect((await run).entries[0]!.end?.status).toBe("answered");
   });
 });
 

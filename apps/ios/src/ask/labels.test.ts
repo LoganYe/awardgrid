@@ -556,10 +556,10 @@ describe("under an answer", () => {
 
   it("shows the attribution whenever the answer may rest on seats.aero data", () => {
     expect(labels.ATTRIBUTION).toBe("Data: seats.aero");
-    expect(labels.showsAttribution({ includeSearch: true, steps: [] })).toBe(true);
-    expect(labels.showsAttribution({ includeSearch: false, steps: [step({ calls: 1, search: SEARCH })] })).toBe(true);
-    expect(labels.showsAttribution({ includeSearch: false, steps: [step({ fromCache: true, search: SEARCH })] })).toBe(true);
-    expect(labels.showsAttribution({ includeSearch: false, steps: [step({ outcome: "too_wide" }), { kind: "paused" }] })).toBe(false);
+    expect(labels.showsAttribution({ includeSearch: true, steps: [] }, [])).toBe(true);
+    expect(labels.showsAttribution({ includeSearch: false, steps: [step({ calls: 1, search: SEARCH })] }, [])).toBe(true);
+    expect(labels.showsAttribution({ includeSearch: false, steps: [step({ fromCache: true, search: SEARCH })] }, [])).toBe(true);
+    expect(labels.showsAttribution({ includeSearch: false, steps: [step({ outcome: "too_wide" }), { kind: "paused" }] }, [])).toBe(false);
   });
 });
 

@@ -207,7 +207,8 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
   const suggestions = withSearch ? SUGGESTIONS_WITH_SEARCH : SUGGESTIONS_WITHOUT_SEARCH;
   const activity = running?.activity ?? null;
   const waitSeconds = activity?.kind === "request" ? (clock - Date.parse(activity.startedAt)) / 1000 : 0;
-  const entries = [...state.entries].reverse();
+  // Newest first, each with the entries before it in the conversation: the history its requests resent.
+  const entries = state.entries.map((entry, i) => ({ entry, earlier: state.entries.slice(0, i) })).reverse();
 
   const send = () => {
     const text = draft;
@@ -300,10 +301,11 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
       {entries.length > 0 ? (
         // Not a live region: the status region above announces the transitions (design §6.5).
         <ul className="ask-entries" data-surface="flat" aria-busy={questionRunning}>
-          {entries.map((entry) => (
+          {entries.map(({ entry, earlier }) => (
             <AskEntry
               key={entry.id}
               entry={entry}
+              earlier={earlier}
               bookingUrls={state.bookingUrls}
               retryEntryId={state.retryEntryId}
               activity={running?.entryId === entry.id ? running.activity : null}

@@ -12,7 +12,8 @@
  *     Without a seats.aero key the question is refused before it starts. Try again resends only on the keys the
  *     question started with, so a key removed in Settings is never used again.
  *   - EVERY STEP IS ON DISK BEFORE THE NEXT ONE. ask.json is written when a question starts (with its `pending`
- *     marker), after every model request and every tool call, and when the question ends, which clears `pending`.
+ *     marker), as each model request is sent (its count, which that request itself does not wait for), after every
+ *     model request and every tool call, and when the question ends, which clears `pending`.
  *     The loop sends nothing until those writes have landed. Before every request and every tool call it awaits
  *     waitUntilVisible (core loop.ts gate), and that wait begins with every write queued so far. Stop still ends
  *     the wait. So the first request goes out with its `pending` marker already on disk, and each request or tool
@@ -458,6 +459,10 @@ export function createAskService(deps: AskServiceDeps): AskService {
       case "request_started":
         entry.usage.requests += 1;
         run.activity = { kind: "request", request: event.request, startedAt: deps.now().toISOString(), resend: event.resend };
+        // A request that may be billed is counted on disk too. The loop emits this as it sends, after the gate that
+        // waits for saves, so the request can go out before this write lands: a count read back from an unfinished
+        // entry is a lower bound, and labels.ts entryMetaLine words it as one.
+        void save();
         break;
       case "request_finished":
         entry.usage.inputTokens += event.usage.inputTokens;

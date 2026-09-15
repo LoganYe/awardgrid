@@ -55,7 +55,7 @@ function search(over: Partial<ToolStep> = {}): ToolStep {
 }
 
 function render(props: Partial<AskEntryProps> & { entry: Entry }): string {
-  const full: AskEntryProps = { bookingUrls: new Set(), retryEntryId: null, ...props };
+  const full: AskEntryProps = { earlier: [], bookingUrls: new Set(), retryEntryId: null, ...props };
   return renderToStaticMarkup(createElement(MemoryRouter, null, createElement(AskEntry, full)));
 }
 
@@ -125,6 +125,17 @@ describe("other endings", () => {
     expect(html).not.toContain('role="alert"');
   });
 
+  it("an unfinished entry's meta line states its saved counts as lower bounds, and no count it cannot vouch for", () => {
+    // E8's race: the process died before the sent request's count reached ask.json.
+    const lost = render({ entry: entry({ usage: { ...entry().usage, requests: 0, inputTokens: 0, outputTokens: 0, lastRequestInputTokens: null }, end: ended("unfinished") }) });
+    expect(lost).toContain(`<p class="ask-meta tabular">${labels.MODEL_NAME} · ${labels.UNFINISHED_COUNTS}</p>`);
+    expect(lost).not.toMatch(/No requests|\b0 requests|seats\.aero calls: 0/);
+
+    const landed = render({ entry: entry({ end: ended("unfinished") }) });
+    expect(landed).toContain(`<p class="ask-meta tabular">${escape(labels.unfinishedMetaLine(entry().usage))}</p>`);
+    expect(landed).toContain("at least 1 request");
+  });
+
   it.each<[string, EntryEnd]>([
     ["stopped during a request", ended("stopped", { stoppedDuring: "request" })],
     ["unfinished after a relaunch", ended("unfinished")],
@@ -174,6 +185,17 @@ describe("steps, attribution and the follow-up note", () => {
     expect(shown(entry({ steps: [{ kind: "tool", step: search() }], end: ended("answered") }))).toBe(true);
     expect(shown(entry({ steps: [{ kind: "tool", step: search({ outcome: "too_wide", calls: 0, estimate: 5 }) }], end: ended("answered") }))).toBe(false);
     expect(shown(entry({ texts: ["Qatar flies this route daily."], end: ended("answered") }))).toBe(false);
+  });
+
+  it("shows Data: seats.aero under a follow-up answered without a tool call when an earlier committed question carried seats.aero data", () => {
+    const shown = (earlier: Entry[]) => render({ entry: entry({ id: "e2", texts: ["The taxes on that seat are $5.60."], end: ended("answered") }), earlier }).includes(`<p class="ask-attribution">${labels.ATTRIBUTION}</p>`);
+    const searched = entry({ steps: [{ kind: "tool", step: search() }], end: ended("answered") });
+    expect(shown([searched])).toBe(true);
+    expect(shown([entry({ includeSearch: true, end: ended("answered") })])).toBe(true);
+    // Not committed, so never resent: its search results are not what the follow-up rests on.
+    expect(shown([{ ...searched, end: ended("stopped", { stoppedDuring: "request" }) }])).toBe(false);
+    expect(shown([entry({ end: ended("answered") })])).toBe(false);
+    expect(shown([])).toBe(false);
   });
 
   it("adds the follow-up note under an answer that offers what awardgrid cannot do, and leaves the answer unchanged", () => {

@@ -18,7 +18,8 @@
  *  - IT COUNTS WHAT WENT OUT. Calls spent are the budget guard's count of requests sent, never an estimate, and
  *    never runFind's own count, which includes a request the guard refused (budget.ts).
  *  - IT CAPS EVERY PULL. runFind's defaults allow 40 pages plus 26 Get Routes calls (find.ts:62, :367), so every
- *    call passes maxPages, maxRoutesCalls and ttlMinutes explicitly.
+ *    call passes maxPages, maxRoutesCalls and ttlMinutes explicitly. A warning that blames today's quota for route
+ *    lists Ask's own cap skipped is rewritten to name the bound that ran out (searchWarnings).
  *  - IT ACCEPTS ONLY IDS IT RETURNED. get_flights takes an id only if search_awards returned it in this
  *    conversation, so an invented id cannot spend a call.
  *  - IT LEAKS NO KEY. Results are built from typed fields, and the finished text is still masked of every secret.
@@ -56,6 +57,7 @@ import {
   MAX_TOOL_CALLS,
   QUESTION_SEATS_CALL_CAP,
   SEARCH_PAGE_CAP,
+  SEARCH_ROUTES_CAP,
   SEARCH_ROWS_RETURNED,
 } from "./limits";
 
@@ -485,6 +487,7 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
     if (!plan.run) return spendRefusal(toolUseId, s, plan, "search");
 
     const guard = createSeatsBudgetGuard(port.fetch, plan.guard);
+    const quota = observedQuota(port.quota);
     let result: FindResult | undefined;
     let failure: unknown;
     try {
@@ -493,7 +496,7 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
         userId: port.userId,
         apiKey: port.apiKey,
         fetch: guard.fetch,
-        quota: port.quota,
+        quota: quota.quota,
         cache: port.cache,
         routes: port.routes,
         now: port.now,
@@ -539,7 +542,7 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
       by_pair: byPair(query, matching),
       unmonitored: result.unmonitored_pairs.map((p) => p.key),
       not_read_in_full: notFetchedPairsFrom(result, pairsOf(query)).map((p) => `${p.pair.origin}-${p.pair.dest}`),
-      warnings: result.warnings,
+      warnings: searchWarnings(result, { allowed: plan.maxRoutesCalls, quotaLeft: quota.lastRemaining() }),
       notes: SEARCH_NOTES,
     };
     return finish(toolUseId, { ...s, calls: guard.sent(), fromCache: result.served_from_cache }, payload, false);
@@ -638,6 +641,80 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * `quota`, with the last count its `remaining` answered kept. Methods run on `quota` itself, whose fields are private.
+ *
+ * searchWarnings needs the count runFind sized its Get Routes budget with. runFind reads `remaining` twice: before the
+ * pull, and right after the pull settles, to size that budget (seatsaero/find.ts:326, :366-367). The second read is
+ * made only when some pair came back empty, which is also the only time a route list can be skipped, and nothing after
+ * it reads `remaining` again. So whenever runFind reports skipped route lists, the last count kept here is that one.
+ */
+function observedQuota(quota: Quota): { quota: Quota; lastRemaining(): number | null } {
+  let last: number | null = null;
+  const observed = new Proxy(quota, {
+    get(target, property) {
+      if (property === "remaining") {
+        return async (userId: string) => {
+          const n = await target.remaining(userId);
+          last = n;
+          return n;
+        };
+      }
+      const value: unknown = Reflect.get(target, property, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  return { quota: observed, lastRemaining: () => last };
+}
+
+/**
+ * runFind's warnings, in its order and words, except the one whose reason is the web app's and not Ask's.
+ *
+ * runFind words skipped route lists as skipped "to stay within today's quota" (notice find.routes_skipped, the web's
+ * i18n dictionary), the only bound the web app puts on them. Its budget for Get Routes calls is the smallest of today's
+ * remaining calls, the lists not yet loaded and `maxRoutesCalls` (find.ts:366-368), and Ask passes its own per-search
+ * limit as `maxRoutesCalls` (budget.ts planSearchSpend, SEARCH_ROUTES_CAP). With 759 calls left today, that limit is what
+ * skipped them (docs/PHASE5.md §2.4), and Claude repeats the reason it reads. So that one warning is written here.
+ */
+function searchWarnings(result: FindResult, routes: { allowed: number; quotaLeft: number | null }): string[] {
+  return result.warnings.map((text, i) => {
+    const notice = result.notices[i];
+    return notice?.code === "find.routes_skipped" ? routesSkippedWarning(notice.vars ?? {}, result.routes_calls_used, routes) : text;
+  });
+}
+
+/**
+ * Why route lists were skipped, by which bound ran out. A list is skipped only once runFind's Get Routes budget is
+ * spent (routes.ts ensureLoaded), so the calls it made equal that budget, min(today's remaining calls, lists not loaded,
+ * `allowed`), and a skipped list shows the lists not loaded were not the smallest:
+ *
+ *   - Fewer calls than `allowed`: today's quota was smaller than Ask's limit, or had no room left when runFind reserved.
+ *   - As many as `allowed`: Ask's limit ran out. Today's quota did too when it had no more than `allowed` calls left
+ *     then. That count is runFind's own read (observedQuota); without it, the quota is not named either way.
+ *
+ * `allowed` is SEARCH_ROUTES_CAP unless the question's allowance left less once the pages were set aside
+ * (planSearchSpend). That allowance is the question's calls or today's calls above the reserve, so a lowered limit
+ * never says the quota played no part.
+ */
+function routesSkippedWarning(vars: Record<string, string | number>, made: number, routes: { allowed: number; quotaLeft: number | null }): string {
+  const pairs = Number(vars.pairs ?? 0);
+  const skipped = Number(vars.skipped ?? 0);
+  const head = `Could not check whether seats.aero monitors ${pairs} empty airport ${pairs === 1 ? "pair" : "pairs"}: ${skipped} program route ${skipped === 1 ? "list was" : "lists were"} skipped`;
+  const { allowed, quotaLeft } = routes;
+  if (made < allowed) return `${head} because today's seats.aero quota had no calls left for them.`;
+  const calls = (n: number) => `route list ${n === 1 ? "call" : "calls"}`;
+  const lowered = allowed < SEARCH_ROUTES_CAP;
+  const limit = lowered
+    ? `Ask allowed this search ${allowed === 0 ? "no" : `only ${allowed}`} ${calls(allowed)} (the calls it could spend were set aside for its results)`
+    : `Ask lets one search make at most ${allowed} ${calls(allowed)}`;
+  if (quotaLeft !== null && quotaLeft <= allowed) {
+    const quota = quotaLeft <= 0 ? "no calls" : `only ${quotaLeft} ${quotaLeft === 1 ? "call" : "calls"}`;
+    return `${head} because ${limit}, and today's seats.aero quota had ${quota} left.`;
+  }
+  if (quotaLeft !== null && !lowered) return `${head} because ${limit}, not because of today's seats.aero quota.`;
+  return `${head} because ${limit}.`;
+}
 
 /** `now` ages the lookup: 0 for one just made, and its real age for a memo hit, however many questions ago it was made. */
 function flightsPayload(lookup: FlightsLookup, spent: { calls: number; questionLeft: number; todayLeft: number }, now: Date, fromMemo: boolean) {

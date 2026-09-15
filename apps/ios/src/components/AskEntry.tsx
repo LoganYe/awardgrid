@@ -2,9 +2,10 @@
  * One question in the conversation, as the person reads it (design §6.3, §6.4).
  *
  * Top to bottom: the question; the steps that finished, in order; what is under way now, while this is the
- * question running; Claude's answer texts; "Data: seats.aero" whenever the answer may rest on seats.aero data; the
- * meta line once the question has ended; how it ended; the actions that fit that ending; and the follow-up note
- * when an answer offers what awardgrid cannot do.
+ * question running; Claude's answer texts; "Data: seats.aero" whenever the answer may rest on seats.aero data, its own
+ * or an earlier committed question's that its requests resent; the meta line once the question has ended, worded as
+ * lower bounds for a question awardgrid was closed during; how it ended; the actions that fit that ending; and the
+ * follow-up note when an answer offers what awardgrid cannot do.
  *
  * Every sentence comes from ../ask/labels.ts. This component decides only which ones apply:
  *
@@ -29,8 +30,8 @@ import {
   PAUSED_STEP,
   TRY_AGAIN,
   endLabel,
+  entryMetaLine,
   failureView,
-  metaLine,
   showsAttribution,
   showsFollowUpNote,
   stepLabel,
@@ -41,6 +42,11 @@ import { AnswerText } from "./AnswerText";
 
 export interface AskEntryProps {
   entry: Entry;
+  /**
+   * The conversation's entries before this one, oldest first. The committed ones are the history this entry's requests
+   * resent, so seats.aero data one of them carried is data this answer may rest on (labels.ts showsAttribution).
+   */
+  earlier: readonly Entry[];
   /** The conversation's booking links: the only links an answer may make tappable. */
   bookingUrls: ReadonlySet<string>;
   /** AskState.retryEntryId: the one entry whose failed request can be resent. */
@@ -62,6 +68,7 @@ export interface AskEntryProps {
 
 export function AskEntry({
   entry,
+  earlier,
   bookingUrls,
   retryEntryId,
   activity = null,
@@ -103,9 +110,9 @@ export function AskEntry({
         <AnswerText key={i} text={text} bookingUrls={bookingUrls} />
       ))}
 
-      {showsAttribution(entry) ? <p className="ask-attribution">{ATTRIBUTION}</p> : null}
+      {showsAttribution(entry, earlier) ? <p className="ask-attribution">{ATTRIBUTION}</p> : null}
 
-      {end !== null ? <p className="ask-meta tabular">{metaLine(entry.usage)}</p> : null}
+      {end !== null ? <p className="ask-meta tabular">{entryMetaLine(entry)}</p> : null}
 
       {ending !== null ? <p className="ask-ending">{ending}</p> : null}
 

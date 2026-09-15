@@ -242,6 +242,48 @@ describe("the conversation", () => {
     expect(html).toContain('aria-busy="false"');
   });
 
+  it("hands each entry the entries before it, so a follow-up that resent a committed search carries Data: seats.aero (E6)", () => {
+    const searched: AskEntry["steps"] = [
+      {
+        kind: "tool",
+        step: {
+          tool: "search_awards",
+          outcome: "ok",
+          calls: 1,
+          fromCache: false,
+          fromMemo: false,
+          search: { origins: ["SEA"], destinations: ["NRT", "HND"], date_from: "2026-10-01", date_to: "2026-10-31", cabins: ["J"], programs: null, direct_only: false, max_miles: null },
+          program: null,
+          estimate: null,
+        },
+      },
+    ];
+    const attribution = `<p class="ask-attribution">${labels.ATTRIBUTION}</p>`;
+    /** Each entry's markup, as the screen lists them: newest first. */
+    const listed = (html: string) => html.split('<li class="ag-surface ask-entry">').slice(1);
+    const followUp = entry("e2", { texts: ["The taxes on that seat are $5.60."], end: ended("answered", { committed: true }) });
+
+    const committed = listed(render(state({ entries: [entry("e1", { steps: searched, end: ended("answered", { committed: true }) }), followUp] })));
+    expect(committed.map((html) => [html.includes("Question e2"), html.includes(attribution)])).toEqual([
+      [true, true],
+      [false, true],
+    ]);
+
+    // A stopped question is never committed, so the follow-up after it resent none of its results.
+    const stopped = listed(render(state({ entries: [entry("e1", { steps: searched, end: ended("stopped", { stoppedDuring: "between" }) }), followUp] })));
+    expect(stopped.map((html) => [html.includes("Question e2"), html.includes(attribution)])).toEqual([
+      [true, false],
+      [false, true],
+    ]);
+
+    // A later question's search was in no request of an earlier one.
+    const later = listed(render(state({ entries: [entry("e1", { texts: ["Qatar flies this route."], end: ended("answered", { committed: true }) }), entry("e2", { steps: searched, end: ended("answered", { committed: true }) })] })));
+    expect(later.map((html) => [html.includes("Question e2"), html.includes(attribution)])).toEqual([
+      [true, true],
+      [false, false],
+    ]);
+  });
+
   it("a full conversation says why, offers New conversation where it says so, and starts no question, Ask again included", () => {
     const full = "This conversation has reached 8 questions. Start a new conversation.";
     const html = render(state({ entries: [entry("e1", { end: ended("stopped", { stoppedDuring: "request" }) })], full }));
