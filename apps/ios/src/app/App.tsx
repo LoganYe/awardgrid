@@ -26,6 +26,12 @@ import { WatchesScreen } from "../screens/WatchesScreen";
  */
 const PROBES = import.meta.env.VITE_AG_PROBES === "1";
 const ProbesScreen = PROBES ? lazy(() => import("../probes/ProbesScreen").then((m) => ({ default: m.ProbesScreen }))) : null;
+/**
+ * E2e build only (VITE_AG_PROBES=e2e, apps/ios/probes/run-probes.sh --e2e): the app as shipped, with its transports
+ * pointed at the probe server and the seats.aero mock, and a driver that runs step 7's Simulator scenarios through the
+ * services. In every other build this is the constant false as well, and R1 checks the same way.
+ */
+const E2E = import.meta.env.VITE_AG_PROBES === "e2e";
 
 /**
  * How many watches have changes the user has not looked at yet.
@@ -117,12 +123,19 @@ export function App() {
 
   useEffect(() => {
     // A probe build sends seats.aero requests to the local mock (../probes/probe-transport.ts); any other build is unchanged.
-    const booted = PROBES ? import("../probes/probe-transport").then((m) => bootstrap(m.probeBootstrapOptions())) : bootstrap();
+    const booted = PROBES
+      ? import("../probes/probe-transport").then((m) => bootstrap(m.probeBootstrapOptions()))
+      : E2E
+        ? import("../probes/probe-transport").then((m) => bootstrap(m.e2eBootstrapOptions()))
+        : bootstrap();
     booted.then(setServices, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
   useEffect(() => {
     if (!services) return;
+    // An e2e build starts its driver here, once the services exist. In any other build the line is dropped whole,
+    // so the effect ships byte-identical (R1, docs/PHASE5.md §2).
+    if (E2E) void import("../probes/e2e-driver").then((m) => m.startE2E(services));
     // Check watches now that the app is open…
     void services.checkWatches();
 

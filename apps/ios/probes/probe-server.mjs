@@ -16,14 +16,25 @@
  *   POST /reset?script=a,b&label=L&every=MS&ping=MS&status=N&spend=1&retry_after=S&models=N
  *                                         replaces the queue; with no `script`, empties it.
  *   GET  /log                             this run's log lines, as JSON.
- *   POST /log                             the app posts its results here. The only route with CORS headers.
- *   POST /arm, POST /mark?label=TEXT      host only (run-probes.sh): allow one probe run; put a host event in the log.
+ *   POST /log                             the app posts its results here. With GET /host-done, the only routes with
+ *                                         CORS headers.
+ *   POST /arm?phase=NAME, POST /mark?label=TEXT
+ *                                         host only (run-probes.sh): allow one run, naming the e2e phase it runs
+ *                                         (step 7; none for step 3's probes); put a host event in the log.
+ *   POST /host-done?name=NAME&k=v…        host only (e2e-host.mjs): the host did what the app asked for under NAME
+ *                                         (a screenshot, a count of the mock's log lines); every k=v is logged.
+ *   GET  /host-done?name=NAME             the e2e driver polls it: {done, …what the host logged}. Not logged.
  *   GET  /healthz                         readiness for run-probes.sh. Not logged.
  *
  * A queue item is ":"-separated parts: the one bare part names a script, and each k=v part sets an option for
  * that item, e.g. `tool_use_search:every=1000:ping=1000`, `text:every=857`, `status=529`, `status=429:spend=1`,
  * `status=429:retry_after=7`. An option on the request URL wins over the item's, which wins over the /reset query's.
- * `every` is the delay between events and `ping` sends `event: ping` on its own timer, both in ms.
+ * `every` is the delay between events and `ping` sends `event: ping` on its own timer, both in ms. `label=L` gives
+ * that one item its own label instead of the /reset query's, so two requests of one question can be told apart.
+ *
+ * A Messages request is logged with its hashes and, for step 7, a short summary of each message: its role, block
+ * types, the first characters of its text, a tool_use's name and input, and a tool_result's is_error and the
+ * fields step 7 reads from it (`unmonitored`, `not_read_in_full`, `spent`, `rows_total`, `error`). None of it is a key.
  *
  * A key is never written: x-api-key is logged as its length, other headers by name only unless listed in
  * `telltales`, and any "sk-ant-" run in text the app posts is masked.
@@ -128,6 +139,35 @@ function bodyFacts(body) {
     message_sha256: messages ? messages.map((m) => sha256(JSON.stringify(m))) : null,
     system_sha256: json?.system === undefined ? null : sha256(JSON.stringify(json.system)),
     tools_sha256: json?.tools === undefined ? null : sha256(JSON.stringify(json.tools)),
+    message_summaries: messages ? messages.map(summarizeMessage) : null,
+  };
+}
+
+const TOOL_RESULT_FIELDS = ["error", "message", "spent", "rows_total", "unmonitored", "not_read_in_full", "warnings"];
+const head = (text, n) => maskText(String(text).slice(0, n));
+const maskText = (text) => text.replace(KEY_RUN, "sk-ant-****");
+
+/** What step 7 reads from one message of a request: never the whole body, never a key. */
+function summarizeMessage(message) {
+  const blocks = typeof message?.content === "string" ? [{ type: "text", text: message.content }] : Array.isArray(message?.content) ? message.content : [];
+  return {
+    role: message?.role ?? null,
+    blocks: blocks.map((block) => {
+      if (block?.type === "text") return { type: "text", chars: String(block.text ?? "").length, head: head(block.text ?? "", 120) };
+      if (block?.type === "tool_use") return { type: "tool_use", name: block.name ?? null, input: JSON.parse(maskText(JSON.stringify(block.input ?? null))) };
+      if (block?.type === "tool_result") {
+        const text = typeof block.content === "string" ? block.content : JSON.stringify(block.content ?? null);
+        let fields = null;
+        try {
+          const parsed = JSON.parse(text);
+          fields = Object.fromEntries(TOOL_RESULT_FIELDS.filter((key) => parsed && key in parsed).map((key) => [key, parsed[key]]));
+        } catch {
+          // Not JSON: the head below is all there is.
+        }
+        return { type: "tool_result", is_error: block.is_error === true, chars: text.length, fields: fields && JSON.parse(maskText(JSON.stringify(fields))), head: head(text, 160) };
+      }
+      return { type: block?.type ?? null };
+    }),
   };
 }
 
@@ -165,6 +205,10 @@ let queueDefaults = {};
 let modelsStatus = null;
 /** Set by the host before a launch, and consumed by the app's `start` post: one launch runs the probes once. */
 let armed = false;
+/** The e2e phase the armed launch runs (step 7), or null for step 3's probes. Consumed with `armed`. */
+let armedPhase = null;
+/** What the host has done for the app, by the name the app asked under (e2e-host.mjs). */
+const hostDone = new Map();
 
 function parseItem(raw, label) {
   const item = { raw, label, name: null, opts: {} };
@@ -174,6 +218,7 @@ function parseItem(raw, label) {
     if (eq === -1) item.name = part;
     else item.opts[part.slice(0, eq)] = part.slice(eq + 1);
   }
+  if (item.opts.label) item.label = item.opts.label;
   return item;
 }
 
@@ -372,7 +417,11 @@ async function handle(req, res) {
       }
       const isStart = payload?.probe === "start";
       const armedForThisLaunch = isStart ? armed : undefined;
-      if (isStart) armed = false;
+      const phaseForThisLaunch = isStart && armed ? armedPhase : null;
+      if (isStart) {
+        armed = false;
+        armedPhase = null;
+      }
       log(
         "app",
         mask({
@@ -381,16 +430,30 @@ async function handle(req, res) {
           values: payload?.values ?? null,
           app_at: payload?.at ?? null,
           posted_via: telltales(req).stack,
-          ...(isStart ? { armed: armedForThisLaunch } : {}),
+          ...(isStart ? { armed: armedForThisLaunch, phase: phaseForThisLaunch } : {}),
         }),
       );
-      return sendJson(res, 200, isStart ? { ok: true, armed: armedForThisLaunch } : { ok: true });
+      return sendJson(res, 200, isStart ? { ok: true, armed: armedForThisLaunch, phase: phaseForThisLaunch } : { ok: true });
+    }
+  }
+
+  if (route === "/host-done") {
+    const name = url.searchParams.get("name") ?? "";
+    if (req.method === "GET") {
+      res.setHeader("access-control-allow-origin", "*");
+      return sendJson(res, 200, { done: hostDone.has(name), ...(hostDone.get(name) ?? {}) });
+    }
+    if (req.method === "POST") {
+      const fields = Object.fromEntries([...url.searchParams].filter(([key]) => key !== "name"));
+      hostDone.set(name, fields);
+      return sendText(res, 200, String(log("host-done", { name, ...fields }).seq));
     }
   }
 
   if (route === "/arm" && req.method === "POST") {
     armed = true;
-    return sendText(res, 200, String(log("host-arm").seq));
+    armedPhase = url.searchParams.get("phase");
+    return sendText(res, 200, String(log("host-arm", armedPhase === null ? {} : { phase: armedPhase }).seq));
   }
   if (route === "/mark" && req.method === "POST") {
     return sendText(res, 200, String(log("host-mark", { label: url.searchParams.get("label") ?? "" }).seq));

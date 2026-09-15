@@ -11,6 +11,8 @@ installWebViewFetchGuard();
 // A probe build (VITE_AG_PROBES=1, apps/ios/probes/run-probes.sh) opens on its probes screen, set before the router
 // reads the hash. In every other build the condition is the constant false and the line is dropped.
 if (import.meta.env.VITE_AG_PROBES === "1") window.location.hash = "#/probes";
+// An e2e build (VITE_AG_PROBES=e2e) opens on Ask, where its driver starts. The same constant-false rule applies.
+if (import.meta.env.VITE_AG_PROBES === "e2e") window.location.hash = "#/ask";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

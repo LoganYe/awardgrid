@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 #
 # Phase 5, step 3: the Simulator probes, as one procedure a person can rerun. Results: docs/PHASE5.md §1.
+# Phase 5, step 7 part B: the same harness with --e2e runs the end-to-end scenarios instead. Results: §2.
 #
 #   apps/ios/probes/run-probes.sh <scratch-dir>
+#   apps/ios/probes/run-probes.sh --e2e <scratch-dir>
 #
-# In order:
+# Step 3's probes include A1b, which sends one request to api.anthropic.com with a key Anthropic rejects. --e2e sends
+# nothing to Anthropic: its build rewrites api.anthropic.com to the probe server (src/probes/probe-transport.ts). The
+# e2e phases are in e2e-phases.sh, which this script sources; everything else below is shared.
+#
+# In order (step 3):
 #   1. Refuses to start if port 4599 or 4597 is already held. Starts the probe server (probe-server.mjs) on
 #      127.0.0.1:4599 and the seats.aero mock on 127.0.0.1:4597, and records both PIDs. Nothing here starts, stops
 #      or probes 3000 (live production), 3400 or 3999 (e2e).
@@ -19,11 +25,21 @@
 #   5. Stops both servers by the PIDs it started (never by port), rebuilds, syncs and reinstalls the normal app, and
 #      runs R1 over the normal bundle.
 #
+# With --e2e, steps 2-4 are e2e-phases.sh's run_e2e instead: the e2e build (VITE_AG_PROBES=e2e) runs one phase per
+# launch on the iPhone 17 Pro, then A4's layout phase on an iPhone SE (3rd generation) that it creates if none named
+# $SE_NAME exists, and step 5 restores the normal app on both. If any phase timed out, a wait failed or the summary did
+# not finish, it exits 9 after the restore and R1 (scenario FAILs in the summary are results and leave the exit at 0).
+#
 # Everything it writes (the probe log, build logs, screenshots, the summary) goes under <scratch-dir>, which may not
 # be inside the repository. The Simulator is addressed by UDID ($SIM_UDID), so another booted device is never used.
 set -euo pipefail
 
-SCRATCH_ARG="${1:?usage: apps/ios/probes/run-probes.sh <scratch-dir outside the repository>}"
+MODE=probes
+if [ "${1:-}" = "--e2e" ]; then
+  MODE=e2e
+  shift
+fi
+SCRATCH_ARG="${1:?usage: apps/ios/probes/run-probes.sh [--e2e] <scratch-dir outside the repository>}"
 UDID="${SIM_UDID:-A480530B-3036-4B12-80D4-F37A6130D898}"
 BUNDLE="com.dowhiz.awardgrid"
 PROBE_PORT=4599
@@ -128,11 +144,20 @@ build_and_install() {
     tail -40 "$SCRATCH/xcodebuild-$label.log" >&2
     return 1
   fi
-  xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
-  xcrun simctl bootstatus "$UDID" -b >"$SCRATCH/bootstatus-$label.log" 2>&1
-  xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
-  xcrun simctl install "$UDID" "$APP"
+  install_on "$UDID" "$label"
 }
+
+# Boots the Simulator with this UDID if it is not booted, and installs the app last built, replacing any copy.
+install_on() {
+  local udid="$1" label="$2"
+  xcrun simctl boot "$udid" >/dev/null 2>&1 || true
+  xcrun simctl bootstatus "$udid" -b >"$SCRATCH/bootstatus-$label-$udid.log" 2>&1
+  xcrun simctl terminate "$udid" "$BUNDLE" >/dev/null 2>&1 || true
+  xcrun simctl install "$udid" "$APP"
+}
+
+# Other Simulators the e2e run installed the probe build on, which get the normal app back too.
+EXTRA_UDIDS=""
 
 restore_normal() {
   [ "$RESTORED" = 1 ] && return 0
@@ -140,10 +165,13 @@ restore_normal() {
   say "restoring the normal app: npm run build && npx cap sync ios, then the Debug build and install"
   web_build normal env -u VITE_AG_PROBES
   build_and_install normal
+  local extra
+  for extra in $EXTRA_UDIDS; do install_on "$extra" normal; done
 }
 
 on_exit() {
   local code=$?
+  if [ "$MODE" = e2e ] && declare -F host_loop_stop >/dev/null; then host_loop_stop; fi
   stop_servers
   if [ "$PROBE_BUILT" = 1 ] && [ "$RESTORED" = 0 ]; then
     restore_normal || say "restoring the normal app failed; see $SCRATCH/web-normal.log and xcodebuild-normal.log"
@@ -158,6 +186,7 @@ apply_ats_debug_plist() {
   local app_dir="$IOS/ios/App/App" pbx="$IOS/ios/App/App.xcodeproj/project.pbxproj"
   cp "$app_dir/Info.plist" "$app_dir/Info-Debug.plist"
   /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" "$app_dir/Info-Debug.plist"
+  # shellcheck disable=SC2016 # the single quotes are deliberate: ${hits} is a JavaScript template, not shell
   node -e '
     const fs = require("fs");
     const file = process.argv[1];
@@ -218,11 +247,13 @@ a0_blocked_by_ats() {
 }
 
 ARM=""
+# launch_armed LABEL [PHASE] [UDID]: terminate the app, arm one run (naming the e2e phase, if any), and launch it.
 launch_armed() {
-  xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
-  ARM="$(server_post /arm)"
-  say "armed one run (log seq $ARM); launching $BUNDLE on $UDID"
-  xcrun simctl launch "$UDID" "$BUNDLE" >"$SCRATCH/launch-$1.log" 2>&1
+  local label="$1" phase="${2:-}" udid="${3:-$UDID}"
+  xcrun simctl terminate "$udid" "$BUNDLE" >/dev/null 2>&1 || true
+  if [ -n "$phase" ]; then ARM="$(server_post "/arm?phase=$phase")"; else ARM="$(server_post /arm)"; fi
+  say "armed one run (log seq $ARM${phase:+, phase $phase}); launching $BUNDLE on $udid"
+  xcrun simctl launch "$udid" "$BUNDLE" >"$SCRATCH/launch-$label.log" 2>&1
 }
 
 # ---- 1. Servers ----
@@ -249,6 +280,16 @@ until_ready 60 "http://127.0.0.1:$MOCK_PORT/healthz" "$MOCK_PID"
 owned_by "$PROBE_PORT" "$PROBE_PID" || { echo "run-probes: port $PROBE_PORT is not held by the probe server this script started" >&2; exit 4; }
 owned_by "$MOCK_PORT" "$MOCK_PID" || { echo "run-probes: port $MOCK_PORT is not held by the mock this script started" >&2; exit 4; }
 say "servers ready: probe-server pid $PROBE_PID, mock pid $MOCK_PID"
+
+# ---- 2-4, e2e: the phases in e2e-phases.sh ----
+
+if [ "$MODE" = e2e ]; then
+  # shellcheck source=apps/ios/probes/e2e-phases.sh
+  . "$IOS/probes/e2e-phases.sh"
+  run_e2e
+fi
+
+run_step3() {
 
 # ---- 2. The probe app ----
 
@@ -321,6 +362,10 @@ screenshot probes-final
 
 plog summary "$LOG" --json "$SCRATCH/summary.json" | tee "$SCRATCH/summary.txt"
 
+}
+
+if [ "$MODE" = probes ]; then run_step3; fi
+
 # ---- 5. Stop, restore, R1 ----
 
 stop_servers
@@ -330,7 +375,7 @@ done
 say "servers stopped"
 
 restore_normal
-for f in "$IOS"/dist/assets/*[Pp]robe*; do
+for f in "$IOS"/dist/assets/*[Pp]robe* "$IOS"/dist/assets/*e2e*; do
   if [ -e "$f" ]; then
     echo "run-probes: R1 FAILED: the normal bundle has a probe chunk: ${f#"$REPO"/}" >&2
     exit 7
@@ -344,4 +389,24 @@ if awk '$1 != "0" { bad = 1 } END { exit bad ? 0 : 1 }' "$SCRATCH/r1.txt"; then
   echo "run-probes: R1 FAILED: a probe host or key is in the normal bundle" >&2
   exit 7
 fi
-say "R1 passed. Probe log: $LOG; summary: $SCRATCH/summary.txt"
+# Optional: R1_BASELINE names a `shasum -a 256` listing of a normal build's .js files made before the probe wiring changed.
+if [ -n "${R1_BASELINE:-}" ]; then
+  (cd "$IOS/dist/assets" && shasum -a 256 ./*.js | sed 's#  \./#  #') >"$SCRATCH/r1-sha256.txt"
+  if diff <(grep '\.js$' "$R1_BASELINE" | sort) <(sort "$SCRATCH/r1-sha256.txt") >"$SCRATCH/r1-sha256.diff"; then
+    say "R1: every .js file hashes identically to $R1_BASELINE"
+  else
+    echo "run-probes: R1 FAILED: the normal bundle differs from $R1_BASELINE (see r1-sha256.diff)" >&2
+    exit 7
+  fi
+fi
+if [ "$MODE" = e2e ]; then
+  say "R1 passed. Probe log: $LOG; summary: $SCRATCH/summary-e2e.txt"
+  # A phase that timed out, a wait that failed or a summary that did not finish leaves verdicts nobody should read as
+  # a complete run, so the exit status says so. Scenario FAILs in the summary are results and do not change it.
+  if [ -n "$E2E_FAILED" ]; then
+    echo "run-probes: the e2e run is incomplete; phases or waits that failed:$E2E_FAILED" >&2
+    exit 9
+  fi
+else
+  say "R1 passed. Probe log: $LOG; summary: $SCRATCH/summary.txt"
+fi
