@@ -13,6 +13,8 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, RouterProvider, createHashRouter } from "react-router";
 import { type AppServices, bootstrap } from "./bootstrap";
+import { askNavLabel } from "../ask/labels";
+import { AskScreen } from "../screens/AskScreen";
 import { SearchScreen } from "../screens/SearchScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { WatchesScreen } from "../screens/WatchesScreen";
@@ -35,23 +37,36 @@ const ProbesScreen = PROBES ? lazy(() => import("../probes/ProbesScreen").then((
  */
 function useUnseenCount(services: AppServices): number {
   const subscribe = useCallback((onChange: () => void) => services.onWatchesChanged(onChange), [services]);
-  return useSyncExternalStore(subscribe, () => services.watches.all().filter((w) => w.unseen).length);
+  const count = () => services.watches.all().filter((w) => w.unseen).length;
+  // The same read serves a server render, which app-chrome.test.ts uses; the app itself renders only on the device.
+  return useSyncExternalStore(subscribe, count, count);
 }
 
-function Chrome({ services }: { services: AppServices }) {
+/** Whether a question is under way. The service runs it, not the Ask screen, so the nav says so from any screen. */
+function useAskRunning(services: AppServices): boolean {
+  return useSyncExternalStore(services.ask.subscribe, services.ask.isRunning, services.ask.isRunning);
+}
+
+/** The header with its nav, the screen, and the footer. Exported for app-chrome.test.ts. */
+export function Chrome({ services }: { services: AppServices }) {
   const unseen = useUnseenCount(services);
+  const asking = useAskRunning(services);
   const nav: Array<[string, string]> = [
     ["/", "Search"],
+    ["/ask", askNavLabel(asking)],
     ["/watches", unseen > 0 ? `Watches (${unseen})` : "Watches"],
     ["/settings", "Settings"],
   ];
   return (
     <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
+      {/* Both rows wrap, so a 375 pt phone with "Ask (working)" and "Watches (12)" wraps instead of clipping. */}
       <header
         className="chrome-top chrome-x"
         style={{
           display: "flex",
-          gap: 16,
+          flexWrap: "wrap",
+          columnGap: 16,
+          rowGap: 6,
           alignItems: "center",
           paddingBottom: 10,
           borderBottom: "1px solid var(--line)",
@@ -59,12 +74,13 @@ function Chrome({ services }: { services: AppServices }) {
         }}
       >
         <strong style={{ fontSize: 16 }}>awardgrid</strong>
-        <nav style={{ display: "flex", gap: 12 }} aria-label="Main navigation">
+        <nav style={{ display: "flex", flexWrap: "wrap", columnGap: 12, rowGap: 6 }} aria-label="Main navigation">
           {nav.map(([to, label]) => (
             <NavLink
               key={to}
               to={to}
               end={to === "/"}
+              className="ag-nav-link"
               style={({ isActive }) => ({
                 textDecoration: "none",
                 color: isActive ? "var(--accent)" : "var(--fg-muted)",
@@ -89,7 +105,7 @@ function Chrome({ services }: { services: AppServices }) {
         className="chrome-bottom chrome-x"
         style={{ paddingTop: 10, borderTop: "1px solid var(--line)", color: "var(--fg-muted)", fontSize: 12, background: "var(--bg-raised)" }}
       >
-        Data: seats.aero · your own key, on this device
+        Data: seats.aero · your own keys, on this device
       </footer>
     </div>
   );
@@ -136,6 +152,7 @@ export function App() {
               element: <Chrome services={services} />,
               children: [
                 { index: true, element: <SearchScreen /> },
+                { path: "ask", element: <AskScreen /> },
                 { path: "watches", element: <WatchesScreen /> },
                 { path: "settings", element: <SettingsScreen /> },
                 ...(ProbesScreen

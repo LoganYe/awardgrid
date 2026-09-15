@@ -13,10 +13,14 @@
  *     here promises a cadence, because iOS cannot honour one.
  *   - **Freshness is reported from the data**, not from when the button was pressed —
  *     `fetched_at_min` is the oldest row in the answer, so a cache hit says so honestly.
+ *
+ * The last successful search is kept in `services.lastSearch` (memory only), and the screen opens on
+ * it, so going to Ask and back keeps the grid (design §6.2). Ask offers the same search as context.
  */
 import { useCallback, useEffect, useState } from "react";
-import { useOutletContext } from "react-router";
+import { Link, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { ASK_ABOUT_SEARCH } from "../ask/labels";
 import type { ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
 import { GridTable } from "../components/GridTable";
 
@@ -41,9 +45,13 @@ function agoLabel(iso: string | null, now: Date): string | null {
 
 export function SearchScreen() {
   const services = useOutletContext<AppServices>();
-  const [text, setText] = useState(EXAMPLES[0]!);
+  // Opens on the last successful search, as typed and as answered, when there is one.
+  const [text, setText] = useState(() => services.lastSearch.get()?.text ?? EXAMPLES[0]!);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<ApiResult<FindValue> | null>(null);
+  const [result, setResult] = useState<ApiResult<FindValue> | null>(() => {
+    const last = services.lastSearch.get();
+    return last === null ? null : { ok: true, value: last.value };
+  });
   const [quota, setQuota] = useState<QuotaSnapshotView | null>(null);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [watchMessage, setWatchMessage] = useState<string | null>(null);
@@ -60,6 +68,8 @@ export function SearchScreen() {
       const key = await services.keys.get();
       const res = await services.engine.search(text, key);
       setResult(res);
+      // Only a search that answered becomes the last search: Ask describes it to Claude, and this screen reopens on it.
+      if (res.ok) services.lastSearch.set({ text, value: res.value });
       setQuota(await services.engine.quotaView());
       // A search is the moment worth persisting: it is the only thing that spends quota.
       await services.persist();
@@ -149,6 +159,11 @@ export function SearchScreen() {
           >
             Watch this search
           </button>
+        ) : null}
+        {value ? (
+          <Link to="/ask" className="ag-button">
+            {ASK_ABOUT_SEARCH}
+          </Link>
         ) : null}
         {quota ? (
           <span className="tabular" style={{ fontSize: 12, color: "var(--fg-muted)" }}>

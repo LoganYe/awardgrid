@@ -213,3 +213,317 @@ textarea {
   white-space: nowrap;
   border: 0;
 }
+
+/* ---- controls shared by Ask and Settings ---- */
+
+/*
+ * 44 pt is the smallest touch target, for every button, link-as-button, field and the checkbox row
+ * (design §6.5, raised from the web's 40 px). Colours are the shell's existing ones: the primary
+ * action is filled with --accent over --bg, exactly as Search's Run and Settings' Save already are.
+ * Nothing here transitions or animates.
+ */
+.ag-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.ag-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--fg);
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+}
+
+.ag-button:disabled {
+  color: var(--fg-muted);
+}
+
+.ag-button-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.ag-button-primary:disabled {
+  border-color: var(--line);
+  background: var(--line);
+  color: var(--fg-muted);
+}
+
+.ag-button-danger {
+  color: var(--error);
+}
+
+.ag-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--bg-raised);
+  color: var(--fg);
+}
+
+textarea.ag-input {
+  resize: vertical;
+}
+
+.ag-input:disabled {
+  color: var(--fg-muted);
+}
+
+.ag-button:focus-visible,
+.ag-input:focus-visible,
+.ag-nav-link:focus-visible,
+.ask-suggestion:focus-visible,
+.ask-check input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ---- Ask ---- */
+
+.ask-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.ask-screen p {
+  margin: 0;
+}
+
+.ask-subline {
+  color: var(--fg-muted);
+}
+
+/* The whole row is the label, so the 44 pt target is the row, not the 20 px box. */
+.ask-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.ask-check input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.ask-suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ask-suggestion {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--bg-raised);
+  color: var(--fg);
+  text-align: left;
+}
+
+.ask-suggestion:disabled {
+  color: var(--fg-muted);
+}
+
+.ask-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The one button keeps one place and one size, whether it reads Ask or Stop. */
+.ask-send {
+  align-self: flex-end;
+  min-width: 96px;
+}
+
+.ask-note,
+.ask-hint,
+.ask-attribution,
+.ask-meta,
+.ask-activity,
+.ask-steps {
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+  color: var(--fg-muted);
+}
+
+.ask-callout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--error);
+  border-radius: var(--radius-control);
+  background: var(--bg-raised);
+  font-size: 13px;
+}
+
+.ask-callout-neutral {
+  border-left-color: var(--fg-muted);
+}
+
+/* Answers are data: flat, hairline-bordered, no shadow (surfaces.css flat mode). */
+.ask-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ask-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ask-question {
+  margin: 0;
+  font-size: var(--type-section);
+  line-height: var(--leading-section);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ask-steps {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.ask-answer {
+  overflow-wrap: anywhere;
+}
+
+/* Two classes, so this outranks `.ask-screen p` and paragraphs in an answer keep their spacing. */
+.ask-entry .ask-answer > * {
+  margin: 0 0 var(--space-2);
+}
+
+.ask-entry .ask-answer > :last-child {
+  margin-bottom: 0;
+}
+
+/* A heading in an answer is a real heading for VoiceOver's rotor, set at body size. */
+.ask-answer h3 {
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 600;
+}
+
+.ask-answer ul,
+.ask-answer ol {
+  padding-left: 20px;
+}
+
+.ask-answer code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+
+/* A wide code block scrolls inside itself; the page never scrolls sideways. */
+.ask-answer pre {
+  overflow-x: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  white-space: pre;
+}
+
+.ask-answer a {
+  color: var(--accent);
+}
+
+.ask-failure {
+  color: var(--error);
+  font-size: 13px;
+}
+
+.ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ask-conversation {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* ---- Settings: the Anthropic key ---- */
+
+.settings-section p {
+  margin: 0 0 10px;
+}
+
+.settings-heading {
+  font-size: 15px;
+  margin: 0 0 6px;
+}
+
+.settings-copy,
+.settings-note {
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+.settings-copy a {
+  color: var(--accent);
+}
+
+.settings-on-file {
+  font-size: 13px;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 10px;
+}
+
+.settings-results {
+  font-size: 13px;
+}
+
+.settings-results p:last-child {
+  margin-bottom: 0;
+}
+
+.settings-ok {
+  color: var(--fresh);
+}
+
+.settings-fail {
+  color: var(--error);
+}

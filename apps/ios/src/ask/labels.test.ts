@@ -15,6 +15,7 @@ import type { SearchEcho, ToolStep } from "@awardgrid/core/ask/tools";
 import { type StreamEvent, toSse } from "@awardgrid/core/test-fixtures/ask/sse";
 import streams from "@awardgrid/core/test-fixtures/ask/streams.json";
 import { NativeHttpUnavailableError } from "../native/http";
+import { maskedKey } from "../native/keychain";
 import * as labels from "./labels";
 
 const ANTHROPIC_KEY = "sk-ant-api03-labels-test-key-DO_NOT_LEAK";
@@ -575,5 +576,72 @@ describe("the conversation, and refusals before a question starts", () => {
   it("uses the same wiring words core gives a native HTTP failure", () => {
     const failure = describeAskError(new NativeHttpUnavailableError("Not a native platform."), context());
     expect(labels.WIRING).toBe(failure.message);
+  });
+});
+
+describe("the Ask screen's own copy (design §6.1-§6.3)", () => {
+  it("pins the title, subline, composer and button words", () => {
+    expect(labels.ASK_TITLE).toBe("Ask Claude");
+    expect(labels.ASK_SUBLINE).toBe(
+      "Claude answers with your own Anthropic key. When it needs award data, this app searches seats.aero with your own Pro key, which is never sent to Anthropic. Claude sees the earlier questions in this conversation.",
+    );
+    // Two sections each have a Save and a Remove key: the accessible names tell them apart and start with the visible words.
+    const names = [labels.SAVE_ANTHROPIC_KEY_NAME, labels.REMOVE_ANTHROPIC_KEY_NAME, labels.SAVE_SEATS_KEY_NAME, labels.REMOVE_SEATS_KEY_NAME];
+    expect(new Set(names).size).toBe(4);
+    expect(names.map((n) => n.startsWith(labels.SAVE_KEY) || n.startsWith(labels.REMOVE_KEY))).toEqual([true, true, true, true]);
+    expect(labels.QUESTION_LABEL).toBe("Question for Claude");
+    expect([labels.ASK_BUTTON, labels.STOP_BUTTON]).toEqual(["Ask", "Stop"]);
+    expect(labels.OPEN_SETTINGS).toBe("Open Settings");
+  });
+
+  it("pins the suggestions, with a search included and without", () => {
+    expect(labels.SUGGESTIONS_WITH_SEARCH).toEqual([
+      "Which program has the cheapest seats in this search?",
+      "What are the taxes and fees on the cheapest option?",
+      "Are there nonstop options in this window?",
+    ]);
+    expect(labels.SUGGESTIONS_WITHOUT_SEARCH).toEqual([
+      "Cheapest business class from SFO to Tokyo in the next 60 days?",
+      "First class from London to New York next month: which programs have seats?",
+    ]);
+  });
+
+  it("says in the nav that a question is under way, and links Search to Ask", () => {
+    expect(labels.askNavLabel(false)).toBe("Ask");
+    expect(labels.askNavLabel(true)).toBe("Ask (working)");
+    expect(labels.ASK_ABOUT_SEARCH).toBe("Ask Claude about this search");
+  });
+});
+
+describe("the Settings copy (design §5, §6.7, §7)", () => {
+  it("pins the Anthropic section", () => {
+    expect(labels.ANTHROPIC_SECTION_TITLE).toBe("Anthropic API key (for Ask)");
+    expect(labels.ANTHROPIC_KEY_USE).toBe(
+      "Optional. Ask uses your own Anthropic key, stored in this device's Keychain and sent only to Anthropic. Anthropic bills each question to this key. Search and watches do not use it.",
+    );
+    expect(labels.ANTHROPIC_DATA_SENT).toBe(
+      "Ask sends Anthropic your question, the earlier questions and answers in the same conversation, the search you include, and the seats.aero results it reads. Your seats.aero key is never sent to Anthropic.",
+    );
+    expect(labels.PRICING_LINE).toBe("Anthropic's pricing page lists what these tokens cost.");
+    expect(labels.PRICING_URL).toBe("https://platform.claude.com/docs/en/about-claude/pricing");
+    expect(labels.ANTHROPIC_KEY_PLACEHOLDER).toBe("Paste your Anthropic API key");
+    expect(labels.ANTHROPIC_KEY_INPUT_LABEL).toBe("Anthropic API key");
+    expect([labels.SAVE_KEY, labels.CHECK_KEY, labels.REMOVE_KEY]).toEqual(["Save", "Check key", "Remove key"]);
+    expect(labels.KEY_SAVED).toBe("Anthropic key saved to the device Keychain.");
+    expect(labels.KEY_CHECKING).toBe("Checking the key with Anthropic…");
+    expect(labels.KEY_REMOVAL_NOTE).toBe("Removing this key does not delete your Ask conversation, and search keeps working.");
+    expect(labels.KEY_NOT_REMOVED).toBe("Could not remove the key: it is still in the Keychain.");
+  });
+
+  it("shows a key on file by its last four characters only", () => {
+    expect(labels.keyOnFileLabel(maskedKey("sk-ant-api03-abcdefgh-abcd"))).toBe("On file: ••••abcd");
+  });
+
+  it("pins the seats.aero sentence and the cache copy", () => {
+    expect(labels.SEATS_KEY_NOT_SENT).toBe("Ask never sends this key to Anthropic.");
+    expect(labels.CACHE_NOTE).toBe(
+      "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls. Clearing it costs one cold search, nothing more. This does not touch your keys or your Ask conversation.",
+    );
+    expect(labels.CACHE_CLEARED).toBe("Cached results cleared. Your keys are untouched.");
   });
 });

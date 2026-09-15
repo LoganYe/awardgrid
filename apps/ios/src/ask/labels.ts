@@ -389,6 +389,88 @@ export const KEYS_CHANGED = "A key in Settings changed after this question faile
 export const RETRY_UNAVAILABLE = "This request can no longer be resent. Ask again.";
 
 // ---------------------------------------------------------------------------
+// The Ask screen (design §6.1-§6.3, §6.5)
+// ---------------------------------------------------------------------------
+
+export const ASK_TITLE = "Ask Claude";
+export const ASK_SUBLINE =
+  "Claude answers with your own Anthropic key. When it needs award data, this app searches seats.aero with your own Pro key, which is never sent to Anthropic. Claude sees the earlier questions in this conversation.";
+
+/** The composer's accessible name (design §6.3). */
+export const QUESTION_LABEL = "Question for Claude";
+/** The composer's one button: Ask while nothing runs, Stop while a question does. */
+export const ASK_BUTTON = "Ask";
+export const STOP_BUTTON = "Stop";
+
+/** Suggestions fill the question box and never send. These fit a question about the included search. */
+export const SUGGESTIONS_WITH_SEARCH: readonly string[] = [
+  "Which program has the cheapest seats in this search?",
+  "What are the taxes and fees on the cheapest option?",
+  "Are there nonstop options in this window?",
+];
+/** Suggestions for a question with no search included. */
+export const SUGGESTIONS_WITHOUT_SEARCH: readonly string[] = [
+  "Cheapest business class from SFO to Tokyo in the next 60 days?",
+  "First class from London to New York next month: which programs have seats?",
+];
+
+/** The link beside a notice or failure whose fix is a key in Settings. */
+export const OPEN_SETTINGS = "Open Settings";
+
+/** The nav entry, which says a question is under way wherever the person is in the app (design §6.1). */
+export function askNavLabel(running: boolean): string {
+  return running ? "Ask (working)" : "Ask";
+}
+
+/** On the Search screen, next to Watch this search, whenever a result is shown (design §6.1). */
+export const ASK_ABOUT_SEARCH = "Ask Claude about this search";
+
+// ---------------------------------------------------------------------------
+// Settings (design §7)
+// ---------------------------------------------------------------------------
+
+export const ANTHROPIC_SECTION_TITLE = "Anthropic API key (for Ask)";
+export const ANTHROPIC_KEY_USE =
+  "Optional. Ask uses your own Anthropic key, stored in this device's Keychain and sent only to Anthropic. Anthropic bills each question to this key. Search and watches do not use it.";
+export const ANTHROPIC_DATA_SENT =
+  "Ask sends Anthropic your question, the earlier questions and answers in the same conversation, the search you include, and the seats.aero results it reads. Your seats.aero key is never sent to Anthropic.";
+/** The one spend line Settings carries: the app shows tokens, never a price (design §5). */
+export const PRICING_LINE = "Anthropic's pricing page lists what these tokens cost.";
+export const PRICING_URL = "https://platform.claude.com/docs/en/about-claude/pricing";
+
+/** "On file: ••••abcd", from keychain.ts maskedKey: the last four characters and nothing more (LEGAL.md). */
+export function keyOnFileLabel(masked: string): string {
+  return `On file: ${masked}`;
+}
+
+export const ANTHROPIC_KEY_PLACEHOLDER = "Paste your Anthropic API key";
+export const ANTHROPIC_KEY_INPUT_LABEL = "Anthropic API key";
+export const SAVE_KEY = "Save";
+export const CHECK_KEY = "Check key";
+export const REMOVE_KEY = "Remove key";
+/**
+ * Accessible names for Save and Remove key. Settings has a Save and a Remove key for each key, so the visible words
+ * alone would read the same twice; each name starts with those words.
+ */
+export const SAVE_ANTHROPIC_KEY_NAME = "Save Anthropic key";
+export const REMOVE_ANTHROPIC_KEY_NAME = "Remove key for Anthropic";
+export const SAVE_SEATS_KEY_NAME = "Save seats.aero key";
+export const REMOVE_SEATS_KEY_NAME = "Remove key for seats.aero";
+/** Save stores the key before the check runs, so this is true whatever the check then says (design §7). */
+export const KEY_SAVED = "Anthropic key saved to the device Keychain.";
+export const KEY_CHECKING = "Checking the key with Anthropic…";
+/** Beside Remove key (design §6.7): removing the key touches nothing else. */
+export const KEY_REMOVAL_NOTE = "Removing this key does not delete your Ask conversation, and search keeps working.";
+/** The Keychain still returned a key after Remove key: a removal that did not happen is not reported as one. */
+export const KEY_NOT_REMOVED = "Could not remove the key: it is still in the Keychain.";
+
+/** The sentence the seats.aero section gains. */
+export const SEATS_KEY_NOT_SENT = "Ask never sends this key to Anthropic.";
+export const CACHE_NOTE =
+  "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls. Clearing it costs one cold search, nothing more. This does not touch your keys or your Ask conversation.";
+export const CACHE_CLEARED = "Cached results cleared. Your keys are untouched.";
+
+// ---------------------------------------------------------------------------
 // Settings: the Anthropic key check (design §7)
 // ---------------------------------------------------------------------------
 
