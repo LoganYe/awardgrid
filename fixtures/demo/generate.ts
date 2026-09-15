@@ -16,7 +16,7 @@
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { SOURCE_NAMES, type SeatsSource } from "../../src/lib/seatsaero/types";
+import { SOURCE_NAMES, type SeatsSource } from "@awardgrid/core/seatsaero/types";
 
 export const DEMO_ORIGINS = ["HKG", "PVG", "SHA", "NRT", "HND", "ICN", "GMP"] as const;
 export const DEMO_DEST = "SEA";

@@ -12,8 +12,8 @@
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { writeLocaleCookie } from "@/components/shell/locale-toggle";
-import { errorText, isLocale, LOCALES, type Locale } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { errorText, isLocale, LOCALES, type Locale } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import { THEMES, type Theme } from "@/lib/theme";
 import { useTheme } from "@/lib/theme/client";
 import { cn } from "@/lib/utils";

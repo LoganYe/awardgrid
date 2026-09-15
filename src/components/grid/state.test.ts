@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { QueryObject } from "@/lib/query/schema";
-import { SEATS_SOURCES } from "@/lib/seatsaero/types";
+import { QueryObject } from "@awardgrid/core/query/schema";
+import { SEATS_SOURCES } from "@awardgrid/core/seatsaero/types";
 import {
   applyChipAction,
   clampDates,
@@ -154,7 +154,7 @@ describe("formatting", () => {
 
 describe("mergeTripsIntoGrid", () => {
   it("patches fees/currency/booking link on every row with that Availability ID + cabin, nothing else", () => {
-    const row = (over: Partial<import("@/lib/grid/types").AvailabilityRow>): import("@/lib/grid/types").AvailabilityRow => ({
+    const row = (over: Partial<import("@awardgrid/core/grid/types").AvailabilityRow>): import("@awardgrid/core/grid/types").AvailabilityRow => ({
       program: "american",
       origin: "HKG",
       dest: "SEA",
@@ -175,7 +175,7 @@ describe("mergeTripsIntoGrid", () => {
     const a = row({});
     const b = row({ cabin: "J", miles: 50000 });
     const c = row({ source_id: "AV2", program: "united" });
-    const grid: import("@/lib/grid/types").Grid = {
+    const grid: import("@awardgrid/core/grid/types").Grid = {
       orientation: "dates",
       rows: ["2026-10-02"],
       cols: ["HKG-SEA"],

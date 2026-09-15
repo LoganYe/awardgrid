@@ -11,7 +11,7 @@ import { createSession, SESSION_COOKIE } from "@/lib/auth";
 import { openTestDb, type Db } from "@/lib/db/client";
 import { queryRuns, savedQueries, users } from "@/lib/db/schema";
 import { NoKeyError } from "@/lib/keys";
-import type { QueryObject } from "@/lib/query/schema";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { RunInProgressError, RunQuotaError, type RunSummary, type SavedQuerySummary } from "@/lib/server/queries";
 
 let db: Db;

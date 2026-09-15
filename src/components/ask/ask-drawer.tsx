@@ -27,8 +27,8 @@ import { ToolActivity } from "@/components/ask/tool-activity";
 import { DrawerShell } from "@/components/drawers";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useLocale, useT } from "@/lib/i18n/client";
-import type { QueryObject } from "@/lib/query/schema";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { cn } from "@/lib/utils";
 
 export interface AskDrawerProps {

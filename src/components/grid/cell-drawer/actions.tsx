@@ -15,13 +15,13 @@ import { useEffect, useId, useRef, useState } from "react";
 import { SaveQueryDialog } from "@/components/queries/SaveQueryDialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { buildCopyDetails, copyText } from "@/components/grid/cell-drawer/copy-details";
-import { programDisplayName } from "@/lib/grid/ranking";
+import { programDisplayName } from "@awardgrid/core/grid/ranking";
 import { prefillFromCell } from "@/components/drawers/prefill";
 import { localToday } from "@/components/grid/state";
-import { resolveDeeplink } from "@/lib/grid/deeplinks/index";
-import type { AvailabilityRow } from "@/lib/grid/types";
-import { useLocale, useT } from "@/lib/i18n/client";
-import type { QueryObject } from "@/lib/query/schema";
+import { resolveDeeplink } from "@awardgrid/core/grid/deeplinks/index";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 
 /** How long the "Details copied" line stays up. */
 const TOAST_MS = 4000;

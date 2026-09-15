@@ -23,11 +23,11 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { SaveQueryDialog } from "@/components/queries/SaveQueryDialog";
-import type { CellLayout, Orientation } from "@/lib/grid/types";
-import { htmlLang, type Translate } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
+import type { CellLayout, Orientation } from "@awardgrid/core/grid/types";
+import { htmlLang, type Translate } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import { elapsedSeconds, searchingSentence, type SearchingQuery } from "@/components/grid/searching-status";
-import type { Cabin, QueryObject } from "@/lib/query/schema";
+import type { Cabin, QueryObject } from "@awardgrid/core/query/schema";
 import { formatCount } from "@/components/shell/quota-indicator-state";
 import { useDensity } from "@/components/grid/use-roving-grid";
 

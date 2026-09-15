@@ -5,7 +5,7 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { ISODate } from "@/lib/query/schema";
+import { ISODate } from "@awardgrid/core/query/schema";
 import { getServerDb } from "@/lib/server/db";
 import { gridError, gridErrorResponse, parseForUser, userFromRequest, utcToday } from "@/lib/server/find";
 import { readJson } from "@/lib/server/http";

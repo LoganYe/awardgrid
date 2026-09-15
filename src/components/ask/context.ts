@@ -2,8 +2,8 @@
  * Pure helpers that turn the grid's state into Ask context (kickoff §7 point 6: the current
  * QueryObject and the selected cell are injected as context) and into chip labels.
  */
-import type { AvailabilityRow, GridCell } from "@/lib/grid/types";
-import type { QueryObject } from "@/lib/query/schema";
+import type { AvailabilityRow, GridCell } from "@awardgrid/core/grid/types";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import type { AskCellContext, AskContext } from "@/app/api/ask/wire";
 
 /** The subset of an AvailabilityRow the ask lane receives (no URLs, no timestamps). */

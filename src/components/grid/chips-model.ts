@@ -12,11 +12,11 @@
  * and the aria labels all iterate the same source.
  */
 import { formatRange, fromQueryDates, clampTo92 } from "@/components/grid/date-model";
-import { programShortName } from "@/lib/grid/format";
+import { programShortName } from "@awardgrid/core/grid/format";
 import { DEFAULT_PLACES_INDEX, groupForEditor, type PlacesIndex } from "@/components/grid/places-index";
-import type { I18nKey, Locale, Translate } from "@/lib/i18n";
-import { DEFAULT_MIN_CABIN_PCT, MAX_SPAN_DAYS, type Cabin, type QueryObject, type SortBy } from "@/lib/query/schema";
-import { SEATS_SOURCES, SOURCE_NAMES, type SeatsSource } from "@/lib/seatsaero/types";
+import type { I18nKey, Locale, Translate } from "@awardgrid/core/i18n";
+import { DEFAULT_MIN_CABIN_PCT, MAX_SPAN_DAYS, type Cabin, type QueryObject, type SortBy } from "@awardgrid/core/query/schema";
+import { SEATS_SOURCES, SOURCE_NAMES, type SeatsSource } from "@awardgrid/core/seatsaero/types";
 
 // ---------------------------------------------------------------------------
 // The eight chips

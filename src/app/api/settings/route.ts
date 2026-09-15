@@ -12,7 +12,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { SettingsValidationError, THEMES, updateUserSettings } from "@/lib/auth";
-import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, LOCALES } from "@/lib/i18n";
+import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, LOCALES } from "@awardgrid/core/i18n";
 import { getServerDb } from "@/lib/server/db";
 import { hasJsonContentType, jsonError } from "@/lib/server/http";
 import { userFromRequest } from "../keys/session";

@@ -21,8 +21,8 @@ import {
   toDiffRow,
   type QueryFormState,
 } from "./format";
-import { translator } from "@/lib/i18n";
-import { QueryObject } from "@/lib/query/schema";
+import { translator } from "@awardgrid/core/i18n";
+import { QueryObject } from "@awardgrid/core/query/schema";
 
 const Q = { origins: ["HKG", "PVG", "NRT", "ICN"], destinations: ["SEA"], cabins: ["F", "J"] as ("F" | "J")[] };
 

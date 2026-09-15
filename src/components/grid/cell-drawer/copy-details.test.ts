@@ -4,8 +4,8 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildCopyDetails, copyText, drawerFees, FEES_PENDING } from "@/components/grid/cell-drawer/copy-details";
-import { translator } from "@/lib/i18n";
-import type { AvailabilityRow } from "@/lib/grid/types";
+import { translator } from "@awardgrid/core/i18n";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
 
 const NOW = Date.parse("2026-03-14T12:00:00Z");
 

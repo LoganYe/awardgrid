@@ -1,9 +1,9 @@
 /**
  * Server-only locale helper (reads the `ag_locale` cookie via next/headers).
- * Do not import from client components or from tests — use `parseLocale` from "@/lib/i18n".
+ * Do not import from client components or from tests — use `parseLocale` from "@awardgrid/core/i18n".
  */
 import { cookies } from "next/headers";
-import { DEFAULT_LOCALE, LOCALE_COOKIE, parseLocale, translator, type Locale, type Translate } from "@/lib/i18n";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, parseLocale, translator, type Locale, type Translate } from "@awardgrid/core/i18n";
 
 /** Current UI locale: the `ag_locale` cookie, defaulting to English. */
 export async function getLocale(): Promise<Locale> {

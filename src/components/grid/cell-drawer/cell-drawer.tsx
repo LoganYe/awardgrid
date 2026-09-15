@@ -16,11 +16,11 @@ import { useMemo, useState } from "react";
 import { DrawerShell } from "@/components/drawers/drawer-shell";
 import { CellActions } from "@/components/grid/cell-drawer/actions";
 import { ProgramRow } from "@/components/grid/cell-drawer/program-row";
-import { intlLocale, type FormatLocale } from "@/lib/grid/format";
-import { programDisplayName } from "@/lib/grid/ranking";
-import type { AvailabilityRow, GridCell } from "@/lib/grid/types";
-import { useLocale, useT } from "@/lib/i18n/client";
-import type { Cabin, QueryObject } from "@/lib/query/schema";
+import { intlLocale, type FormatLocale } from "@awardgrid/core/grid/format";
+import { programDisplayName } from "@awardgrid/core/grid/ranking";
+import type { AvailabilityRow, GridCell } from "@awardgrid/core/grid/types";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import type { Cabin, QueryObject } from "@awardgrid/core/query/schema";
 import type { TripsForUserResult } from "@/lib/server/find";
 import "./cell-drawer.css";
 

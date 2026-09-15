@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import type { RoutesEntry, RoutesStore } from "@/lib/seatsaero/routes";
+import type { RoutesEntry, RoutesStore } from "@awardgrid/core/seatsaero/routes";
 
 export interface FileRoutesStoreOptions {
   path: string;

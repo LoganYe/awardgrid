@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEEPLINK_CAVEAT } from "@/lib/grid";
-import { zh } from "@/lib/i18n/dictionaries/zh";
+import { DEEPLINK_CAVEAT } from "@awardgrid/core/grid";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 import { escapeHtml, formatDigest, formatDropLine, formatMiles, formatNewCellLine, MAX_DIGEST_LINES, shortDate, type DigestCell } from "./format";
 
 const NOW = "2026-09-06T12:00:00.000Z";

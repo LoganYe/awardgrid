@@ -9,7 +9,7 @@
  */
 import type { NextRequest, NextResponse } from "next/server";
 import { NoKeyError } from "@/lib/keys";
-import { SeatsAeroError, SeatsAeroHttpError, SeatsAeroNetworkError } from "@/lib/seatsaero/client";
+import { SeatsAeroError, SeatsAeroHttpError, SeatsAeroNetworkError } from "@awardgrid/core/seatsaero/client";
 import { getServerDb } from "@/lib/server/db";
 import { userFromRequest } from "@/lib/server/find";
 import { RunInProgressError, RunQuotaError, getSavedQuery, runNow } from "@/lib/server/queries";

@@ -29,10 +29,10 @@ import { DEFAULT_DB_PATH, openDb, type Db } from "@/lib/db/client";
 import { apiUsage, queryRuns, savedQueries, users } from "@/lib/db/schema";
 import { SEATS_AERO_PROVIDER } from "@/lib/db/stores/quota";
 import { removeKey, setKey } from "@/lib/keys";
-import type { QueryObject } from "@/lib/query/schema";
-import { cellsHash } from "@/lib/scheduler/diff";
+import type { QueryObject } from "@awardgrid/core/query/schema";
+import { cellsHash } from "@awardgrid/core/watch/diff";
 import type { CellSnapshot } from "@/lib/scheduler/types";
-import { utcDayKey } from "@/lib/seatsaero/quota";
+import { utcDayKey } from "@awardgrid/core/seatsaero/quota";
 import { createSavedQuery, listSavedQueries } from "@/lib/server/queries";
 import { E2E_PASSWORD, E2E_SAVED_QUERY_NAME, E2E_USERS, type E2eUserSpec } from "../e2e/users";
 

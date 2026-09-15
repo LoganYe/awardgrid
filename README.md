@@ -223,8 +223,10 @@ Docker was **not** available on the machine this was built on; the CI job `docke
 ## Tests
 
 ```sh
-pnpm build:plugin && pnpm test                 # Vitest, 104 files / 1,046 tests, no network, no keys (2 live-gated tests skip; 1 more skips until the plugin is built)
-pnpm typecheck && pnpm lint
+pnpm build:plugin && pnpm test                 # Vitest, 109 files / 1,110 tests, no network, no keys (2 live-gated tests skip; 1 more skips until the plugin is built)
+pnpm test:app                                  # just the app's 84 files / 829 tests
+pnpm test:core                                 # just @awardgrid/core's 25 files / 281 tests — runs standalone, in under a second
+pnpm typecheck && pnpm lint                    # typecheck covers the app AND the package (including the core's own tests)
 pnpm build && pnpm e2e                         # Playwright: UI behaviour, axe, screenshots — offline against the DEMO mock
 bash scripts/check-no-secrets-in-bundle.sh --build   # fixture/seed key strings absent from .next/, Partner-Authorization absent from client chunks
 AWARDGRID_LIVE_SMOKE=1 pnpm exec tsx scripts/ask-smoke.ts   # optional: one real Ask session; needs ANTHROPIC_API_KEY; ≤ $0.50
@@ -246,8 +248,9 @@ never fails on them: `VISUAL=1 pnpm e2e -g visual` compares, `VISUAL=1 pnpm e2e:
 reason in the commit message. The CI `visual` job is non-blocking until it has been green on five consecutive runs
 (`DECISIONS.md` § 6.6). Details in `docs/UI.md` § 5.
 
-Every external payload is a fixture: `test/fixtures/seatsaero/` (official docs examples + a seeded synthetic Cached
-Search for the canonical query), `test/fixtures/queries/cases.json` (36 bilingual parser cases), `test/fixtures/ask/`
+Every external payload is a fixture: `packages/core/test/fixtures/seatsaero/` (official docs examples + a seeded
+synthetic Cached Search for the canonical query — it lives in the package so the core is testable on its own),
+`test/fixtures/queries/cases.json` (36 bilingual parser cases), `test/fixtures/ask/`
 (a recorded SDK init message asserted by `test/ask/init-assertions.test.ts`). CI (`.github/workflows/ci.yml`) runs
 typecheck, lint, test, `next build` + `scripts/check-no-secrets-in-bundle.sh`, a tracked-`.env`/SQLite check, gitleaks,
 and the Docker smoke. `next.config.ts` narrows Next's standalone file tracing (`outputFileTracingExcludes`) so tests,
@@ -260,22 +263,34 @@ fixtures, `scripts/`, `vendor/`, `src/` and `data/runtime/` never land in `.next
 src/app/            Next.js App Router: / (the signed-out front door) /grid /settings /queries /login /register
                     /legal + /api/* route handlers
 src/components/     grid (query box, chips, table, cell drawer), ask drawer, queries, settings, shell (header/footer), ui
-src/lib/query/      places seed loader, deterministic bilingual parser, LLM structured-output fallback, QueryObject (zod)
-src/lib/seatsaero/  typed Partner API client (/search /availability /trips/{id} /routes), quota, cache, routes catalog, find planner
-src/lib/grid/       pivot, ranking, freshness tiers, CSV, ASCII renderer, deeplinks (AA)
+packages/tokens/    @awardgrid/tokens — ONE palette, read by the web app, the shell and the landing site.
+                    tokens.css (colour/type/motion/spacing, values frozen by tests + visual baselines)
+                    surfaces.css (the two surface modes of PIVOT §4: radius/blur/elevation fork)
+apps/ios/           @awardgrid/ios — the Capacitor client shell (PIVOT §6 Phase 2). Runs on the
+                    user's own seats.aero key, in their device's Keychain. No server of ours.
+sites/landing/      the static landing page (PIVOT §2). Zero JavaScript, zero network requests.
+packages/core/      @awardgrid/core — the runtime-independent core every shell consumes (docs/PIVOT.md §2).
+                    Ships raw TypeScript, no build step, no server dependencies. Imported as
+                    "@awardgrid/core/<module>"; `src/lib/i18n/server.ts` stays in the app because it is
+                    the one file coupled to Next (next/headers).
+  .../query/        places seed loader, deterministic bilingual parser, LLM structured-output fallback, QueryObject (zod)
+  .../seatsaero/    typed Partner API client (/search /availability /trips/{id} /routes), quota, cache, routes catalog, find planner
+  .../grid/         pivot, ranking, freshness tiers, CSV, ASCII renderer, deeplinks (AA)
+  .../qr/ i18n/     QR encoder; en + zh-CN dictionaries and t()          .../notices.ts   shared notice strings
+  .../test/fixtures seats.aero + grid fixtures      .../data/places.json   the places seed
 src/lib/db/         Drizzle schema + SQLite stores (quota, cache, routes)      drizzle/   migrations
 src/lib/auth|crypto|keys/  invites, argon2id passwords, cookie sessions, AES-256-GCM key store
 src/lib/scheduler/  cron matcher, diff, runSavedQuery      src/lib/notify/   Telegram + mock transports, digest, poller
 src/lib/ask/        SDK options, env isolation, tool gate, budget hold, streaming session
-src/lib/server/     request-side helpers (find, trips, usage, origin/CSRF, rate limit)   src/lib/i18n/  en + zh-CN
+src/lib/server/     request-side helpers (find, trips, usage, origin/CSRF, rate limit)   src/lib/i18n/server.ts  getLocale() (next/headers)
 src/cli/            find (grid), admin, worker, migrate         src/proxy.ts   same-origin guard for /api/*
 scripts/            build-plugin, plugin-manifest, mock-seatsaero, seed-dev, ask-smoke, check-no-secrets-in-bundle.sh
-src/styles/         tokens.css — every colour, size, radius and duration the UI uses (docs/UI.md §1)
+src/styles/         app-only CSS; the tokens themselves live in packages/tokens (docs/UI.md §1)
 test/               fixtures/, integration/ (CLI, two users, scheduler harness), ask/, query/
 e2e/                Playwright suite + harness docs      fixtures/demo/   synthetic demo dataset for the DEMO=1 mock
 docs/UI.md          UI manual (design system, component map, procedures)   docs/UI_PLAN.md   the design record
 docs/COPY.md        copy rules and the en ↔ zh glossary   docs/screenshots/v0.2/   the screenshot matrix + axe summary
-data/places.json    editable city → airports seed with zh/en aliases     data/runtime/   SQLite + mock sink (gitignored)
+data/runtime/       SQLite + mock sink (gitignored)   spikes/   throwaway pivot spikes (docs/PHASE0.md), excluded from build/lint/CI
 docs/reference/     the seats.aero reference pages the client was built from
 vendor/travel-hacking-toolkit   git submodule (MIT)          build/plugin   pruned plugin (gitignored)
 ```

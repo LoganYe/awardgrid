@@ -13,7 +13,7 @@ import { randomBytes } from "node:crypto";
 import { and, eq, inArray, isNull, lt, ne } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
 import { telegramLinkTokens, users } from "@/lib/db/schema";
-import { parseLocale, type Locale } from "@/lib/i18n";
+import { parseLocale, type Locale } from "@awardgrid/core/i18n";
 import { START_PAYLOAD_RE } from "@/lib/notify/telegram";
 
 export const LINK_TOKEN_TTL_MS = 15 * 60 * 1000;

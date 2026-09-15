@@ -17,7 +17,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
 import {
   applyTheme,
   AXE_SUMMARY_FILE,

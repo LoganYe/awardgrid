@@ -7,7 +7,7 @@
  * data that does not belong on screen.
  */
 import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 
 export default function QueriesError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const t = useT();

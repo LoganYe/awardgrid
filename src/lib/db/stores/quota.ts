@@ -12,7 +12,7 @@
 import { and, eq, lt, sql } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
 import { apiUsage } from "@/lib/db/schema";
-import type { QuotaStore } from "@/lib/seatsaero/quota";
+import type { QuotaStore } from "@awardgrid/core/seatsaero/quota";
 
 /** Provider label stored in `api_usage.provider` for seats.aero Pro keys. */
 export const SEATS_AERO_PROVIDER = "seats_aero";

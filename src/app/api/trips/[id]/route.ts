@@ -5,7 +5,7 @@
  * Costs exactly one seats.aero call on the calling user's key (cell expand only, kickoff §4.3).
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { Cabin } from "@/lib/query/schema";
+import { Cabin } from "@awardgrid/core/query/schema";
 import { getServerDb } from "@/lib/server/db";
 import { getTripsForUser, gridError, gridErrorResponse, userFromRequest } from "@/lib/server/find";
 

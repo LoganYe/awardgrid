@@ -6,9 +6,9 @@
  * origin/cabin is a no-op, date edits are clamped to the 92-day cap, airport codes are
  * upper-cased and validated as IATA before they become chips.
  */
-import type { AvailabilityRow, Grid, GridCell } from "@/lib/grid/types";
-import { CABIN_ORDER, MAX_SPAN_DAYS, QueryObject, type Cabin, type SortBy } from "@/lib/query/schema";
-import { SEATS_SOURCES } from "@/lib/seatsaero/types";
+import type { AvailabilityRow, Grid, GridCell } from "@awardgrid/core/grid/types";
+import { CABIN_ORDER, MAX_SPAN_DAYS, QueryObject, type Cabin, type SortBy } from "@awardgrid/core/query/schema";
+import { SEATS_SOURCES } from "@awardgrid/core/seatsaero/types";
 
 /**
  * The one canonical cabin order, spec §3.2's "J / F / W / Y". Both the toolbar's toggle and the

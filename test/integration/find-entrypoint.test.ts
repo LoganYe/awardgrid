@@ -11,7 +11,10 @@ import { describe, expect, it } from "vitest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..");
-const FIXTURE = join(ROOT, "test", "fixtures", "seatsaero", "synthetic-example-query.json");
+// The seats.aero fixtures moved into the core package in Phase 1 (docs/PIVOT.md §6) so that
+// packages/core is testable on its own. This one is read off disk rather than imported,
+// because the CLI is spawned as a subprocess.
+const FIXTURE = join(ROOT, "packages", "core", "test", "fixtures", "seatsaero", "synthetic-example-query.json");
 const TSX = join(ROOT, "node_modules", ".bin", "tsx");
 
 describe("src/cli/find.ts entrypoint", () => {

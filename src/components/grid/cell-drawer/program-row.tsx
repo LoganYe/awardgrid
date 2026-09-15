@@ -16,11 +16,11 @@ import { FreshnessMark } from "@/components/grid/freshness-mark";
 import { FlightsList, type FlightsState } from "@/components/grid/cell-drawer/flights-list";
 import { drawerFees } from "@/components/grid/cell-drawer/copy-details";
 import { Button } from "@/components/ui/button";
-import { cabinName, formatMiles, formatSeats } from "@/lib/grid/format";
-import { formatAge, tier } from "@/lib/grid/freshness";
-import { programDisplayName } from "@/lib/grid/ranking";
-import type { AvailabilityRow } from "@/lib/grid/types";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { cabinName, formatMiles, formatSeats } from "@awardgrid/core/grid/format";
+import { formatAge, tier } from "@awardgrid/core/grid/freshness";
+import { programDisplayName } from "@awardgrid/core/grid/ranking";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import type { TripsForUserResult } from "@/lib/server/find";
 
 export interface ProgramRowProps {

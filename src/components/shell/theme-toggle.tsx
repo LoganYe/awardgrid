@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 import { nextTheme, type Theme } from "@/lib/theme";
 import { useTheme } from "@/lib/theme/client";
 import { cn } from "@/lib/utils";

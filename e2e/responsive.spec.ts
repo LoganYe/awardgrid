@@ -22,8 +22,8 @@
  *   §8            zh-CN is complete: no en string leaks through on any page
  */
 import type { Page } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
-import { zh } from "../src/lib/i18n/dictionaries/zh";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 import { applyTheme, CANONICAL_QUERY_EN, expect, loginAs, openAskDrawer, openCellDrawer, openGridWithResults, submitQuery, test } from "./fixtures";
 
 const WIDE = { width: 1440, height: 900 };

@@ -1,9 +1,9 @@
 "use client";
 
 /** Sort editor (spec §3.2): one native select bound to sort_by, restyled on the tokens. */
-import type { I18nKey } from "@/lib/i18n";
-import { useT } from "@/lib/i18n/client";
-import type { SortBy } from "@/lib/query/schema";
+import type { I18nKey } from "@awardgrid/core/i18n";
+import { useT } from "@awardgrid/core/i18n/client";
+import type { SortBy } from "@awardgrid/core/query/schema";
 import { SORT_OPTIONS } from "@/components/grid/state";
 
 const SORT_KEYS: Record<SortBy, I18nKey> = {

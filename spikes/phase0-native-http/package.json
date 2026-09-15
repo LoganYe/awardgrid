@@ -1,0 +1,28 @@
+{
+  "name": "phase0-native-http",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Phase 0 spike: prove a native-HTTP call from a Capacitor app reaches seats.aero, which sends no CORS headers. Throwaway; see README.md.",
+  "scripts": {
+    "probe-server": "node probe-server.mjs",
+    "dev": "vite",
+    "build": "vite build",
+    "sync": "npm run build && npx cap sync ios",
+    "ios": "npm run sync && npx cap run ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.1",
+    "@capacitor/ios": "8.5.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "6.1.1",
+    "typescript": "^5",
+    "vite": "8.2.2"
+  }
+}

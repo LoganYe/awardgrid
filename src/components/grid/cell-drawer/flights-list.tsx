@@ -11,8 +11,8 @@
 import { Button } from "@/components/ui/button";
 import { failureText } from "@/components/grid/empty-states";
 import type { ApiFailure } from "@/components/grid/api";
-import { formatFees, formatGridDate, formatMiles, formatSeats } from "@/lib/grid/format";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { formatFees, formatGridDate, formatMiles, formatSeats } from "@awardgrid/core/grid/format";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import type { TripsForUserResult, TripSegmentSummary, TripSummary } from "@/lib/server/find";
 
 export type FlightsState =

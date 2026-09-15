@@ -107,8 +107,8 @@ interface Dataset {
 }
 
 function loadSynthetic(now: Date): Dataset {
-  const synthetic = readJson("test/fixtures/seatsaero", "synthetic-example-query.json") as { data: Row[] };
-  const tripsFixture = readJson("test/fixtures/seatsaero", "trips__id.json") as { data: Json[] };
+  const synthetic = readJson("packages/core/test/fixtures/seatsaero", "synthetic-example-query.json") as { data: Row[] };
+  const tripsFixture = readJson("packages/core/test/fixtures/seatsaero", "trips__id.json") as { data: Json[] };
   const todayIso = now.toISOString().slice(0, 10);
   const firstFixtureDate = [...new Set(synthetic.data.map((r) => String(r.Date)))].sort()[0]!;
   const shiftDays = Math.round((Date.parse(todayIso) - Date.parse(firstFixtureDate)) / dayMs);
@@ -322,7 +322,7 @@ if (invokedDirectly) {
   const demo = process.env.DEMO === "1" || process.argv.includes("--demo");
   const port = Number(process.env.MOCK_SEATS_PORT ?? DEFAULT_PORT);
   createMockServer({ demo, port }).then((h) => {
-    const source = demo ? "fixtures/demo (DEMO mode, scenario keys demo-key-normal|empty|error|invalid|slow|partial)" : "test/fixtures/seatsaero/synthetic-example-query.json";
+    const source = demo ? "fixtures/demo (DEMO mode, scenario keys demo-key-normal|empty|error|invalid|slow|partial)" : "packages/core/test/fixtures/seatsaero/synthetic-example-query.json";
     console.log(`mock seats.aero on ${h.baseUrl} — ${source}; dates shifted by ${h.shiftDays} days; ${h.rowCount} rows`);
   });
 }

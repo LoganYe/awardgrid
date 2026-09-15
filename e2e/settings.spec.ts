@@ -21,8 +21,8 @@
  */
 import type { Page } from "@playwright/test";
 import { request as playwrightRequest } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
-import { zh } from "../src/lib/i18n/dictionaries/zh";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 import { applyTheme, expect, forgetLoginCookies, projectSuffix, test } from "./fixtures";
 import { E2E_PASSWORD } from "./users";
 

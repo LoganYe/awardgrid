@@ -7,8 +7,8 @@
  * `e2e/matrix.ts` and written by `e2e/screenshots.spec.ts` (#34) — one owner per file.
  */
 import type { Locator, Page } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
-import { zh } from "../src/lib/i18n/dictionaries/zh";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 import { applyTheme, expect, projectSuffix, test } from "./fixtures";
 
 const isMobile = () => projectSuffix(test.info().project.name).viewport === "mobile";

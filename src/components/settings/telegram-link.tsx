@@ -13,9 +13,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { errorText } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
-import { qrSvg } from "@/lib/qr/encode";
+import { errorText } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import { qrSvg } from "@awardgrid/core/qr/encode";
 import { apiTelegramLink, apiTelegramStatus, apiTelegramUnlink } from "./api";
 import { SettingsNotice } from "./section";
 import {

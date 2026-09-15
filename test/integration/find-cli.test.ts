@@ -22,7 +22,9 @@ import {
 } from "@/cli/find-main";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const FIXTURE = join(HERE, "..", "fixtures", "seatsaero", "synthetic-example-query.json");
+// Moved into the core package in Phase 1 (docs/PIVOT.md §6); read off disk, not imported,
+// because the CLI reads the path itself.
+const FIXTURE = join(HERE, "..", "..", "packages", "core", "test", "fixtures", "seatsaero", "synthetic-example-query.json");
 const EXAMPLE = "香港、上海、东京、首尔到西雅图，未来一个月最便宜的头等舱";
 /** The kickoff writes the example three ways (§0.1 ASCII comma, §9 ASCII commas + spaces + bare 头等). */
 const SPELLINGS: Array<[string, string]> = [

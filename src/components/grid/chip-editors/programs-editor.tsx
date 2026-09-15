@@ -9,8 +9,8 @@
  */
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { useT } from "@/lib/i18n/client";
-import { SEATS_SOURCES } from "@/lib/seatsaero/types";
+import { useT } from "@awardgrid/core/i18n/client";
+import { SEATS_SOURCES } from "@awardgrid/core/seatsaero/types";
 import { cn } from "@/lib/utils";
 import { isAllPrograms, programsList, selectAllPrograms, toggleProgram } from "@/components/grid/chips-model";
 

@@ -12,7 +12,7 @@
  */
 export * from "./types";
 export * from "./cron";
-export * from "./diff";
+export * from "@awardgrid/core/watch/diff";
 export * from "./quiet-hours";
 export * from "./digest";
 export * from "./notify-digest";

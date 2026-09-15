@@ -8,8 +8,8 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_KEYS } from "@/components/grid/examples-popover";
 import { missingSentenceKeys } from "@/components/grid/parse-failure";
-import { en } from "@/lib/i18n/dictionaries/en";
-import { zh } from "@/lib/i18n/dictionaries/zh";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 
 describe("missingSentenceKeys", () => {
   it("maps each missing field to its own sentence", () => {

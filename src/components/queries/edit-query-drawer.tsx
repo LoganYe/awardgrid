@@ -34,9 +34,9 @@ import { formatDate } from "@/components/settings/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { errorText, type I18nKey } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
-import type { QueryObject } from "@/lib/query/schema";
+import { errorText, type I18nKey } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 
 const PRESET_KEY: Record<CronPresetId, I18nKey> = {
   every_3h: "saved.dialog.preset.every_3h",

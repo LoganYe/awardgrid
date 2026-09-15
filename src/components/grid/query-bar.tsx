@@ -13,7 +13,7 @@
 import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@awardgrid/core/i18n/client";
 import { ExamplesPopover } from "@/components/grid/examples-popover";
 
 /** One line of 20 px plus 8 px padding top and bottom. */

@@ -1,9 +1,9 @@
 "use client";
 
 /** Cabins editor (spec §3.2): four toggles, at least one on. The last one on cannot be switched off. */
-import type { I18nKey } from "@/lib/i18n";
-import { useT } from "@/lib/i18n/client";
-import type { Cabin } from "@/lib/query/schema";
+import type { I18nKey } from "@awardgrid/core/i18n";
+import { useT } from "@awardgrid/core/i18n/client";
+import type { Cabin } from "@awardgrid/core/query/schema";
 import { cn } from "@/lib/utils";
 import { EditorNote } from "@/components/grid/chip-editors/chip-popover";
 import { ALL_CABINS } from "@/components/grid/state";

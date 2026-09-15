@@ -9,10 +9,10 @@ import { createSession, SESSION_COOKIE } from "@/lib/auth";
 import { openTestDb, type Db } from "@/lib/db/client";
 import { seedUsers } from "@/lib/db/stores/testing";
 import { resetMasterKeyCache, setKey } from "@/lib/keys";
-import { QueryObject } from "@/lib/query/schema";
-import { fakeFetch, jsonResponse, loadFixture, textResponse } from "../../../test/fixtures/seatsaero/helpers";
-import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "../../../test/fixtures/seatsaero/generate-synthetic";
-import type { Route, TripsResponse } from "@/lib/seatsaero/types";
+import { QueryObject } from "@awardgrid/core/query/schema";
+import { fakeFetch, jsonResponse, loadFixture, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
+import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "@awardgrid/core/test-fixtures/seatsaero/generate-synthetic";
+import type { Route, TripsResponse } from "@awardgrid/core/seatsaero/types";
 
 let db: Db;
 vi.mock("@/lib/server/db", () => ({ getServerDb: () => db }));

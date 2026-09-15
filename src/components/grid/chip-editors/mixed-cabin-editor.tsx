@@ -10,8 +10,8 @@
  * not by dragging.
  */
 import { mixedCabinHint } from "@/components/grid/chips-model";
-import { useT } from "@/lib/i18n/client";
-import { DEFAULT_MIN_CABIN_PCT } from "@/lib/query/schema";
+import { useT } from "@awardgrid/core/i18n/client";
+import { DEFAULT_MIN_CABIN_PCT } from "@awardgrid/core/query/schema";
 
 /** Presets, in the order they are offered: not allowed (the API default) down to any. */
 export const MIN_CABIN_PCT_PRESETS: readonly number[] = [DEFAULT_MIN_CABIN_PCT, 75, 50, 25, 0];

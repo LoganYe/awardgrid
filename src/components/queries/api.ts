@@ -4,8 +4,8 @@
  */
 import { apiJson, type ApiResult } from "@/components/settings/api";
 import { toDiffRow } from "@/components/queries/format";
-import type { AvailabilityRow } from "@/lib/grid/types";
-import type { QueryObject } from "@/lib/query/schema";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import type { RunSummary, SavedQuerySummary, TelegramStatus } from "@/lib/server/queries";
 
 export type { ApiResult, RunSummary, SavedQuerySummary, TelegramStatus };

@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "../styles/tokens.css";
+@import "../../packages/tokens/tokens.css";
+@import "../../packages/tokens/surfaces.css";
 
 /*
  * `dark:` follows <html data-theme>: explicit "dark", or the OS preference while the attribute is

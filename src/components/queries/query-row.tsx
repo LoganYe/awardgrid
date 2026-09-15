@@ -18,8 +18,8 @@ import { nextRunFromCron, relativeTime, runResultText, scheduleText, absoluteTim
 import type { QueryDetails, QueryRowSummary } from "@/components/queries/api";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import type { I18nKey, Locale, Translate } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
+import type { I18nKey, Locale, Translate } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 
 export const QUERY_COLUMN_COUNT = 7;
 

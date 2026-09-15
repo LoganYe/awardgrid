@@ -14,11 +14,11 @@
  */
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { formatAgeCompact, tier } from "@/lib/grid/freshness";
-import { formatFees, formatLongDate, formatMiles, formatSeats, programShortName } from "@/lib/grid/format";
-import { compareRows } from "@/lib/grid/ranking";
-import type { CellStatus, GridCell } from "@/lib/grid/types";
-import { hasKey, type Locale, type Translate } from "@/lib/i18n";
+import { formatAgeCompact, tier } from "@awardgrid/core/grid/freshness";
+import { formatFees, formatLongDate, formatMiles, formatSeats, programShortName } from "@awardgrid/core/grid/format";
+import { compareRows } from "@awardgrid/core/grid/ranking";
+import type { CellStatus, GridCell } from "@awardgrid/core/grid/types";
+import { hasKey, type Locale, type Translate } from "@awardgrid/core/i18n";
 import { FreshnessMark } from "@/components/grid/freshness-mark";
 
 export interface CellTooltipProps {

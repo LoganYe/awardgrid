@@ -1,0 +1,18 @@
+{
+  "name": "@awardgrid/landing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The static landing site (docs/PIVOT.md §2: 'static, on Cloudflare Pages, makes no API calls at all').",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@awardgrid/tokens": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "8.2.2"
+  }
+}

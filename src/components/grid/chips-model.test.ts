@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { translator } from "@/lib/i18n";
-import { QueryObject } from "@/lib/query/schema";
-import { SEATS_SOURCES } from "@/lib/seatsaero/types";
+import { translator } from "@awardgrid/core/i18n";
+import { QueryObject } from "@awardgrid/core/query/schema";
+import { SEATS_SOURCES } from "@awardgrid/core/seatsaero/types";
 import {
   CHIPS,
   CHIP_ORDER,

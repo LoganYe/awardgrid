@@ -9,11 +9,11 @@
  * to know about the textarea fallback (clipboard access needs a secure context; the fallback
  * covers plain-http self-hosting).
  */
-import { formatFees, formatLongDate, formatMiles, formatSeats, type FormatLocale } from "@/lib/grid/format";
-import { formatAge } from "@/lib/grid/freshness";
-import { programDisplayName } from "@/lib/grid/ranking";
-import type { AvailabilityRow } from "@/lib/grid/types";
-import type { Translate } from "@/lib/i18n";
+import { formatFees, formatLongDate, formatMiles, formatSeats, type FormatLocale } from "@awardgrid/core/grid/format";
+import { formatAge } from "@awardgrid/core/grid/freshness";
+import { programDisplayName } from "@awardgrid/core/grid/ranking";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
+import type { Translate } from "@awardgrid/core/i18n";
 
 /**
  * Fees that are not known yet (the row carries no *TotalTaxes; they arrive with Get Trips).

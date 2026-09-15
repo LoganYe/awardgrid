@@ -12,9 +12,9 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { test as base, expect, request as playwrightRequest, type Locator, type Page } from "@playwright/test";
-import { en } from "../src/lib/i18n/dictionaries/en";
-import { zh } from "../src/lib/i18n/dictionaries/zh";
-import type { QueryObject } from "../src/lib/query/schema";
+import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { E2E_PASSWORD, type E2eUsername } from "./users";
 
 export { expect };

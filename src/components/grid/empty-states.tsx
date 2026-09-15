@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import type { Locale, Translate } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
-import { noticeKey } from "@/lib/notices";
+import type { Locale, Translate } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
+import { noticeKey } from "@awardgrid/core/notices";
 import type { ApiFailure } from "@/components/grid/api";
 
 const MISSING_KEYS = {

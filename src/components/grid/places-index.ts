@@ -18,7 +18,7 @@
  * "at least one airport" rule — that is validation, and it lives in chips-model.ts, so the
  * editor can show the empty state with its error instead of silently refusing a click.
  */
-import { DEFAULT_PLACES, normalizeAlias, type Places } from "@/lib/query/places";
+import { DEFAULT_PLACES, normalizeAlias, type Places } from "@awardgrid/core/query/places";
 
 export type PlaceKind = "metro" | "airport";
 

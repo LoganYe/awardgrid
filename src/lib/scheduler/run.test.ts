@@ -12,10 +12,10 @@ import { apiUsage, queryRuns, savedQueries, users, type SavedQuery } from "@/lib
 import { seedUsers } from "@/lib/db/stores/testing";
 import { setKey } from "@/lib/keys";
 import { MockTransport } from "@/lib/notify/mock";
-import { QueryObject } from "@/lib/query/schema";
-import type { Availability, Route, SearchResponse } from "@/lib/seatsaero/types";
-import { fakeFetch, jsonResponse, loadFixture, textResponse } from "../../../test/fixtures/seatsaero/helpers";
-import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS } from "../../../test/fixtures/seatsaero/generate-synthetic";
+import { QueryObject } from "@awardgrid/core/query/schema";
+import type { Availability, Route, SearchResponse } from "@awardgrid/core/seatsaero/types";
+import { fakeFetch, jsonResponse, loadFixture, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
+import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS } from "@awardgrid/core/test-fixtures/seatsaero/generate-synthetic";
 import { DEFAULT_CRON } from "./cron";
 import { claimRun, findBaseline, pruneQueryRuns, RUN_CLAIM_WINDOW_MS, runSavedQuery } from "./run";
 import { runNow, tick } from "./tick";

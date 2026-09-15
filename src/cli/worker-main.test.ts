@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { openTestDb } from "@/lib/db/client";
-import { fakeFetch, jsonResponse, textResponse } from "../../test/fixtures/seatsaero/helpers";
+import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 import { startWorker, WorkerStartupError, type ScheduleFn } from "./worker-main";
 
 const MASTER_HEX = "ab".repeat(32);

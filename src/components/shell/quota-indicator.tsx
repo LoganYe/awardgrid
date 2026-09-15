@@ -15,8 +15,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { htmlLang } from "@/lib/i18n";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { htmlLang } from "@awardgrid/core/i18n";
+import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import type { UsageSummary } from "@/lib/server/usage";
 import { cn } from "@/lib/utils";
 import { format, formatCount, formatUsd, resetLabel, stateFor, type QuotaState } from "./quota-indicator-state";

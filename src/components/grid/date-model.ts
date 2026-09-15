@@ -13,8 +13,8 @@
  *   - `formatRange`   "Oct 1 – Oct 30" (en dash with spaces; the year appears when the range
  *                     crosses one)
  */
-import { intlLocale, type FormatLocale } from "@/lib/grid/format";
-import { MAX_SPAN_DAYS } from "@/lib/query/schema";
+import { intlLocale, type FormatLocale } from "@awardgrid/core/grid/format";
+import { MAX_SPAN_DAYS } from "@awardgrid/core/query/schema";
 
 const DAY_MS = 86_400_000;
 const WEEK_LENGTH = 7;

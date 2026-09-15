@@ -4,7 +4,7 @@
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { QueryObject } from "@/lib/query/schema";
+import { QueryObject } from "@awardgrid/core/query/schema";
 import {
   NAME_MAX,
   NAME_MIN,

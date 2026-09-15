@@ -11,9 +11,9 @@
  * verbatim — never a dictionary key, never a tool input.
  */
 import type { AskCellContext } from "@/app/api/ask/wire";
-import { formatGridDate, formatMiles, intlLocale, programShortName, type FormatLocale } from "@/lib/grid/format";
-import type { I18nKey, Translate } from "@/lib/i18n";
-import type { Cabin, QueryObject } from "@/lib/query/schema";
+import { formatGridDate, formatMiles, intlLocale, programShortName, type FormatLocale } from "@awardgrid/core/grid/format";
+import type { I18nKey, Translate } from "@awardgrid/core/i18n";
+import type { Cabin, QueryObject } from "@awardgrid/core/query/schema";
 
 /** The separator between the facts inside a pill, in the locale's own punctuation. */
 export function pillSeparator(locale: FormatLocale): string {

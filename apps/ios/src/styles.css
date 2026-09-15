@@ -1,0 +1,529 @@
+/*
+ * The shell's stylesheet.
+ *
+ * Phase 2 shipped an ad-hoc palette here — eight hand-picked hexes that happened to look like the
+ * app's. That was a duplicate of a contrast-verified design system, and duplicates of a palette are
+ * how a design system drifts: the next person to adjust a colour adjusts one of the two copies.
+ * Phase 3 deletes it. Everything below now reads `packages/tokens`, the same file the web app and
+ * the landing site read.
+ */
+@import "@awardgrid/tokens/tokens.css";
+@import "@awardgrid/tokens/surfaces.css";
+
+/*
+ * Inter, self-hosted, byte-identical to the web app's copy (public/fonts/, licence beside it).
+ * PIVOT §4: "Inter unchanged as the data face (tabular figures and the CJK-after-Latin
+ * unicode-range stack are load-bearing)". The unicode-range is what makes a bilingual grid work —
+ * Latin and punctuation come from Inter, CJK falls through to the platform face rather than being
+ * rendered by a font that has no glyphs for it.
+ */
+@font-face {
+  font-family: "InterVariable";
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0100-024F, U+2000-206F, U+20A0-20CF, U+2190-2199, U+2212, U+2026;
+}
+
+:root {
+  /* So the OS paints form controls and scrollbars for the active theme. */
+  color-scheme: light dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/*
+ * A flex child's default `min-width: auto` refuses to shrink below its content, so an input beside
+ * a button pushed the whole page wider than the display — which pushed the button off the right
+ * edge where it could not be tapped. Found on a simulator in Phase 2; the guards on html/body make
+ * any repeat visible as clipping rather than as a silently unreachable control.
+ */
+input,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    "InterVariable", ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Safe-area insets go on the CHROME, not on `body`. Padding the body instead adds the notch and
+ * home-indicator heights on top of a 100dvh shell, which pushed the footer — and with it the
+ * "Data: seats.aero" attribution LEGAL.md requires — off the bottom of the display.
+ */
+.chrome-top {
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+
+.chrome-bottom {
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+
+.chrome-x {
+  padding-left: max(var(--space-4), env(safe-area-inset-left));
+  padding-right: max(var(--space-4), env(safe-area-inset-right));
+}
+
+/* Tabular figures are load-bearing for a column of mileage numbers. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---- the two surface modes, applied ---- */
+
+/*
+ * The app shell defaults to FLAT (PIVOT §4). Data is the point of this app, and the grid must not
+ * sit behind glass. `rich` is opt-in, on the surfaces that are prose rather than numbers.
+ */
+.ag-surface {
+  background: var(--surface-bg-raised);
+  border: var(--surface-border-width) solid var(--surface-border-color);
+  border-radius: var(--surface-radius);
+  box-shadow: var(--surface-shadow);
+  padding: var(--surface-pad);
+}
+
+.ag-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: var(--surface-border-width) solid var(--surface-border-color);
+  border-radius: var(--surface-radius);
+  background: var(--surface-bg);
+}
+
+.ag-eyebrow {
+  font-family: var(--font-eyebrow);
+  font-size: var(--type-meta);
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--fg-muted);
+  margin: 0 0 var(--space-1);
+}
+
+.ag-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: var(--tracking-display);
+  font-weight: 500;
+  margin: 0 0 var(--space-2);
+}
+
+/* ---- the grid, flat by definition ---- */
+.ag-grid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-grid th,
+.ag-grid td {
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.ag-grid thead th {
+  background: var(--bg-raised);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.ag-grid tbody th {
+  font-weight: 600;
+  /* The route column stays put while the dates scroll under it. */
+  position: sticky;
+  left: 0;
+  background: var(--bg);
+}
+
+.ag-grid .miles {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.ag-grid .meta,
+.ag-grid .none {
+  color: var(--fg-muted);
+}
+
+/* Freshness, using the palette's three dedicated tokens. */
+.ag-fresh {
+  color: var(--fresh);
+}
+.ag-aging {
+  color: var(--aging);
+}
+.ag-stale {
+  color: var(--stale);
+}
+
+/* The repo's CI asserts that nothing animates under `reduce`. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- controls shared by Ask and Settings ---- */
+
+/*
+ * 44 pt is the smallest touch target, for every button, link-as-button, field and the checkbox row
+ * (design §6.5, raised from the web's 40 px). Colours are the shell's existing ones: the primary
+ * action is filled with --accent over --bg, exactly as Search's Run and Settings' Save already are.
+ * Nothing here transitions or animates.
+ */
+.ag-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.ag-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--fg);
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+}
+
+.ag-button:disabled {
+  color: var(--fg-muted);
+}
+
+.ag-button-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.ag-button-primary:disabled {
+  border-color: var(--line);
+  background: var(--line);
+  color: var(--fg-muted);
+}
+
+.ag-button-danger {
+  color: var(--error);
+}
+
+.ag-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--bg-raised);
+  color: var(--fg);
+}
+
+textarea.ag-input {
+  resize: vertical;
+}
+
+.ag-input:disabled {
+  color: var(--fg-muted);
+}
+
+.ag-button:focus-visible,
+.ag-input:focus-visible,
+.ag-nav-link:focus-visible,
+.ask-suggestion:focus-visible,
+.ask-check input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ---- Ask ---- */
+
+.ask-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.ask-screen p {
+  margin: 0;
+}
+
+.ask-subline {
+  color: var(--fg-muted);
+}
+
+/* The whole row is the label, so the 44 pt target is the row, not the 20 px box. */
+.ask-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.ask-check input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.ask-suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ask-suggestion {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--bg-raised);
+  color: var(--fg);
+  text-align: left;
+}
+
+.ask-suggestion:disabled {
+  color: var(--fg-muted);
+}
+
+.ask-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The one button keeps one place and one size, whether it reads Ask or Stop. */
+.ask-send {
+  align-self: flex-end;
+  min-width: 96px;
+}
+
+.ask-note,
+.ask-hint,
+.ask-attribution,
+.ask-meta,
+.ask-activity,
+.ask-steps {
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
+  color: var(--fg-muted);
+}
+
+.ask-callout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--error);
+  border-radius: var(--radius-control);
+  background: var(--bg-raised);
+  font-size: 13px;
+}
+
+.ask-callout-neutral {
+  border-left-color: var(--fg-muted);
+}
+
+/* Answers are data: flat, hairline-bordered, no shadow (surfaces.css flat mode). */
+.ask-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ask-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ask-question {
+  margin: 0;
+  font-size: var(--type-section);
+  line-height: var(--leading-section);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ask-steps {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.ask-answer {
+  overflow-wrap: anywhere;
+}
+
+/* Two classes, so this outranks `.ask-screen p` and paragraphs in an answer keep their spacing. */
+.ask-entry .ask-answer > * {
+  margin: 0 0 var(--space-2);
+}
+
+.ask-entry .ask-answer > :last-child {
+  margin-bottom: 0;
+}
+
+/* A heading in an answer is a real heading for VoiceOver's rotor, set at body size. */
+.ask-answer h3 {
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 600;
+}
+
+.ask-answer ul,
+.ask-answer ol {
+  padding-left: 20px;
+}
+
+.ask-answer code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+
+/* A wide code block scrolls inside itself; the page never scrolls sideways. */
+.ask-answer pre {
+  overflow-x: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  white-space: pre;
+}
+
+.ask-answer a {
+  color: var(--accent);
+}
+
+.ask-failure {
+  color: var(--error);
+  font-size: 13px;
+}
+
+.ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ask-conversation {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* ---- Settings: the Anthropic key ---- */
+
+.settings-section p {
+  margin: 0 0 10px;
+}
+
+.settings-heading {
+  font-size: 15px;
+  margin: 0 0 6px;
+}
+
+.settings-copy,
+.settings-note {
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+.settings-copy a {
+  color: var(--accent);
+}
+
+.settings-on-file {
+  font-size: 13px;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 10px;
+}
+
+.settings-results {
+  font-size: 13px;
+}
+
+.settings-results p:last-child {
+  margin-bottom: 0;
+}
+
+.settings-ok {
+  color: var(--fresh);
+}
+
+.settings-fail {
+  color: var(--error);
+}
