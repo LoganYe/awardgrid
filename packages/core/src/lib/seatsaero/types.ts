@@ -95,8 +95,12 @@ export const Route = z.object({
   OriginRegion: z.string(),
   DestinationAirport: z.string(),
   DestinationRegion: z.string(),
-  NumDaysOut: z.number().int(),
-  Distance: z.number().int(),
+  // The live API omits both of these on some routes, where the OpenAPI snapshot gives each a
+  // `default: 0` (docs/reference/seatsaero/get-routes-1.md). Requiring them threw away a whole
+  // search on 2026-09-23, the first run on a real Pro key: one entry of a Get Routes response had
+  // no NumDaysOut, and the search failed after spending 2 calls. Nothing reads either field.
+  NumDaysOut: z.number().int().default(0),
+  Distance: z.number().int().default(0),
   Source: z.string(),
 });
 export type Route = z.infer<typeof Route>;
@@ -107,8 +111,9 @@ export const RoutesResponse = z.array(Route);
 /**
  * The route embedded in an Availability. Only ID/OriginAirport/DestinationAirport/Source are
  * present in every documented example (the Concepts page omits the rest, and the Bulk
- * Availability response schema is empty), so the region/day/distance fields are optional here
- * while `Route` (Get Routes, fully documented) keeps them required.
+ * Availability response schema is empty), so the region/day/distance fields are optional here.
+ * `Route` (Get Routes) keeps the regions required, which the documentation gives no default for,
+ * and defaults the two fields the documentation does.
  */
 export const AvailabilityRoute = Route.partial({
   OriginRegion: true,

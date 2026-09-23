@@ -1792,7 +1792,13 @@ step 3's probe mode, §1's two (§1.7) and §2.12's one, each with a key it reje
 - **What is left is the owner's.** The checks on the owner's own keys, K1-K6 (#12), have not run. They are where a
   real request's latency and cache reads, billing after Stop, a readable request ID, effort `medium` against `high`,
   and a device's handling of a request while awardgrid is away get measured. Live `X-RateLimit-Remaining`, which Ask's
-  reserve rests on, is still unmeasured (#13).
+  reserve rests on, is still unmeasured (#13). _Amended by the owner's-key run of 2026-09-23
+  (`docs/PHASE5.md` §3):_ K3 passed on both keys, and one K1 question was answered in 29.1 s over 4
+  requests and 3 seats.aero calls, reading 9,013 of its 13,989 input tokens from cache — the first
+  evidence the prompt cache works on real requests. That first question also found what no mock could:
+  `Route` required `NumDaysOut`, which the live Get Routes omits and the documentation defaults to 0,
+  so a search threw away rows two calls had paid for. The schema now defaults it, and `Distance` with
+  it. K2, K4, K5 and K6 have still not run, and no run has been made on a device.
 
 #### Assumptions register (the docs are silent; each is stated, and each has a check)
 

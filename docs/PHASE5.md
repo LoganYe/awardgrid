@@ -946,3 +946,94 @@ It writes the probe log, the mock's log, `shots/`, `summary-e2e.txt` and `r1.txt
 It exits 9, after the restore and R1, when a phase timed out, a wait failed or the summary did not finish. Scenario
 FAILs are results and leave the exit at 0. Exit 9 was added after run 3, where every phase reported done; before it,
 an incomplete run showed only in `summary-e2e.txt`'s `phases` line.
+
+## 3. On the owner's own keys (2026-09-23)
+
+**Status: the first real question was answered, and it found a defect twelve Simulator scenarios had
+not.** Ask ran on the owner's own seats.aero Pro key and Anthropic key, on the iPhone 17 Pro simulator
+(`A480530B-3036-4B12-80D4-F37A6130D898`), against the real api.anthropic.com and the real seats.aero
+Partner API. Keys were typed into Settings by the owner and live in the Simulator's Keychain; no key
+was ever written to a file or a command. This section records what that run showed. K2, K4, K5 and K6
+have not run.
+
+### 3.1 K3 — the key check, on both keys
+
+Saving the Anthropic key ran the check the design describes, a `GET /v1/models/claude-opus-5` that
+carries no question. It came back accepted: **"Anthropic accepted this key for Claude Opus 5. Checking
+sends no question."** The seats.aero key saved and its section read `On file: ••••` with the last four
+of the owner's key. Both requests crossed the native adapter; the WebView tripwire was not touched.
+
+An earlier save had put the seats.aero key into the Anthropic field by mistake. Anthropic answered
+401 and the screen read "Anthropic rejected this key." with **`Anthropic request ID:
+req_011CfMAhDyDiqUV8ArSRSFXN`**. That is worth recording against **A1b** (§1.7), which measured a real
+401 carrying no `request-id` header and is a FAIL on that criterion: a real 401 on the key-check path
+*did* carry a readable request ID. Whether the difference is the path (`/v1/models/{id}` against
+`/v1/messages`), the key shape, or the date is not established here.
+
+### 3.2 K1 — the first question, end to end
+
+Question: "Cheapest business class from SEA to Tokyo in the next 30 days?", asked with no search
+included, on an empty conversation.
+
+| | |
+|---|---|
+| Asked at | `2026-09-23T23:02:28.733Z` |
+| Answered at | `2026-09-23T23:02:57.843Z` |
+| **Wall clock** | **29.1 s**, for 4 model requests and 3 seats.aero calls |
+| Usage, as the meta line showed it | Claude Opus 5 · 4 requests · 13,989 input tokens (9,013 read from cache) · 1,170 output tokens · seats.aero calls: 3 |
+| Steps | `search_awards` **failed** (2 calls) → `search_awards` from this device's cache (0 calls) → `get_flights` (1 call) |
+| Quota afterwards | `seats.aero calls today: 3 of 950` |
+
+**The cache was read, on the first question of a fresh conversation.** 9,013 of 13,989 input tokens
+came from cache across the four requests, which is the first evidence that prompt caching works here
+at all; §2's cache numbers were the scripted fixtures'. A question is therefore not four times the
+price of one request.
+
+**The answer was usable and correctly hedged.** It led with Qantas at 90,000 miles for 7 Oct
+(AS123 SEA 13:20 → NRT 16:00, nonstop, 4 seats, $349 in fees), then said the better value was Alaska
+at 95,000 miles on the same flight for $6 in fees, 5,000 miles to save about $343. It marked the ages
+the tools reported ("Data pulled just now (0 min old)", "That row was 144 min old"), said the results
+came from the device cache so a pair could have gone unchecked, and said this is seats.aero's cached
+data rather than live inventory, to confirm on the program's own site before transferring points.
+"Data: seats.aero" rendered under it.
+
+### 3.3 The defect: a required field the live API omits
+
+The first `search_awards` failed after spending two calls. The tool result the app sent Claude carries
+the reason, and `ask.json` keeps it:
+
+```
+{"error":"seatsaero_error","message":"seats.aero could not complete the search: seats.aero routes response did not match the documented schema at \"0.NumDaysOut\": Invalid input: expected number, received undefined.","seats_aero_calls":2,"question_calls_left":10}
+```
+
+A Get Routes entry arrived without `NumDaysOut`. `Route` (`packages/core/src/lib/seatsaero/types.ts`)
+required it, so zod threw, and `runFind` lost rows two calls had already paid for. The OpenAPI snapshot
+the schema was written from gives both `NumDaysOut` and `Distance` a `default: 0`
+(`docs/reference/seatsaero/get-routes-1.md`), and nothing in the app or the core reads either field:
+the schema was stricter than the documentation it came from. Both are defaulted now, and a new test
+file, `packages/core/src/lib/seatsaero/routes-live-shape.test.ts`, pins the live shape. The regions
+stay required: the documentation gives them no default, and no response seen here dropped one.
+
+Every fixture under `packages/core/test/fixtures/seatsaero/` is built from the documentation's own
+examples (#13), so no Simulator run could have caught this. §1 and §2 passed 12 scenarios of 12 on
+mock servers while this waited in the first real search.
+
+**The same class of failure is filed as #89**: one bad or failing route list throws away a whole
+search, and its rows, after the calls are spent. This fix removes today's cause, not that fragility.
+
+### 3.4 The fix, verified on the same path
+
+After the fix, a grid search for "HKG, SHA to SEA, next 30 days, business and first" — the Search
+screen, the same `runFind` and the same Get Routes call, with no Anthropic tokens spent — completed:
+**27 seats.aero calls, a drawn grid** (HKG-SEA 156,900 Qantas with 4 seats, 190,000 Qatar, and others),
+and **SHA-SEA read "not monitored" in every row**, which is the answer only a Get Routes response can
+give. Quota afterwards: `30 of 950`.
+
+### 3.5 What this run did not show
+
+- **K2** (Stop and billing), **K4** (leaving the app on a device), **K5** (a device, not a simulator)
+  and **K6** (effort `medium` against `high`) have not run.
+- **Cost in dollars.** The app shows tokens and calls, never dollars (§2, DECISIONS "Phase 5"). At the
+  published rates this question is a few cents; the owner's Console is the only record that settles it.
+- **Whether `GET /v1/models/{id}` bills anything** (AS1). The check ran twice today; the Console says.
+- **Anything on a device.** This was the Simulator, on the Mac's network.
