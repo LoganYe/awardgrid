@@ -42,6 +42,34 @@ export interface ResultsCopy {
   othersSelected: (n: number) => string;
   /** Dynamically priced options the query leaves out (T09 review): said, not silently dropped. */
   dynamicNotShown: (n: number) => string;
+  /** T10: the card's way into the option's details; named in full. */
+  viewOption: string;
+  viewOptionName: (name: string) => string;
+  detail: {
+    title: string;
+    back: string;
+    notInResults: string;
+    via: (program: string) => string;
+    loading: string;
+    itineraries: string;
+    itinerary: (n: number) => string;
+    carrierFlight: string;
+    seats: string;
+    fees: string;
+    cabin: string;
+    times: string;
+    localTimes: string;
+    segments: string;
+    mixedCabin: (pct: number) => string;
+    miles: string;
+    notProvided: string;
+    noItineraries: string;
+    loadedOnDevice: (time: string) => string;
+    dataHeading: string;
+    openProgram: string;
+    copied: string;
+    copyFailed: string;
+  };
   /** Fee groups under the fee sort: fees never compare across currencies. */
   feeGroup: (currency: string) => string;
   calendarCabin: string;
@@ -108,6 +136,34 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     matrixKeys: "Arrow keys move · Enter opens · Esc returns",
     cellHeading: (day, route, n) => `${day} · ${route} · ${n} ${n === 1 ? "option" : "options"}`,
     othersSelected: (n) => `${n} other selected`,
+    viewOption: "View option",
+    viewOptionName: (name) => `View option: ${name}`,
+    detail: {
+      title: "Option details",
+      back: "Return to results",
+      notInResults: "This option is not in your results.",
+      via: (program) => `Redeemed through ${program}`,
+      loading: "Loading flight itineraries",
+      itineraries: "Flight itineraries",
+      itinerary: (n) => `Itinerary ${n}`,
+      carrierFlight: "Carrier and flight",
+      seats: "Seats",
+      fees: "Taxes and fees",
+      cabin: "Cabin",
+      times: "Times",
+      localTimes: "Local time at each airport",
+      segments: "Segments",
+      // seats.aero's MixedCabinPct: the share of the distance flown BELOW the reported cabin.
+      mixedCabin: (pct) => `Mixed cabin: ${pct}% of the distance below this cabin`,
+      miles: "Miles",
+      notProvided: "Not provided",
+      noItineraries: "seats.aero returned no itineraries in this cabin for this option.",
+      loadedOnDevice: (time) => `Loaded on this device ${time}`,
+      dataHeading: "Data and checks",
+      openProgram: "Program website",
+      copied: "Copied.",
+      copyFailed: "Could not copy. Select the text above instead.",
+    },
     dynamicNotShown: (n) => `${n} dynamically priced ${n === 1 ? "option is" : "options are"} not shown: this search leaves dynamic pricing out (More filters).`,
     feeGroup: (currency) => `Fees in ${currency}`,
     calendarCabin: "Calendar cabin",
@@ -183,6 +239,33 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     matrixKeys: "方向键移动 · Enter 查看 · Esc 返回",
     cellHeading: (day, route, n) => `${day} · ${route} · ${n} 个选项`,
     othersSelected: (n) => `另有 ${n} 个已选`,
+    viewOption: "查看选项",
+    viewOptionName: (name) => `查看选项：${name}`,
+    detail: {
+      title: "兑换详情",
+      back: "返回结果",
+      notInResults: "该选项不在当前结果中。",
+      via: (program) => `通过 ${program} 兑换`,
+      loading: "正在载入具体航班",
+      itineraries: "具体航班",
+      itinerary: (n) => `行程 ${n}`,
+      carrierFlight: "承运与航班号",
+      seats: "可用席位",
+      fees: "税费",
+      cabin: "舱位",
+      times: "起降时间",
+      localTimes: "各机场当地时间",
+      segments: "航段",
+      mixedCabin: (pct) => `混合舱位：${pct}% 航程低于此舱位`,
+      miles: "里程",
+      notProvided: "未提供",
+      noItineraries: "seats.aero 未返回该选项在此舱位的具体行程。",
+      loadedOnDevice: (time) => `本机载入：${time}`,
+      dataHeading: "数据与核验",
+      openProgram: "前往兑换网站",
+      copied: "已复制。",
+      copyFailed: "无法复制，请手动选择上方文字。",
+    },
     dynamicNotShown: (n) => `有 ${n} 个动态定价选项未显示：本次查询不含动态定价（更多筛选）。`,
     feeGroup: (currency) => `税费（${currency}）`,
     calendarCabin: "日历舱位",

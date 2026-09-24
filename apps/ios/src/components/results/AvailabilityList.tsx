@@ -22,6 +22,8 @@ export interface AvailabilityListProps {
   locale: Locale;
   headingLevel?: 2 | 3;
   testId?: string;
+  /** Open a row's details (T10), focus to come back to `returnFocusId`. */
+  onOpen?: (rowKey: RowKey, returnFocusId: string) => void;
 }
 
 function groupName(group: string, locale: Locale): string {
@@ -30,7 +32,7 @@ function groupName(group: string, locale: Locale): string {
   return RESULTS[locale].feeGroup(group);
 }
 
-export function AvailabilityList({ rows, sort, snapshotId, selected, onToggle, now, locale, headingLevel = 2, testId = "availability-list" }: AvailabilityListProps) {
+export function AvailabilityList({ rows, sort, snapshotId, selected, onToggle, now, locale, headingLevel = 2, testId = "availability-list", onOpen }: AvailabilityListProps) {
   const id = useId();
   const card = (row: WorkspaceRow) => (
     <AvailabilityCard
@@ -42,6 +44,7 @@ export function AvailabilityList({ rows, sort, snapshotId, selected, onToggle, n
       now={now}
       locale={locale}
       headingLevel={headingLevel}
+      onOpen={onOpen ? (returnFocusId) => onOpen(row.key, returnFocusId) : undefined}
     />
   );
   // Rows arrive sorted, so under the fee sort each group is one run of consecutive rows.

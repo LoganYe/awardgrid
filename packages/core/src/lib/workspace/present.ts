@@ -31,6 +31,11 @@ export const COPY = {
   "time.local": { en: "Fetched on this device at {time}", zh: "本机获取于 {time}" },
   "run.old": { en: "Showing previous results; the new search failed.", zh: "新条件查询失败，当前显示此前结果。" },
   "run.inflight": { en: "Searching; previous results remain available.", zh: "正在查询，此前结果仍可查看。" },
+  "details.load": { en: "View flight itineraries", zh: "查看具体航班" },
+  "details.copy": { en: "Copy search details", zh: "复制查询条件" },
+  "details.external": { en: "Check availability and fees on the program website.", zh: "请在计划网站核验库存与税费。" },
+  "help.program": { en: "The membership program used to redeem; it may not operate the flight.", zh: "用于兑换的会员计划，不一定是执飞航司。" },
+  "help.mixed": { en: "One itinerary can include different cabins. Check every segment.", zh: "同一行程可能包含不同舱位，需看每一段。" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type CopyKey = keyof typeof COPY;
@@ -402,4 +407,35 @@ export function matrixCellName(
     return `${head}${lowest} ${miles}${sep}${programLabel(row.program)}${sep}${zh ? seats : seats.charAt(0).toLowerCase() + seats.slice(1)}${marks.map((m) => sep + m).join("")}`;
   });
   return `${cell.origin} → ${cell.dest}${sep}${dayLabel(cell.date, locale)}${zh ? "：" : ": "}${slots.join(zh ? "；" : "; ")}`;
+}
+
+// ---- the details (T10) ------------------------------------------------------------------------------------------
+
+/**
+ * An itinerary time as seats.aero gives it: airport-local, with a "Z" that is NOT UTC (seatsaero/types.ts Trip). The
+ * digits are shown as they are, never converted through the device's zone; a value without a date and time says so.
+ */
+export function localTimeLabel(iso: string, locale: Locale): { time: string | null; day: string; date: string | null } {
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(iso);
+  if (!m) return { time: null, day: locale === "zh" ? "时间未提供" : "Time not provided", date: null };
+  return { time: `${m[2]}:${m[3]}`, day: dayLabel(m[1]!, locale), date: dayParts(m[1]!, locale).date };
+}
+
+export function durationLabel(minutes: number | null, locale: Locale): string {
+  if (minutes === null || !Number.isFinite(minutes) || minutes <= 0) return locale === "zh" ? "时长未提供" : "Duration not provided";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (locale === "zh") return `${h > 0 ? `${h} 小时 ` : ""}${m} 分钟`.trim();
+  return `${h > 0 ? `${h} h ` : ""}${m} min`.trim();
+}
+
+export function stopsLabel(stops: number, locale: Locale): string {
+  if (stops === 0) return locale === "zh" ? "直飞" : "Nonstop";
+  return locale === "zh" ? `${stops} 次经停` : `${stops} ${stops === 1 ? "stop" : "stops"}`;
+}
+
+/** What "Copy search details" puts on the clipboard: enough to find this option on the program's own site. */
+export function detailsCopyText(row: WorkspaceRow["value"], locale: Locale): string {
+  const miles = locale === "zh" ? `${formatMiles(row.miles)} 里程` : `${formatMiles(row.miles)} miles`;
+  return [`${row.origin} → ${row.dest}`, dayLabel(row.date, locale), cabinName(row.cabin, locale), programLabel(row.program), miles].join(" · ");
 }

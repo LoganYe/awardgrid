@@ -82,6 +82,73 @@ function availabilities(rows: SyntheticRow[]): Record<string, unknown>[] {
   return [...groups.values()].map(toAvailability);
 }
 
+const CABIN_NAME: Record<string, string> = { Y: "economy", W: "premium", J: "business", F: "first" };
+
+function segment(id: string, n: number, flight: string, origin: string, dest: string, departs: string, arrives: string) {
+  return { ID: `${id}-s${n}`, FlightNumber: flight, OriginAirport: origin, DestinationAirport: dest, DepartsAt: departs, ArrivesAt: arrives, AircraftName: "Synthetic 787", FareClass: "I", Order: n };
+}
+
+/**
+ * Get Trips for one synthetic source id (T10): obviously synthetic itineraries — carrier "XX", flights "XX 1xx" —
+ * for each cabin the rows hold. Times are airport-local with seats.aero's "Z" (not UTC): HKG 10:30 → SEA 07:40 the
+ * same calendar day. The second option also has a one-stop itinerary with mixed cabins (MixedCabinPct 20: seats.aero's
+ * share of the distance flown BELOW the cabin); the zero-fees option has none. Booking links are on the reserved
+ * `.example` domain: the first option's primary link is its program's page, with another program's "Book via …" link
+ * after it that the app must not use; the second option's primary link is an unsafe `javascript:` one the app must
+ * refuse, leaving it no way out but "Copy search details".
+ */
+function trips(rows: readonly SyntheticRow[], id: string): Record<string, unknown> {
+  const mine = rows.filter((r) => r.source_id === id);
+  if (mine.length === 0 || id.endsWith("zero-fees")) return { data: [], booking_links: [] };
+  const data = mine.flatMap((row, i) => {
+    const base = {
+      AvailabilityID: id,
+      Cabin: CABIN_NAME[row.cabin],
+      MileageCost: row.miles,
+      TotalTaxes: row.fees_cents ?? 5840,
+      TaxesCurrency: row.currency ?? "USD",
+      RemainingSeats: row.seats_left,
+      Source: row.program,
+    };
+    const nonstop = {
+      ...base,
+      ID: `${id}-${row.cabin}-1`,
+      Stops: 0,
+      Carriers: "XX",
+      FlightNumbers: `XX ${120 + i}`,
+      DepartsAt: `${row.date}T10:30:00Z`,
+      ArrivesAt: `${row.date}T07:40:00Z`,
+      TotalDuration: 730,
+      AvailabilitySegments: [segment(`${id}-${row.cabin}-1`, 0, `XX ${120 + i}`, row.origin, row.dest, `${row.date}T10:30:00Z`, `${row.date}T07:40:00Z`)],
+    };
+    if (!id.endsWith("second")) return [nonstop];
+    const oneStop = {
+      ...base,
+      ID: `${id}-${row.cabin}-2`,
+      MileageCost: row.miles + 5000,
+      Stops: 1,
+      Carriers: "XX",
+      FlightNumbers: "XX 150, XX 151",
+      DepartsAt: `${row.date}T08:05:00Z`,
+      ArrivesAt: `${row.date}T09:55:00Z`,
+      TotalDuration: 890,
+      MixedCabinPct: 20,
+      AvailabilitySegments: [
+        segment(`${id}-${row.cabin}-2`, 0, "XX 150", row.origin, "TPE", `${row.date}T08:05:00Z`, `${row.date}T09:55:00Z`),
+        segment(`${id}-${row.cabin}-2`, 1, "XX 151", "TPE", row.dest, `${row.date}T12:20:00Z`, `${row.date}T09:55:00Z`),
+      ],
+    };
+    return [nonstop, oneStop];
+  });
+  const other = { label: "Book via another program", link: "https://united.example/other-program-synthetic", primary: false };
+  return {
+    data,
+    booking_links: id.endsWith("second")
+      ? [{ label: "Synthetic unsafe link", link: "javascript:alert(1)", primary: true }, other]
+      : [{ label: "Synthetic program page", link: `https://${mine[0]!.program}.example/redeem-synthetic`, primary: true }, other],
+  };
+}
+
 function matchesSearch(row: SyntheticRow, params: URLSearchParams): boolean {
   const origins = list(params, "origin_airport");
   const dests = list(params, "destination_airport");
@@ -101,7 +168,8 @@ function matchesSearch(row: SyntheticRow, params: URLSearchParams): boolean {
 
 /**
  * A seats.aero Partner API stand-in. Search and Bulk Availability answer from `rows`; Get Routes lists `routes`
- * (a pair it omits is unmonitored); Get Trips answers 404 until a task adds synthetic itineraries (plan 02 T10).
+ * (a pair it omits is unmonitored); Get Trips answers from `trips` below (T10), and fails with the search in
+ * failed-old.
  * A request without the Partner-Authorization header gets 401, as the real API and scripts/mock-seatsaero.ts do.
  */
 export function syntheticSeatsFetch(
@@ -145,6 +213,10 @@ export function syntheticSeatsFetch(
             Source: route.program,
           })),
       );
+    }
+    if (path.startsWith("trips/")) {
+      if (searchMode === "fail") return json({ error: "synthetic outage" }, 500);
+      return json(trips(rows, decodeURIComponent(path.slice("trips/".length))));
     }
     return json({}, 404);
   }) as typeof fetch;

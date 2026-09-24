@@ -6,12 +6,15 @@
  * The selection checkbox is a sibling of the card's content, never nested in another control, with a 44 pt target.
  * The card and its checkbox are named in full — route, day, cabin, program, miles, fees, seats (spec §19) — so two
  * options on the same route and day are never announced alike; a selected card also says "Selected" in words.
- * Opening details arrives with T10; until then the card has no open action and shows no chevron.
+ * "View option" (T10) opens the option's details over the results; it is a button of its own, named in full, never
+ * the whole card, so the checkbox and the details are two separate targets. It fetches nothing: the details show the
+ * aggregate first, and only their own "View flight itineraries" spends a call.
  */
 import { cabinName } from "@awardgrid/core/workspace/query-editor";
 import { dayLabel, feesLabel, formatMiles, programLabel, resultName, seatsLabel, timeLabel } from "@awardgrid/core/workspace/present";
 import type { SnapshotId, WorkspaceRow } from "@awardgrid/core/workspace/types";
 import type { Locale } from "../../app/locale";
+import { Icon } from "../ui";
 import { RESULTS } from "./copy";
 
 export interface AvailabilityCardProps {
@@ -24,9 +27,11 @@ export interface AvailabilityCardProps {
   locale: Locale;
   /** The route heading's level: 2 in the list, 3 under a calendar day's heading. */
   headingLevel?: 2 | 3;
+  /** Open the option's details; `returnFocusId` is this card's button, where focus comes back to. */
+  onOpen?: (returnFocusId: string) => void;
 }
 
-export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, locale, headingLevel = 2 }: AvailabilityCardProps) {
+export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, locale, headingLevel = 2, onOpen }: AvailabilityCardProps) {
   const Heading = headingLevel === 3 ? "h3" : "h2";
   const t = RESULTS[locale];
   const v = row.value;
@@ -61,7 +66,16 @@ export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, loc
         <p className="ag-result-program">{programLabel(v.program)}</p>
         <p className="ag-result-seats">{seatsLabel(v.seats_left, locale)}</p>
       </div>
-      <p className="ag-result-time">{timeLabel(row.time, now, locale)}</p>
+      {/* The way into the details shares the source-time line, so the card keeps its 164 pt (spec §13). */}
+      <div className="ag-result-foot">
+        <p className="ag-result-time">{timeLabel(row.time, now, locale)}</p>
+        {onOpen ? (
+          <button type="button" id={`open-${row.key}`} className="ag-result-open-button" aria-label={t.viewOptionName(name)} onClick={() => onOpen(`open-${row.key}`)}>
+            <span>{t.viewOption}</span>
+            <Icon name="chevron-right" />
+          </button>
+        ) : null}
+      </div>
     </article>
   );
 }

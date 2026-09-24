@@ -1,6 +1,6 @@
 # UI/UX v1 execution status
 
-State: **M2 in progress** — T01–T09 verified (unit, integration, iOS browser mock); Simulator, device and live-key checks not run. T10 next.
+State: **M2 in progress** — T01–T10 verified (unit, integration, iOS browser mock); Simulator, device and live-key checks not run. T11 next.
 Handoff pack: `/Users/yegaoyang/Desktop/workspace/awardgrid-claude-code-impl` (read in the order its `CLAUDE_CODE_PROMPT.md` sets).
 Repository: `/Users/yegaoyang/Desktop/workspace/awardgrid`. Work happens in the worktree **`/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`** on local branch `uiux/quiet-precision-v1` (from `main` at `9c69c6c`); the main checkout stays on `main` because production runs from it (DECISIONS U-009).
 Design baseline: `2a1f353` is an ancestor of `9c69c6c`; the 4 commits after it are seats.aero decoding fixes, an Ask token-count fix and a docs entry. Nothing was reset or checked out.
@@ -16,7 +16,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 | Milestone | State | Evidence |
 |---|---|---|
 | M1 truthful foundations (T01–T05) | verified (unit + integration + iOS browser mock); Simulator/device unverified | [baseline](evidence/T01-baseline.md), [T01](evidence/T01-fixture-harness.md), [T02](evidence/T02-truth-identity.md), [T03](evidence/T03-coverage-evidence.md), [T04](evidence/T04-tokens-primitives.md), [T05](evidence/T05-workspace.md) |
-| M2 iOS search flow (T06–T11) | in_progress | [T06](evidence/T06-query-editor.md), [T07](evidence/T07-mobile-results.md), [T08](evidence/T08-projection-views.md), [T09](evidence/T09-matrix.md) |
+| M2 iOS search flow (T06–T11) | in_progress | [T06](evidence/T06-query-editor.md), [T07](evidence/T07-mobile-results.md), [T08](evidence/T08-projection-views.md), [T09](evidence/T09-matrix.md), [T10](evidence/T10-details.md) |
 | M3 context and persistence (T12–T17) | pending | — |
 | M4 Web and release validation (T18–T22) | pending | — |
 
@@ -33,7 +33,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 | T07 | Mobile nav, query summary, readable result cards | verified (unit + iOS browser mock) | [evidence](evidence/T07-mobile-results.md); A12 verified in that scope, A02/A03 component half verified; Simulator/device (safe areas, Dynamic Type, VoiceOver) unverified |
 | T08 | Same-snapshot projection: list and calendar | verified (unit + iOS browser mock) | [evidence](evidence/T08-projection-views.md); A13, A14 verified in those scopes; Simulator/device (native sort picker, VoiceOver on the calendar, system Dynamic Type) unverified; no iOS local-filter control (U-032) |
 | T09 | Pro matrix: column snapping, per-cabin, keyboard | verified (unit + iOS browser mock) | [evidence](evidence/T09-matrix.md); A15, A16 verified in those scopes; Simulator/device (WebKit touch snap, VoiceOver on the grid) unverified; Enter opens the cell's options until T10 |
-| T10 | Plain itinerary details and return state | pending | |
+| T10 | Plain itinerary details and return state | verified (unit + iOS browser mock) | [evidence](evidence/T10-details.md); A17, A18, A19 verified in those scopes; native Get Trips, Safari hand-off, clipboard and VoiceOver on a device unverified; live Get Trips not run (spends a call) |
 | T11 | Settings, onboarding, bilingual, keyboard | pending | |
 | T12 | Stable selection and 2–4 compare | pending | |
 | T13 | Local favourite snapshots, caps, recoverable persistence | pending | |
@@ -60,9 +60,9 @@ Authorization: local implementation and per-task local commits only. No push, PR
 
 | Scope | State |
 |---|---|
-| Unit (vitest) | run per task; T01–T09 green (root 919/2 skipped, core 877, ios 672) |
+| Unit (vitest) | run per task; T01–T10 green (root 919/2 skipped, core 906, ios 677) |
 | Web mock — existing web e2e (`pnpm e2e`) | baseline 583 passed / 145 skipped / 0 failed; not re-run (no web change yet, and it must run in a worktree from now on) |
-| iOS browser mock (`playwright.uiux.config.ts`) | 103 passed (harness 10, foundations 26, workspace 4, query editor 18, mobile results 14, views 15, matrix 16) |
+| iOS browser mock (`playwright.uiux.config.ts`) | 122 passed (harness 10, foundations 26, workspace 4, query editor 18, mobile results 14, views 15, matrix 16, details 19) |
 | iOS Simulator | not run for the app yet. One T07 reviewer ran a scratch WKWebView probe on throwaway simulators to settle a locale question (DECISIONS U-026; evidence T07 Review): not an app verification |
 | Physical device | not available to this session — unverified |
 | Live seats.aero / Anthropic key | not authorized — not run |
@@ -78,4 +78,4 @@ Authorization: local implementation and per-task local commits only. No push, PR
 
 ## Current next action
 
-T10 (plan 02): plain itinerary details and return state — "View flight itineraries" as an explicit request through the existing trips path and quota, the aggregate shown first, trusted refs only, Enter from the matrix and Esc back to the triggering cell (docs/03 §4, docs/04 S04; reference `itinerary-detail.png`). Read plan 02 T10 first; red test per its Step 1.
+T11 (plan 02): settings, first-run setup, bilingual and keyboard — the language setting (the translated screens so far follow the device, U-026), Settings and onboarding in both languages, and the keyboard pass (docs/04, reference screens as applicable). Read plan 02 T11 first; red test per its Step 1.

@@ -14,7 +14,7 @@ import { buildGrid } from "@awardgrid/core/grid/pivot";
 import type { AvailabilityRow, Grid } from "@awardgrid/core/grid/types";
 import type { Notice } from "@awardgrid/core/notices";
 import { parseQuery } from "@awardgrid/core/query/parse";
-import { QueryObject } from "@awardgrid/core/query/schema";
+import { type Cabin, QueryObject } from "@awardgrid/core/query/schema";
 import { isRealDate } from "@awardgrid/core/workspace/semantics";
 import type { CoverageEvidence } from "@awardgrid/core/workspace/types";
 import {
@@ -31,6 +31,7 @@ import { pairsOf, runFind } from "@awardgrid/core/seatsaero/find";
 import { notFetchedPairsFrom } from "@awardgrid/core/seatsaero/not-fetched";
 import { Quota, QuotaExceededError } from "@awardgrid/core/seatsaero/quota";
 import { RoutesCatalog } from "@awardgrid/core/seatsaero/routes";
+import { type GetTripsResult, runGetTrips } from "@awardgrid/core/seatsaero/trips";
 
 /**
  * There is exactly one user, and `runFind` still wants an id because the core is shared with the
@@ -222,6 +223,35 @@ export class SearchEngine {
           coverage: result.coverage ?? null,
         },
       };
+    } catch (err) {
+      return await this.#failure(err);
+    }
+  }
+
+  /**
+   * Get Trips for one shown option (UI/UX v1 T10): exactly one seats.aero call, reserved on the same quota and
+   * sent through the same transport as a search, with the fee it learns written back to the same cache
+   * (core seatsaero/trips.ts runGetTrips). Only the option's own source id and cabin, and the scope it was fetched
+   * in, are sent — never free text. The same failures as a search.
+   */
+  async getTrips(
+    option: { availabilityId: string; cabin: Cabin; include_filtered: boolean; min_cabin_pct: number },
+    apiKey: string | null,
+  ): Promise<ApiResult<GetTripsResult>> {
+    if (!apiKey) return noKey();
+    try {
+      const value = await runGetTrips({
+        availabilityId: option.availabilityId,
+        cabin: option.cabin,
+        userId: LOCAL_USER,
+        apiKey,
+        fetch: this.#fetch,
+        quota: this.quota,
+        cache: this.cache,
+        include_filtered: option.include_filtered,
+        min_cabin_pct: option.min_cabin_pct,
+      });
+      return { ok: true, value };
     } catch (err) {
       return await this.#failure(err);
     }

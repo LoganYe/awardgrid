@@ -18,6 +18,7 @@ import { Icon, type IconName } from "../components/ui";
 import { langTag } from "./locale";
 import { AskScreen } from "../screens/AskScreen";
 import { QueryEditorScreen } from "../screens/QueryEditorScreen";
+import { DetailScreen } from "../screens/DetailScreen";
 import { SearchScreen } from "../screens/SearchScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { WatchesScreen } from "../screens/WatchesScreen";
@@ -81,18 +82,21 @@ export function Chrome({ services }: { services: AppServices }) {
   const unseen = useUnseenCount(services);
   const t = RESULTS[services.locale];
   const { pathname } = useLocation();
-  const onSearch = pathname === "/";
+  // An option's details (T10) open over the Search screen, which stays as it is underneath: same scroll, same chrome.
+  const detailOpen = pathname.startsWith("/detail/");
+  const place = detailOpen ? "/" : pathname;
+  const onSearch = place === "/";
   // One scrolling area serves every tab, so each tab's position is kept and restored when it is shown again.
   const main = useRef<HTMLElement>(null);
   const positions = useRef(new Map<string, number>());
-  const shownPath = useRef(pathname);
+  const shownPath = useRef(place);
   useLayoutEffect(() => {
     const el = main.current;
-    if (!el || shownPath.current === pathname) return;
+    if (!el || shownPath.current === place) return;
     positions.current.set(shownPath.current, el.scrollTop);
-    el.scrollTop = positions.current.get(pathname) ?? 0;
-    shownPath.current = pathname;
-  }, [pathname]);
+    el.scrollTop = positions.current.get(place) ?? 0;
+    shownPath.current = place;
+  }, [place]);
   const tabs: Array<{ to: string; icon: IconName; label: string; badge: number }> = [
     { to: "/", icon: "search", label: t.tabs.search, badge: 0 },
     { to: "/watches", icon: "bell", label: t.tabs.watches, badge: unseen },
@@ -100,11 +104,11 @@ export function Chrome({ services }: { services: AppServices }) {
   ];
   return (
     <div className="app-shell">
-      <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(pathname, e.currentTarget.scrollTop)}>
+      <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(place, e.currentTarget.scrollTop)}>
         <Outlet context={services} />
         {onSearch ? null : <p className="app-attribution">Data: seats.aero · your own keys, on this device</p>}
       </main>
-      <nav className="app-tabs" aria-label={t.tabsLabel} lang={langTag(services.locale)}>
+      <nav className="app-tabs" aria-label={t.tabsLabel} lang={langTag(services.locale)} inert={detailOpen || undefined}>
         {tabs.map((tab) => (
           <NavLink key={tab.to} to={tab.to} end={tab.to === "/"} className="app-tab">
             <Icon name={tab.icon} />
@@ -122,6 +126,11 @@ export function Chrome({ services }: { services: AppServices }) {
       </nav>
     </div>
   );
+}
+
+/** The Search screen with no option's details open: nothing over the results. */
+function NoDetail() {
+  return null;
 }
 
 export interface AppProps {
@@ -194,7 +203,11 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
               path: "/",
               element: <Chrome services={services} />,
               children: [
-                { index: true, element: <SearchScreen /> },
+                {
+                  // The Search screen, and an option's details over it (T10).
+                  element: <SearchScreen />,
+                  children: [{ index: true, Component: NoDetail }, { path: "detail/:snapshotId/:rowKey", element: <DetailScreen /> }],
+                },
                 { path: "ask", element: <AskScreen /> },
                 { path: "watches", element: <WatchesScreen /> },
                 { path: "settings", element: <SettingsScreen /> },

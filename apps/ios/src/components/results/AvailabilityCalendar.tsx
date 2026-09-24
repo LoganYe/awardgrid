@@ -51,6 +51,8 @@ export interface AvailabilityCalendarProps {
   onToggle: (rowKey: RowKey, on: boolean) => void;
   now: string;
   locale: Locale;
+  /** Open an option's details (T10). */
+  onOpen?: (rowKey: RowKey, returnFocusId: string) => void;
 }
 
 /** Every "YYYY-MM" from the first date's month to the last's. */
@@ -87,7 +89,7 @@ const weakest = (days: readonly ProjectedDay[]): ProjectedDay["coverage"] =>
 const MARK: Record<EmptyDayKind, string> = { hidden: "∗", complete: "–", unmonitored: "⊘", partial: "…", unknown: "?" };
 const KIND_ORDER: EmptyDayKind[] = ["hidden", "complete", "unmonitored", "partial", "unknown"];
 
-export function AvailabilityCalendar({ query, days, rows, sort, onCabin, snapshotId, selected, onToggle, now, locale }: AvailabilityCalendarProps) {
+export function AvailabilityCalendar({ query, days, rows, sort, onCabin, snapshotId, selected, onToggle, now, locale, onOpen }: AvailabilityCalendarProps) {
   const t = RESULTS[locale];
   const id = useId();
   const cabin = days[0]?.cabin ?? query.cabins[0]!;
@@ -151,6 +153,7 @@ export function AvailabilityCalendar({ query, days, rows, sort, onCabin, snapsho
         locale={locale}
         headingLevel={3}
         testId="calendar-day-list"
+        onOpen={onOpen}
       />
     </section>
   );

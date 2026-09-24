@@ -31,11 +31,16 @@ export interface AvailabilityMatrixProps {
   onToggle: (rowKey: RowKey, on: boolean) => void;
   now: string;
   locale: Locale;
+  /** Open an option's details (T10): a one-option cell opens it directly, focus to come back to the cell. */
+  onOpen?: (rowKey: RowKey, returnFocusId: string) => void;
 }
+
+/** A cell's element id: stable across renders and new snapshots, so focus can come back to it. */
+const cellId = (date: string, origin: string, dest: string) => `mx-${date}-${origin}-${dest}`;
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-export function AvailabilityMatrix({ snapshot, projected, sort, selected, onToggle, now, locale }: AvailabilityMatrixProps) {
+export function AvailabilityMatrix({ snapshot, projected, sort, selected, onToggle, now, locale, onOpen }: AvailabilityMatrixProps) {
   const t = RESULTS[locale];
   const id = useId();
   const model = useMemo(() => matrixModel(snapshot, projected), [snapshot, projected]);
@@ -49,6 +54,12 @@ export function AvailabilityMatrix({ snapshot, projected, sort, selected, onTogg
   const openCell = (at: MatrixPoint) => {
     const cell = model.cells[at.row]?.[at.col];
     if (!cell || !cell.slots.some((s) => s.state === "results")) return;
+    // One option: straight to its details (Esc there comes back to this cell). More: the cell's options below.
+    const keys = cell.slots.flatMap((s) => s.rowKeys);
+    if (keys.length === 1 && onOpen) {
+      onOpen(keys[0]!, cellId(cell.date, cell.origin, cell.dest));
+      return;
+    }
     setOpen(at);
     window.requestAnimationFrame(() => panelHeading.current?.focus());
   };
@@ -187,10 +198,12 @@ export function AvailabilityMatrix({ snapshot, projected, sort, selected, onTogg
                       <td
                         key={`${cell.origin}-${cell.dest}`}
                         ref={focus.cellRef(at)}
+                        id={cellId(cell.date, cell.origin, cell.dest)}
                         role="gridcell"
                         aria-colindex={c + 2}
                         aria-label={matrixCellName(cell, rowOf, locale, selected)}
-                        aria-expanded={cell.slots.some((s) => s.state === "results") ? open?.row === r && open.col === c : undefined}
+                        // Only a cell with several options expands; a one-option cell opens that option's details.
+                        aria-expanded={cell.slots.reduce((n, s) => n + s.rowKeys.length, 0) > 1 || !onOpen ? (cell.slots.some((s) => s.state === "results") ? open?.row === r && open.col === c : undefined) : undefined}
                         tabIndex={isActive ? 0 : -1}
                         className="ag-mx-cell"
                         data-date={date}
@@ -240,6 +253,7 @@ export function AvailabilityMatrix({ snapshot, projected, sort, selected, onTogg
             locale={locale}
             headingLevel={3}
             testId="matrix-cell-list"
+            onOpen={onOpen}
           />
         </section>
       ) : null}

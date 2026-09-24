@@ -32,6 +32,7 @@ import { WatchStore } from "../store/watch-store";
 import { type ApiResult, type FindValue, type ParsedText, SearchEngine } from "../search/search";
 import { createSearchPort } from "../workspace/search-port";
 import { searchViewFromSnapshot } from "../workspace/snapshot-view";
+import { createDetailService, type DetailService } from "../workspace/detail-service";
 import { SlotFileStorage } from "../workspace/slot-storage";
 import { type PersistResult, WorkspaceStore } from "../workspace/workspace-store";
 import { type WatchCheckResult, checkWatches } from "../watch/runner";
@@ -52,6 +53,11 @@ export interface AppServices {
    * Saved in its own namespace by `persist`; restored at launch without running anything.
    */
   workspace: WorkspaceStore;
+  /**
+   * An option's details (UI/UX v1 T10): flight itineraries for a shown result, read only on an explicit request —
+   * one Get Trips call through the engine's quota, cache and transport — and kept for this run of the app.
+   */
+  details: DetailService;
   /**
    * The Search screen's text search, through the workspace: the text is parsed (nothing sent), the parsed query
    * runs as a workspace revision on the same engine path as every structured query, and the answer is returned in
@@ -226,6 +232,12 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     },
   });
   const workspace = new WorkspaceStore({ search: searchPort, now: () => now().toISOString(), storage: new SlotFileStorage(snapshots.files) });
+  const details = createDetailService({
+    workspace,
+    getTrips: (option, apiKey) => engine.getTrips(option, apiKey),
+    readKey: () => readKey(keys),
+    now,
+  });
   await workspace.restore();
   let lastWorkspaceSave: PersistResult | null = null;
 
@@ -332,6 +344,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     anthropicKeys,
     ask,
     workspace,
+    details,
     searchText,
     prepareText: async (text) => engine.parseText(text, await readKey(keys)),
     runParsed: (text, parsed) => runTyped({ text, parsed }),

@@ -236,20 +236,26 @@ test("a new search keeps focus on the same cell, and the opened options close", 
 test("the opened cell is framed, not only tinted; the query's mileage cap holds in every view", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "en" });
   await searchByText(page, SEARCH_TEXT);
+  // Oct 18 holds two options (Business and First): a tap opens them below, and the cell is framed.
+  await openMatrix(page);
+  const oct18 = page.getByRole("gridcell", { name: /^HKG → SEA, Sun, Oct 18:/ });
+  await oct18.click();
+  await expect(oct18).toHaveAttribute("aria-expanded", "true");
+  expect(await oct18.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe("none");
+
   // A mileage cap of 80,000: the 82,000 and 110,000 options are outside this search.
+  await page.getByTestId("results-view").getByRole("radio", { name: "List", exact: true }).click();
   await page.getByTestId("query-summary").getByRole("link").click();
   await page.getByLabel("Mileage cap").fill("80000");
   await page.getByRole("button", { name: "Find award options" }).click();
   await expect(page.locator(".ag-results[data-run]")).toHaveAttribute("data-run", "finished");
   await expect(page.getByTestId("availability-list").getByTestId("card-miles")).toHaveText(["68,000 miles", "75,000 miles"]);
   await openMatrix(page);
-  const oct18 = page.getByRole("gridcell", { name: /^HKG → SEA, Sun, Oct 18:/ });
-  await expect(oct18).toHaveAccessibleName(/Business J lowest 75,000 miles.*; First F no matches$/);
+  await expect(page.getByRole("gridcell", { name: /^HKG → SEA, Sun, Oct 18:/ })).toHaveAccessibleName(/Business J lowest 75,000 miles.*; First F no matches$/);
   await expect(page.getByRole("grid")).not.toContainText("110,000");
   await expect(page.getByRole("grid")).not.toContainText("82,000");
-  await oct18.click();
-  expect(await oct18.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe("none");
 });
+
 
 test("320: one whole column of 200; the page never scrolls sideways", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });

@@ -15,6 +15,10 @@ import {
   coverageNotices,
   dayLabel,
   dayParts,
+  detailsCopyText,
+  durationLabel,
+  localTimeLabel,
+  stopsLabel,
   matrixCellName,
   programShortLabel,
   feesLabel,
@@ -263,6 +267,32 @@ describe("the matrix's words (T09)", () => {
     expect(matrixCellName(other, byKey, "en", new Set(["other-2"]))).toContain("seat count not provided, 1 other option selected;");
     expect(matrixCellName(other, byKey, "zh", new Set(["other-1", "other-2"]))).toContain("席位未提供，另有 2 个已选；");
     expect(matrixCellName(cell, byKey, "zh", new Set([j.key]))).toContain("席位未提供，已选；");
+  });
+});
+
+describe("the details' words (T10)", () => {
+  it("itinerary times are airport-local as seats.aero gives them: the 'Z' is not UTC, and nothing is shifted", () => {
+    expect(localTimeLabel("2026-10-14T10:30:00Z", "en")).toEqual({ time: "10:30", day: "Wed, Oct 14", date: "Oct 14" });
+    expect(localTimeLabel("2026-10-15T07:40:00Z", "zh")).toEqual({ time: "07:40", day: "10月15日 · 周四", date: "10月15日" });
+    // Without a date and time there is nothing to show but that.
+    expect(localTimeLabel("", "en")).toEqual({ time: null, day: "Time not provided", date: null });
+    expect(localTimeLabel("soon", "zh")).toEqual({ time: null, day: "时间未提供", date: null });
+  });
+
+  it("durations and stops in words; an unknown duration says so", () => {
+    expect(durationLabel(730, "en")).toBe("12 h 10 min");
+    expect(durationLabel(730, "zh")).toBe("12 小时 10 分钟");
+    expect(durationLabel(45, "en")).toBe("45 min");
+    expect(durationLabel(null, "en")).toBe("Duration not provided");
+    expect(stopsLabel(0, "en")).toBe("Nonstop");
+    expect(stopsLabel(1, "zh")).toBe("1 次经停");
+    expect(stopsLabel(2, "en")).toBe("2 stops");
+  });
+
+  it("the search details to copy when there is no trusted link: route, day, cabin, program, miles", () => {
+    const row = fixtureSnapshot().rows[0]!.value;
+    expect(detailsCopyText(row, "en")).toBe("HKG → SEA · Sun, Oct 18 · Business · Air Canada Aeroplan · 75,000 miles");
+    expect(detailsCopyText(row, "zh")).toBe("HKG → SEA · 10月18日 · 周日 · 商务舱 · Air Canada Aeroplan · 75,000 里程");
   });
 });
 

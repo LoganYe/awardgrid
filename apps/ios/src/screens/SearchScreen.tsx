@@ -32,7 +32,7 @@ import { projectResults } from "@awardgrid/core/workspace/projection";
 import { type Locale, ageLabel, copy, coverageNotices, moreConditionsCount, optionsCount, sortLabel, sortShortLabel } from "@awardgrid/core/workspace/present";
 import { textReproducesQuery } from "@awardgrid/core/workspace/query-editor";
 import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Link, useLocation, useOutletContext } from "react-router";
+import { Link, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { langTag } from "../app/locale";
 import { ASK_ABOUT_SEARCH } from "../ask/labels";
@@ -115,11 +115,16 @@ export function SearchScreen() {
     if (settled) void services.engine.quotaView().then(setQuota);
   }, [services, settled]);
 
-  // Back from the editor: focus returns to what opened it (the summary, a filter chip, "Build a search").
+  // Back from the editor: focus returns to what opened it (the summary, a filter chip, "Build a search") — once for
+  // that arrival. The history entry keeps its state, so closing an option's details (which returns to the same entry)
+  // must not apply it again.
   const returnFocus = (location.state as { focus?: string } | null)?.focus;
+  const focusedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (returnFocus) document.getElementById(returnFocus)?.focus();
-  }, [returnFocus]);
+    if (!returnFocus || focusedFor.current === location.key) return;
+    focusedFor.current = location.key;
+    document.getElementById(returnFocus)?.focus();
+  }, [returnFocus, location.key]);
 
   /** Run a search from this screen: a typed one (no results yet), or the shown one again. */
   const runSearch = useCallback(
@@ -221,6 +226,20 @@ export function SearchScreen() {
   }, [snapshot?.id, locale]);
   const selected = new Set(workspace.selected.filter((r) => r.snapshotId === snapshot?.id).map((r) => r.rowKey));
   const snapshotId = snapshot?.id ?? null;
+  // T10: an option's details open over the results (a child route), which stay mounted underneath — inert while the
+  // details are open — so coming back finds view, selection, scroll and the matrix or calendar exactly as they were.
+  const navigate = useNavigate();
+  const detailOpen = useMatch("/detail/:snapshotId/:rowKey") !== null;
+  // A details load spends a call without a workspace run: read the counter again when the details close.
+  useEffect(() => {
+    if (!detailOpen) void services.engine.quotaView().then(setQuota);
+  }, [services, detailOpen]);
+  const openDetail = useCallback(
+    (rowKey: string, returnFocusId: string) => {
+      if (snapshotId) navigate(`/detail/${encodeURIComponent(snapshotId)}/${encodeURIComponent(rowKey)}`, { state: { returnFocus: returnFocusId } });
+    },
+    [navigate, snapshotId],
+  );
   const toggleRow = useCallback(
     (rowKey: string, on: boolean) => {
       if (snapshotId) services.workspace.setSelected({ snapshotId, rowKey }, on);
@@ -249,10 +268,13 @@ export function SearchScreen() {
   ) : null;
 
   return (
-    <div className="ag-results" lang={langTag(locale)} data-run={workspace.run.kind} data-busy={String(searching)} data-revision={workspace.revision}>
+    <>
+    <div className="ag-results" lang={langTag(locale)} data-run={workspace.run.kind} data-busy={String(searching)} data-revision={workspace.revision} inert={detailOpen || undefined}>
       <div className="ag-results-sticky" ref={stickyRef}>
         <header className="ag-results-header" data-testid="results-header">
-          <h1 className="ag-results-title">{t.title}</h1>
+          <h1 className="ag-results-title" id="search-title" tabIndex={-1}>
+            {t.title}
+          </h1>
           <Link to="/ask" className="ag-results-ai">
             <Icon name="sparkle" />
             <span>{asking ? t.aiWorking : t.ai}</span>
@@ -369,6 +391,7 @@ export function SearchScreen() {
               onToggle={toggleRow}
               now={now.toISOString()}
               locale={locale}
+              onOpen={openDetail}
             />
           ) : prefs.kind === "calendar" && projected ? (
             <AvailabilityCalendar
@@ -383,9 +406,10 @@ export function SearchScreen() {
               onToggle={toggleRow}
               now={now.toISOString()}
               locale={locale}
+              onOpen={openDetail}
             />
           ) : rows.length > 0 ? (
-            <AvailabilityList rows={rows} sort={prefs.sort} snapshotId={snapshot.id} selected={selected} onToggle={toggleRow} now={now.toISOString()} locale={locale} />
+            <AvailabilityList rows={rows} sort={prefs.sort} snapshotId={snapshot.id} selected={selected} onToggle={toggleRow} now={now.toISOString()} locale={locale} onOpen={openDetail} />
           ) : null}
 
           <div className="ag-results-actions">
@@ -428,6 +452,8 @@ export function SearchScreen() {
         </div>
       )}
     </div>
+    <Outlet context={services} />
+    </>
   );
 }
 

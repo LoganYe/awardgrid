@@ -120,6 +120,15 @@
   padding: env(safe-area-inset-top) var(--results-gutter-end) 0 var(--results-gutter-start);
 }
 
+.ag-results-title:focus {
+  outline: none;
+}
+
+.ag-results-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
 .ag-results-title {
   margin: 0;
   font-size: var(--ag-type-compact-title);
@@ -1059,3 +1068,322 @@
   color: var(--ag-text);
 }
 
+
+/*
+ * T10: a card's way into its details — a button of its own, never the whole card, on the source-time line. Its
+ * 44 pt target reaches into the card's padding with negative margins rather than adding a row.
+ */
+.ag-result-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--ag-space-2);
+}
+
+.ag-result-foot .ag-result-time {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ag-result-open-button {
+  margin-block: calc((var(--ag-leading-meta) - var(--ag-touch-target)) / 2);
+  margin-inline-end: calc(-1 * var(--ag-space-1));
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: var(--ag-touch-target);
+  padding: 0 var(--ag-space-1);
+  border: 0;
+  border-radius: var(--ag-radius-small);
+  background: none;
+  color: var(--ag-accent);
+  font: inherit;
+  font-size: var(--ag-type-control);
+  line-height: var(--ag-leading-control);
+  font-weight: var(--ag-weight-strong);
+  cursor: pointer;
+}
+
+.ag-result-open-button svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.ag-result-open-button:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+/*
+ * The details page (T10; docs/04 S04): a full-height page over the results — header 52, a summary card with 16 pt
+ * padding, section titles 20/26 with 24 between sections and 12 between rows, itinerary rows at least 72 — and two
+ * buttons at the bottom, each (content − 8) / 2 wide and 48 tall, above the home indicator.
+ */
+.ag-detail {
+  /* Outside .ag-results, so the page's own 16 pt gutters (and the safe area in landscape). */
+  --results-gutter-start: max(var(--ag-gutter), env(safe-area-inset-left));
+  --results-gutter-end: max(var(--ag-gutter), env(safe-area-inset-right));
+  position: fixed;
+  inset: 0;
+  z-index: var(--ag-z-modal);
+  display: flex;
+  flex-direction: column;
+  background: var(--ag-canvas);
+  color: var(--ag-text);
+}
+
+.ag-detail-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: calc(52px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--results-gutter-end) 0 max(var(--ag-space-1), env(safe-area-inset-left));
+  background: var(--ag-surface);
+  border-bottom: 1px solid var(--ag-divider);
+}
+
+.ag-detail-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-detail-title:focus {
+  outline: none;
+}
+
+.ag-detail-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-detail-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-6);
+  padding: var(--ag-space-4) var(--results-gutter-end) var(--ag-space-6) var(--results-gutter-start);
+}
+
+.ag-detail-summary,
+.ag-trip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-card);
+  background: var(--ag-surface);
+}
+
+.ag-detail-when,
+.ag-detail-meta,
+.ag-trip-meta,
+.ag-trip-day,
+.ag-trip-note,
+.ag-detail-status {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-detail-route {
+  margin: 0;
+  font-size: var(--ag-type-page-title);
+  line-height: var(--ag-leading-page-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-detail-price,
+.ag-detail-program,
+.ag-detail-seats {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.ag-detail-miles {
+  font-size: var(--ag-type-miles);
+  line-height: var(--ag-leading-miles);
+  font-weight: var(--ag-weight-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+.ag-detail-section-title:focus {
+  outline: none;
+}
+
+.ag-detail-section-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-detail-section-title {
+  margin: 0;
+  font-size: var(--ag-type-section);
+  line-height: var(--ag-leading-section);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-trip {
+  min-height: 72px;
+}
+
+.ag-trip-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ag-space-1) var(--ag-space-3);
+}
+
+.ag-trip-title {
+  margin: 0;
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* Departure, arrow, arrival; at 320 or larger text they wrap rather than run past the card. */
+.ag-trip-times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-1) var(--ag-space-3);
+}
+
+.ag-trip-times p {
+  margin: 0;
+}
+
+.ag-trip-end {
+  text-align: end;
+}
+
+.ag-trip-time {
+  font-size: var(--ag-type-miles);
+  line-height: var(--ag-leading-miles);
+  font-weight: var(--ag-weight-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-trip-airport {
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-trip-arrow {
+  color: var(--ag-text-secondary);
+}
+
+.ag-trip-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  margin: 0;
+}
+
+.ag-trip-facts > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ag-space-1) var(--ag-space-3);
+}
+
+.ag-trip-facts dt {
+  color: var(--ag-text-secondary);
+}
+
+.ag-trip-facts dd {
+  margin: 0;
+  font-weight: var(--ag-weight-strong);
+  text-align: end;
+}
+
+.ag-trip-note {
+  color: var(--ag-warning);
+}
+
+.ag-trip-segments-title {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-trip-segments ol {
+  margin: var(--ag-space-1) 0 0;
+  padding-inline-start: var(--ag-space-4);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-detail-actions {
+  flex: none;
+  display: grid;
+  /* Two columns while both labels fit (175 each at 390); one when larger text would wrap them. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5em), 1fr));
+  font-size: var(--ag-type-control);
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-3) var(--results-gutter-end) calc(var(--ag-space-3) + env(safe-area-inset-bottom)) var(--results-gutter-start);
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+.ag-detail-actions[data-links="1"] {
+  grid-template-columns: 1fr;
+}
+
+.ag-detail-caveat {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+/* Two labels side by side in (358 − 8) / 2: 8 pt side padding keeps the approved "Copy search details" on one line. */
+.ag-detail-actions .ag-button {
+  box-sizing: border-box;
+  width: 100%;
+  padding-inline: var(--ag-space-2);
+}
+
+.ag-detail-out svg {
+  flex: none;
+}
+
+.ag-detail-out {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ag-space-1);
+  text-decoration: none;
+}
+
+.ag-detail-status {
+  grid-column: 1 / -1;
+}
+
+/* Always in the accessibility tree (a live region must exist before it changes); no height while empty. */
+.ag-detail-status:empty {
+  height: 0;
+  margin-top: calc(-1 * var(--ag-space-2));
+  overflow: hidden;
+}
