@@ -13,13 +13,17 @@ import { buildGrid } from "@awardgrid/core/grid/pivot";
 import { QueryObject } from "@awardgrid/core/query/schema";
 import type { AppServices } from "../app/bootstrap";
 import { ASK_ABOUT_SEARCH } from "../ask/labels";
-import { createLastSearch } from "../search/last-search";
+import { type LastSearchStore, createLastSearch } from "../search/last-search";
+import { WorkspaceStore } from "../workspace/workspace-store";
 import { SearchScreen } from "./SearchScreen";
 
 const TEXT = "SEA to TYO 2026-10-01 to 2026-10-30 business";
+const NOW = new Date("2026-10-01T12:00:00.000Z");
 
-function render(lastSearch = createLastSearch()): string {
-  const services = { lastSearch } as unknown as AppServices;
+function render(lastSearch: LastSearchStore = createLastSearch()): string {
+  // The screen follows the workspace (UI/UX v1 T05); an idle one is enough for a first render.
+  const workspace = new WorkspaceStore({ search: { execute: () => new Promise(() => {}) }, now: () => "2026-10-01T00:00:00.000Z" });
+  const services = { lastSearch, workspace, now: () => NOW } as unknown as AppServices;
   return renderToStaticMarkup(
     createElement(
       MemoryRouter,
@@ -59,5 +63,26 @@ describe("SearchScreen and the last search", () => {
     expect(html).toContain(">HKG, SHA to SEA, next 30 days, business and first</textarea>");
     expect(html).not.toContain(ASK_ABOUT_SEARCH);
     expect(html).not.toContain("Watch this search");
+  });
+});
+
+describe("SearchScreen and a saved snapshot", () => {
+  it("shows a snapshot restored at launch as saved on this device, not as a fresh search", () => {
+    const query = QueryObject.parse({ origins: ["SEA"], destinations: ["NRT"], date_from: "2026-10-01", date_to: "2026-10-30", cabins: ["J"], raw_text: TEXT, language: "en" });
+    const saved: LastSearchStore = {
+      get: () => ({
+        text: TEXT,
+        savedAt: "2026-10-01T10:00:00.000Z",
+        value: { grid: buildGrid([], query, { now: new Date("2026-10-01T00:00:00.000Z") }), query, warnings: [], served_from_cache: false, api_calls_used: null, fetched_at_min: null },
+      }),
+      set: () => {},
+    };
+    const html = render(saved);
+    // Dated by the app's clock, not the wall clock.
+    expect(html).toContain("Saved on this device 2 h ago");
+    expect(html).toContain("No availability in these saved results.");
+    expect(html).not.toContain("right now");
+    expect(html).not.toMatch(/\d+ seats\.aero calls? /);
+    expect(html).not.toContain("null");
   });
 });

@@ -104,7 +104,12 @@ function matchesSearch(row: SyntheticRow, params: URLSearchParams): boolean {
  * (a pair it omits is unmonitored); Get Trips answers 404 until a task adds synthetic itineraries (plan 02 T10).
  * A request without the Partner-Authorization header gets 401, as the real API and scripts/mock-seatsaero.ts do.
  */
-export function syntheticSeatsFetch(rows: readonly SyntheticRow[], routes: readonly SyntheticRoute[], log: FixtureRequestLog): typeof fetch {
+export function syntheticSeatsFetch(
+  rows: readonly SyntheticRow[],
+  routes: readonly SyntheticRoute[],
+  log: FixtureRequestLog,
+  searchMode: "answer" | "hold" | "fail" = "answer",
+): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = urlOf(input);
     if (!url.startsWith(SEATS_PREFIX)) throw new Error(`The synthetic seats.aero transport only answers ${SEATS_PREFIX}…`);
@@ -118,6 +123,9 @@ export function syntheticSeatsFetch(rows: readonly SyntheticRow[], routes: reado
     if (!headers.get("partner-authorization")) return json({}, 401);
 
     if (path === "search" || path === "availability") {
+      // inflight-old: the request stays open, as a slow network would keep it. failed-old: the provider errors.
+      if (searchMode === "hold") return new Promise<Response>(() => {});
+      if (searchMode === "fail") return json({ error: "synthetic outage" }, 500);
       const data = availabilities(rows.filter((row) => matchesSearch(row, parsed.searchParams)));
       return json({ data, count: data.length, hasMore: false, cursor: 1_700_000_000 });
     }

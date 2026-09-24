@@ -11,8 +11,8 @@ The 38 requirements from the handoff pack (`packages/core/test/fixtures/uiux/acc
 | A05 | T03 | Data | Partial/unknown coverage survives cache save/restore; missing legacy evidence never becomes complete | unit + integration | verified (unit + store integration) | [T03](evidence/T03-coverage-evidence.md) |
 | A06 | T04 | Visual | Both themes match tokens and 32 contrast pairs; dark primary has dark on-accent text | computed CSS + contrast | verified (unit + iOS browser mock, Chromium) | [T04](evidence/T04-tokens-primitives.md) |
 | A07 | T04 | Access | Coarse input ≥44 target; normal/pressed/disabled/focus/loading semantic styles exist | component + geometry | verified (component + iOS browser mock, Chromium); WKWebView/VoiceOver unverified | [T04](evidence/T04-tokens-primitives.md) |
-| A08 | T05 | State | Late response cannot overwrite newer revision; failed run retains labelled old query and data | unit + browser | pending | — |
-| A09 | T05 | Network | search(text,key) and searchQuery(query,key) share executor, quota and cache; no Anthropic request | unit + integration | pending | — |
+| A08 | T05 | State | Late response cannot overwrite newer revision; failed run retains labelled old query and data | unit + browser | verified (unit + integration + iOS browser mock, Chromium) | [T05](evidence/T05-workspace.md) |
+| A09 | T05 | Network | search(text,key) and searchQuery(query,key) share executor, quota and cache; no Anthropic request | unit + integration | verified (unit + integration; browser `anthropic: 0`) | [T05](evidence/T05-workspace.md) |
 | A10 | T06 | Query | Manual one-field change needs no LLM; typing/selecting months makes zero API requests | browser network | pending | — |
 | A11 | T06 | Query | Strict dates, leap days, 92-span cap and explicit relative clock behave as fixtures specify | unit + browser | pending | — |
 | A12 | T07 | UX | 390 default artboard uses 244 pre-result stack, ≥164 card, 16 gutter and safe area; no clipped core data | geometry + visual | pending | — |

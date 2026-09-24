@@ -10,7 +10,9 @@
  * pass without testing anything (docs/02 D10, no silent fallback).
  */
 import availability from "@awardgrid/core/test-fixtures/uiux/availability-rows.json";
+import { fixtureSnapshot } from "@awardgrid/core/test-fixtures/uiux/factory";
 import manifest from "@awardgrid/core/test-fixtures/uiux/scenarios.json";
+import { DEFAULT_PREFERENCES, WORKSPACE_NAMESPACE } from "../src/workspace/workspace-store";
 
 /** The row shape in availability-rows.json: core's AvailabilityRow fields, as plain JSON. */
 export interface SyntheticRow {
@@ -64,6 +66,11 @@ export interface FixtureEnvironment {
   files: Record<string, string>;
   /** Every write through the file store fails, as a full or read-only disk would. */
   failWrites: boolean;
+  /**
+   * How the stand-in answers a Cached Search / Bulk Availability request: with the rows, never (a search still in
+   * flight), or with a 500 (a search that failed). Get Routes always answers.
+   */
+  searchMode: "answer" | "hold" | "fail";
 }
 
 /** Obviously fake, never a key shape any provider issues, and short enough that the masked form is readable. */
@@ -84,15 +91,16 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
   "multi-program",
   "storage-failure",
   "foundations",
+  "inflight-old",
+  "failed-old",
 ]);
 
 /** Where an unseeded scenario's state comes from. Informational, for the refusal message. */
 const SEEDED_BY: Record<string, string> = {
-  partial: "T03 (coverage evidence)",
-  "coverage-unknown": "T03 (coverage evidence)",
-  "legacy-cache": "T03 (coverage evidence)",
-  "inflight-old": "T05 (workspace store)",
-  "failed-old": "T05 (workspace store)",
+  // T03 built the evidence; these states become visible once result cards show coverage.
+  partial: "T07 (coverage on result cards)",
+  "coverage-unknown": "T07 (coverage on result cards)",
+  "legacy-cache": "T07 (coverage on result cards)",
   "favorite-snapshot": "T13 (favourites)",
   "watch-baseline": "T14 (watch migration)",
   "watch-changes": "T14 (watch migration)",
@@ -146,6 +154,19 @@ function quotaAtSoftLimit(now: Date): string {
   return JSON.stringify({ version: 1, days: { [day]: 950 } });
 }
 
+/**
+ * A workspace saved by an earlier launch, holding one snapshot of the synthetic query made two hours before the
+ * scenario's clock, with the scenario's rows. Written in the device format: SlotFileStorage's first slot,
+ * `{generation, value}`, value being the WorkspaceStore's saved shape. The workspace spec proves the app restores it.
+ */
+function savedWorkspace(rows: readonly SyntheticRow[], now: Date): Record<string, string> {
+  const wanted = new Set(rows.map((r) => `${r.program}|${r.source_id}|${r.date}|${r.cabin}`));
+  const base = fixtureSnapshot({ id: "fixture-previous-snapshot", revision: 1, createdAt: new Date(now.getTime() - 2 * 3_600_000).toISOString(), receipt: { sentCalls: 2, fromCache: false } });
+  const snapshot = { ...base, rows: base.rows.filter((r) => wanted.has(`${r.value.program}|${r.value.source_id}|${r.value.date}|${r.value.cabin}`)) };
+  const value = { schemaVersion: 1, revision: 1, displayedId: snapshot.id, previousId: null, preferences: DEFAULT_PREFERENCES, snapshots: [snapshot] };
+  return { [`${WORKSPACE_NAMESPACE}.a.json`]: JSON.stringify({ generation: 1, value }) };
+}
+
 const scenarios: readonly FixtureScenario[] = manifest.scenarios;
 
 export function environmentFor(id: string | null): FixtureEnvironment {
@@ -162,7 +183,13 @@ export function environmentFor(id: string | null): FixtureEnvironment {
     rows,
     // "unmonitored": the provider's catalog does not list the pair at all ("explicit routes catalog").
     routes: scenario.id === "unmonitored" ? [] : queryRoutes(rows),
-    files: scenario.id === "quota-low" ? { "quota.json": quotaAtSoftLimit(now) } : {},
+    files:
+      scenario.id === "quota-low"
+        ? { "quota.json": quotaAtSoftLimit(now) }
+        : scenario.id === "inflight-old" || scenario.id === "failed-old"
+          ? savedWorkspace(rows, now)
+          : {},
     failWrites: scenario.id === "storage-failure",
+    searchMode: scenario.id === "inflight-old" ? "hold" : scenario.id === "failed-old" ? "fail" : "answer",
   };
 }

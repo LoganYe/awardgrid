@@ -302,19 +302,27 @@ describe("whenWatchesIdle and lastSearch", () => {
     expect(idle).toBe(true);
   });
 
-  it("keeps the last search in memory only: nothing is written, and a relaunch has none", async () => {
+  // UI/UX v1 T05 (DECISIONS U-017): the last search is now the workspace's shown snapshot. The workspace saves its
+  // snapshot (the query, which docs/02 D04 allows, never the key). After a relaunch that snapshot is back on the
+  // Search screen, labelled with when it was saved, so it is also what Ask may offer; nothing is fetched to show it.
+  it("the last search is the workspace's shown snapshot; the key is never written; a relaunch shows the saved one", async () => {
     const files = new MemoryFileStore();
     const options = { keys: await seatsKeys(), anthropicKeys: watchedKeys(null), snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: fakeFetch(seatsAero()) };
     const svc = await bootstrap(options);
-    const res = await svc.engine.search("HKG to SEA next 30 days business", SEATS_KEY);
-    if (!res.ok) throw new Error("the grid search should have succeeded");
-
     expect(svc.lastSearch.get()).toBeNull();
-    svc.lastSearch.set({ text: "HKG to SEA next 30 days business", value: res.value });
+    const res = await svc.searchText("HKG to SEA next 30 days business");
+    if (!res.ok) throw new Error("the grid search should have succeeded");
     expect(svc.lastSearch.get()?.value.query.origins).toEqual(["HKG"]);
+    expect(svc.lastSearch.get()?.text).toBe("HKG to SEA next 30 days business");
 
     await svc.persist();
-    for (const contents of files.files.values()) expect(contents).not.toContain("HKG to SEA next 30 days business");
-    expect((await bootstrap(options)).lastSearch.get()).toBeNull();
+    for (const contents of files.files.values()) expect(contents).not.toContain(SEATS_KEY);
+    const relaunched = await bootstrap(options);
+    expect(relaunched.workspace.getState().displayedSnapshot?.query.origins).toEqual(["HKG"]);
+    const restored = relaunched.lastSearch.get();
+    expect(restored?.value.query.origins).toEqual(["HKG"]);
+    expect(restored?.savedAt).toBe(relaunched.workspace.getState().displayedSnapshot?.createdAt);
+    // What a saved snapshot does not record is not carried over as if it were known.
+    expect(restored?.value.api_calls_used).toBeNull();
   });
 });

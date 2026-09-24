@@ -148,8 +148,20 @@ export interface WorkspaceState {
   preferences: ViewPreferences;
 }
 
+/**
+ * One run as the search port receives it. `signal` is aborted once a newer run has started, so a port that queues
+ * runs can skip one nobody is waiting for before it sends anything (it cannot recall a request already sent).
+ * `meta` is the caller's own data for this run, passed through untouched (additive, UI/UX v1 T05).
+ */
+export interface SearchRun {
+  id: string;
+  revision: number;
+  signal?: AbortSignal;
+  meta?: unknown;
+}
+
 export interface SearchPort {
-  execute(query: QueryObject, run: { id: string; revision: number }): Promise<ResultSnapshot>;
+  execute(query: QueryObject, run: SearchRun): Promise<ResultSnapshot>;
 }
 
 export interface StoragePort {

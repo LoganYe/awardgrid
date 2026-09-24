@@ -43,7 +43,7 @@ test("the host refuses a missing, unknown or unseeded scenario and never mounts 
     ["", /No scenario given/],
     ["?scenario=not-a-scenario", /Unknown synthetic scenario/],
     // A real id whose state is not built yet is refused, not booted as the base environment.
-    ["?scenario=partial", /not seeded by the fixture host yet \(T03/],
+    ["?scenario=partial", /not seeded by the fixture host yet \(T07/],
   ];
   for (const [query, reason] of cases) {
     await page.goto(`/${query}`);

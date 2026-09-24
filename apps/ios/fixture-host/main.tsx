@@ -105,7 +105,7 @@ async function start(): Promise<void> {
         anthropicKeys,
         snapshots: new SnapshotStore(files),
         now: () => env.now,
-        fetchImpl: syntheticSeatsFetch(env.rows, env.routes, handle.log),
+        fetchImpl: syntheticSeatsFetch(env.rows, env.routes, handle.log, env.searchMode),
         anthropicFetch: refusingAnthropicFetch(handle.log),
         // Both transports above are injected, so there is no native bridge to assert. Production never sets this.
         assertNative: () => {},

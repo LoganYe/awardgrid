@@ -11,6 +11,9 @@
  * the service reads both keys when a question starts (../ask/ask-service.ts), so the grid lane opens,
  * searches and checks watches with no Anthropic key at all. The only Ask work at launch is reading
  * ask.json, so that a question the app was closed during shows as unfinished instead of vanishing.
+ *
+ * The workspace (UI/UX v1 T05) is restored here too, and runs nothing: what was on screen comes back as it was saved,
+ * with its own time, and a new search only starts when the person asks for one.
  */
 import { ANTHROPIC_IDLE_TIMEOUT_MS } from "@awardgrid/core/ask/limits";
 import { InMemoryAvailabilityCache } from "@awardgrid/core/seatsaero/cache";
@@ -20,12 +23,16 @@ import { type AskService, type Visibility, createAskService } from "../ask/ask-s
 import { anthropicKeychain } from "../native/anthropic-key";
 import { createNativeFetch } from "../native/http";
 import { type KeyStore, keychain } from "../native/keychain";
-import { type LastSearchStore, createLastSearch } from "../search/last-search";
+import { type LastSearchStore, createWorkspaceLastSearch } from "../search/last-search";
 import { AskStore } from "../store/ask-store";
 import { SnapshotStore } from "../store/persistence";
 import { DeviceQuotaStore } from "../store/quota-store";
 import { WatchStore } from "../store/watch-store";
-import { SearchEngine } from "../search/search";
+import { type ApiResult, type FindValue, type ParsedText, SearchEngine } from "../search/search";
+import { createSearchPort } from "../workspace/search-port";
+import { searchViewFromSnapshot } from "../workspace/snapshot-view";
+import { SlotFileStorage } from "../workspace/slot-storage";
+import { type PersistResult, WorkspaceStore } from "../workspace/workspace-store";
 import { type WatchCheckResult, checkWatches } from "../watch/runner";
 
 export interface AppServices {
@@ -39,8 +46,23 @@ export interface AppServices {
   anthropicKeys: KeyStore;
   /** Ask's one conversation. The service runs questions, not a screen, so leaving the Ask screen never stops one. */
   ask: AskService;
-  /** The last successful grid search, in memory only, for Ask's "Include my last search". */
+  /**
+   * The versioned workspace: query revisions, the snapshot on screen and the ones before it, view preferences.
+   * Saved in its own namespace by `persist`; restored at launch without running anything.
+   */
+  workspace: WorkspaceStore;
+  /**
+   * The Search screen's text search, through the workspace: the text is parsed (nothing sent), the parsed query
+   * runs as a workspace revision on the same engine path as every structured query, and the answer is returned in
+   * the shape the screen already renders. A parse failure, or no key, never starts a run.
+   */
+  searchText(text: string): Promise<ApiResult<FindValue>>;
+  /** The last successful grid search: a view of the workspace's shown snapshot, for Ask's "Include my last search". */
   lastSearch: LastSearchStore;
+  /** How the last workspace save went; null before the first. A failed save kept the previous file (docs/02 D04). */
+  lastWorkspaceSave(): PersistResult | null;
+  /** The app's clock (injected in tests and the fixture host): screens date things with it, not with new Date(). */
+  now(): Date;
   /**
    * Persist the snapshots and Ask's conversation. The quota and watch writes are skipped when nothing moved.
    * cache.json is written on every call, and so is ask.json whenever there is a conversation, whole, so a long
@@ -85,6 +107,21 @@ export interface BootstrapOptions {
    * host) replaces it, since there the injected anthropicFetch is the transport and no native bridge exists.
    */
   assertNative?: () => void;
+}
+
+/** A run that came from the Search screen's text: what was typed, and what the parser said about it. */
+interface TypedSearch {
+  text: string;
+  parsed: ParsedText;
+}
+
+/** The seats.aero key, or null when there is none or the Keychain cannot be read. */
+async function readKey(keys: KeyStore): Promise<string | null> {
+  try {
+    return await keys.get();
+  } catch {
+    return null;
+  }
 }
 
 /** Only seats.aero's own responses are authoritative about seats.aero's quota. */
@@ -157,6 +194,27 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     now,
   });
 
+  // The workspace's runs go through the same engine, one at a time; restoring it sends nothing. Each answer is
+  // recorded for the Search screen and Ask BEFORE the workspace can show it, with the text that was typed when the
+  // run came from the text search (`lastSearch` is created just below; answers only arrive after bootstrap returns).
+  const searchPort = createSearchPort({
+    engine,
+    keys,
+    now,
+    onAnswer: (snapshot, value, run) => {
+      const typed = run.meta as TypedSearch | undefined;
+      lastSearch.record(snapshot.id, {
+        text: typed?.text ?? snapshot.query.raw_text,
+        value: typed
+          ? { ...value, warnings: [...typed.parsed.warnings, ...value.warnings], notices: [...typed.parsed.notices, ...value.notices] }
+          : value,
+      });
+    },
+  });
+  const workspace = new WorkspaceStore({ search: searchPort, now: () => now().toISOString(), storage: new SlotFileStorage(snapshots.files) });
+  await workspace.restore();
+  let lastWorkspaceSave: PersistResult | null = null;
+
   const listeners = new Set<() => void>();
   const notify = () => {
     for (const listener of listeners) {
@@ -178,7 +236,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
           () => undefined,
         );
 
-  const lastSearch = createLastSearch();
+  const lastSearch = createWorkspaceLastSearch(workspace, searchViewFromSnapshot);
   const ask = createAskService({
     anthropicKeys,
     seatsKeys: keys,
@@ -205,7 +263,33 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       await snapshots.saveWatches(watches.snapshot());
       watches.markClean();
     }
+    // Never throws: a failed save is recorded, and the previous file stays readable.
+    lastWorkspaceSave = await workspace.persist();
     await ask.persist();
+  };
+
+  const searchText = async (text: string): Promise<ApiResult<FindValue>> => {
+    const parsed = await engine.parseText(text, await readKey(keys));
+    if (!parsed.ok) return parsed;
+    const typed: TypedSearch = { text, parsed: parsed.value };
+    const outcome = await workspace.run(parsed.value.query, typed);
+    const answer = searchPort.takeResult(outcome.runId);
+    if (outcome.kind === "published" && answer?.ok) {
+      // The parser's own warnings and notices lead, as they did when the screen called engine.search.
+      return {
+        ok: true,
+        value: {
+          ...answer.value,
+          warnings: [...parsed.value.warnings, ...answer.value.warnings],
+          notices: [...parsed.value.notices, ...answer.value.notices],
+        },
+      };
+    }
+    if (answer && !answer.ok) return answer;
+    if (outcome.kind === "superseded") {
+      return { ok: false, status: 409, error: "internal", message: "A newer search replaced this one before it answered." };
+    }
+    return { ok: false, status: 500, error: "internal", message: "The search could not be shown." };
   };
 
   // Last of the warm start, and the only Ask work at launch: read ask.json, where a question the app
@@ -221,7 +305,11 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     keys,
     anthropicKeys,
     ask,
+    workspace,
+    searchText,
     lastSearch,
+    lastWorkspaceSave: () => lastWorkspaceSave,
+    now,
     persist,
     async clearCache() {
       // Memory first: if the file went first and a persist() landed in between, it would write
