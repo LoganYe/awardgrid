@@ -42,7 +42,7 @@ import {
   QUESTION_SEATS_CALL_CAP,
   SEARCH_PAGE_CAP,
 } from "@awardgrid/core/ask/limits";
-import { GET_FLIGHTS, SEARCH_AWARDS, type ToolStep } from "@awardgrid/core/ask/tools";
+import { GET_FLIGHTS, PROPOSE_QUERY_CHANGE, SEARCH_AWARDS, type ToolStep } from "@awardgrid/core/ask/tools";
 import { SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
 
 // ---------------------------------------------------------------------------
@@ -139,15 +139,38 @@ export const ANNOUNCEMENTS = {
 
 export const PAUSED_STEP = "Paused while you were away from awardgrid.";
 
-export function stepLabel(entryStep: EntryStep): string {
+/**
+ * `searchIncluded` (T16): whether the question went with a search, which a search it refused is said against. Absent
+ * (older callers), a refusal is said as going outside the included search.
+ */
+export function stepLabel(entryStep: EntryStep, opts: { searchIncluded?: boolean } = {}): string {
   if (entryStep.kind === "paused") return PAUSED_STEP;
   const { step } = entryStep;
-  if (step.tool === SEARCH_AWARDS) return searchStepLabel(step);
-  if (step.tool === GET_FLIGHTS) return flightsStepLabel(step);
+  if (step.tool === SEARCH_AWARDS) return searchStepLabel(step, opts.searchIncluded ?? true);
+  if (step.tool === GET_FLIGHTS) return flightsStepLabel(step, opts.searchIncluded ?? true);
+  if (step.tool === PROPOSE_QUERY_CHANGE) return proposalStepLabel(step);
   return `Claude asked for a tool awardgrid does not have. ${callsLabel(step.calls)}.`;
 }
 
-function searchStepLabel(step: ToolStep): string {
+/** T16: a proposal searches nothing; one that is recorded waits for the person below. Each refusal says why. */
+function proposalStepLabel(step: ToolStep): string {
+  switch (step.outcome) {
+    case "ok":
+      return "Proposed a change to your search for you to review. No calls.";
+    case "limit_reached":
+      return "No further proposal: this question already made its one proposal, or reached its tool-call limit. No calls.";
+    case "inside_scope":
+      return "No proposal needed: that search is inside the one you included. No calls.";
+    case "too_wide":
+      return `Proposal refused: it covers more airport pairs than the ${MAX_PAIRS} one search may cover. No calls.`;
+    case "invalid_place":
+      return "Proposal refused: Claude used a place code awardgrid does not know. No calls.";
+    default:
+      return "Proposal refused: the change Claude proposed was not a valid search. No calls.";
+  }
+}
+
+function searchStepLabel(step: ToolStep, searchIncluded: boolean): string {
   const what = step.search === null ? "" : `: ${searchSummary(step.search)}`;
   const spent = `${callsLabel(step.calls)}.`;
   switch (step.outcome) {
@@ -174,6 +197,12 @@ function searchStepLabel(step: ToolStep): string {
       return "Search not run: Claude used a place code awardgrid does not know. No calls.";
     case "invalid_input":
       return "Search not run: the search Claude asked for was not valid. No calls.";
+    case "needs_confirmation":
+      // T16: outside the search the person included, or none was; only a proposal they apply can run it.
+      if (!searchIncluded) return "Search not run: no search went with this question, so only a search you apply from a proposal can run. No calls.";
+      return step.search === null
+        ? "Search not run: it goes outside the search you included. No calls."
+        : `Search not run: ${searchSummary(step.search)} goes outside the search you included. No calls.`;
     case "quota":
       return `Search failed: today's seats.aero quota is used up. ${spent}`;
     case "seatsaero_key_rejected":
@@ -189,9 +218,14 @@ function searchStepLabel(step: ToolStep): string {
   }
 }
 
-function flightsStepLabel(step: ToolStep): string {
+function flightsStepLabel(step: ToolStep, searchIncluded: boolean): string {
   const spent = `${callsLabel(step.calls)}.`;
   switch (step.outcome) {
+    case "needs_confirmation":
+      // T16: a lookup costs a call, so it too stays inside what the person included.
+      return searchIncluded
+        ? "Flights not looked up: that result is outside the search you included. No calls."
+        : "Flights not looked up: no search went with this question. No calls.";
     case "ok":
       if (step.fromMemo) return "Showed flights looked up earlier in this conversation. No calls.";
       return step.program === null ? `Looked up flights for one result. ${spent}` : `Looked up flights for one ${programName(step.program)} result. ${spent}`;

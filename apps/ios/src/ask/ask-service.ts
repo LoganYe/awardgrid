@@ -61,9 +61,12 @@ import {
   type KeyCheckOutcome,
 } from "./labels";
 import { createSeatsPort } from "./seats-port";
-import { ContextError, type ContextRefusal, attachedRows, buildAIContext, entryContext, lastSearchOf as searchOfQuery, readEntryContext } from "./context";
+import { ContextError, type ContextRefusal, attachedRows, buildAIContext, entryContext, lastSearchOf as searchOfQuery, readEntryContext, readEntryProposals } from "./context";
 import type { AttachedRow } from "@awardgrid/core/ask/prompt";
-import type { EntryContext } from "@awardgrid/core/ask/conversation";
+import type { EntryContext, EntryProposal } from "@awardgrid/core/ask/conversation";
+import type { ScopeGate } from "@awardgrid/core/ask/tools";
+import type { QueryObject } from "@awardgrid/core/query/schema";
+import { proposalStatus } from "@awardgrid/core/workspace/proposals";
 import type { AIContext, ResultRef, ResultSnapshot, WorkspaceRow } from "@awardgrid/core/workspace/types";
 
 // ---------------------------------------------------------------------------
@@ -113,7 +116,17 @@ export interface AskServiceDeps {
     selected(): readonly ResultRef[];
     /** Hear when either changes, so a page showing what would be sent is redrawn (the workspace's subscribe). */
     subscribe?(listener: () => void): () => void;
+    /**
+     * T16: the revision of the search on screen (0 when none): a proposal made about another one is stale. Not the
+     * workspace's run counter, which moves when a search starts, before its results replace the ones shown.
+     */
+    revision?(): number;
   };
+  /**
+   * T16: run a search the person applied from a proposal, through the workspace (a new revision, the normal Search
+   * path and its quota). With `context`, questions get the scope gate and may propose; without this, applying is off.
+   */
+  runQuery?(query: QueryObject): Promise<unknown>;
   /** The watch run under way, or a resolved promise (AppServices.whenWatchesIdle). */
   whenWatchesIdle(): Promise<void>;
   now: () => Date;
@@ -212,7 +225,12 @@ export interface ContextPreview {
   earlier: number;
   /** How many results are selected on screen, attachable or not: a refused selection is said, never silently dropped. */
   selected: number;
+  /** T16: the workspace's current revision, which a proposal's status is read against; null without a workspace. */
+  revision: number | null;
 }
+
+/** T16: what applying a proposal did. Only "applied" ran a search, once. */
+export type ApplyOutcome = "applied" | "stale" | "gone" | "unavailable";
 
 export interface AskService {
   state(): AskState;
@@ -234,6 +252,13 @@ export interface AskService {
   askAgain(entryId: string): Promise<AskState>;
   /** Forget the conversation and remove ask.json, and nothing else. */
   newConversation(): Promise<AskState>;
+  /**
+   * T16: apply a pending proposal: consumed before anything is awaited, so a second tap does nothing; refused when the
+   * query has changed since it was made (stale). The search runs through the workspace, as any search does.
+   */
+  applyProposal?(entryId: string, proposalId: string): Promise<ApplyOutcome>;
+  /** T16: keep the current conditions: the proposal is set aside, and nothing else changes. */
+  dismissProposal?(entryId: string, proposalId: string): void;
   /** Check the Anthropic key on file with a request that carries no question. `draft` is saved first, when given. */
   checkKey(draft?: string): Promise<KeyCheckResult>;
   /** Read ask.json (once) and check native HTTP. A question the app was closed during becomes unfinished. */
@@ -275,7 +300,15 @@ interface Question {
 
 /** What a question sends beside the history: built, or refused before anything is sent. */
 type Prepared =
-  | { ok: true; lastSearch: LastSearch | null; attached: AttachedRow[]; coverage?: ResultSnapshot["coverage"]["state"]; record: EntryContext }
+  | {
+      ok: true;
+      lastSearch: LastSearch | null;
+      attached: AttachedRow[];
+      coverage?: ResultSnapshot["coverage"]["state"];
+      record: EntryContext;
+      /** T16: the search the person authorized with this question (the one sent), or null. */
+      authorized: QueryObject | null;
+    }
   | { ok: false; refused: ContextRefusal };
 
 type FailedQuestion = Question & { outcome: FailedOutcome };
@@ -453,15 +486,21 @@ export function createAskService(deps: AskServiceDeps): AskService {
    */
   function prepare(includeSearch: boolean, refs: readonly ResultRef[] | null): Prepared {
     const earlier = earlierCount();
-    if (!includeSearch) return { ok: true, lastSearch: null, attached: [], record: entryContext(null, earlier) };
+    if (!includeSearch) return { ok: true, lastSearch: null, attached: [], record: entryContext(null, earlier), authorized: null };
     if (!deps.context) {
       const lastSearch = lastSearchOf(deps.lastSearch.get());
-      return { ok: true, lastSearch, attached: [], record: lastSearch === null ? entryContext(null, earlier) : { sent: "query_only", snapshotId: null, revision: null, refs: [], earlier } };
+      return {
+        ok: true,
+        lastSearch,
+        attached: [],
+        record: lastSearch === null ? entryContext(null, earlier) : { sent: "query_only", snapshotId: null, revision: null, refs: [], earlier },
+        authorized: null,
+      };
     }
     const snapshot = deps.context.snapshot();
     if (snapshot === null) {
       if (refs !== null && refs.length > 0) return { ok: false, refused: "context_snapshot_mismatch" };
-      return { ok: true, lastSearch: null, attached: [], record: entryContext(null, earlier) };
+      return { ok: true, lastSearch: null, attached: [], record: entryContext(null, earlier), authorized: null };
     }
     try {
       const built = buildAIContext(snapshot, refs ?? [], refs !== null && refs.length > 0);
@@ -471,6 +510,7 @@ export function createAskService(deps: AskServiceDeps): AskService {
         attached: attachedRows(built.rows, deps.now()),
         coverage: snapshot.coverage.state,
         record: entryContext(built.context, earlier),
+        authorized: built.context.query,
       };
     } catch (err) {
       if (err instanceof ContextError) return { ok: false, refused: err.code };
@@ -482,12 +522,13 @@ export function createAskService(deps: AskServiceDeps): AskService {
     const earlier = earlierCount();
     const snapshot = deps.context?.snapshot() ?? null;
     const selected = deps.context?.selected().length ?? 0;
-    if (!includeSearch || snapshot === null) return { snapshot, context: null, rows: [], refused: null, earlier, selected };
+    const revision = deps.context?.revision?.() ?? null;
+    if (!includeSearch || snapshot === null) return { snapshot, context: null, rows: [], refused: null, earlier, selected, revision };
     try {
       const built = buildAIContext(snapshot, attachRows ? (deps.context?.selected() ?? []) : [], attachRows);
-      return { snapshot, context: built.context, rows: built.rows, refused: null, earlier, selected };
+      return { snapshot, context: built.context, rows: built.rows, refused: null, earlier, selected, revision };
     } catch (err) {
-      if (err instanceof ContextError) return { snapshot, context: null, rows: [], refused: err.code, earlier, selected };
+      if (err instanceof ContextError) return { snapshot, context: null, rows: [], refused: err.code, earlier, selected, revision };
       throw err;
     }
   }
@@ -525,13 +566,30 @@ export function createAskService(deps: AskServiceDeps): AskService {
     // Built from the snapshot on screen at the moment of asking; a reference it does not hold sends nothing.
     const prepared = prepare(includeSearch, refs);
     if (!prepared.ok) return setNotice("context_changed", CONTEXT_CHANGED);
-    const { lastSearch, attached, coverage, record } = prepared;
+    const { lastSearch, attached, coverage, record, authorized } = prepared;
     const conv = conversation ?? startConversation({ id: newId(), now: deps.now });
     const question: Question = { run, conversation: conv, keys, includeSearch: lastSearch !== null, context: record };
     const port = createSeatsPort({ fetchImpl: deps.seatsFetch, engine: deps.engine, keys, persist: () => deps.persist(), now: deps.now });
+    // T16: with the workspace, searches stay inside what the person included, and anything else is only proposed.
+    const baseRevision = deps.context?.revision?.() ?? 0;
+    const gate: ScopeGate | undefined = deps.context
+      ? {
+          authorized,
+          propose: (query, reason) => {
+            const entry = entryOf(question);
+            if (entry === undefined) return { ok: false, message: "This proposal could not be recorded." };
+            const proposal: EntryProposal = { id: newId(), baseRevision, proposed: query, reason, status: "pending", base: authorized };
+            entry.proposals = [...(entry.proposals ?? []), proposal];
+            void save();
+            emit();
+            return { ok: true, id: proposal.id };
+          },
+        }
+      : undefined;
     const outcome = await runQuestion({
       model,
-      tools: createToolRunner(port, conv),
+      tools: createToolRunner(port, conv, gate),
+      proposals: gate !== undefined,
       conversation: conv,
       question: text,
       lastSearch,
@@ -755,6 +813,44 @@ export function createAskService(deps: AskServiceDeps): AskService {
     return ask(entry.question, entry.includeSearch, refs !== null, refs);
   }
 
+  /**
+   * A proposal on an entry of this conversation: the validated copy (what the card shows, and what runs) and the
+   * stored record (whose status is saved). None when the id is missing, unreadable, or not unique: ask.json may come
+   * from elsewhere, and a hidden record must never run in place of the one on screen.
+   */
+  function findProposal(entryId: string, proposalId: string): { valid: EntryProposal; stored: EntryProposal } | undefined {
+    const entry = conversation?.entries.find((e) => e.id === entryId);
+    const stored = (Array.isArray(entry?.proposals) ? entry.proposals : []).filter((p) => p && typeof p === "object" && p.id === proposalId);
+    const valid = readEntryProposals(entry?.proposals).filter((p) => p.id === proposalId);
+    if (stored.length !== 1 || valid.length !== 1) return undefined;
+    return { valid: valid[0]!, stored: stored[0]! };
+  }
+
+  async function applyProposal(entryId: string, proposalId: string): Promise<ApplyOutcome> {
+    const found = findProposal(entryId, proposalId);
+    if (found === undefined || found.stored.status !== "pending" || found.valid.status !== "pending") return "gone";
+    if (!deps.runQuery || !deps.context?.revision) return "unavailable";
+    if (proposalStatus(found.valid, deps.context.revision()) === "stale") {
+      emit();
+      return "stale";
+    }
+    // Consumed before anything is awaited: a second tap finds it applied and sends nothing.
+    found.stored.status = "applied";
+    void save();
+    emit();
+    // What runs is the validated query the card showed.
+    await deps.runQuery(found.valid.proposed);
+    return "applied";
+  }
+
+  function dismissProposal(entryId: string, proposalId: string): void {
+    const found = findProposal(entryId, proposalId);
+    if (found === undefined || found.stored.status !== "pending") return;
+    found.stored.status = "dismissed";
+    void save();
+    emit();
+  }
+
   async function newConversation(): Promise<AskState> {
     if (active !== null) return refuse("busy", BUSY);
     // A read of ask.json still under way must not bring back the conversation being cleared.
@@ -840,6 +936,8 @@ export function createAskService(deps: AskServiceDeps): AskService {
     retry,
     askAgain,
     newConversation,
+    applyProposal,
+    dismissProposal,
     checkKey,
     restore,
     persist,
@@ -916,7 +1014,14 @@ function emptyUsage(): QuestionUsage {
 
 /** A copy the screen can hold: the service keeps changing its own entries while a question runs. */
 function copyEntry(entry: AskEntry): AskEntry {
-  return { ...entry, steps: [...entry.steps], texts: [...entry.texts], usage: { ...entry.usage }, end: entry.end === null ? null : { ...entry.end } };
+  return {
+    ...entry,
+    steps: [...entry.steps],
+    texts: [...entry.texts],
+    usage: { ...entry.usage },
+    end: entry.end === null ? null : { ...entry.end },
+    ...(Array.isArray(entry.proposals) ? { proposals: entry.proposals.map((p) => ({ ...p })) } : {}),
+  };
 }
 
 function errorName(err: unknown): string {

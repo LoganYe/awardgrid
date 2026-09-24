@@ -220,3 +220,96 @@
 .ask-screen .ask-stop-note {
   grid-column: 1 / -1;
 }
+
+/*
+ * A proposed change to the search (T16; S09): radius 16, padding 16; field label 13/18, values 16/24, rows 12 apart.
+ * Each changed field is marked Original and New in words, with the new value on the accent's soft tint.
+ */
+.ag-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: 16px;
+  background: var(--ag-surface);
+}
+
+.ag-proposal-title {
+  margin: 0;
+  font-size: var(--ag-type-section);
+  line-height: var(--ag-leading-section);
+  font-weight: var(--ag-weight-title);
+}
+
+.ask-screen .ag-proposal-reason,
+.ask-screen .ag-proposal-note {
+  color: var(--ag-text-secondary);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  overflow-wrap: anywhere;
+}
+
+.ag-proposal-diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  margin: 0;
+}
+
+.ag-proposal-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+}
+
+.ag-proposal-row dt {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-proposal-row dd {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ag-space-2);
+  margin: 0;
+  padding: var(--ag-space-1) var(--ag-space-2);
+  border-radius: var(--ag-radius-small);
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.ag-proposal-new {
+  background: var(--ag-accent-soft);
+}
+
+.ag-proposal-tag {
+  flex: none;
+  min-width: 3.5em;
+  font-size: var(--ag-type-label);
+  font-weight: var(--ag-weight-label);
+  color: var(--ag-text-secondary);
+}
+
+/* One column, as in the reference: Apply across the card, the secondary below it; both 48. */
+.ag-proposal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+}
+
+.ag-proposal-actions .ag-button {
+  width: 100%;
+  min-height: 48px;
+}
+
+.ag-proposal-row .ag-proposal-plain {
+  padding-left: 0;
+}
+
+.ag-proposal-view {
+  margin-top: var(--ag-space-2);
+  min-height: var(--ag-touch-target);
+}

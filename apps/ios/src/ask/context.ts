@@ -15,7 +15,8 @@
  * Attached results are named R1, R2… in the order sent, so an answer can refer to them and the entry can show which
  * card each one is (a link back into that snapshot, which the details page resolves from the workspace again).
  */
-import type { EntryContext } from "@awardgrid/core/ask/conversation";
+import type { EntryContext, EntryProposal } from "@awardgrid/core/ask/conversation";
+import { QueryObject } from "@awardgrid/core/query/schema";
 import type { AttachedRow, LastSearch } from "@awardgrid/core/ask/prompt";
 import type { AIContext, ResultRef, ResultSnapshot, WorkspaceRow } from "@awardgrid/core/workspace/types";
 
@@ -109,6 +110,21 @@ function providerAgeMinutes(row: WorkspaceRow, now: Date): number | null {
 export function entryContext(context: AIContext | null, earlier: number): EntryContext {
   if (context === null) return { sent: "none", snapshotId: null, revision: null, refs: [], earlier };
   return { sent: context.sent, snapshotId: context.snapshotId, revision: context.revision, refs: context.selectedRefs.map((ref) => ({ ...ref })), earlier };
+}
+
+/** An entry's proposals this version can read (T16); anything else in ask.json is left out, never applied. */
+export function readEntryProposals(value: unknown): EntryProposal[] {
+  if (!Array.isArray(value)) return [];
+  const statuses = new Set(["pending", "applied", "dismissed", "stale"]);
+  return value.flatMap((item): EntryProposal[] => {
+    if (!item || typeof item !== "object") return [];
+    const p = item as Partial<EntryProposal>;
+    const proposed = QueryObject.safeParse(p.proposed);
+    const base = p.base === null ? null : QueryObject.safeParse(p.base);
+    if (typeof p.id !== "string" || typeof p.reason !== "string" || typeof p.baseRevision !== "number" || !statuses.has(String(p.status)) || !proposed.success) return [];
+    if (base !== null && !base.success) return [];
+    return [{ id: p.id, reason: p.reason, baseRevision: p.baseRevision, status: p.status!, proposed: proposed.data, base: base === null ? null : base.data }];
+  });
 }
 
 /** An entry's record, if it is one this version can read (ask.json may come from elsewhere); otherwise null. */

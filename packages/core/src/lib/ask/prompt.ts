@@ -118,6 +118,8 @@ export interface UserTurnOptions {
   attached?: readonly AttachedRow[];
   /** Whether the results on screen for that search are complete (T15); said when they are not, never guessed. */
   coverage?: "complete" | "partial" | "unknown";
+  /** T16: searches are limited to the included one, and anything else is proposed (propose_query_change). */
+  proposals?: boolean;
 }
 
 /**
@@ -148,6 +150,11 @@ export function buildUserTurn(opts: UserTurnOptions): Anthropic.MessageParam {
       : opts.coverage === "partial"
         ? "The results on the person's screen for that search are incomplete: seats.aero did not return every route and date of it, so an option missing from them may still exist."
         : "Whether the results on the person's screen for that search are complete is unknown.";
+  const scopeLine = !opts.proposals
+    ? null
+    : opts.lastSearch === null
+      ? "The person included no search, so search_awards runs no search on its own: propose one with propose_query_change, and the person decides whether it runs."
+      : "search_awards runs only inside that search (the same or fewer airports, days, cabins and programs, and no looser filter). For anything else, propose a search with propose_query_change; the person decides whether it runs.";
   const context = [
     "Context from awardgrid, not written by the person:",
     `Today's date is ${utcDayKey(opts.today)} (UTC).`,
@@ -155,6 +162,7 @@ export function buildUserTurn(opts: UserTurnOptions): Anthropic.MessageParam {
     ...(conditionsLine === null ? [] : [conditionsLine]),
     ...(coverageLine === null ? [] : [coverageLine]),
     ...(attachedLine === null ? [] : [attachedLine]),
+    ...(scopeLine === null ? [] : [scopeLine]),
   ].join("\n");
   return {
     role: "user",

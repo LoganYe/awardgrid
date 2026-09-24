@@ -169,7 +169,7 @@ function previewOf(services: AskViewProps["services"], includeSearch: boolean, a
   const built = services.ask.preview?.(includeSearch, attachRows);
   if (built) return built;
   const last = services.lastSearch.get();
-  const base = { snapshot: null, rows: [], refused: null, earlier: 0, selected: 0 };
+  const base = { snapshot: null, rows: [], refused: null, earlier: 0, selected: 0, revision: null };
   if (!includeSearch || last === null) return { ...base, context: null };
   return { ...base, context: { revision: 0, snapshotId: "", sent: "query_only", query: last.value.query, selectedRefs: [] } };
 }
@@ -393,6 +393,10 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
                 announce={endedSinceOpen(entry, atOpen)}
                 locale={locale}
                 resolveRow={services.details ? (ref) => services.details!.resolve(ref)?.row ?? null : undefined}
+                revision={withRows.revision}
+                shownQuery={withRows.snapshot?.query ?? null}
+                onApplyProposal={(entryId, id) => void ask.applyProposal?.(entryId, id)}
+                onKeepProposal={(entryId, id) => ask.dismissProposal?.(entryId, id)}
                 onTryAgain={() => void ask.retry()}
                 onAskAgain={(id) => void ask.askAgain(id)}
                 onNewConversation={() => setConfirmNew(true)}

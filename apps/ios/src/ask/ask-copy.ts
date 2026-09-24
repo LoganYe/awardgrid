@@ -53,6 +53,24 @@ export interface AskCopy {
   rowGone: string;
   askAgain: string;
   tryAgain: string;
+  /** T16: a proposed change to the search (with the approved ai.apply, ai.keep and ai.stale). */
+  proposalTitle: string;
+  proposalReason: string;
+  proposalNoBase: string;
+  original: string;
+  proposed: string;
+  fieldRoute: string;
+  fieldDynamic: string;
+  yes: string;
+  no: string;
+  noCap: string;
+  included: string;
+  notIncluded: string;
+  proposalApplied: string;
+  proposalKept: string;
+  viewResults: string;
+  applyNote: string;
+  comparedWithShown: string;
 }
 
 export const ASK_COPY: Record<Locale, AskCopy> = {
@@ -105,6 +123,23 @@ export const ASK_COPY: Record<Locale, AskCopy> = {
     rowGone: "no longer in the results on this device",
     askAgain: "Ask again",
     tryAgain: "Try again",
+    proposalTitle: "Suggested change to your search",
+    proposalReason: "Claude's reason:",
+    proposalNoBase: "No search went with this question, so this would be a new search.",
+    original: "Original",
+    proposed: "New",
+    fieldRoute: "Route",
+    fieldDynamic: "Dynamic pricing",
+    yes: "Yes",
+    no: "No",
+    noCap: "No cap",
+    included: "Included",
+    notIncluded: "Not included",
+    proposalApplied: "Applied. The search runs with these conditions, on your own seats.aero quota.",
+    proposalKept: "Kept the current conditions. Nothing was searched.",
+    viewResults: "View results",
+    applyNote: "Apply runs a new search with these conditions on your own seats.aero quota. The results on screen stay until it finishes. Nothing has been sent yet.",
+    comparedWithShown: "Compared with the search on screen, which was not sent to Claude.",
   },
   zh: {
     title: "询问 Claude",
@@ -147,5 +182,22 @@ export const ASK_COPY: Record<Locale, AskCopy> = {
     rowGone: "已不在本机的结果中",
     askAgain: "重新提问",
     tryAgain: "重试",
+    proposalTitle: "修改查询的建议",
+    proposalReason: "Claude 的理由：",
+    proposalNoBase: "这个问题没有附带查询，所以这会是一次新的查询。",
+    original: "原",
+    proposed: "新",
+    fieldRoute: "航线",
+    fieldDynamic: "动态定价",
+    yes: "是",
+    no: "否",
+    noCap: "不限",
+    included: "包含",
+    notIncluded: "不包含",
+    proposalApplied: "已应用。将按这些条件查询，使用你自己的 seats.aero 额度。",
+    proposalKept: "已保留原条件，没有查询。",
+    viewResults: "查看结果",
+    applyNote: "应用后会按这些条件新查一次，使用你自己的 seats.aero 额度。完成前，屏幕上的结果保留。目前尚未发送任何请求。",
+    comparedWithShown: "与屏幕上的查询比较；该查询没有发给 Claude。",
   },
 };

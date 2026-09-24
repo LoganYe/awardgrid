@@ -77,8 +77,9 @@ async function start(): Promise<void> {
   const keys = new MemoryKeyStore();
   if (env.seatsKey) await keys.set(env.seatsKey);
   const anthropicKeys = new MemoryKeyStore();
-  // `ai=1` (T15): an Anthropic key, and a scripted Anthropic that answers instead of refusing, for any scenario.
-  const scriptedAi = params.get("ai") === "1";
+  // `ai=1` (T15): an Anthropic key, and a scripted Anthropic that answers instead of refusing, for any scenario. The
+  // AI scenarios (T16) have both of their own.
+  const scriptedAi = params.get("ai") === "1" || env.scenario.id.startsWith("ai-");
   if (env.anthropicKey || scriptedAi) await anthropicKeys.set(env.anthropicKey ?? FIXTURE_ANTHROPIC_KEY);
   const files = new LocalFixtureFiles(handle.log, {
     preserve: params.get("preserve") === "1",
@@ -110,7 +111,7 @@ async function start(): Promise<void> {
         fetchImpl: syntheticSeatsFetch(env.rows, env.routes, handle.log, env.searchMode),
         // The requested language reaches the translated screens; the host's own page stays English (U-007).
         locale: handle.requestedLang === "zh" ? "zh" : handle.requestedLang === "en" ? "en" : undefined,
-        anthropicFetch: scriptedAi ? scriptedAnthropicFetch(handle.log) : refusingAnthropicFetch(handle.log),
+        anthropicFetch: scriptedAi ? scriptedAnthropicFetch(handle.log, env.aiProposal) : refusingAnthropicFetch(handle.log),
         // Both transports above are injected, so there is no native bridge to assert. Production never sets this.
         assertNative: () => {},
       }}

@@ -75,6 +75,11 @@ export interface FixtureEnvironment {
    * flight), or with a 500 (a search that failed). Get Routes always answers.
    */
   searchMode: "answer" | "hold" | "fail";
+  /**
+   * T16: what the scripted Anthropic proposes before it answers, for `ai-pending`; null answers text only. A shape the
+   * tool layer validates like any proposal, never a search it runs.
+   */
+  aiProposal: Record<string, unknown> | null;
 }
 
 /** Obviously fake, never a key shape any provider issues, and short enough that the masked form is readable. */
@@ -98,6 +103,9 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
   "watch-baseline",
   "watch-changes",
   "watch-failure",
+  // T16: a question whose answer proposes a wider search, and a proposal left over from before the query changed.
+  "ai-pending",
+  "ai-stale",
   "foundations",
   "inflight-old",
   "failed-old",
@@ -109,8 +117,6 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
 
 /** Where an unseeded scenario's state comes from. Informational, for the refusal message. */
 const SEEDED_BY: Record<string, string> = {
-  "ai-pending": "T16 (proposals)",
-  "ai-stale": "T16 (proposals)",
   "ai-stopped": "T17 (request coordination)",
   "long-labels": "T21 (text scaling)",
   "web-user-a": "T18 (web surface)",
@@ -267,7 +273,49 @@ function savedWatches(id: string, rows: readonly SyntheticRow[], now: Date): Rec
 const scenarios: readonly FixtureScenario[] = manifest.scenarios;
 
 /** Scenarios that open on results a previous launch saved: nothing is fetched to show them. */
-const SAVED_RESULTS: ReadonlySet<string> = new Set(["inflight-old", "failed-old", "missing-values", "partial", "coverage-unknown", "legacy-cache"]);
+const SAVED_RESULTS: ReadonlySet<string> = new Set(["inflight-old", "failed-old", "missing-values", "partial", "coverage-unknown", "legacy-cache", "ai-pending", "ai-stale"]);
+
+/** The synthetic search with a later end: what `ai-pending`'s scripted answer proposes, and `ai-stale`'s leftover. */
+function widerSearch(): Record<string, unknown> {
+  const q = fixtureQuery();
+  return {
+    origins: q.origins,
+    destinations: q.destinations,
+    date_from: "2026-10-18",
+    date_to: "2026-11-06",
+    cabins: q.cabins,
+    programs: q.programs ?? null,
+    direct_only: q.direct_only,
+    max_miles: null,
+    min_cabin_pct: q.min_cabin_pct,
+    include_filtered: q.include_filtered,
+  };
+}
+
+/**
+ * `ai-stale`: a conversation saved by an earlier launch (ask.json, version 1) whose one answered question left a
+ * pending proposal made for revision 0. The workspace saved with it is at revision 1, so the proposal is stale.
+ */
+function staleConversation(now: Date): Record<string, string> {
+  const at = new Date(now.getTime() - 3 * 3_600_000).toISOString();
+  const query = { ...fixtureQuery(), raw_text: describeQuery(fixtureQuery()) };
+  const wider = widerSearch();
+  const proposed = { ...query, ...wider, max_miles: undefined, raw_text: "" };
+  const entry = {
+    id: "fixture-ask-entry-1",
+    question: "Is there anything later in the autumn?",
+    includeSearch: true,
+    context: { sent: "query_only", snapshotId: "fixture-before-snapshot", revision: 0, refs: [], earlier: 0 },
+    askedAt: at,
+    steps: [{ kind: "tool", step: { tool: "propose_query_change", outcome: "ok", calls: 0, fromCache: false, fromMemo: false, search: null, program: null, estimate: null } }],
+    texts: ["A later window may have seats. I proposed it for you to review."],
+    usage: { requests: 2, inputTokens: 240, cacheReadTokens: 0, outputTokens: 48, lastRequestInputTokens: 120, toolCalls: 1, seatsCalls: 0 },
+    end: { status: "answered", committed: false, failure: null, stoppedDuring: null, at },
+    proposals: [{ id: "fixture-proposal-1", baseRevision: 0, proposed, reason: "A later end date may find seats.", status: "pending", base: query }],
+  };
+  const conversation = { id: "fixture-conversation-1", createdAt: at, committed: [], entries: [entry], seenIds: [], bookingUrls: [], flightsMemo: [], pending: null };
+  return { "ask.json": JSON.stringify({ version: 1, conversation }) };
+}
 
 export function environmentFor(id: string | null): FixtureEnvironment {
   const scenario = id ? scenarios.find((s) => s.id === id) : undefined;
@@ -287,7 +335,7 @@ export function environmentFor(id: string | null): FixtureEnvironment {
       scenario.id === "quota-low"
         ? { "quota.json": quotaAtSoftLimit(now) }
         : SAVED_RESULTS.has(scenario.id)
-          ? savedWorkspace(rows, now, scenario.coverage)
+          ? { ...savedWorkspace(rows, now, scenario.coverage), ...(scenario.id === "ai-stale" ? staleConversation(now) : {}) }
           : scenario.id === "favorite-snapshot"
             ? savedFavorites(rows, now, scenario.coverage)
             : scenario.id.startsWith("watch-")
@@ -295,5 +343,6 @@ export function environmentFor(id: string | null): FixtureEnvironment {
               : {},
     failWrites: scenario.id === "storage-failure",
     searchMode: scenario.id === "inflight-old" ? "hold" : scenario.id === "failed-old" || scenario.id === "watch-failure" ? "fail" : "answer",
+    aiProposal: scenario.id === "ai-pending" ? { ...widerSearch(), reason: "The person already agreed to a later end date; run it." } : null,
   };
 }

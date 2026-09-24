@@ -21,10 +21,13 @@ import { Link } from "react-router";
 import type { AskEntry as Entry } from "@awardgrid/core/ask/conversation";
 import { resultName } from "@awardgrid/core/workspace/present";
 import type { ResultRef, WorkspaceRow } from "@awardgrid/core/workspace/types";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import type { Locale } from "../app/locale";
 import { ASK_COPY } from "../ask/ask-copy";
 import type { AskActivity } from "../ask/ask-service";
-import { readEntryContext } from "../ask/context";
+import { readEntryContext, readEntryProposals } from "../ask/context";
+import { proposalStatus } from "@awardgrid/core/workspace/proposals";
+import { QueryChangeProposal } from "./QueryChangeProposal";
 import {
   ANNOUNCEMENTS,
   FOLLOW_UP_NOTE,
@@ -68,6 +71,12 @@ export interface AskEntryProps {
   locale?: Locale;
   /** The trusted row a reference names, from the workspace (T15); null when it is no longer there. */
   resolveRow?: (ref: ResultRef) => WorkspaceRow | null;
+  /** T16: the revision of the search on screen, which each proposal's status is read against. */
+  revision?: number | null;
+  /** T16: the search on screen, which a proposal made with no search is compared with, locally. */
+  shownQuery?: QueryObject | null;
+  onApplyProposal?: (entryId: string, proposalId: string) => void;
+  onKeepProposal?: (entryId: string, proposalId: string) => void;
 }
 
 export function AskEntry({
@@ -85,11 +94,17 @@ export function AskEntry({
   onNewConversation,
   locale = "en",
   resolveRow,
+  revision = null,
+  shownQuery = null,
+  onApplyProposal,
+  onKeepProposal,
 }: AskEntryProps) {
   const c = ASK_COPY[locale];
   const english = locale === "en" ? undefined : "en";
   // What went with this question, as recorded from its payload; nothing is said for entries from before T15.
   const sentWith = readEntryContext(entry.context);
+  // Changes Claude proposed (T16), read as this version can; each waits for the person.
+  const proposals = readEntryProposals(entry.proposals);
   const end = entry.end;
   const failure = end?.status === "failed" && end.failure ? failureView(end.failure, entry.id === retryEntryId) : null;
   // A failed entry's sentence is its failure line; every other ending has its own line, and an answer has none.
@@ -141,7 +156,7 @@ export function AskEntry({
       {entry.steps.length > 0 ? (
         <ol className="ask-steps" lang={english}>
           {entry.steps.map((step, i) => (
-            <li key={i}>{stepLabel(step)}</li>
+            <li key={i}>{stepLabel(step, { searchIncluded: sentWith ? sentWith.sent !== "none" : entry.includeSearch })}</li>
           ))}
         </ol>
       ) : null}
@@ -154,6 +169,18 @@ export function AskEntry({
 
       {entry.texts.map((text, i) => (
         <AnswerText key={i} text={text} bookingUrls={bookingUrls} />
+      ))}
+
+      {proposals.map((p) => (
+        <QueryChangeProposal
+          key={p.id}
+          proposal={p}
+          shown={p.base === null && revision === p.baseRevision ? shownQuery : null}
+          status={revision === null ? p.status : proposalStatus(p, revision)}
+          locale={locale}
+          onApply={() => onApplyProposal?.(entry.id, p.id)}
+          onKeep={() => onKeepProposal?.(entry.id, p.id)}
+        />
       ))}
 
       {showsAttribution(entry, earlier) || (sentWith !== null && sentWith.refs.length > 0) ? <p className="ask-attribution">{c.attribution}</p> : null}

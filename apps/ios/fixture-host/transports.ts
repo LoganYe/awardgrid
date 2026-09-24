@@ -249,7 +249,7 @@ export const FIXTURE_AI_ANSWER = "R1 needs fewer miles than R2. Confirm on the p
  * text, key or headers), and answered with one short synthetic text, streamed as the Messages API streams. Nothing
  * leaves the page.
  */
-export function scriptedAnthropicFetch(log: FixtureRequestLog): typeof fetch {
+export function scriptedAnthropicFetch(log: FixtureRequestLog, proposal: Record<string, unknown> | null = null): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     log.anthropic += 1;
     const body = typeof init?.body === "string" ? init.body : input instanceof Request ? await input.clone().text() : "";
@@ -257,8 +257,30 @@ export function scriptedAnthropicFetch(log: FixtureRequestLog): typeof fetch {
     if (context) log.anthropicContext.push(context);
     // A moment, as a real answer takes: long enough for a test to scroll or leave while it is out.
     await new Promise((resolve) => setTimeout(resolve, ANSWER_DELAY_MS));
-    return new Response(sseAnswer(FIXTURE_AI_ANSWER), { status: 200, headers: { "content-type": "text/event-stream", "request-id": `req_fixture_${log.anthropic}` } });
+    const headers = { "content-type": "text/event-stream", "request-id": `req_fixture_${log.anthropic}` };
+    // T16: a question's first request is answered with the scenario's proposal, when it has one; the next, in text.
+    if (proposal && context) return new Response(sseToolUse("propose_query_change", proposal), { status: 200, headers });
+    return new Response(sseAnswer(proposal ? FIXTURE_AI_PROPOSED : FIXTURE_AI_ANSWER), { status: 200, headers });
   }) as typeof fetch;
+}
+
+/** The text the scripted Anthropic gives after proposing (T16). */
+export const FIXTURE_AI_PROPOSED = "A later window may have seats. I proposed it for you to review; nothing was searched.";
+
+function sseToolUse(name: string, input: Record<string, unknown>): string {
+  const usage = { input_tokens: 120, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 24 };
+  const events: Array<Record<string, unknown>> = [
+    {
+      type: "message_start",
+      message: { id: "msg_fixture_tool", type: "message", role: "assistant", model: "claude-opus-5", content: [], stop_reason: null, stop_sequence: null, usage: { ...usage, output_tokens: 1 } },
+    },
+    { type: "content_block_start", index: 0, content_block: { type: "tool_use", id: "toolu_fixture_1", name, input: {} } },
+    { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: JSON.stringify(input) } },
+    { type: "content_block_stop", index: 0 },
+    { type: "message_delta", delta: { stop_reason: "tool_use", stop_sequence: null }, usage },
+    { type: "message_stop" },
+  ];
+  return events.map((event) => `event: ${String(event.type)}\ndata: ${JSON.stringify(event)}\n\n`).join("");
 }
 
 /** The shape of a question's context, from its last user turn; null for a request that is not a question (a key check). */

@@ -387,7 +387,19 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     },
     lastSearch,
     // T15: the search and any attached results come from the one snapshot every view shows, and its selection.
-    context: { snapshot: () => workspace.getState().displayedSnapshot, selected: () => workspace.getState().selected, subscribe: (listener) => workspace.subscribe(listener) },
+    context: {
+      snapshot: () => workspace.getState().displayedSnapshot,
+      selected: () => workspace.getState().selected,
+      subscribe: (listener) => workspace.subscribe(listener),
+      // The revision of the search on screen, not the run counter: a search still running leaves a proposal about the
+      // one shown pending, and publishing (or showing another) makes it stale (T16 review).
+      revision: () => workspace.getState().displayedSnapshot?.revision ?? 0,
+    },
+    // T16: an applied proposal is a search like any other: the workspace runs it, and what it spent is saved.
+    runQuery: async (query) => {
+      await workspace.run(query);
+      await persist();
+    },
     whenWatchesIdle,
     now,
     visibility: opts.visibility,

@@ -226,8 +226,8 @@ describe("idle", () => {
     // Two results chosen on an earlier search: attaching them is refused; the search alone can go.
     const refused = (_include: boolean, attach: boolean): ContextPreview =>
       attach
-        ? { snapshot: null, context: null, rows: [], refused: "context_snapshot_mismatch", earlier: 0, selected: 2 }
-        : { snapshot: null, context: { revision: 1, snapshotId: "s1", sent: "query_only", query: LAST_SEARCH.value.query, selectedRefs: [] }, rows: [], refused: null, earlier: 0, selected: 2 };
+        ? { snapshot: null, context: null, rows: [], refused: "context_snapshot_mismatch", earlier: 0, selected: 2, revision: null }
+        : { snapshot: null, context: { revision: 1, snapshotId: "s1", sent: "query_only", query: LAST_SEARCH.value.query, selectedRefs: [] }, rows: [], refused: null, earlier: 0, selected: 2, revision: null };
     ask.preview = refused;
     const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(AskView, { services: { ask, lastSearch: { get: () => LAST_SEARCH, set: () => {} } }, keys: BOTH })));
     expect(html).toContain("The selected results are not all from the search on screen, so none can be attached.");

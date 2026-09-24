@@ -1,6 +1,6 @@
 # UI/UX v1 execution status
 
-State: **M3 in progress**. T01–T15 are verified (unit, integration, iOS browser mock). A21 is partial: a question's steps, endings, failures and meta line on the Ask page stay English (marked) until T17. Simulator, device and live-key checks have not been run. T16 is next.
+State: **M3 in progress**. T01–T16 are verified (unit, integration, iOS browser mock). A21 is partial: a question's steps, endings, failures and meta line on the Ask page stay English (marked) until T17. Simulator, device and live-key checks have not been run. T17 is next.
 Handoff pack: `/Users/yegaoyang/Desktop/workspace/awardgrid-claude-code-impl` (read in the order its `CLAUDE_CODE_PROMPT.md` sets).
 Repository: `/Users/yegaoyang/Desktop/workspace/awardgrid`. Work happens in the worktree **`/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`** on local branch `uiux/quiet-precision-v1` (from `main` at `9c69c6c`); the main checkout stays on `main` because production runs from it (DECISIONS U-009).
 Design baseline: `2a1f353` is an ancestor of `9c69c6c`; the 4 commits after it are seats.aero decoding fixes, an Ask token-count fix and a docs entry. Nothing was reset or checked out.
@@ -17,7 +17,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 |---|---|---|
 | M1 truthful foundations (T01–T05) | verified (unit + integration + iOS browser mock); Simulator/device unverified | [baseline](evidence/T01-baseline.md), [T01](evidence/T01-fixture-harness.md), [T02](evidence/T02-truth-identity.md), [T03](evidence/T03-coverage-evidence.md), [T04](evidence/T04-tokens-primitives.md), [T05](evidence/T05-workspace.md) |
 | M2 iOS search flow (T06–T11) | verified (unit + iOS browser mock); Simulator/device unverified; A21 partial (Ask chrome English until T15–T17) | [T06](evidence/T06-query-editor.md), [T07](evidence/T07-mobile-results.md), [T08](evidence/T08-projection-views.md), [T09](evidence/T09-matrix.md), [T10](evidence/T10-details.md), [T11](evidence/T11-settings-onboarding.md) |
-| M3 context and persistence (T12–T17) | in_progress | [T12](evidence/T12-selection-compare.md), [T13](evidence/T13-favorites.md), [T14](evidence/T14-watches.md), [T15](evidence/T15-ai-context.md) |
+| M3 context and persistence (T12–T17) | in_progress | [T12](evidence/T12-selection-compare.md), [T13](evidence/T13-favorites.md), [T14](evidence/T14-watches.md), [T15](evidence/T15-ai-context.md), [T16](evidence/T16-proposals.md) |
 | M4 Web and release validation (T18–T22) | pending | — |
 
 ## Tasks
@@ -39,7 +39,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 | T13 | Local favourite snapshots, caps, recoverable persistence | verified (unit + iOS browser mock) | [evidence](evidence/T13-favorites.md). A23 is verified in those scopes. The device's Filesystem error codes (U-047) and VoiceOver are unverified |
 | T14 | Structured watch migration and foreground change loop | verified (unit + iOS browser mock) | [evidence](evidence/T14-watches.md). A24 and A25 are verified in those scopes. A real foreground return, the device Filesystem (U-049) and VoiceOver are unverified. Web watches are unchanged (T20) |
 | T15 | AI context and trusted result references | verified (unit + iOS browser mock) | [evidence](evidence/T15-ai-context.md). A26 is verified in those scopes with the fixture's scripted Anthropic. No live Anthropic request. The device keyboard, touch scrolling and VoiceOver are unverified. `/ask` is a full-height page (U-050) |
-| T16 | Structured change proposals, tool-layer approval | pending | |
+| T16 | Structured change proposals, tool-layer approval | verified (unit + iOS browser mock) | [evidence](evidence/T16-proposals.md). A27 is verified in those scopes with the scripted Anthropic; refusals are counted at the fake seats.aero (0 requests). Ask without an included search now proposes instead of searching (U-051). No live Anthropic request |
 | T17 | Request coordination, stop, interruption recovery | pending | |
 | T18 | Web ports and account isolation | pending | |
 | T19 | Web workspace, exclusive side panels, keyboard | pending | |
@@ -60,9 +60,9 @@ Authorization: local implementation and per-task local commits only. No push, PR
 
 | Scope | State |
 |---|---|
-| Unit (vitest) | run per task; T01–T15 green (root 919/2 skipped, core 941, ios 762) |
+| Unit (vitest) | run per task; T01–T16 green (root 919/2 skipped, core 958, ios 777) |
 | Web mock — existing web e2e (`pnpm e2e`) | baseline 583 passed / 145 skipped / 0 failed; not re-run (no web change yet, and it must run in a worktree from now on) |
-| iOS browser mock (`playwright.uiux.config.ts`) | 190 passed (harness 10, foundations 26, workspace 4, query editor 18, mobile results 14, views 15, matrix 16, details 19, onboarding 19, compare 11, saved 15, watches 10, ask 13) |
+| iOS browser mock (`playwright.uiux.config.ts`) | 190 passed (harness 10, foundations 26, workspace 4, query editor 18, mobile results 14, views 15, matrix 16, details 19, onboarding 19, compare 11, saved 15, watches 10, ask 13, proposals 8) |
 | iOS Simulator | not run for the app yet. One T07 reviewer ran a scratch WKWebView probe on throwaway simulators to settle a locale question (DECISIONS U-026; evidence T07 Review): not an app verification |
 | Physical device | not available to this session — unverified |
 | Live seats.aero / Anthropic key | not authorized — not run |
@@ -77,14 +77,14 @@ Authorization: local implementation and per-task local commits only. No push, PR
 - The save-failure bar (U-046) lives in the tab chrome, so it is not shown on the full-height Ask page or the editor; it shows on return (T15 review REG-06) → T21 to reconsider.
 - iOS `GridTable` (seat count 0 as nothing, no fees, freshness from the local fetch time) is no longer used by the Search screen since T09; it stays for the Phase 5 driver (U-028) and its unit test — remove with the driver update in T21/T22.
 - Before T09 the List and Calendar showed options above a search's own mileage cap (nothing on the snapshot path applied `max_miles`); fixed in the projection (U-035). The Web path still builds its grid with `buildGrid`, which applies it (T18–T20 to re-check when the Web reads the projection).
-- The Phase 5 Simulator driver reads the pre-T07 layout (DECISIONS U-028) → T21/T22.
+- The Phase 5 Simulator driver reads the pre-T07 layout (DECISIONS U-028) → T21/T22. Since T16 it also asks without an included search, whose searches the gate now refuses (U-051).
 - Web `/api/parse` calls the LLM implicitly when deterministic parsing misses fields and a server key is set → T18/T20 (ordinary search must not call AI silently).
 
 ## Current next action
 
-T16 (plan 03): structured change proposals and tool-layer approval (docs/04 S09, D08, docs/03 §5; A27). Read plan 03 T16 first and write the red test from its Step 1 (`packages/core/src/lib/workspace/proposals.test.ts`: `proposalStatus`, `sameAuthorizedScope`). Local mapping notes:
-- The tool runner is core `ask/tools.ts` `createToolRunner(port, state)`; `search_awards` validates its input, then plans and fetches. The scope gate goes there, before any HTTP: a search outside the included search's conditions returns a "needs confirmation" result, and Claude may only propose (a new strict tool whose input is a QueryObject, validated locally).
-- The authorized scope is the query of the snapshot the question was sent with (EntryContext, T15). With no search included, every search needs a proposal (D08).
-- Applying a proposal is a normal workspace search (new revision) through the existing Search path and Quota, consumed once. A proposal whose base revision is not the workspace's current one is stale (`ai.stale`). Approved rows: `ai.apply`, `ai.keep`, `ai.stale`.
-- Seed `ai-pending` and `ai-stale` in the fixture (scripted Anthropic that proposes), and move the harness's unseeded example to `ai-stopped`.
-- Existing core tests must not be edited: `tools.test.ts` covers today's search_awards behaviour. Keep the gate additive (a runner option) so those still pass.
+T17 (plan 03): request coordination, stop and interruption recovery (A28, A29). Read plan 03 T17 first and write the red test from its Step 1 (`apps/ios/src/workspace/request-coordinator.test.ts`: `RequestCoordinator.run(kind, operation)` serialises without losing failures or deadlocking). Local mapping notes:
+- What coordinates today (bootstrap.ts): `checkWatches` has an in-flight guard (`inFlight`), and Ask's tool steps wait for it (`whenWatchesIdle`, core loop.ts:197). Workspace searches (`workspace.run`, which aborts the previous run), details (`detail-service.ts`, which joins a load in flight) and Ask tool calls otherwise run independently. Quota is the one counter (`engine.quota`); keep it.
+- Do not wrap an operation that calls another coordinated one (Ask's tool calls run inside a question: coordinate at the tool-call/HTTP level, not the whole question, or the watch wait deadlocks).
+- Stop: core loop Stop already sends nothing more and says it cannot recall a request (STOP_NOTE). S09: 'Stop' reads "Stop subsequent steps" (approved `ai.stop`, `ai.stop_note`). Unfinished: `markUnfinished` on relaunch; approved `ai.unfinished`. Nothing is retried automatically.
+- Translate Ask's step, ending, failure and meta lines (`ask/labels.ts`) in this rework (U-039, U-050); then A21 can be re-checked.
+- Seed `ai-stopped` (a stopped question whose request may still complete) and move the harness's unseeded example to `long-labels` (T21).

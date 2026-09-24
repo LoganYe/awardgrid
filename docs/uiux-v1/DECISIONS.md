@@ -475,3 +475,48 @@ T15, plan 03 T15, docs/04 S09, docs/03 §5, A26.
 - `onboarding.spec.ts`: Ask has no tab bar now, so "the tab bar gives way to the keyboard" moved to the Anthropic key page, a tab screen with a field (review REG-07).
 - `workspace.spec.ts`: leaves Ask by its Back, not the tab bar.
 - The stand-in keyboard moved from `onboarding.spec.ts` to `helpers.ts`.
+
+## U-051 · Ask searches only inside the search the person included; anything else is a proposal they apply, once
+
+T16, plan 03 T16, docs/02 D08, docs/03 §5, docs/04 S09, A27.
+
+**The gate is in the tool layer** (core `ask/tools.ts`, `workspace/proposals.ts`). A shell that shows proposals passes `createToolRunner(port, state, gate)`, where `gate.authorized` is the query of the snapshot the question went with, or null when no search went.
+- **`search_awards`** runs only when its expanded input is inside that query (`sameAuthorizedScope`): the same or fewer airports, days, cabins and programs, and no looser nonstop, cap, mixed-cabin share or dynamic pricing. Sort is not a condition.
+  - Anything else gets `needs_confirmation` before any count, plan or request.
+  - With no search included, every search does.
+  - The authorized airports are compared as stored: an included SHA is Hongqiao alone, not Shanghai (U-024), and the same holds for BKK (review SEC-1).
+- **`get_flights`** also costs a call, so the row the device holds for that id, in that cabin, must lie inside the included search. A lookup already in the memo stays free (review SEC-2).
+- **`propose_query_change`** is a strict tool, validated like a search. Dates must be real calendar days (SEC-4). A proposal inside the included search is `inside_scope`. One proposal per question. It hands the shell a typed QueryObject and searches nothing.
+- **Nothing changes without a gate.** `ASK_TOOLS` and the system prompt keep their bytes; `ASK_TOOLS_WITH_PROPOSALS` and a context line are used only with a gate. Existing core tests are untouched.
+
+**A proposal waits for the person** (`ask-service.ts`, `components/QueryChangeProposal.tsx`)
+- **What is recorded.** The proposal goes on its entry (`AskEntry.proposals`, saved in ask.json): the validated query, the query it was made about (`base`), Claude's reason, and `baseRevision`. `baseRevision` is the revision of the search on screen, not the workspace's run counter (review SEC-3, REG-2):
+  - A search still running leaves it pending.
+  - A failed one leaves it pending.
+  - Another search on screen, published or shown again, makes it stale.
+- **Apply** runs `workspace.run(proposed)` through the normal Search path and quota.
+  - The proposal is consumed before anything is awaited, so two taps run it once.
+  - It is refused when stale.
+  - It resolves the id through the validated list and refuses a duplicate or unreadable record, so a hidden record in ask.json can never run in place of the card (SEC-5).
+- **Keep current conditions** sets it aside and changes nothing.
+- **The card** (S09):
+  - A diff built from the typed queries: each changed field is marked Original and New in words, and New is also tinted.
+  - Claude's reason is labelled as its reason. With no search sent, the proposal is compared locally with the search on screen, saying so (UX-5).
+  - A note before Apply says it runs a new search on the person's own quota and that nothing has been sent (UX-6).
+  - Full-width 48 buttons with the approved `ai.apply` and `ai.keep`. When stale, the approved `ai.stale` shows and Apply is disabled.
+  - After Apply, "View results" is a full-size control that lands focus on the results title.
+- **Step lines.** A refused search is said against what went with the question; each proposal outcome is said as what happened (UX-3, UX-4, REG-3).
+
+**What this changes.** Ask with no search included can no longer search seats.aero on its own; it proposes, and the person applies. That is D08's rule. A question about the included search keeps using `search_awards` inside it, usually from the cache.
+
+**Tests changed, with reasons.**
+- `bootstrap-ask.test.ts` asked without a search and expected the model's search to spend a call. It now includes a search restored from the workspace file, with an empty cache, whose scope holds the scripted search. That still proves the Anthropic and observed seats.aero transports.
+- `fixture-harness.spec.ts`: the unseeded example is `ai-stopped` (T17); `ai-pending` and `ai-stale` are seeded.
+- `ask-screen.test.ts`: its stand-in previews gain the new `revision` field. No assertion changed.
+
+**Fixture.**
+- `ai-pending`: saved results, and a scripted Anthropic that first proposes a later end date, with a reason claiming the person already agreed, then answers.
+- `ai-stale`: saved results at revision 1, and a saved conversation whose pending proposal was made for revision 0.
+- The AI scenarios use the scripted Anthropic.
+
+**Known, not changed.** The Phase 5 Simulator probe driver asks without a search (REG-1, refuted as pre-existing: the driver is already out of date, U-028). Its scripted searches would now be refused; carried to T21/T22 with the driver.

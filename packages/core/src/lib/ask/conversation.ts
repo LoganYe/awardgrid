@@ -20,7 +20,8 @@
  */
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { Cabin } from "../query/schema";
+import { Cabin, type QueryObject } from "../query/schema";
+import type { QueryChangeProposal } from "../workspace/types";
 import type { AskFailureCode } from "./errors";
 import { CONVERSATION_INPUT_TOKEN_LIMIT, MAX_CONVERSATION_FILE_BYTES, MAX_QUESTIONS_PER_CONVERSATION } from "./limits";
 import { flightsMemoKey, type FlightsLookup, type ToolRunState, type ToolStep } from "./tools";
@@ -106,6 +107,14 @@ export interface EntryContext {
   earlier: number;
 }
 
+/**
+ * A change to the search Claude proposed during a question (T16), as the tool layer validated it: the query it was
+ * made against (`base`, null when no search was included), and its status. Applied at most once, by the person.
+ */
+export interface EntryProposal extends QueryChangeProposal {
+  base: QueryObject | null;
+}
+
 /** One question as the person sees it. Entries are kept oldest first, and shown that way (T15, docs/04 S09). */
 export interface AskEntry {
   id: string;
@@ -115,6 +124,8 @@ export interface AskEntry {
   includeSearch: boolean;
   /** What was sent with it (T15). Read with care: a file from elsewhere may carry anything here. */
   context?: EntryContext;
+  /** Changes to the search Claude proposed (T16). Read with care, as `context`. */
+  proposals?: EntryProposal[];
   /** ISO time the question started. */
   askedAt: string;
   steps: EntryStep[];
