@@ -10,6 +10,7 @@ import { EDITOR_COPY, allFieldErrors } from "./components/query/labels";
 import { RESULTS } from "./components/results/copy";
 import { CONNECT_ANTHROPIC } from "./screens/AskScreen";
 import { COMPARE } from "./screens/compare-copy";
+import { FAVORITES } from "./screens/favorites-copy";
 import { WELCOME } from "./screens/OnboardingScreen";
 import { SETTINGS } from "./screens/settings-copy";
 import { WATCHES } from "./screens/watches-copy";
@@ -22,6 +23,7 @@ const TABLES: Record<string, { en: unknown; zh: unknown }> = {
   welcome: WELCOME,
   connectAnthropic: CONNECT_ANTHROPIC,
   compare: COMPARE,
+  favorites: FAVORITES,
 };
 
 /** Any Chinese character or Chinese punctuation: English must have none. */
@@ -51,6 +53,7 @@ const CASES: Record<string, unknown[][]> = {
     [2, "day"],
   ],
   "watches.unseen": [[{ new: 1, dropped: 0, cheaper: 0 }], [{ new: 0, dropped: 2, cheaper: 3 }]],
+  "favorites.usage": [[3, 100, "0.4", "5.0"]],
 };
 
 function call(fn: (...args: unknown[]) => unknown): { args: unknown[]; out: string } | null {

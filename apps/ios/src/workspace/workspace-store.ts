@@ -366,7 +366,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const TIME_BASES = new Set(["provider_last_seen", "provider_updated", "local_fallback", "unknown"]);
 
-function isRow(value: unknown): value is WorkspaceRow {
+/** A saved row, checked field by field (also used for saved favourites, T13). */
+export function isWorkspaceRow(value: unknown): value is WorkspaceRow {
   if (!isRecord(value) || typeof value.key !== "string" || !isRecord(value.value) || !isRecord(value.time)) return false;
   const row = value.value;
   const time = value.time;
@@ -388,7 +389,7 @@ function readSnapshot(value: unknown): ResultSnapshot | null {
   if (typeof value.createdAt !== "string" || parseInstant(value.createdAt) === null) return null;
   const query = QueryObject.safeParse(value.query);
   if (!query.success || !isRealDate(query.data.date_from) || !isRealDate(query.data.date_to)) return null;
-  if (!Array.isArray(value.rows) || !value.rows.every(isRow)) return null;
+  if (!Array.isArray(value.rows) || !value.rows.every(isWorkspaceRow)) return null;
   const scope = scopeKey(query.data);
   const receipt = isRecord(value.receipt) ? value.receipt : {};
   return {

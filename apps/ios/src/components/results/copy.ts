@@ -11,7 +11,7 @@ export interface ResultsCopy {
   /** copy key ai.entry */
   ai: string;
   aiWorking: string;
-  tabs: { search: string; watches: string; settings: string };
+  tabs: { search: string; watches: string; saved: string; settings: string };
   tabsLabel: string;
   unseen: (n: number) => string;
   searching: string;
@@ -115,7 +115,7 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     title: "Search",
     ai: "AI assistance",
     aiWorking: "AI assistance (working)",
-    tabs: { search: "Search", watches: "Watches", settings: "Settings" },
+    tabs: { search: "Search", watches: "Watches", saved: "Saved", settings: "Settings" },
     tabsLabel: "Main navigation",
     unseen: (n) => `${n} unseen ${n === 1 ? "change" : "changes"}`,
     searching: "Searching",
@@ -219,7 +219,7 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     title: "查票",
     ai: "AI辅助",
     aiWorking: "AI辅助（进行中）",
-    tabs: { search: "查票", watches: "关注", settings: "设置" },
+    tabs: { search: "查票", watches: "关注", saved: "收藏", settings: "设置" },
     tabsLabel: "主导航",
     unseen: (n) => `${n} 项未看变化`,
     searching: "查询中",

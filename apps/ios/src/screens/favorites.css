@@ -1,0 +1,156 @@
+/*
+ * Saved (T13; docs/04 S06). Tokens only. Intro 13/20; list gap 12; cards padding 16, radius 16, at least 156 tall;
+ * the empty page 24 apart with a 48 button; the undo bar above the tab bar.
+ */
+.ag-saved {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.ag-saved-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-saved-title:focus {
+  outline: none;
+}
+
+.ag-saved-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-saved-intro,
+.ag-saved-usage,
+.ag-saved-status {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: calc(20px * var(--ag-text-scale));
+  color: var(--ag-text-secondary);
+}
+
+.ag-saved-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ag-saved-fail {
+  color: var(--ag-danger);
+}
+
+.ag-saved-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ag-saved-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  min-height: 156px;
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: 16px;
+  background: var(--ag-surface);
+}
+
+.ag-saved-card-title {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-saved-card-sub,
+.ag-saved-card-meta,
+.ag-saved-card-note {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-saved-card-note {
+  color: var(--ag-warning);
+}
+
+.ag-saved-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-2);
+  margin-top: var(--ag-space-2);
+}
+
+.ag-saved-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-6);
+  padding-top: var(--ag-space-4);
+}
+
+.ag-saved-empty-title {
+  margin: 0;
+  font-size: var(--ag-type-section);
+  line-height: var(--ag-leading-section);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-saved-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: var(--ag-touch-target);
+  align-self: flex-start;
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+  text-decoration: none;
+}
+
+.ag-saved-back:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+/* The Search again sheet: its paragraphs 12 apart (the sheet body's gap), no browser margins. */
+.ag-saved-confirm {
+  margin: 0;
+}
+
+.ag-saved-inline-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ag-touch-target);
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* The undo bar: drawn in the chrome's slot above the tab bar (app/tray-slot.ts), for 5 seconds after a deletion. */
+.ag-undo-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-right)) var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-left));
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+.ag-undo-text {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}

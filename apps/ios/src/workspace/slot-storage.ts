@@ -9,6 +9,11 @@
  * platforms and is not something this app can verify on a device from here.
  *
  * Writes through one instance are queued, so two saves never interleave on the same slot.
+ *
+ * Absent and unreadable are not the same (T13). A slot whose file cannot be read at all (the read rejects) could hold
+ * the newest version, so while one cannot be read nothing is written, and `read` throws if no other slot can be read:
+ * the caller must not take it as empty. A slot that reads but does not parse is a torn write, the case this format
+ * exists for: the other slot is the good version. Both torn, with nothing good, is unreadable too.
  */
 import type { StoragePort } from "@awardgrid/core/workspace/types";
 import type { FileStore } from "../store/persistence";
@@ -35,6 +40,14 @@ function readSlot(raw: string | null): SlotContent | null {
   }
 }
 
+/** A saved name whose slot files exist but cannot be read: not the same as never saved. */
+export class SlotUnreadableError extends Error {
+  constructor(name: string) {
+    super(`The saved "${name}" could not be read on this device; it is left as it is.`);
+    this.name = "SlotUnreadableError";
+  }
+}
+
 export class SlotFileStorage implements StoragePort {
   readonly #files: FileStore;
   #queue: Promise<unknown> = Promise.resolve();
@@ -44,13 +57,19 @@ export class SlotFileStorage implements StoragePort {
   }
 
   async read(name: string): Promise<unknown> {
-    const newest = await this.#newest(name);
-    return newest ? newest.content.value : null;
+    const { newest, unreadable, torn } = await this.#scan(name);
+    // A slot that could not be read at all may hold the newest version: not guessed around.
+    if (unreadable) throw new SlotUnreadableError(name);
+    if (newest) return newest.content.value;
+    if (torn === 2) throw new SlotUnreadableError(name);
+    return null;
   }
 
   writeAtomically(name: string, value: unknown): Promise<void> {
     const next = this.#queue.then(async () => {
-      const newest = await this.#newest(name);
+      const { newest, unreadable, torn } = await this.#scan(name);
+      // Never write over what could not be read: it may be the newest good version.
+      if (unreadable || (torn === 2 && !newest)) throw new SlotUnreadableError(name);
       const target: Slot = newest?.slot === "a" ? "b" : "a";
       const text = JSON.stringify({ generation: (newest?.content.generation ?? 0) + 1, value });
       await this.#files.write(slotPath(name, target), text);
@@ -64,10 +83,23 @@ export class SlotFileStorage implements StoragePort {
     await this.#files.remove(slotPath(name, "b"));
   }
 
-  async #newest(name: string): Promise<{ slot: Slot; content: SlotContent } | null> {
-    const [a, b] = await Promise.all([this.#files.read(slotPath(name, "a")).then(readSlot, () => null), this.#files.read(slotPath(name, "b")).then(readSlot, () => null)]);
-    if (a && (!b || a.generation >= b.generation)) return { slot: "a", content: a };
-    if (b) return { slot: "b", content: b };
-    return null;
+  /** Both slots: the newest good one, whether either could not be read at all, and how many are torn. */
+  async #scan(name: string): Promise<{ newest: { slot: Slot; content: SlotContent } | null; unreadable: boolean; torn: number }> {
+    const read = async (slot: Slot) => {
+      try {
+        const raw = await this.#files.read(slotPath(name, slot));
+        if (raw === null) return { content: null, unreadable: false, torn: false };
+        const content = readSlot(raw);
+        return { content, unreadable: false, torn: content === null };
+      } catch {
+        return { content: null, unreadable: true, torn: false };
+      }
+    };
+    const [a, b] = await Promise.all([read("a"), read("b")]);
+    const unreadable = a.unreadable || b.unreadable;
+    const torn = Number(a.torn) + Number(b.torn);
+    if (a.content && (!b.content || a.content.generation >= b.content.generation)) return { newest: { slot: "a", content: a.content }, unreadable, torn };
+    if (b.content) return { newest: { slot: "b", content: b.content }, unreadable, torn };
+    return { newest: null, unreadable, torn };
   }
 }

@@ -66,12 +66,13 @@ describe("SlotFileStorage", () => {
     expect(await storage.read("w")).toEqual({ n: 4 });
   });
 
-  it("junk in a slot is ignored; junk in both reads as nothing", async () => {
+  it("junk in a slot is ignored next to a good one; junk in both is unreadable, not nothing (T13, U-047)", async () => {
     const files = new MemoryFileStore();
     const storage = new SlotFileStorage(files);
     files.files.set("w.a.json", "not json");
     files.files.set("w.b.json", JSON.stringify({ generation: 0, value: 1 }));
-    expect(await storage.read("w")).toBeNull();
+    // Two files there, neither a readable version: said so (a caller must not write over them as if empty).
+    await expect(storage.read("w")).rejects.toThrow(/could not be read/);
     files.files.set("w.b.json", JSON.stringify({ generation: 3, value: "ok" }));
     expect(await storage.read("w")).toBe("ok");
   });
@@ -84,5 +85,34 @@ describe("SlotFileStorage", () => {
     await storage.remove("w");
     expect(files.files.size).toBe(0);
     expect(await storage.read("w")).toBeNull();
+  });
+
+  it("a slot file that cannot be read is not taken as absent: read throws, and nothing is written over it (T13)", async () => {
+    const files = new MemoryFileStore();
+    const storage = new SlotFileStorage(files);
+    await storage.writeAtomically("favorites-v1", { n: 1 });
+    await storage.writeAtomically("favorites-v1", { n: 2 });
+    const before = new Map(files.files);
+    const read = files.read.bind(files);
+    files.read = async (path) => {
+      if (path === "favorites-v1.b.json") throw new Error("EIO");
+      return read(path);
+    };
+    await expect(storage.read("favorites-v1")).rejects.toThrow(/could not be read/);
+    await expect(storage.writeAtomically("favorites-v1", { n: 3 })).rejects.toThrow(/could not be read/);
+    expect(files.files).toEqual(before);
+    // Readable again: the newest version is still there.
+    files.read = read;
+    expect(await storage.read("favorites-v1")).toEqual({ n: 2 });
+  });
+
+  it("both slots torn, nothing good: unreadable, not empty, and not written over (T13)", async () => {
+    const files = new MemoryFileStore();
+    files.files.set("favorites-v1.a.json", '{"generation":1,"val');
+    files.files.set("favorites-v1.b.json", '{"generation":2,"val');
+    const storage = new SlotFileStorage(files);
+    await expect(storage.read("favorites-v1")).rejects.toThrow(/could not be read/);
+    await expect(storage.writeAtomically("favorites-v1", { n: 3 })).rejects.toThrow(/could not be read/);
+    expect(files.files.get("favorites-v1.a.json")).toBe('{"generation":1,"val');
   });
 });

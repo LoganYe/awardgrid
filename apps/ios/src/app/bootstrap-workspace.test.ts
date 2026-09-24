@@ -144,9 +144,29 @@ describe("the workspace in the app", () => {
       await write(path, data);
     };
     await svc.searchText("SFO to NRT next 60 days business");
-    await expect(svc.persist()).resolves.toBeUndefined();
+    // T13: persist never throws; it says which part failed, and the chrome can show it (saveStatus).
+    await expect(svc.persist()).resolves.toEqual({ ok: false, failed: ["workspace"], message: "disk full" });
+    expect(svc.saveStatus.get()).toMatchObject({ failed: ["workspace"], message: "disk full" });
     expect(svc.lastWorkspaceSave()).toMatchObject({ ok: false, code: "write_failed" });
     expect(files.files.get("workspace-v1.a.json")).toBe(good);
     expect(files.files.get(CACHE_FILE)).toContain("NRT");
+    // Once writes work again, the next save clears the problem.
+    files.write = write;
+    await expect(svc.persist()).resolves.toEqual({ ok: true });
+    expect(svc.saveStatus.get()).toBeNull();
+  });
+
+  it("any part that cannot be written is reported, the rest are still saved, and nothing throws (T13)", async () => {
+    const files = new MemoryFileStore();
+    const { svc } = await start(files);
+    await svc.searchText("HKG to SEA next 30 days business");
+    const write = files.write.bind(files);
+    files.write = async (path, data) => {
+      if (path === CACHE_FILE) throw new Error("cache write refused");
+      await write(path, data);
+    };
+    await expect(svc.persist()).resolves.toEqual({ ok: false, failed: ["cache"], message: "cache write refused" });
+    // The workspace was still saved.
+    expect([...files.files.keys()].some((k) => k.startsWith("workspace-v1"))).toBe(true);
   });
 });

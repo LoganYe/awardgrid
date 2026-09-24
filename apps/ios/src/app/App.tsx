@@ -14,15 +14,18 @@ import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { NavLink, Outlet, RouterProvider, createHashRouter, useLocation } from "react-router";
 import { type AppServices, type BootstrapOptions, bootstrap } from "./bootstrap";
 import { RESULTS } from "../components/results/copy";
-import { Icon, type IconName, applyThemePreference } from "../components/ui";
+import { Button, Icon, type IconName, applyThemePreference } from "../components/ui";
+import { FAVORITES } from "../screens/favorites-copy";
+import { WithTail } from "./WithTail";
 import { installKeyboardInset } from "./keyboard";
-import { langTag, useLocale } from "./locale";
+import { type Locale, langTag, useLocale } from "./locale";
 import { TraySlot } from "./tray-slot";
 import { AskScreen } from "../screens/AskScreen";
 import { CompareScreen } from "../screens/CompareScreen";
 import { QueryEditorScreen } from "../screens/QueryEditorScreen";
 import { DetailScreen } from "../screens/DetailScreen";
 import { ExampleScreen } from "../screens/OnboardingScreen";
+import { FavoritesScreen, SavedScreen } from "../screens/FavoritesScreen";
 import { SearchScreen } from "../screens/SearchScreen";
 import { AnthropicKeyScreen, SeatsKeyScreen, SettingsScreen } from "../screens/SettingsScreen";
 import { WatchesScreen } from "../screens/WatchesScreen";
@@ -75,7 +78,7 @@ export function FullPage({ services }: { services: AppServices }) {
 
 /**
  * The tab chrome (UI/UX v1 T07; docs/04 S01; reference results-light.png): the screen in a scrolling area, and a
- * bottom tab bar — Search, Watches, Settings — above the home indicator. Saved joins the bar with T13; AI assistance
+ * bottom tab bar — Search, Watches, Saved (T13), Settings — above the home indicator. AI assistance
  * is reached from the Search header, which also says when a question is under way. The page itself never scrolls (the
  * shell's html/body overflow rule would stop sticky headers), the area above the bar does.
  *
@@ -104,9 +107,11 @@ export function Chrome({ services }: { services: AppServices }) {
     shownPath.current = place;
   }, [place]);
   const [traySlot, setTraySlot] = useState<HTMLDivElement | null>(null);
+  const saveProblem = useSyncExternalStore(services.saveStatus.subscribe, services.saveStatus.get, services.saveStatus.get);
   const tabs: Array<{ to: string; icon: IconName; label: string; badge: number }> = [
     { to: "/", icon: "search", label: t.tabs.search, badge: 0 },
     { to: "/watches", icon: "bell", label: t.tabs.watches, badge: unseen },
+    { to: "/saved", icon: "bookmark", label: t.tabs.saved, badge: 0 },
     { to: "/settings", icon: "gear", label: t.tabs.settings, badge: 0 },
   ];
   return (
@@ -117,6 +122,7 @@ export function Chrome({ services }: { services: AppServices }) {
         {/* Not on Search (its status line says it), Settings (its About says it) or the example (made up, not seats.aero's). */}
         {onSearch || place === "/settings" || place === "/example" ? null : <p className="app-attribution">{t.attribution}</p>}
       </main>
+      <SaveProblemBar services={services} problem={saveProblem} locale={locale} />
       {/* The comparison bar (T12) sits here, above the tab bar and outside the scrolling area, so it never covers a
           result, a focused control or the matrix (SearchScreen portals it in). */}
       <div ref={setTraySlot} className="app-tray-slot" />
@@ -154,6 +160,49 @@ export function ShellEffects({ services }: { services: Pick<AppServices, "settin
   }, [locale]);
   useEffect(() => installKeyboardInset(), []);
   return null;
+}
+
+/**
+ * A save that failed (T13, U-046): one short line above the tab bar, the storage's own words behind "Details", and
+ * "Try saving again", which shows it is working and says how it went. It gives way to the keyboard, as the tab bar
+ * does, so it never takes the screen. When a retry succeeds the bar goes, and focus goes to the page's title.
+ */
+function SaveProblemBar({ services, problem, locale }: { services: AppServices; problem: ReturnType<AppServices["saveStatus"]["get"]>; locale: Locale }) {
+  const f = FAVORITES[locale];
+  const [trying, setTrying] = useState(false);
+  const [said, setSaid] = useState("");
+  const retry = async () => {
+    setTrying(true);
+    setSaid("");
+    const report = await services.persist();
+    setTrying(false);
+    window.requestAnimationFrame(() => {
+      setSaid(report.ok ? f.saveFixed : f.saveRetried);
+      if (report.ok) document.querySelector<HTMLElement>("main h1")?.focus();
+    });
+  };
+  return (
+    <>
+      {/* Always in the tree, so the outcome of a retry is announced even when the bar has gone. */}
+      <p role="status" className="sr-only">
+        {said}
+      </p>
+      {problem ? (
+        <div className="app-save-problem" role="alert" lang={langTag(locale)}>
+          <p>{f.saveProblemShort}</p>
+          <Button onClick={() => void retry()} loading={trying} loadingLabel={f.saveProblemRetry}>
+            {f.saveProblemRetry}
+          </Button>
+          <details className="app-save-problem-details">
+            <summary>{f.saveProblemDetails}</summary>
+            <p>
+              <WithTail text={f.saveProblem(problem.message)} tail={problem.message} tailLang={locale === "en" ? undefined : "en"} />
+            </p>
+          </details>
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 /** The Search screen with no option's details open: nothing over the results. */
@@ -243,6 +292,8 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
                 },
                 { path: "ask", element: <AskScreen /> },
                 { path: "watches", element: <WatchesScreen /> },
+                { path: "saved", element: <FavoritesScreen /> },
+                { path: "saved/:id", element: <SavedScreen /> },
                 { path: "settings", element: <SettingsScreen /> },
                 { path: "settings/seats", element: <SeatsKeyScreen /> },
                 { path: "settings/anthropic", element: <AnthropicKeyScreen /> },

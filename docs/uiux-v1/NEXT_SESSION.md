@@ -15,7 +15,7 @@ Never in this checkout: `pnpm build`, `next build`, `scripts/check-no-secrets-in
 ## Where things stand
 
 - Branch `uiux/quiet-precision-v1` in the worktree above, one local commit per finished task (see `git log`). Nothing pushed.
-- T01–T12 verified (unit + iOS browser mock). T13 is next: see STATUS "Current next action".
+- T01–T13 verified (unit + iOS browser mock). T14 is next: see STATUS "Current next action".
 - Carried forward:
   - Translate Ask's own chrome in T15–T17 (U-039; A21 stays partial until then).
   - The status bar under a chosen theme is for T21 (U-042).
@@ -23,14 +23,16 @@ Never in this checkout: `pnpm build`, `next build`, `scripts/check-no-secrets-in
   - New shell copy goes into a per-language table that `apps/ios/src/locale-parity.test.ts` checks.
   - Approved sentences come through `copy("key", locale)`, which `honesty.test.ts` now scans.
   - Overlays over the Search screen (details, compare) are child routes of the Search layout. App.tsx's Chrome and SearchScreen both list them as "over Search".
-  - The compare bar is portalled into the chrome's `app-tray-slot`.
+  - The compare bar and the Saved undo bar are portalled into the chrome's `app-tray-slot`.
+  - `persist()` returns a report and never throws. `saveStatus` drives the chrome's save bar.
+  - `SlotFileStorage` throws on what it cannot read, and refuses to write over it (U-047). Callers must treat a read error as "unreadable", not "empty".
 - If the worktree's `node_modules` is missing: `for d in node_modules apps/ios/node_modules packages/core/node_modules sites/landing/node_modules; do cp -Rc ../awardgrid/$d $d; done`; vendor: `rsync -a --exclude=.git ../awardgrid/vendor/travel-hacking-toolkit/ vendor/travel-hacking-toolkit/`; then `pnpm build:plugin`.
 - Open owner decision: restart `com.awardgrid.app` to fix the live stylesheet 404 (STATUS.md).
 
 ## Next commands
 
 ```sh
-# T13: read plan 03 T13 first; write its red test before any code
+# T14: read plan 03 T14 first; write its red test before any code
 # Evidence screenshots: run only the task's own spec with UIUX_EVIDENCE=1 (the harness spec rewrites T01's screenshots)
 UIUX_EVIDENCE=1 pnpm exec playwright test --config=playwright.uiux.config.ts e2e/uiux/<task>.spec.ts
 # UI/UX browser suite (fixture host on 127.0.0.1:4310)

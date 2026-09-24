@@ -191,6 +191,8 @@ export interface AskService {
   restore(): Promise<AskState>;
   /** Save ask.json, when there is a conversation. AppServices.persist() calls it. */
   persist(): Promise<void>;
+  /** Whether the conversation is still not on disk after the last save (T13): the save report says so. */
+  saveFailed?(): boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -693,6 +695,7 @@ export function createAskService(deps: AskServiceDeps): AskService {
   }
 
   return {
+    saveFailed: () => unsaved,
     state: () => snapshot,
     subscribe(listener) {
       listeners.add(listener);

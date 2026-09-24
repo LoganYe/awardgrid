@@ -97,10 +97,11 @@ test("the query summary is the shown snapshot's, and opens the editor", async ({
   await expect(page.getByRole("heading", { name: "Edit search", level: 1 })).toBeVisible();
 });
 
-test("the tab bar: Search, Watches, Settings; AI assistance from the header; Saved hidden until it exists", async ({ page }) => {
+test("the tab bar: Search, Watches, Saved, Settings; AI assistance from the header", async ({ page }) => {
   await openScenario(page, "missing-values", "ios", { lang: "en" });
   const tabs = page.getByRole("navigation", { name: "Main navigation" });
-  await expect(tabs.getByRole("link")).toHaveText(["Search", "Watches", "Settings"]);
+  // Saved joined the bar with T13, once it has behaviour (spec §5: four tabs).
+  await expect(tabs.getByRole("link")).toHaveText(["Search", "Watches", "Saved", "Settings"]);
   await expect(tabs.getByRole("link", { name: "Search" })).toHaveAttribute("aria-current", "page");
   for (const link of await tabs.getByRole("link").all()) expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await page.getByTestId("results-header").getByRole("link", { name: "AI assistance" }).click();

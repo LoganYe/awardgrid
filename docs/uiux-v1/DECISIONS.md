@@ -288,3 +288,78 @@ T12, docs/03 §2, docs/04 S05, spec §13.
 **Not in T12**
 - The details page's own "add to compare" (spec §13 names it; T10's two-button footer is kept, and choosing is done from the result).
 - The Web comparison (T19).
+
+## U-045 · Saved results are whole-snapshot copies on this device; opening one fetches nothing
+
+T13, docs/02 D04, docs/03 FavoriteV1, docs/04 S06, spec §16.
+
+**What is saved**
+- "Save results" on the Search screen saves the snapshot on screen as a `FavoriteV1`: its query, all its rows, its coverage evidence, when it was saved, and the snapshot it came from.
+- It is a copy, so the workspace evicting that snapshot never breaks it. Saving the same snapshot again is the one item already there.
+- Nothing saved holds a key, a header or a prompt.
+
+**Storage** (`apps/ios/src/store/favorites-store.ts`)
+- Its own namespace, `favorites-v1`, written whole through the two-slot atomic storage (T05). A change is shown only once written. A failed write keeps the previous list, on disk and on screen, and says so.
+- Limits (D04): 100 items and 5 MiB of JSON. A save or an undo that would pass either is refused with the approved "Saved storage is full. Remove an item before saving."; nothing already saved is dropped.
+- **Loading** never writes and never fetches, and loses nothing.
+  - An item this build cannot read (damaged, or from another build) is not shown. It is written back unchanged with every later change and counted against the limits, and the Saved screen says how many there are.
+  - A file from a newer version, or one that cannot be read at all, makes the store read-only: nothing is written over it, and the screen says so instead of looking empty. "Cannot be read" is now told apart from "absent" by the storage itself (U-047).
+- **Deleting** takes effect at once and is said ("Deleted. Undo is available for 5 seconds."). Focus moves to Undo (the approved word), in a bar drawn in the chrome's slot above the tab bar (as the compare bar is, U-044).
+  - The 5 seconds are held while focus or a pointer is in the bar, and the undo is forgotten when it closes or the screen is left.
+  - A restore that cannot be written keeps Undo offered and says the item is still deleted.
+- **Usage** is shown by count and by size ("1 of 100 saved · 0.0 of 5.0 MB"), since either limit can fill first. At a limit, the approved sentence is on the Saved screen too.
+
+**Screens** (`FavoritesScreen`, `SavedScreen`)
+- **The fourth tab.** Saved joins the bar (spec §5: 查票 / 关注 / 收藏 / 设置), now that it has behaviour.
+- **The list.** Each card shows the query, when it was saved, how many options it showed, and the approved "Saved snapshot; availability may change.", with Open and Delete. Above the list: how much of the store is used.
+- **Empty.** A title, one sentence and "Go to Search"; never made-up items.
+- **An opened snapshot** shows what the Search screen showed of it: the rows its query asked for (not those over its mileage cap or unrequested dynamic pricing), in its order (core `projectResults`), read only (no compare checkbox). It shows the note and its coverage as warnings, as on Search, and the dynamically priced count when there is one. It fetches nothing and refreshes nothing. Counts are of these rows.
+- **Searching again**
+  - Shows the conditions first, with the dates in full (`2026-10-01 to 2026-10-30`, so the year is never ambiguous), and what it sends. It runs only when confirmed, as a new search on the Search screen. The saved copy is not touched.
+  - Dates that have all passed are said, and the sheet offers "Change the dates" (the editor, seeded with the saved conditions) instead of a search. Dates partly passed are said.
+  - Without a key, the button is off with its reason and a link to add one.
+- **The Search screen's "Saved on this device."** belongs to the snapshot it was said of, and is not shown beside newer results. "View in Saved" and "Go to Search" land focus on the destination's title.
+
+**Fixture.** The fixture host now seeds `favorite-snapshot` (one partial snapshot, saved an hour after it was made). The harness's unseeded-scenario check uses `watch-baseline` (T14) instead.
+
+**Not in T13**
+- A favourite button on the details page (the T10 footer is kept).
+- Entering AI assistance from a saved snapshot, with a confirmation of which snapshot is attached (T15).
+- The Web (M4).
+
+## U-046 · A save never throws; a failed one is said, with "Try saving again"; tab labels stop growing at 15/18
+
+T13, docs/02 D04.
+
+**Saving** (`AppServices.persist()`)
+- Each part is saved on its own: cache, quota, watches, workspace, ask. A part that fails keeps its previous file and does not stop the others. The quota and watches are marked clean only once written, so a failed write is tried again next time.
+- It resolves to a report (`{ok}` or `{ok: false, failed, message}`) and never throws. That ends the unhandled rejections from `void services.persist()`, a STATUS known issue since T05.
+- **The last report is kept in `saveStatus`.** While a save is failing, the chrome shows it above the tab bar: "Some changes could not be saved on this device; what you see is kept until the app closes", with the storage's own words marked English, and "Try saving again". A save that succeeds clears it.
+- Ask's `persist` dependency still returns nothing.
+- The existing iOS test that expected `persist()` to resolve to `undefined` now checks the report and the status, plus a new case where only the cache fails.
+
+**What the report covers.** Ask's own save never rejects (a question must not fail on it). It now says whether `ask.json` is still unsaved (`saveFailed`), so the report covers it too.
+
+**The bar.** One short line, the storage's own words behind "Details", and "Try saving again", which shows it is working and says how it went ("Saved." / "Still could not save.", in a status region that stays). On success, focus goes to the page's title. It gives way to the keyboard, so it never takes the screen at large text.
+
+**Tab labels.** With four tabs, each is 80 wide at 320. Like a native iOS tab bar, whose labels do not grow with Dynamic Type, the label now stops growing at 15/18, so "Settings" fits at 200% text. The tab's name is the same at every size.
+
+## U-047 · The device file store tells "absent" from "unreadable", and the two-slot storage never writes over what it cannot read
+
+T13 review (F2). Before this, `capacitorFiles.read` turned every Filesystem error into null, and `SlotFileStorage` treated a slot that failed to read like one never written. A favourites file the device could not read looked empty, and the next save wrote over it. That is a silent overwrite, which D04 forbids.
+
+**The file store** (`capacitorFiles.read`)
+- It returns null only for "no such file". On iOS the plugin rejects that with `OS-PLUG-FILE-0008` (its `FilesystemError.fileNotFound`, read from `@capacitor/filesystem` 8's Swift source; not yet seen on a device). The web version says "does not exist".
+- Any other error is thrown.
+- The best-effort readers keep their meaning: an unreadable cache, quota or watches file is still a cold start (`SnapshotStore`). Ask's store already caught.
+
+**The two-slot storage** (`SlotFileStorage`)
+- A slot whose read fails could hold the newest version. While one cannot be read, `read` throws and `writeAtomically` refuses.
+- A slot that reads but does not parse is a torn write, the case the format exists for: the other slot is used.
+- Both slots present and neither readable is unreadable, not empty.
+
+**Tests.** The T05 test "junk in both reads as nothing" now expects "unreadable" (an iOS test, updated with this reason). New tests cover a slot that cannot be read and two torn slots, and the favourites store over the real storage.
+
+**Effect elsewhere.**
+- A workspace or settings file that cannot be read is restored as empty or the defaults, as before.
+- Their next save is refused instead of written over. For the workspace, the save report and bar say so (U-046).

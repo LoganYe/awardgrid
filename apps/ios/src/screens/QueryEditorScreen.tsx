@@ -84,9 +84,12 @@ export function QueryEditorScreen() {
   // The control that opened the editor (a filter chip), so focus goes back to it; else the summary.
   const returnTo = (useLocation().state as { from?: string } | null)?.from ?? RETURN_FOCUS;
   const today = services.now().toISOString().slice(0, 10);
+  // Opened from a saved snapshot whose dates have passed (T13): its conditions, to change the dates.
+  const seeded = (useLocation().state as { query?: QueryObject } | null)?.query ?? null;
   const [initial] = useState<QueryDraft>(() => {
     // The view's sort rides along, so a search from here keeps the order the results are read in (U-030).
     const { displayedSnapshot: shown, preferences } = services.workspace.getState();
+    if (seeded) return draftFromQuery({ ...seeded, sort_by: preferences.sort });
     return shown ? draftFromQuery({ ...shown.query, sort_by: preferences.sort }) : blankDraft(today, preferences.sort);
   });
   const [draft, setDraft] = useState<QueryDraft>(initial);

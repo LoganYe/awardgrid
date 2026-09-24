@@ -34,6 +34,7 @@ import { createSearchPort } from "../workspace/search-port";
 import { searchViewFromSnapshot } from "../workspace/snapshot-view";
 import { createDetailService, type DetailService } from "../workspace/detail-service";
 import { SettingsStore } from "./settings-store";
+import { FavoritesStore } from "../store/favorites-store";
 import type { KeyCheckOutcome } from "@awardgrid/core/seatsaero/key-check";
 import { SlotFileStorage } from "../workspace/slot-storage";
 import { type PersistResult, WorkspaceStore } from "../workspace/workspace-store";
@@ -94,8 +95,18 @@ export interface AppServices {
    * Persist the snapshots and Ask's conversation. The quota and watch writes are skipped when nothing moved.
    * cache.json is written on every call, and so is ask.json whenever there is a conversation, whole, so a long
    * conversation (core limits.ts MAX_CONVERSATION_FILE_BYTES) makes each call a large write.
+   *
+   * Never throws (T13, docs/02 D04): each part is saved on its own, a failed part keeps its previous file, and the
+   * report — also kept in `saveStatus` for the chrome to show, with a way to try again — says which parts failed.
    */
-  persist(): Promise<void>;
+  persist(): Promise<PersistReport>;
+  /** How the last save went (T13): null when it was whole, else what could not be saved. */
+  saveStatus: SaveStatus;
+  /**
+   * Saved snapshots (T13): copies of results, kept on this device in their own namespace. Loaded at launch without
+   * fetching anything.
+   */
+  favorites: FavoritesStore;
   /**
    * Empty the availability cache, in memory AND on disk. Quota, watches, both keys and ask.json are left alone.
    * See `SnapshotStore.clearCache` for why both halves are required.
@@ -114,6 +125,40 @@ export interface AppServices {
   onWatchesChanged(listener: () => void): () => void;
   /** Tell subscribers the watches changed, after a screen edits the store itself. */
   notifyWatchesChanged(): void;
+}
+
+export type PersistReport = { ok: true } | { ok: false; failed: string[]; message: string };
+
+export interface SaveProblem {
+  /** Which files could not be written: cache, quota, watches, workspace, ask. */
+  failed: string[];
+  /** The storage's own words for the first failure (English). */
+  message: string;
+  at: string;
+}
+
+/** The outcome of the last save, for the chrome (T13). */
+export class SaveStatus {
+  #problem: SaveProblem | null = null;
+  readonly #listeners = new Set<() => void>();
+  readonly get = (): SaveProblem | null => this.#problem;
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => {
+      this.#listeners.delete(listener);
+    };
+  };
+  set(problem: SaveProblem | null): void {
+    if (problem === null && this.#problem === null) return;
+    this.#problem = problem;
+    for (const listener of [...this.#listeners]) {
+      try {
+        listener();
+      } catch {
+        // One broken subscriber must not stop the others.
+      }
+    }
+  }
 }
 
 export interface BootstrapOptions {
@@ -251,6 +296,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   const deviceLocale = opts.locale ?? detectLocale(typeof navigator === "undefined" ? undefined : navigator.language);
   const settings = new SettingsStore({ storage: new SlotFileStorage(snapshots.files), deviceLocale });
   await settings.restore();
+  // Saved snapshots (T13): read at launch; nothing is fetched and nothing is written.
+  const favorites = new FavoritesStore(new SlotFileStorage(snapshots.files), () => now().toISOString());
+  await favorites.load();
   let lastWorkspaceSave: PersistResult | null = null;
 
   const listeners = new Set<() => void>();
@@ -283,7 +331,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     engine,
     store: new AskStore(snapshots.files),
     // A tool call that spent calls saves what this function saves: the cache, the quota and ask.json.
-    persist: () => persist(),
+    persist: async () => {
+      await persist();
+    },
     lastSearch,
     whenWatchesIdle,
     now,
@@ -291,19 +341,45 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     assertNative: opts.assertNative,
   });
 
-  const persist = async (): Promise<void> => {
-    await snapshots.saveCache(cache.snapshot());
+  const saveStatus = new SaveStatus();
+  const persist = async (): Promise<PersistReport> => {
+    const failed: string[] = [];
+    let message = "";
+    // Each part on its own: one that fails keeps its previous file and does not stop the others.
+    const attempt = async (part: string, save: () => Promise<void>) => {
+      try {
+        await save();
+      } catch (err) {
+        failed.push(part);
+        message ||= err instanceof Error ? err.message || err.name : String(err);
+      }
+    };
+    await attempt("cache", () => snapshots.saveCache(cache.snapshot()));
     if (quotaStore.dirty) {
-      await snapshots.saveQuota(quotaStore.snapshot(now()));
-      quotaStore.markClean();
+      // Marked clean only once written, so a failed write is tried again next time.
+      await attempt("quota", async () => {
+        await snapshots.saveQuota(quotaStore.snapshot(now()));
+        quotaStore.markClean();
+      });
     }
     if (watches.dirty) {
-      await snapshots.saveWatches(watches.snapshot());
-      watches.markClean();
+      await attempt("watches", async () => {
+        await snapshots.saveWatches(watches.snapshot());
+        watches.markClean();
+      });
     }
-    // Never throws: a failed save is recorded, and the previous file stays readable.
     lastWorkspaceSave = await workspace.persist();
-    await ask.persist();
+    if (!lastWorkspaceSave.ok) {
+      failed.push("workspace");
+      message ||= lastWorkspaceSave.message;
+    }
+    await attempt("ask", async () => {
+      await ask.persist();
+      // Ask's own save never rejects (a question must not fail on it); it says whether ask.json is still unsaved.
+      if (ask.saveFailed?.()) throw new Error("ask.json could not be saved");
+    });
+    saveStatus.set(failed.length > 0 ? { failed, message, at: now().toISOString() } : null);
+    return failed.length > 0 ? { ok: false, failed, message } : { ok: true };
   };
 
   const searchText = async (text: string): Promise<ApiResult<FindValue>> => {
@@ -368,6 +444,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     locale: deviceLocale,
     settings,
     persist,
+    saveStatus,
+    favorites,
     async clearCache() {
       // Memory first: if the file went first and a persist() landed in between, it would write
       // the rows straight back — which is precisely the Phase 2 bug this replaces.

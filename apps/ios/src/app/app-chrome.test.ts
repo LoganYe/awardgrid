@@ -11,14 +11,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { Chrome } from "./App";
-import type { AppServices } from "./bootstrap";
+import { type AppServices, SaveStatus } from "./bootstrap";
 import { SettingsStore } from "./settings-store";
 
 function render({ unseen = 0, locale = "en", path = "/" }: { unseen?: number; locale?: "en" | "zh"; path?: string } = {}): string {
   const watches = Array.from({ length: 20 }, (_, i) => ({ unseen: i < unseen ? { new: 1, dropped: 0, cheaper: 0, since: "2026-10-01T00:00:00.000Z" } : null }));
   // The language comes from the settings store (T11), here following the device's.
   const settings = new SettingsStore({ deviceLocale: locale });
-  const services = { watches: { all: () => watches }, onWatchesChanged: () => () => {}, locale, settings } as unknown as AppServices;
+  const services = { watches: { all: () => watches }, onWatchesChanged: () => () => {}, locale, settings, saveStatus: new SaveStatus() } as unknown as AppServices;
   return renderToStaticMarkup(createElement(MemoryRouter, { initialEntries: [path] }, createElement(Chrome, { services })));
 }
 
@@ -29,8 +29,9 @@ const tabs = (html: string) =>
 
 describe("the chrome", () => {
   it("has three tabs in order — Saved joins with T13, AI assistance is reached from the Search header", () => {
-    expect(tabs(render())).toEqual(["Search", "Watches", "Settings"]);
-    expect(tabs(render({ locale: "zh" }))).toEqual(["查票", "关注", "设置"]);
+    // T13: Saved joins the bar (spec §5: four tabs).
+    expect(tabs(render())).toEqual(["Search", "Watches", "Saved", "Settings"]);
+    expect(tabs(render({ locale: "zh" }))).toEqual(["查票", "关注", "收藏", "设置"]);
   });
 
   it("marks the current tab, and names the unseen count on Watches", () => {

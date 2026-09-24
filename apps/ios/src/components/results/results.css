@@ -68,6 +68,18 @@
   background: var(--ag-surface);
 }
 
+/*
+ * Four tabs share the width (80 each at 320). Like a native iOS tab bar, whose labels do not grow with Dynamic Type,
+ * the label stops growing at 15/18 so "Settings" still fits at 200% text (T13); the name is the same at any size.
+ */
+.app-tab-label {
+  font-size: min(var(--ag-type-label), 15px);
+  line-height: min(var(--ag-leading-label), 18px);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
 .app-tab {
   position: relative;
   display: flex;
@@ -1431,3 +1443,73 @@
   gap: var(--ag-card-gap);
 }
 
+
+/* Saving the results (T13): the line that says it, with a way to the Saved tab. */
+.ag-results-save:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ag-results-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ag-touch-target);
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* A save that failed (T13): said above the tab bar, with a way to try again; nothing on screen is lost. */
+.app-save-problem {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ag-space-2) var(--ag-space-3);
+  padding: var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-right)) var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-left));
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+  color: var(--ag-danger);
+}
+
+.app-save-problem > p {
+  flex: 1 1 12em;
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+/* The storage's own words, on request: the bar stays one line and never takes the screen. */
+.app-save-problem-details {
+  flex-basis: 100%;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.app-save-problem-details summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ag-touch-target);
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+  cursor: pointer;
+}
+
+.app-save-problem-details p {
+  margin: 0;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+:root[data-keyboard="open"] .app-save-problem {
+  display: none;
+}
+
+/* A callout among the results' actions (a key removed, a save refused): on the gutters, apart from the buttons. */
+.ag-results-callout {
+  margin: var(--ag-space-2) var(--results-gutter-end) 0 var(--results-gutter-start);
+}

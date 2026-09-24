@@ -44,6 +44,10 @@ import { AvailabilityList } from "../components/results/AvailabilityList";
 import { AvailabilityMatrix } from "../components/results/AvailabilityMatrix";
 import { TraySlot } from "../app/tray-slot";
 import { CompareTray } from "../components/CompareTray";
+import { WithTail } from "../app/WithTail";
+import { favoriteFromSnapshot } from "../store/favorites-store";
+import { FAVORITES } from "./favorites-copy";
+import { SAVED_TITLE } from "./FavoritesScreen";
 import { RESULTS } from "../components/results/copy";
 import { QuerySummary } from "../components/results/QuerySummary";
 import { Button, Icon, Notice, SegmentedControl } from "../components/ui";
@@ -104,6 +108,10 @@ export function SearchScreen() {
   const [quota, setQuota] = useState<QuotaSnapshotView | null>(null);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [watchMessage, setWatchMessage] = useState<string | null>(null);
+  // Saving the results on screen (T13): a copy on this device, never a booking; what happened is said beside the button.
+  const [saving, setSaving] = useState(false);
+  // Said of the snapshot it was about, and shown only beside that snapshot: a newer search is not "saved".
+  const [saveMessage, setSaveMessage] = useState<{ snapshotId: string; text: string; ok: boolean; tail?: string } | null>(null);
   const now = services.now();
   const asking = useSyncExternalStore(services.ask.subscribe, services.ask.isRunning, services.ask.isRunning);
 
@@ -162,6 +170,21 @@ export function SearchScreen() {
    * watched as text yet (U-024; watches become structured in T14).
    */
   const shownText = shown?.text ?? null;
+  const saveResults = async () => {
+    const shown = services.workspace.getState().displayedSnapshot;
+    if (!shown || saving) return;
+    const f = FAVORITES[locale];
+    setSaving(true);
+    setSaveMessage(null);
+    const result = await services.favorites.save(favoriteFromSnapshot(shown, services.now().toISOString(), `fav-${shown.id}`));
+    setSaving(false);
+    const about = shown.id;
+    if (result.ok) setSaveMessage({ snapshotId: about, text: result.already ? f.alreadySaved : f.saved, ok: true });
+    else if (result.reason === "write_failed") setSaveMessage({ snapshotId: about, text: f.writeFailed(result.message), ok: false, tail: result.message });
+    else if (result.reason === "capacity") setSaveMessage({ snapshotId: about, text: copy("favorite.limit", locale), ok: false });
+    else setSaveMessage({ snapshotId: about, text: f.readOnly, ok: false });
+  };
+
   const watchThis = useCallback(async () => {
     if (shownText === null) return;
     const trimmed = shownText.trim();
@@ -266,9 +289,10 @@ export function SearchScreen() {
 
   // The engine's own messages and run warnings are English (core); they say so on a Chinese screen.
   const english = locale === "en" ? undefined : "en";
+  const saveNote = saveMessage && saveMessage.snapshotId === snapshot?.id ? saveMessage : null;
   const keyCallout =
     hasKey === false ? (
-      <Callout tone="danger">
+      <Callout tone="danger" className="ag-results-callout">
         {t.noKey.before}
         <Link to="/settings/seats">{t.noKey.link}</Link>
         {t.noKey.after}
@@ -435,10 +459,29 @@ export function SearchScreen() {
             <Button onClick={() => void watchThis()} disabled={!reproduces} disabledReason={reproduces ? null : t.watchNeedsText}>
               {t.watch}
             </Button>
+            <Button onClick={() => void saveResults()} loading={saving} loadingLabel={FAVORITES[locale].saving}>
+              {FAVORITES[locale].save}
+            </Button>
             <Link to="/ask" className="ag-button">
               {t.askAbout}
             </Link>
           </div>
+          {/* Always in the tree, so saving is announced; a failure is an alert of its own. */}
+          <p role="status" className="ag-results-meta ag-results-save">
+            {saveNote?.ok ? (
+              <>
+                {saveNote.text}{" "}
+                <Link to="/saved" state={{ focus: SAVED_TITLE }} className="ag-results-link">
+                  {FAVORITES[locale].viewSaved}
+                </Link>
+              </>
+            ) : null}
+          </p>
+          {saveNote && !saveNote.ok ? (
+            <p role="alert" className="ag-callout ag-callout-danger ag-results-callout">
+              <WithTail text={saveNote.text} tail={saveNote.tail} tailLang={english} />
+            </p>
+          ) : null}
           {watchMessage ? (
             <p role="status" className="ag-results-meta">
               {watchMessage}
@@ -491,9 +534,9 @@ export function SearchScreen() {
   );
 }
 
-function Callout({ tone, children, lang }: { tone: "warn" | "danger"; children: ReactNode; lang?: string }) {
+function Callout({ tone, children, lang, className }: { tone: "warn" | "danger"; children: ReactNode; lang?: string; className?: string }) {
   return (
-    <p role={tone === "danger" ? "alert" : undefined} className={`ag-callout ag-callout-${tone}`} lang={lang}>
+    <p role={tone === "danger" ? "alert" : undefined} className={["ag-callout", `ag-callout-${tone}`, className].filter(Boolean).join(" ")} lang={lang}>
       {children}
     </p>
   );

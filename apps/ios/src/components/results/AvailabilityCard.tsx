@@ -21,7 +21,8 @@ export interface AvailabilityCardProps {
   row: WorkspaceRow;
   snapshotId: SnapshotId;
   selected: boolean;
-  onToggle: (selected: boolean) => void;
+  /** Choose for comparison (T12). Without it the card has no checkbox: a saved snapshot's rows (T13) are read only. */
+  onToggle?: (selected: boolean) => void;
   /** The app's clock, as an ISO instant, for the source time's age. */
   now: string;
   locale: Locale;
@@ -49,12 +50,14 @@ export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, loc
             <span className="ag-result-cabin">{cabin}</span>
           </p>
         </div>
-        <div className="ag-result-select-wrap">
-          {selected ? <span className="ag-result-selected">{t.selected}</span> : null}
-          <label className="ag-result-select">
-            <input type="checkbox" checked={selected} aria-label={t.select(name)} onChange={(e) => onToggle(e.target.checked)} />
-          </label>
-        </div>
+        {onToggle ? (
+          <div className="ag-result-select-wrap">
+            {selected ? <span className="ag-result-selected">{t.selected}</span> : null}
+            <label className="ag-result-select">
+              <input type="checkbox" checked={selected} aria-label={t.select(name)} onChange={(e) => onToggle(e.target.checked)} />
+            </label>
+          </div>
+        ) : null}
       </div>
       <div className="ag-result-line">
         <p className="ag-result-miles" data-testid="card-miles">

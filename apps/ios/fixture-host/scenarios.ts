@@ -13,6 +13,7 @@ import availability from "@awardgrid/core/test-fixtures/uiux/availability-rows.j
 import { fixtureQuery, fixtureSnapshot } from "@awardgrid/core/test-fixtures/uiux/factory";
 import { describeQuery } from "@awardgrid/core/workspace/query-editor";
 import manifest from "@awardgrid/core/test-fixtures/uiux/scenarios.json";
+import { FAVORITES_NAMESPACE } from "../src/store/favorites-store";
 import { DEFAULT_PREFERENCES, WORKSPACE_NAMESPACE } from "../src/workspace/workspace-store";
 
 /** The row shape in availability-rows.json: core's AvailabilityRow fields, as plain JSON. */
@@ -91,6 +92,7 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
   "quota-low",
   "multi-program",
   "storage-failure",
+  "favorite-snapshot",
   "foundations",
   "inflight-old",
   "failed-old",
@@ -102,7 +104,6 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
 
 /** Where an unseeded scenario's state comes from. Informational, for the refusal message. */
 const SEEDED_BY: Record<string, string> = {
-  "favorite-snapshot": "T13 (favourites)",
   "watch-baseline": "T14 (watch migration)",
   "watch-changes": "T14 (watch migration)",
   "watch-failure": "T14 (watch migration)",
@@ -156,13 +157,12 @@ function quotaAtSoftLimit(now: Date): string {
 }
 
 /**
- * A workspace saved by an earlier launch, holding one snapshot of the synthetic query made two hours before the
- * scenario's clock, with the scenario's rows. Its text is the sentence the editor writes for that query, so the text
- * on screen describes the saved search exactly (the synthetic "…October…" text would read as 18–31 October on the
- * day the snapshot was made, not the 1–30 October it holds). Written in the device format: SlotFileStorage's first slot,
- * `{generation, value}`, value being the WorkspaceStore's saved shape. The workspace spec proves the app restores it.
+ * The snapshot an earlier launch made: the synthetic query, two hours before the scenario's clock, with the scenario's
+ * rows and coverage. Its text is the sentence the editor writes for that query, so the text on screen describes the
+ * saved search exactly (the synthetic "…October…" text would read as 18–31 October on the day the snapshot was made,
+ * not the 1–30 October it holds).
  */
-function savedWorkspace(rows: readonly SyntheticRow[], now: Date, coverage: string): Record<string, string> {
+function savedSnapshot(rows: readonly SyntheticRow[], now: Date, coverage: string) {
   const wanted = new Set(rows.map((r) => `${r.program}|${r.source_id}|${r.date}|${r.cabin}`));
   const query = fixtureQuery();
   const described = { ...query, raw_text: describeQuery(query) };
@@ -189,9 +189,36 @@ function savedWorkspace(rows: readonly SyntheticRow[], now: Date, coverage: stri
       return { ...r, value, time: { basis: "unknown" as const, providerAt: null, fetchedAt: r.time.fetchedAt } };
     });
   }
-  const snapshot = { ...base, rows: kept, coverage: evidence };
+  return { ...base, rows: kept, coverage: evidence };
+}
+
+/**
+ * A workspace saved by an earlier launch, holding that one snapshot. Written in the device format: SlotFileStorage's
+ * first slot, `{generation, value}`, value being the WorkspaceStore's saved shape. The workspace spec proves the app
+ * restores it.
+ */
+function savedWorkspace(rows: readonly SyntheticRow[], now: Date, coverage: string): Record<string, string> {
+  const snapshot = savedSnapshot(rows, now, coverage);
   const value = { schemaVersion: 1, revision: 1, displayedId: snapshot.id, previousId: null, preferences: DEFAULT_PREFERENCES, snapshots: [snapshot] };
   return { [`${WORKSPACE_NAMESPACE}.a.json`]: JSON.stringify({ generation: 1, value }) };
+}
+
+/**
+ * Saved results from an earlier launch (T13): one favourite, a copy of that launch's snapshot, saved an hour after it
+ * was made, in the device format (SlotFileStorage's first slot; value in FavoritesStore's saved shape).
+ */
+function savedFavorites(rows: readonly SyntheticRow[], now: Date, coverage: string): Record<string, string> {
+  const snapshot = savedSnapshot(rows, now, coverage);
+  const favorite = {
+    schemaVersion: 1,
+    id: "fixture-favorite-1",
+    savedAt: new Date(now.getTime() - 3_600_000).toISOString(),
+    query: snapshot.query,
+    rows: snapshot.rows,
+    coverage: snapshot.coverage,
+    originalSnapshotId: snapshot.id,
+  };
+  return { [`${FAVORITES_NAMESPACE}.a.json`]: JSON.stringify({ generation: 1, value: { schemaVersion: 1, items: [favorite] } }) };
 }
 
 const scenarios: readonly FixtureScenario[] = manifest.scenarios;
@@ -218,7 +245,9 @@ export function environmentFor(id: string | null): FixtureEnvironment {
         ? { "quota.json": quotaAtSoftLimit(now) }
         : SAVED_RESULTS.has(scenario.id)
           ? savedWorkspace(rows, now, scenario.coverage)
-          : {},
+          : scenario.id === "favorite-snapshot"
+            ? savedFavorites(rows, now, scenario.coverage)
+            : {},
     failWrites: scenario.id === "storage-failure",
     searchMode: scenario.id === "inflight-old" ? "hold" : scenario.id === "failed-old" ? "fail" : "answer",
   };

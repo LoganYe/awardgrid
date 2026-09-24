@@ -17,7 +17,8 @@ export interface AvailabilityListProps {
   sort: ViewPreferences["sort"];
   snapshotId: SnapshotId;
   selected: ReadonlySet<RowKey>;
-  onToggle: (rowKey: RowKey, on: boolean) => void;
+  /** Choose for comparison; without it the cards have no checkbox (a saved snapshot, T13). */
+  onToggle?: (rowKey: RowKey, on: boolean) => void;
   now: string;
   locale: Locale;
   headingLevel?: 2 | 3;
@@ -40,7 +41,7 @@ export function AvailabilityList({ rows, sort, snapshotId, selected, onToggle, n
       row={row}
       snapshotId={snapshotId}
       selected={selected.has(row.key)}
-      onToggle={(on) => onToggle(row.key, on)}
+      onToggle={onToggle ? (on) => onToggle(row.key, on) : undefined}
       now={now}
       locale={locale}
       headingLevel={headingLevel}

@@ -28,19 +28,16 @@ import { type ReactNode, useEffect, useEffectEvent, useLayoutEffect, useRef, use
 import { useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { useFocusOnArrival } from "../app/focus";
-import { type Locale, langTag, useLocale } from "../app/locale";
+import { langTag, useLocale } from "../app/locale";
+import { shortDateTime } from "../app/when";
 import { COMPARE_OPENER } from "../components/CompareTray";
 import { RESULTS } from "../components/results/copy";
 import { Icon, IconButton } from "../components/ui";
 import { COMPARE } from "./compare-copy";
 import "../components/compare.css";
 
-/** When a search was made, on this device's clock: "Oct 18, 09:12" / "10月18日 09:12". */
-function searchWhen(iso: string, locale: Locale): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return new Intl.DateTimeFormat(langTag(locale), { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
-}
+/** When a search was made, on this device's clock. */
+const searchWhen = shortDateTime;
 
 export function CompareScreen() {
   const services = useOutletContext<AppServices>();
