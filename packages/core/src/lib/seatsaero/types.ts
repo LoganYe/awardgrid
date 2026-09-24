@@ -227,7 +227,11 @@ export const Trip = z
     RemainingSeats: z.number().int(),
     MileageCost: z.number().int(),
     TotalTaxes: z.number().int(),
-    TaxesCurrency: z.string(),
+    // The live API omits this key on some trips; the documentation's own example for it is the empty
+    // string (docs/reference/seatsaero/get-trips.md). Both already mean the same thing downstream:
+    // summarizeTrip reads an absent or empty value as `currency: null`, "unknown currency", which the
+    // fee formatting handles. Requiring it lost a paid Get Trips call on 2026-09-23 (docs/PHASE5.md §3.6).
+    TaxesCurrency: z.string().optional(),
     TaxesCurrencySymbol: z.string().optional(),
     AllianceCost: z.number().int().optional(),
     FlightNumbers: z.string(),
