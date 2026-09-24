@@ -1,0 +1,36 @@
+/* TEST-ONLY layout for the foundations gallery (fixture-host/foundations.tsx). Tokens only. */
+.fixture-foundations {
+  min-height: 100dvh;
+  padding: var(--ag-space-4) var(--ag-gutter) var(--ag-space-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-6);
+  background: var(--ag-canvas);
+  color: var(--ag-text);
+  font-family: var(--ag-font-sans);
+}
+
+.fixture-foundations-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.fixture-foundations-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ag-space-3);
+}
+
+.fixture-foundations-group > .ag-segmented,
+.fixture-foundations-group > .ag-field,
+.fixture-foundations-group > .ag-notice {
+  align-self: stretch;
+}
+
+.fixture-foundations-row {
+  display: flex;
+  gap: var(--ag-space-2);
+}

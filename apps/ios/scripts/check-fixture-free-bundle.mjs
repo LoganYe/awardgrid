@@ -32,6 +32,8 @@ const HOST_MARKERS = [
   "not seeded by the fixture host",
   "FixtureAnthropicRefusedError",
   "FixtureWriteFailedError",
+  "fixture-foundations",
+  "Foundations (fixture, test only)",
 ];
 
 function readJson(name) {

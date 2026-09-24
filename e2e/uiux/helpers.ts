@@ -5,7 +5,7 @@
  *   openScenario(page, id, surface = "ios", options?)  open the host on a seeded scenario from scenarios.json
  *   requestLog(page)                                    what the app tried to send since that launch
  *   externalRequests(page)                              every non-loopback request the browser attempted (aborted)
- *   evidenceShot(page, name)                            a screenshot into docs/uiux-v1/evidence (UIUX_EVIDENCE=1)
+ *   evidenceShot(page, name, {fullPage})                a screenshot into docs/uiux-v1/evidence (UIUX_EVIDENCE=1)
  *
  * openScenario/requestLog signatures are fixed by plan 01 T01; later tasks may only extend them compatibly.
  * Network lockdown is installed per browser context by the `test` in ./test.ts, so it covers every page and
@@ -154,10 +154,24 @@ export const EVIDENCE_DIR = path.resolve(import.meta.dirname, "..", "..", "docs"
  * Save a screenshot of the real app as evidence, only when UIUX_EVIDENCE=1 (so routine runs leave tracked files
  * alone). Never a copy of a reference image. Returns the path written, or null.
  */
-export async function evidenceShot(page: Page, name: string): Promise<string | null> {
+export async function evidenceShot(page: Page, name: string, options: { fullPage?: boolean } = {}): Promise<string | null> {
   if (process.env.UIUX_EVIDENCE !== "1") return null;
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) throw new Error(`Evidence name must be kebab-case: ${name}`);
   const file = path.join(EVIDENCE_DIR, `${name}.png`);
-  await page.screenshot({ path: file, animations: "disabled" });
+  // A full-page capture measures the page first: wait until its height has held for two readings 250 ms apart, so a
+  // screen that is still filling in (a Keychain read, a store load) is not cut at the height it had a moment ago.
+  // Polled from here, not inside waitForFunction, whose predicate cannot usefully return a Promise.
+  if (options.fullPage) {
+    const height = () => page.evaluate(() => document.documentElement.scrollHeight);
+    let last = await height();
+    for (let tries = 0; ; tries++) {
+      await page.waitForTimeout(250);
+      const now = await height();
+      if (now === last) break;
+      if (tries >= 20) throw new Error(`evidenceShot(${name}): the page height kept changing (${last} → ${now})`);
+      last = now;
+    }
+  }
+  await page.screenshot({ path: file, animations: "disabled", fullPage: options.fullPage ?? false });
   return file;
 }

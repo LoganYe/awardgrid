@@ -83,6 +83,7 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
   "quota-low",
   "multi-program",
   "storage-failure",
+  "foundations",
 ]);
 
 /** Where an unseeded scenario's state comes from. Informational, for the refusal message. */
@@ -90,7 +91,6 @@ const SEEDED_BY: Record<string, string> = {
   partial: "T03 (coverage evidence)",
   "coverage-unknown": "T03 (coverage evidence)",
   "legacy-cache": "T03 (coverage evidence)",
-  foundations: "T04 (primitives page)",
   "inflight-old": "T05 (workspace store)",
   "failed-old": "T05 (workspace store)",
   "favorite-snapshot": "T13 (favourites)",

@@ -21,6 +21,8 @@ import { SnapshotStore } from "../src/store/persistence";
 import "../src/styles.css";
 import { LocalFixtureFiles } from "./files";
 import type { FixtureHostHandle, FixtureHostState } from "./protocol";
+import { FoundationsGallery } from "./foundations";
+import "./foundations.css";
 import { environmentFor } from "./scenarios";
 import { refusingAnthropicFetch, syntheticSeatsFetch } from "./transports";
 
@@ -83,6 +85,13 @@ async function start(): Promise<void> {
   });
 
   const root = document.getElementById("root")!;
+  // `foundations` is the base controls on their own page (T04), not the app.
+  if (env.scenario.id === "foundations") {
+    root.dataset.mounted = "1";
+    createRoot(root).render(<FoundationsGallery />);
+    window.requestAnimationFrame(() => report("ready"));
+    return;
+  }
   // If bootstrap fails, App shows its own "could not start" screen and never calls onReady; say so here too.
   const watchdog = window.setTimeout(() => {
     if (handle.state === "booting") report("error", `The app did not start: ${root.textContent?.slice(0, 200) ?? ""}`);
