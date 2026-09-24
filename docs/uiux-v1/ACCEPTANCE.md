@@ -8,7 +8,7 @@ The 38 requirements from the handoff pack (`packages/core/test/fixtures/uiux/acc
 | A02 | T02 | Data | 0/undefined seats renders unknown; null fee unknown; explicit 0 plus USD is zero, not unknown | unit + component | unit verified; component with T07 | [T02](evidence/T02-truth-identity.md) |
 | A03 | T02 | Data | Fresh local fetch never hides stale or unknown provider time; future timestamp is not just now | unit + component | unit verified; component with T07 | [T02](evidence/T02-truth-identity.md) |
 | A04 | T02 | Data | Same source id J and F has distinct row keys; array reordering preserves identities | unit | verified (unit) | [T02](evidence/T02-truth-identity.md) |
-| A05 | T03 | Data | Partial/unknown coverage survives cache save/restore; missing legacy evidence never becomes complete | unit + integration | pending | — |
+| A05 | T03 | Data | Partial/unknown coverage survives cache save/restore; missing legacy evidence never becomes complete | unit + integration | verified (unit + store integration) | [T03](evidence/T03-coverage-evidence.md) |
 | A06 | T04 | Visual | Both themes match tokens and 32 contrast pairs; dark primary has dark on-accent text | computed CSS + contrast | pending | — |
 | A07 | T04 | Access | Coarse input ≥44 target; normal/pressed/disabled/focus/loading semantic styles exist | component + geometry | pending | — |
 | A08 | T05 | State | Late response cannot overwrite newer revision; failed run retains labelled old query and data | unit + browser | pending | — |

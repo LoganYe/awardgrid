@@ -29,6 +29,13 @@
       "when": 1790219072419,
       "tag": "0003_availability_time_basis",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790220410341,
+      "tag": "0004_coverage_evidence",
+      "breakpoints": true
     }
   ]
 }

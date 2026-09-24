@@ -139,6 +139,14 @@ export const cacheCoverage = sqliteTable(
     /** "*" for all programs, else a sorted comma-joined list. */
     programsKey: text("programs_key").notNull(),
     fetchedAt: text("fetched_at").notNull(),
+    /**
+     * JSON {"state","reason","at"}: what the fetch that wrote this cell proved (core seatsaero/cache.ts
+     * CoverageRecord.evidence) — ran to its end, or stopped at the page cap or for quota — and that fetch's
+     * fetched_at. Kept only while "at" equals this cell's fetched_at, so a newer write that did not record
+     * evidence (an older build) leaves the cell with none. Nullable and additive (migration 0004): cells
+     * written before it prove nothing about completeness.
+     */
+    evidence: text("evidence"),
   },
   (t) => [primaryKey({ columns: [t.userId, t.origin, t.dest, t.date, t.cabin, t.programsKey] })],
 );

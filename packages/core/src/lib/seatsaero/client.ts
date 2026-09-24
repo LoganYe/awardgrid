@@ -59,6 +59,11 @@ export interface PagedResult<T> {
   pages: number;
   /** True when `maxPages` stopped the loop while the API still reported more. */
   truncated: boolean;
+  /**
+   * True when the loop stopped on an EMPTY page that still said `hasMore` (UI/UX v1 T03). The API claimed more
+   * data and returned none, so the end of the result was never actually reached: not proof of completeness.
+   */
+  incomplete?: boolean;
 }
 
 export interface PaginateOptions {
@@ -388,6 +393,7 @@ export async function paginate(
   let skip = initialSkip;
   let pages = 0;
   let truncated = false;
+  let incomplete = false;
   for (;;) {
     if (pages >= Math.max(1, maxPages)) {
       truncated = true;
@@ -398,7 +404,11 @@ export async function paginate(
     for (const item of page.data) if (!seen.has(item.ID)) seen.set(item.ID, item);
     skip += page.data.length;
     if (cursor === undefined) cursor = page.cursor;
-    if (!page.hasMore || page.data.length === 0) break;
+    if (!page.hasMore) break;
+    if (page.data.length === 0) {
+      incomplete = true;
+      break;
+    }
   }
-  return { data: [...seen.values()], pages, truncated };
+  return { data: [...seen.values()], pages, truncated, ...(incomplete ? { incomplete } : {}) };
 }

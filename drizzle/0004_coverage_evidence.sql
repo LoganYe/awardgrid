@@ -1,0 +1,1 @@
+ALTER TABLE `cache_coverage` ADD `evidence` text;
