@@ -16,8 +16,8 @@ export interface SheetProps {
   open: boolean;
   title: string;
   onClose: () => void;
-  /** The close button's accessible name, in the screen's language. */
-  closeLabel?: string;
+  /** The close button's accessible name, in the screen's language: required, so no sheet falls back to an English word (T11). */
+  closeLabel: string;
   children: ReactNode;
 }
 
@@ -35,7 +35,7 @@ function tabbable(root: HTMLElement): HTMLElement[] {
   );
 }
 
-export function Sheet({ open, title, onClose, closeLabel = "Close", children }: SheetProps) {
+export function Sheet({ open, title, onClose, closeLabel, children }: SheetProps) {
   const titleId = useId();
   const layer = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);

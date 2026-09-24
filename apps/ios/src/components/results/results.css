@@ -19,8 +19,14 @@
 .app-shell {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  /* The space above the software keyboard when it is up (app/keyboard.ts, T11), else the whole screen. */
+  height: calc(100dvh - var(--ag-keyboard-inset, 0px));
   background: var(--ag-canvas);
+}
+
+/* The keyboard covers the tab bar, as it does in a native app; the screen gets the space. */
+:root[data-keyboard="open"] .app-tabs {
+  display: none;
 }
 
 .app-main {
@@ -1387,3 +1393,31 @@
   margin-top: calc(-1 * var(--ag-space-2));
   overflow: hidden;
 }
+
+/* T11: the first-run screen and the example (spec §16). */
+.ag-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-4) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-welcome-value {
+  margin: 0;
+  font-size: var(--ag-type-reading);
+  line-height: var(--ag-leading-reading);
+}
+
+.ag-example {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.ag-example-list {
+  display: grid;
+  gap: var(--ag-card-gap);
+}
+

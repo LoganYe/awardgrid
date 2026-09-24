@@ -25,6 +25,8 @@ import type { AskEntry as Entry } from "@awardgrid/core/ask/conversation";
 import { MAX_QUESTION_CHARS } from "@awardgrid/core/ask/limits";
 import { SEARCH_AWARDS } from "@awardgrid/core/ask/tools";
 import type { AppServices } from "../app/bootstrap";
+import { useKeepInView } from "../app/keyboard";
+import { type Locale, langTag, useLocale } from "../app/locale";
 import type { AskNotice, AskState } from "../ask/ask-service";
 import {
   ANNOUNCEMENTS,
@@ -33,7 +35,6 @@ import {
   ASK_TITLE,
   CONVERSATION_NOTE,
   NEW_CONVERSATION,
-  NO_ANTHROPIC_KEY,
   NO_SEATS_KEY,
   OPEN_SETTINGS,
   QUESTION_LABEL,
@@ -168,6 +169,9 @@ export interface AskViewProps {
 }
 
 export function AskView({ services, keys, now = Date.now }: AskViewProps) {
+  // The first-AI-entry panel speaks the screen's language; the rest of Ask is English until its rework (T15–T17), and
+  // is marked so on a Chinese screen.
+  const locale = useLocale(services as Partial<Pick<AppServices, "locale" | "settings">>);
   const { ask } = services;
   const state = useSyncExternalStore(ask.subscribe, ask.state, ask.state);
   const [atOpen] = useState(state);
@@ -177,6 +181,9 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
   const [includeSearch, setIncludeSearch] = useState(true);
   const [clock, setClock] = useState(now);
   const composer = useRef<HTMLTextAreaElement>(null);
+  // The text box and its Ask/Stop button come up above the keyboard together (T11).
+  const composerBlock = useRef<HTMLDivElement>(null);
+  useKeepInView(composerBlock);
 
   const running = state.running;
   const questionRunning = running !== null;
@@ -229,7 +236,7 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
   );
 
   return (
-    <div className="ask-screen">
+    <div className="ask-screen" lang={locale === "zh" ? "en" : undefined}>
       {/* Always mounted: a live region only announces changes once it is already in the accessibility tree. */}
       <p role="status" className="sr-only">
         {askAnnouncement(state, atOpen)}
@@ -260,7 +267,7 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
         </ul>
       ) : null}
 
-      <div className="ask-composer">
+      <div ref={composerBlock} className="ask-composer">
         <textarea
           ref={composer}
           className="ag-input"
@@ -284,7 +291,7 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
         {running !== null ? <p className="ask-note">{STOP_NOTE}</p> : null}
       </div>
 
-      {missing.anthropic ? <KeyCallout message={NO_ANTHROPIC_KEY} /> : null}
+      {missing.anthropic ? <ConnectAnthropic locale={locale} /> : null}
       {missing.seats ? <KeyCallout message={NO_SEATS_KEY} /> : null}
       {state.full !== null ? (
         <div className="ask-callout">
@@ -326,6 +333,42 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
         <p className="ask-note">{CONVERSATION_NOTE}</p>
       </div>
     </div>
+  );
+}
+
+export const CONNECT_ANTHROPIC: Record<Locale, { title: string; body: string; sent: string; add: string }> = {
+  en: {
+    title: "Connect Anthropic",
+    body: "AI assistance uses your own Anthropic API key. Search, results and watches work without it.",
+    sent: "When you ask, your question, the earlier questions and answers in this conversation, the search you include and the seats.aero results Ask reads go to Anthropic, which bills your key.",
+    add: "Add an Anthropic key",
+  },
+  zh: {
+    title: "连接 Anthropic",
+    body: "AI 辅助使用你自己的 Anthropic API 密钥。查票、结果和关注不需要它。",
+    sent: "提问时，你的问题、本次对话中之前的问答、你附带的查询，以及 AI 辅助读取的 seats.aero 结果会发往 Anthropic，并由 Anthropic 按此密钥计费。",
+    add: "添加 Anthropic 密钥",
+  },
+};
+
+/**
+ * The first AI entry without an Anthropic key (T11; spec §16: the key waits until here): what connecting means, in
+ * the screen's language, and the way to add one. An expected, optional step, not a failure: a plain region with a
+ * heading, not an alert. Nothing is sent to Anthropic until a key is added and a question asked.
+ */
+function ConnectAnthropic({ locale }: { locale: Locale }) {
+  const c = CONNECT_ANTHROPIC[locale];
+  return (
+    <section aria-labelledby="ask-connect-title" className="ask-connect" lang={langTag(locale)}>
+      <h2 id="ask-connect-title" className="ask-connect-title">
+        {c.title}
+      </h2>
+      <p>{c.body}</p>
+      <p>{c.sent}</p>
+      <Link to="/settings/anthropic" className="ag-button ag-button-primary">
+        {c.add}
+      </Link>
+    </section>
   );
 }
 

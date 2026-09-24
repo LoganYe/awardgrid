@@ -32,9 +32,10 @@ import type { QueryDraft } from "@awardgrid/core/workspace/types";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useLocation, useNavigate, useOutletContext, useSearchParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { langTag, useLocale } from "../app/locale";
 import { AirportField } from "../components/query/AirportField";
 import { DateRuleField } from "../components/query/DateRuleField";
-import { EDITOR, fieldErrorText } from "../components/query/labels";
+import { EDITOR_COPY, fieldErrorText } from "../components/query/labels";
 import { TextSearch } from "../components/query/TextSearch";
 import { Button, Chip, Icon, IconButton, Sheet, Switch, TextField } from "../components/ui";
 
@@ -75,6 +76,8 @@ function blankDraft(today: string, sortBy: QueryObject["sort_by"]): QueryDraft {
 
 export function QueryEditorScreen() {
   const services = useOutletContext<AppServices>();
+  const locale = useLocale(services);
+  const EDITOR = EDITOR_COPY[locale];
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const section = params.get("section");
@@ -99,7 +102,7 @@ export function QueryEditorScreen() {
   const dirty = !sameDraft(initial, draft) || pending.origins.trim() !== "" || pending.destinations.trim() !== "";
   const errorFor = (field: DraftField) => {
     const e = errors.find((x) => x.field === field);
-    return e ? fieldErrorText(field, e.code) : null;
+    return e ? fieldErrorText(field, e.code, locale) : null;
   };
   const set = (patch: Partial<QueryObject>) => setDraft((d) => ({ ...d, query: { ...d.query, ...patch } }));
   // An error goes once its field changes; the rest stay until the next submit checks them again.
@@ -182,7 +185,7 @@ export function QueryEditorScreen() {
   };
 
   return (
-    <div className="query-editor">
+    <div className="query-editor" lang={langTag(locale)}>
       <header className="query-editor-header">
         <IconButton icon="chevron-left" label={EDITOR.back} onClick={back} />
         <h1 ref={heading} tabIndex={-1} className="query-editor-title">
@@ -193,11 +196,20 @@ export function QueryEditorScreen() {
       <div className="query-editor-body">
         <p className="query-editor-intro">{EDITOR.intro}</p>
 
-        <TextSearch primary={false} busy={typing.busy} error={typing.error} initial="" onSearch={(text) => void searchByText(text)} />
+        <TextSearch
+          primary={false}
+          busy={typing.busy}
+          error={typing.error}
+          errorLang={locale === "en" ? undefined : "en"}
+          initial=""
+          locale={locale}
+          onSearch={(text) => void searchByText(text)}
+        />
 
         <AirportField
           id={FIELD_FOCUS.origins}
           label={EDITOR.origins}
+          lang={locale}
           codes={draft.query.origins}
           text={pending.origins}
           onTextChange={(text) => {
@@ -213,6 +225,7 @@ export function QueryEditorScreen() {
         <AirportField
           id={FIELD_FOCUS.destinations}
           label={EDITOR.destinations}
+          lang={locale}
           codes={draft.query.destinations}
           text={pending.destinations}
           onTextChange={(text) => {
@@ -229,6 +242,7 @@ export function QueryEditorScreen() {
           id={FIELD_FOCUS.dates}
           value={draft.dates}
           today={today}
+          locale={locale}
           error={errorFor("dates")}
           onChange={(dates) => {
             setDraft((d) => ({ ...d, dates }));
@@ -253,7 +267,7 @@ export function QueryEditorScreen() {
                   clear("cabins");
                 }}
               >
-                {cabinName(cabin, "en")}
+                {cabinName(cabin, locale)}
               </Chip>
             ))}
           </div>
@@ -288,7 +302,7 @@ export function QueryEditorScreen() {
               </option>
             ))}
             {EDITOR.mixedOptions.some(([pct]) => pct === draft.query.min_cabin_pct) ? null : (
-              <option value={String(draft.query.min_cabin_pct)}>{`At least ${draft.query.min_cabin_pct}% of the distance`}</option>
+              <option value={String(draft.query.min_cabin_pct)}>{EDITOR.mixedOther(draft.query.min_cabin_pct)}</option>
             )}
           </select>
           <p id="query-mixed-help" className="ag-field-help">
@@ -352,7 +366,7 @@ export function QueryEditorScreen() {
         </div>
       </Sheet>
 
-      <Sheet open={confirmLeave} title={EDITOR.discardTitle} onClose={() => setConfirmLeave(false)}>
+      <Sheet open={confirmLeave} title={EDITOR.discardTitle} closeLabel={EDITOR.close} onClose={() => setConfirmLeave(false)}>
         <p>{EDITOR.discardBody}</p>
         <Button variant="primary" block onClick={() => setConfirmLeave(false)}>
           {EDITOR.keepEditing}

@@ -175,10 +175,14 @@ test("focus comes back to what opened the editor: a chip, or the summary even mi
   expect((await requestLog(page)).anthropic).toBe(0);
 });
 
-test("in Chinese, the parts still in English say so (the text search); the matrix speaks Chinese since T09", async ({ page }) => {
+test("in Chinese, the text search speaks Chinese since T11, and the matrix since T09", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "zh" });
   await expect(page.locator(".ag-results")).toHaveAttribute("lang", "zh-CN");
-  await expect(page.locator("#q").locator("xpath=ancestor::*[@lang][1]")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(page.locator("#q").locator("xpath=ancestor::*[@lang][1]")).toHaveAttribute("lang", "zh-CN");
+  await expect(page.getByLabel("输入文字查询")).toBeVisible();
+  await expect(page.getByRole("button", { name: "查询", exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: "示例" }).getByRole("button").first()).toHaveText("香港、上海到西雅图 未来30天 商务舱");
   await expect(page.getByRole("navigation", { name: "主导航" })).toBeVisible();
   await openScenario(page, "missing-values", "ios", { lang: "zh" });
   await page.getByTestId("results-view").getByText("矩阵", { exact: true }).click();
@@ -189,10 +193,25 @@ test("in Chinese, the parts still in English say so (the text search); the matri
   expect((await requestLog(page)).seats).toBe(0);
 });
 
-test("no key: the first search is refused before anything is sent, and says where to add one", async ({ page }) => {
+test("no key: there is no search to run, and the way to add one is a link; results already shown stay", async ({ page }) => {
+  // First run: the welcome, not a search box (T11).
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
-  await expect(page.getByText(/Add your own Pro key in/)).toBeVisible();
-  expect((await requestLog(page)).seats).toBe(0);
+  await expect(page.getByTestId("welcome")).toBeVisible();
+  await expect(page.getByRole("textbox")).toHaveCount(0);
+  // A key removed after a search: the results stay, "Search again" is off, and the callout links to the key page.
+  await openScenario(page, "complete", "ios", { lang: "en" });
+  await searchByText(page, "Synthetic HKG to SEA October business and first");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("link", { name: /seats\.aero Pro key/ }).click();
+  await page.getByRole("button", { name: "Remove key", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Remove", exact: true }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Search" }).click();
+  await expect(page.getByTestId("availability-list")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Search again" })).toBeDisabled();
+  const callout = page.getByRole("alert").filter({ hasText: "No seats.aero key on this device" });
+  await callout.getByRole("link", { name: "Connect seats.aero" }).click();
+  await expect(page.getByLabel("seats.aero Pro key")).toBeVisible();
+  expect((await requestLog(page)).seats).toBe(1);
 });
 
 for (const theme of ["light", "dark"] as const) {

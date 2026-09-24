@@ -46,6 +46,21 @@ describe("approved copy", () => {
       expect(text.zh, key).toBe(rows.get(key)!.zh);
     }
   });
+
+  it("every approved row is here (T11): one table, both languages, no key missing from either", () => {
+    expect(Object.keys(COPY).sort()).toEqual(copyFixture.rows.map((r) => r.key).sort());
+    for (const [key, text] of Object.entries(COPY)) {
+      expect(text.en.trim().length, key).toBeGreaterThan(0);
+      expect(text.zh.trim().length, key).toBeGreaterThan(0);
+    }
+  });
+
+  it("both languages carry the same placeholders, and copy() fills them", () => {
+    const names = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+    for (const [key, text] of Object.entries(COPY)) expect(names(text.zh), key).toEqual(names(text.en));
+    expect(copy("ai.selected", "en", { count: "2" })).toBe("Query and 2 selected options will be sent.");
+    expect(copy("ai.selected", "zh", { count: "2" })).toBe("附带查询条件及2个所选选项。");
+  });
 });
 
 describe("fees and seats", () => {

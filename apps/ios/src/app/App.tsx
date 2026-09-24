@@ -14,13 +14,15 @@ import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { NavLink, Outlet, RouterProvider, createHashRouter, useLocation } from "react-router";
 import { type AppServices, type BootstrapOptions, bootstrap } from "./bootstrap";
 import { RESULTS } from "../components/results/copy";
-import { Icon, type IconName } from "../components/ui";
-import { langTag } from "./locale";
+import { Icon, type IconName, applyThemePreference } from "../components/ui";
+import { installKeyboardInset } from "./keyboard";
+import { langTag, useLocale } from "./locale";
 import { AskScreen } from "../screens/AskScreen";
 import { QueryEditorScreen } from "../screens/QueryEditorScreen";
 import { DetailScreen } from "../screens/DetailScreen";
+import { ExampleScreen } from "../screens/OnboardingScreen";
 import { SearchScreen } from "../screens/SearchScreen";
-import { SettingsScreen } from "../screens/SettingsScreen";
+import { AnthropicKeyScreen, SeatsKeyScreen, SettingsScreen } from "../screens/SettingsScreen";
 import { WatchesScreen } from "../screens/WatchesScreen";
 
 /**
@@ -80,7 +82,8 @@ export function FullPage({ services }: { services: AppServices }) {
  */
 export function Chrome({ services }: { services: AppServices }) {
   const unseen = useUnseenCount(services);
-  const t = RESULTS[services.locale];
+  const locale = useLocale(services);
+  const t = RESULTS[locale];
   const { pathname } = useLocation();
   // An option's details (T10) open over the Search screen, which stays as it is underneath: same scroll, same chrome.
   const detailOpen = pathname.startsWith("/detail/");
@@ -106,9 +109,10 @@ export function Chrome({ services }: { services: AppServices }) {
     <div className="app-shell">
       <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(place, e.currentTarget.scrollTop)}>
         <Outlet context={services} />
-        {onSearch ? null : <p className="app-attribution">Data: seats.aero · your own keys, on this device</p>}
+        {/* Not on Search (its status line says it), Settings (its About says it) or the example (made up, not seats.aero's). */}
+        {onSearch || place === "/settings" || place === "/example" ? null : <p className="app-attribution">{t.attribution}</p>}
       </main>
-      <nav className="app-tabs" aria-label={t.tabsLabel} lang={langTag(services.locale)} inert={detailOpen || undefined}>
+      <nav className="app-tabs" aria-label={t.tabsLabel} lang={langTag(locale)} inert={detailOpen || undefined}>
         {tabs.map((tab) => (
           <NavLink key={tab.to} to={tab.to} end={tab.to === "/"} className="app-tab">
             <Icon name={tab.icon} />
@@ -126,6 +130,21 @@ export function Chrome({ services }: { services: AppServices }) {
       </nav>
     </div>
   );
+}
+
+/**
+ * What the whole app follows, whichever route is shown (T11): the appearance and language chosen in Settings, on
+ * <html> so a sheet or anything else outside a screen's own root has them too, and the keyboard's height.
+ */
+export function ShellEffects({ services }: { services: Pick<AppServices, "settings" | "locale"> }) {
+  const locale = useLocale(services);
+  const theme = useSyncExternalStore(services.settings.subscribe, services.settings.theme, services.settings.theme);
+  useLayoutEffect(() => applyThemePreference(theme), [theme]);
+  useLayoutEffect(() => {
+    document.documentElement.lang = langTag(locale);
+  }, [locale]);
+  useEffect(() => installKeyboardInset(), []);
+  return null;
 }
 
 /** The Search screen with no option's details open: nothing over the results. */
@@ -211,6 +230,9 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
                 { path: "ask", element: <AskScreen /> },
                 { path: "watches", element: <WatchesScreen /> },
                 { path: "settings", element: <SettingsScreen /> },
+                { path: "settings/seats", element: <SeatsKeyScreen /> },
+                { path: "settings/anthropic", element: <AnthropicKeyScreen /> },
+                { path: "example", element: <ExampleScreen /> },
                 ...(ProbesScreen
                   ? [
                       {
@@ -246,5 +268,10 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
 
   if (!services || !router) return <div style={{ padding: 24, color: "var(--fg-muted)" }}>Starting…</div>;
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <ShellEffects services={services} />
+      <RouterProvider router={router} />
+    </>
+  );
 }

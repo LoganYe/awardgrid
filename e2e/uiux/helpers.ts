@@ -161,7 +161,8 @@ export async function searchByText(page: Page, text: string): Promise<void> {
   const before = Number(await root.getAttribute("data-revision"));
   if (await page.getByTestId("query-summary").isVisible()) await page.getByTestId("query-summary").getByRole("link").click();
   await page.locator("#q").fill(text);
-  await page.getByRole("button", { name: /^Run/ }).click();
+  // Run, or 查询 on a Chinese screen (T11).
+  await page.getByTestId("text-search-run").click();
   await page.waitForFunction(
     (rev) => {
       const refused = document.querySelector("#q-error, .ag-results [role='alert']");

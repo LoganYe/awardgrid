@@ -33,6 +33,8 @@ import { type ApiResult, type FindValue, type ParsedText, SearchEngine } from ".
 import { createSearchPort } from "../workspace/search-port";
 import { searchViewFromSnapshot } from "../workspace/snapshot-view";
 import { createDetailService, type DetailService } from "../workspace/detail-service";
+import { SettingsStore } from "./settings-store";
+import type { KeyCheckOutcome } from "@awardgrid/core/seatsaero/key-check";
 import { SlotFileStorage } from "../workspace/slot-storage";
 import { type PersistResult, WorkspaceStore } from "../workspace/workspace-store";
 import { type WatchCheckResult, checkWatches } from "../watch/runner";
@@ -59,6 +61,11 @@ export interface AppServices {
    */
   details: DetailService;
   /**
+   * Check a seats.aero key before it is saved (T11): one call through the engine's quota and transport. Only on the
+   * user's "Check and save"; never to draw a screen.
+   */
+  checkSeatsKey(draft: string): Promise<KeyCheckOutcome>;
+  /**
    * The Search screen's text search, through the workspace: the text is parsed (nothing sent), the parsed query
    * runs as a workspace revision on the same engine path as every structured query, and the answer is returned in
    * the shape the screen already renders. A parse failure, or no key, never starts a run.
@@ -79,8 +86,10 @@ export interface AppServices {
   lastWorkspaceSave(): PersistResult | null;
   /** The app's clock (injected in tests and the fixture host): screens date things with it, not with new Date(). */
   now(): Date;
-  /** The language the translated screens speak (UI/UX v1 T07; the setting arrives in T11). */
+  /** The device's language (UI/UX v1 T07): what the screens speak until one is chosen in Settings. */
   locale: Locale;
+  /** The language and appearance chosen in Settings (T11); screens read the language with `useLocale`. */
+  settings: SettingsStore;
   /**
    * Persist the snapshots and Ask's conversation. The quota and watch writes are skipped when nothing moved.
    * cache.json is written on every call, and so is ask.json whenever there is a conversation, whole, so a long
@@ -239,6 +248,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     now,
   });
   await workspace.restore();
+  const deviceLocale = opts.locale ?? detectLocale(typeof navigator === "undefined" ? undefined : navigator.language);
+  const settings = new SettingsStore({ storage: new SlotFileStorage(snapshots.files), deviceLocale });
+  await settings.restore();
   let lastWorkspaceSave: PersistResult | null = null;
 
   const listeners = new Set<() => void>();
@@ -345,6 +357,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     ask,
     workspace,
     details,
+    checkSeatsKey: (draft) => engine.checkKey(draft),
     searchText,
     prepareText: async (text) => engine.parseText(text, await readKey(keys)),
     runParsed: (text, parsed) => runTyped({ text, parsed }),
@@ -352,7 +365,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     lastSearch,
     lastWorkspaceSave: () => lastWorkspaceSave,
     now,
-    locale: opts.locale ?? detectLocale(typeof navigator === "undefined" ? undefined : navigator.language),
+    locale: deviceLocale,
+    settings,
     persist,
     async clearCache() {
       // Memory first: if the file went first and a persist() landed in between, it would write

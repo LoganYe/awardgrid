@@ -118,7 +118,12 @@ const isDisabled = (attrs: string) => /\sdisabled=""/.test(attrs);
 describe("no key on file", () => {
   it("without an Anthropic key: the notice with a way to Settings, and the composer disabled before any question", () => {
     const html = render(state(), { keys: { anthropic: false, seats: true }, last: LAST_SEARCH });
-    expect(html).toContain(keyCallout(labels.NO_ANTHROPIC_KEY));
+    // T11: the first AI entry without a key says what connecting Anthropic means, and links to its settings page — a
+    // setup step in a labelled region, not an alert.
+    expect(html).toContain('<section aria-labelledby="ask-connect-title" class="ask-connect"');
+    expect(html).toContain('<h2 id="ask-connect-title" class="ask-connect-title">Connect Anthropic</h2>');
+    expect(html).not.toMatch(/role="alert"[^>]*class="[^"]*ask-connect/);
+    expect(html).toMatch(/<a class="ag-button ag-button-primary" href="\/settings\/anthropic"[^>]*>Add an Anthropic key<\/a>/);
     expect(html).not.toContain(labels.NO_SEATS_KEY);
     expect(isDisabled(textarea(html))).toBe(true);
     expect(isDisabled(button(html, labels.ASK_BUTTON).attrs)).toBe(true);

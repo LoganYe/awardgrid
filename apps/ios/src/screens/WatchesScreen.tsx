@@ -5,50 +5,46 @@
  * cadence the OS will not honour is the one lie this product must not tell." So this screen says
  * when a watch was last checked, never when it will be; it says a change is found when the user
  * opens the app, not when the change happens; and it says there is no background check, because
- * there is none (./../watch/capabilities.ts). `honesty.test.ts` fails CI on any string here
+ * there is none (./../watch/capabilities.ts). Its words, in English and Chinese, are in ./watches-copy.ts;
+ * `honesty.test.ts` fails CI on any string there
  * that promises a cadence or claims a background check.
  *
  * Changes are shown as "since you last looked" and cleared once this screen has been opened. They
  * accumulate across checks until then (`Watch.unseen`), because each check moves the baseline and a
  * quiet check would otherwise erase an earlier check's news.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
 import { type Watch, sinceLastCheck } from "@awardgrid/core/watch";
 import type { AppServices } from "../app/bootstrap";
+import { WithTail } from "../app/WithTail";
+import { langTag, useLocale } from "../app/locale";
+import { Button, Sheet } from "../components/ui";
 import { WATCH_CHECKS } from "../watch/capabilities";
+import { WATCHES, type WatchesCopy } from "./watches-copy";
 
-function ago(iso: string, now: Date): string {
+function ago(iso: string, now: Date, w: WatchesCopy): string {
   const s = sinceLastCheck(iso, now);
-  if (!s || (s.unit === "minute" && s.value < 1)) return "just now";
-  const unit = s.unit === "minute" ? "min" : s.unit === "hour" ? "h" : "d";
-  return `${s.value} ${unit} ago`;
+  if (!s || (s.unit === "minute" && s.value < 1)) return w.justNow;
+  return w.ago(s.value, s.unit === "minute" ? "minute" : s.unit === "hour" ? "hour" : "day");
 }
 
-function statusLine(w: Watch, now: Date): string {
-  if (!w.enabled) return "Paused. It is not checked until you resume it.";
-  const r = w.lastResult;
-  if (r?.status === "failed" && (!w.lastCheckedAt || r.at > w.lastCheckedAt)) {
-    return `Last attempt failed ${ago(r.at, now)}: ${r.message ?? "unknown error"}`;
+/** The status sentence, and the engine's own (English) message it ends with, if any. */
+function statusLine(watch: Watch, now: Date, w: WatchesCopy): { text: string; tail?: string } {
+  if (!watch.enabled) return { text: w.paused };
+  const r = watch.lastResult;
+  if (r?.status === "failed" && (!watch.lastCheckedAt || r.at > watch.lastCheckedAt)) {
+    return r.message ? { text: w.failed(ago(r.at, now, w), r.message), tail: r.message } : { text: w.failed(ago(r.at, now, w), w.unknownError) };
   }
-  if (!w.lastCheckedAt) return "Not checked yet.";
-  if (r?.status === "checked" && r.firstCheck) {
-    return `Baseline saved ${ago(w.lastCheckedAt, now)}. Later checks report what changes.`;
-  }
-  return `Last checked ${ago(w.lastCheckedAt, now)}`;
-}
-
-function unseenLine(u: NonNullable<Watch["unseen"]>): string {
-  const parts = [
-    u.new ? `${u.new} new` : null,
-    u.dropped ? `${u.dropped} gone` : null,
-    u.cheaper ? `${u.cheaper} cheaper` : null,
-  ].filter(Boolean);
-  return `${parts.join(", ")} since you last looked`;
+  if (!watch.lastCheckedAt) return { text: w.notChecked };
+  if (r?.status === "checked" && r.firstCheck) return { text: w.baseline(ago(watch.lastCheckedAt, now, w)) };
+  return { text: w.lastChecked(ago(watch.lastCheckedAt, now, w)) };
 }
 
 export function WatchesScreen() {
   const services = useOutletContext<AppServices>();
+  const locale = useLocale(services);
+  const t = WATCHES[locale];
   const read = useCallback(() => services.watches.all().map((w) => ({ ...w })), [services]);
   const [watches, setWatches] = useState<Watch[]>(read);
   // What was unseen when the screen opened, kept for display after it is marked seen below.
@@ -79,14 +75,19 @@ export function WatchesScreen() {
     [services],
   );
 
+  // Stopping asks first, in the screen's language (a native confirm's buttons are always English).
+  const [stopping, setStopping] = useState<Watch | null>(null);
+  const title = useRef<HTMLHeadingElement>(null);
   const remove = useCallback(
     async (w: Watch) => {
-      if (!window.confirm(`Stop watching "${w.name}"?`)) return;
+      setStopping(null);
       services.watches.remove(w.id);
       await services.persist();
       services.notifyWatchesChanged();
+      // Its row, and the button that asked, are gone: focus goes to the page title.
+      window.requestAnimationFrame(() => title.current?.focus());
     },
-    [services],
+    [services, setStopping],
   );
 
   const lastRun = services.lastWatchRun();
@@ -94,35 +95,32 @@ export function WatchesScreen() {
     const outcome = lastRun.find((r) => r.watchId === id)?.outcome;
     if (outcome?.status !== "skipped") return null;
     // Only the skips a user can act on. "Checked recently" and "paused" are already visible.
-    if (outcome.reason === "no_key") return "Not checked: add your seats.aero key in Settings.";
-    if (outcome.reason === "quota_low") {
-      return "Not checked: fewer than 25 seats.aero calls are left today, and those are kept for your own searches.";
-    }
+    if (outcome.reason === "no_key") return t.skipNoKey;
+    if (outcome.reason === "quota_low") return t.skipQuota;
     return null;
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", maxWidth: 720, margin: "0 auto" }}>
+    <div lang={langTag(locale)} style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", maxWidth: 720, margin: "0 auto" }}>
       <section data-surface="rich" className="ag-surface">
-        <p className="ag-eyebrow">Watches</p>
-        <h1 className="ag-title">Searches you are watching</h1>
+        <p className="ag-eyebrow">{t.eyebrow}</p>
+        <h1 ref={title} tabIndex={-1} className="ag-title">
+          {t.title}
+        </h1>
         {WATCH_CHECKS.inBackground ? null : (
           <>
-            <p style={{ margin: "0 0 var(--space-2)" }}>Each watch is checked when you open the app, and at no other time.</p>
-            <p style={{ margin: "0 0 var(--space-2)", color: "var(--fg-muted)" }}>
-              There is no background check, so a change is found the next time you open the app, not when it happens.
-            </p>
+            <p style={{ margin: "0 0 var(--space-2)" }}>{t.onOpen}</p>
+            <p style={{ margin: "0 0 var(--space-2)", color: "var(--fg-muted)" }}>{t.noBackground}</p>
           </>
         )}
-        <p style={{ margin: 0, color: "var(--fg-muted)", fontSize: "var(--type-meta)" }}>
-          A check sooner than 45 minutes after the previous one is skipped: seats.aero&apos;s cached data could not be any
-          newer, and skipping keeps your daily calls for your own searches.
-        </p>
+        <p style={{ margin: 0, color: "var(--fg-muted)", fontSize: "var(--type-meta)" }}>{t.skipSoon}</p>
       </section>
 
       {watches.length === 0 ? (
         <p className="ag-surface" style={{ margin: 0 }}>
-          You are not watching any searches yet. Run a search, then choose <strong>Watch this search</strong>.
+          {t.empty.before}
+          <strong>{t.empty.action}</strong>
+          {t.empty.after}
         </p>
       ) : (
         <ul data-surface="flat" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 0 }}>
@@ -138,11 +136,11 @@ export function WatchesScreen() {
                   <span style={{ display: "block", color: "var(--fg-muted)", fontSize: "var(--type-meta)" }}>{w.text}</span>
                 ) : null}
                 <span className="tabular" style={{ display: "block", marginTop: "var(--space-1)", fontSize: "var(--type-meta)" }}>
-                  {statusLine(w, now)}
+                  <WithTail {...statusLine(w, now, t)} tailLang={locale === "en" ? undefined : "en"} />
                 </span>
                 {unseen ? (
                   <span className="tabular" style={{ display: "block", color: "var(--accent)", fontWeight: 600 }}>
-                    {unseenLine(unseen)}
+                    {t.unseen(unseen)}
                   </span>
                 ) : null}
                 {skip ? (
@@ -155,10 +153,10 @@ export function WatchesScreen() {
                     onClick={() => void toggle(w)}
                     style={{ padding: "6px 12px", borderRadius: "var(--radius-control)", border: "1px solid var(--line)", background: "transparent" }}
                   >
-                    {w.enabled ? "Pause" : "Resume"}
+                    {w.enabled ? t.pause : t.resume}
                   </button>
                   <button
-                    onClick={() => void remove(w)}
+                    onClick={() => setStopping(w)}
                     style={{
                       padding: "6px 12px",
                       borderRadius: "var(--radius-control)",
@@ -167,7 +165,7 @@ export function WatchesScreen() {
                       color: "var(--error)",
                     }}
                   >
-                    Stop watching
+                    {t.stop}
                   </button>
                 </div>
               </li>
@@ -175,6 +173,15 @@ export function WatchesScreen() {
           })}
         </ul>
       )}
+      <Sheet open={stopping !== null} title={stopping ? t.confirmStop(stopping.name) : ""} closeLabel={t.close} onClose={() => setStopping(null)}>
+        <p style={{ margin: 0 }}>{t.confirmStopBody}</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--ag-space-2)", marginTop: "var(--ag-space-3)" }}>
+          <Button variant="danger" onClick={() => stopping && void remove(stopping)}>
+            {t.stop}
+          </Button>
+          <Button onClick={() => setStopping(null)}>{t.keepWatching}</Button>
+        </div>
+      </Sheet>
     </div>
   );
 }

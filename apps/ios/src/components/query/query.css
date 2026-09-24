@@ -10,7 +10,8 @@
 .query-editor {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  /* Above the software keyboard when it is up (app/keyboard.ts, T11): the submit stays reachable while typing. */
+  height: calc(100dvh - var(--ag-keyboard-inset, 0px));
   background: var(--ag-canvas);
   color: var(--ag-text);
 }
@@ -220,6 +221,11 @@
   padding: var(--ag-space-3) var(--ag-gutter) calc(var(--ag-space-3) + env(safe-area-inset-bottom));
   border-top: 1px solid var(--ag-divider);
   background: var(--ag-surface);
+}
+
+/* The keyboard covers the home indicator, so its inset is not added above it. */
+:root[data-keyboard="open"] .query-editor-footer {
+  padding-bottom: var(--ag-space-3);
 }
 
 .query-editor-note {

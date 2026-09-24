@@ -34,7 +34,7 @@ import type { TripSummary } from "@awardgrid/core/seatsaero/trips";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useLocation, useNavigate, useOutletContext, useParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
-import { langTag } from "../app/locale";
+import { langTag, useLocale } from "../app/locale";
 import { RESULTS } from "../components/results/copy";
 import { Button, Icon, IconButton, Notice } from "../components/ui";
 import type { DetailLoaded } from "../workspace/detail-service";
@@ -61,7 +61,7 @@ async function copyText(text: string): Promise<boolean> {
 
 export function DetailScreen() {
   const services = useOutletContext<AppServices>();
-  const locale = services.locale;
+  const locale = useLocale(services);
   const t = RESULTS[locale];
   const d = t.detail;
   const params = useParams();

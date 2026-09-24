@@ -12,10 +12,13 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { Chrome } from "./App";
 import type { AppServices } from "./bootstrap";
+import { SettingsStore } from "./settings-store";
 
 function render({ unseen = 0, locale = "en", path = "/" }: { unseen?: number; locale?: "en" | "zh"; path?: string } = {}): string {
   const watches = Array.from({ length: 20 }, (_, i) => ({ unseen: i < unseen ? { new: 1, dropped: 0, cheaper: 0, since: "2026-10-01T00:00:00.000Z" } : null }));
-  const services = { watches: { all: () => watches }, onWatchesChanged: () => () => {}, locale } as unknown as AppServices;
+  // The language comes from the settings store (T11), here following the device's.
+  const settings = new SettingsStore({ deviceLocale: locale });
+  const services = { watches: { all: () => watches }, onWatchesChanged: () => () => {}, locale, settings } as unknown as AppServices;
   return renderToStaticMarkup(createElement(MemoryRouter, { initialEntries: [path] }, createElement(Chrome, { services })));
 }
 

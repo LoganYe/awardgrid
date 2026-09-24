@@ -1,0 +1,305 @@
+/*
+ * Settings (T11; docs/04 S08): groups 24 apart, a 13/18 group label, cards with radius 16 and rows of at least 56 with
+ * 16 padding; radio rows 44; the key field 48 with a 44 Paste beside it; Check and save 48.
+ */
+.ag-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-4);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.ag-settings-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+/* A page title takes focus on arrival (T11): ringed only for the keyboard. */
+.ag-settings-title:focus {
+  outline: none;
+}
+
+.ag-settings-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+}
+
+.ag-settings-group + .ag-settings-group {
+  margin-block-start: var(--ag-space-2);
+}
+
+.ag-settings-label {
+  margin: 0;
+  padding-inline: var(--ag-space-1);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text-secondary);
+}
+
+.ag-settings-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ag-divider);
+  border-radius: 16px;
+  background: var(--ag-surface);
+  overflow: hidden;
+}
+
+.ag-settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-3);
+  min-height: 56px;
+  padding: var(--ag-space-2) var(--ag-space-4);
+  color: var(--ag-text);
+  text-decoration: none;
+}
+
+.ag-settings-row + .ag-settings-row,
+.ag-radio-rows + .ag-radio-rows {
+  border-top: 1px solid var(--ag-divider);
+}
+
+.ag-settings-row:focus-visible,
+.ag-settings-back:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+.ag-settings-row .ag-icon,
+.ag-settings-row svg {
+  flex: none;
+  color: var(--ag-text-secondary);
+}
+
+/*
+ * Label and value on one line while the label's longest word and the whole value fit; otherwise the value goes on
+ * its own line under the label (320 wide, larger text). The label never runs under the value.
+ */
+.ag-settings-row-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--ag-space-3);
+  row-gap: calc(var(--ag-space-1) / 2);
+  min-width: 0;
+}
+
+.ag-settings-row-text {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: min-content;
+  max-width: 100%;
+}
+
+.ag-settings-row-label {
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.ag-settings-row-note,
+.ag-settings-value,
+.ag-settings-muted,
+.ag-settings-status {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-settings-value {
+  flex: 0 1 auto;
+  max-width: 100%;
+  margin-inline-start: auto;
+  text-align: end;
+}
+
+.ag-radio-rows {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ag-space-2) var(--ag-space-4);
+}
+
+.ag-radio-rows-label {
+  margin: 0 0 var(--ag-space-1);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-radio-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-3);
+  min-height: var(--ag-touch-target);
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  cursor: pointer;
+}
+
+.ag-radio-row input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.ag-radio-row input:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-settings-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-4);
+}
+
+.ag-settings-copy {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.ag-settings-status {
+  margin: 0;
+}
+
+.ag-settings-status:empty {
+  height: 0;
+  margin-top: calc(-1 * var(--ag-space-3));
+  overflow: hidden;
+}
+
+.ag-settings-fail {
+  color: var(--ag-danger);
+}
+
+.ag-settings-on-file {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-settings-field-label {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-key-row {
+  display: flex;
+  gap: var(--ag-space-2);
+  align-items: stretch;
+}
+
+.ag-key-control {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  padding-inline: 12px;
+}
+
+.ag-key-paste {
+  flex: none;
+  min-height: var(--ag-touch-target);
+}
+
+.ag-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-2);
+  margin-top: var(--ag-space-3);
+}
+
+.ag-settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: var(--ag-touch-target);
+  align-self: flex-start;
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+  text-decoration: none;
+}
+
+/*
+ * The Anthropic key page (the section kept from before T11, its class names unchanged) in this page's type and
+ * geometry: text that grows with the text size, the 48 pt field, the page title.
+ */
+.ag-settings .settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+.ag-settings .settings-section p {
+  margin: 0;
+}
+
+/* On its own page the section's title is the page title (the older .settings-heading size does not apply). */
+.ag-settings .settings-heading.ag-settings-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-settings .settings-copy,
+.ag-settings .settings-note,
+.ag-settings .settings-on-file,
+.ag-settings .settings-results {
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.ag-settings .settings-copy,
+.ag-settings .settings-note {
+  color: var(--ag-text-secondary);
+}
+
+.ag-settings .settings-copy a {
+  color: var(--ag-accent);
+}
+
+.ag-settings .settings-on-file {
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text);
+}
+
+.ag-settings .settings-row {
+  margin: 0;
+  gap: var(--ag-space-2);
+}
+
+.ag-settings .settings-row .ag-input {
+  flex: 1 1 12em;
+  min-width: 0;
+  min-height: 48px;
+  padding-inline: 12px;
+}
+
+.ag-settings .settings-row .ag-button {
+  min-height: var(--ag-touch-target);
+}
+
+.ag-settings .settings-ok {
+  color: var(--ag-success);
+}
+
+.ag-settings .settings-fail {
+  color: var(--ag-danger);
+}

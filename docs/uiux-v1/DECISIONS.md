@@ -174,3 +174,68 @@ T10, docs/03 §4, docs/04 S04. Choices:
 - **One trusted way out** (`grid/deeplinks/trusted.ts`): https:// to a named host of two or more labels only (a trailing root dot ignored) — never javascript:, data:, capacitor: or http, no credentials, IP address or localhost, none of the characters the Ask link rule refuses — kept exactly as given: seats.aero's primary booking link for the option (the first when none is flagged), else the row's own, else the existing American search builder. seats.aero's other booking links are for other programs ("Book via …") and are never used. Its button names the host; the approved caveat stands directly above the bottom buttons whenever there is a link, loaded or not. Without one, "Copy search details" (approved copy) is the only bottom button; each copy is announced through a status region that is always present. One primary action at a time: loading itineraries until they are loaded, then the way out. Nothing says book, lock or ticketed.
 - The English link label is "Program website" (the approved "Copy search details" and this share a (358 − 8) / 2 column; the longer "Open program website" wrapped). No AI entry on the details page (T15) and no favourite button (T13) yet.
 - The fixture host's seats.aero stand-in now answers Get Trips with obviously synthetic itineraries (carrier "XX"), booking links on the reserved `.example` domain after an unsafe `javascript:` one, none for the zero-fees option, and a failure in failed-old — test-only.
+
+## U-037 · The approved copy stays in core `present.ts` COPY, not in the i18n dictionaries
+
+T11, plan 02 T11 ("i18n并入已有字典"). All 47 rows of the handoff's approved copy (`fixtures/copy.zh-en.json`, docs/05) are in core `present.ts` `COPY`, verbatim in both languages, with a test that every approved row is there and that each row's placeholders match across languages. They are not merged into `packages/core/src/lib/i18n/dictionaries/{en,zh}.ts`, because the dictionaries' own copy-rules test (an existing core test, which this work may not edit) forbids the em dash that the approved `demo.synthetic` row contains ("Illustrative data — not live availability"). Rewording an approved row to pass that test would change approved copy. The iOS shell reads approved rows through `copy(key, locale)`; its own words live in per-screen tables (`components/results/copy.ts`, `components/query/labels.ts`, `screens/settings-copy.ts`, `screens/watches-copy.ts`, the welcome and "Connect Anthropic" tables), each with English and Chinese checked by `apps/ios/src/locale-parity.test.ts`. The web keeps its dictionaries as they are (T18–T20).
+
+## U-038 · Settings is the five S08 groups, each key on its own page; the first run is one screen in place of Search
+
+T11, docs/04 S08, spec §16. Choices:
+
+- **Settings** (`SettingsScreen`): Data connection (the seats.aero Pro key row), AI (optional) (the Anthropic key row, "Only for AI assistance. Search works without it."), Appearance and language (theme System/Light/Dark and language English/中文 as native radios in labelled radio groups, 44 pt rows), Local data (the cache note and "Clear cached results"), About (what is sent where). A key row says "Key on file ending in XXXX" or "Not connected", and nothing until the Keychain has answered.
+- **Each key on its own page** (`/settings/seats`, `/settings/anthropic`), so a key is never typed on the long page.
+  - **The seats.aero page:**
+    - A labelled 48 pt password field, and "Paste", which reads the clipboard only when pressed.
+    - The approved `key.check_cost` sentence above the button.
+    - One primary "Check and save". It checks the key (one call, U-041) and saves it to the Keychain only when seats.aero accepted it. Every outcome, including an unexpected error, is said in words.
+    - Then "Start searching", shown only while no new key is being typed, and focused.
+  - **The Anthropic page:** the pre-T11 section with its class names, restyled with this page's type sizes (the text grows with the text size) and with its title as the page's h1.
+  - **Page titles** take focus on arrival. "Back to settings" returns focus to the row that opened the page.
+  - **Removing either key** asks first in a sheet that says what stops, what keeps working, and that today's call count is kept. A removal is reported only after the Keychain is read again and the key is gone; otherwise the sheet says the key is still there, or that the removal could not be confirmed. Focus then goes to the key field.
+- **Every sheet's close button** has a translated name ("Close" / "关闭"). `Sheet.closeLabel` is now required, so no sheet can fall back to an English default. Stopping a watch asks in such a sheet instead of `window.confirm`, whose native buttons are always English on iOS.
+- **First run** (`Welcome`, shown on the Search screen while there is no seats.aero key and nothing to show): one line on what the app does, "Connect seats.aero" (primary) and "View an example". The Anthropic key is not asked for there; it waits for the first AI entry, where Ask shows "Connect Anthropic" (in the screen's language) with the way to add a key. A key removed while results are shown leaves them, turns "Search again" off and says so with a "Connect seats.aero" link.
+- **The example** (`/example`) is made up in the shell: rows of an "Example program" / "示例计划", with the approved `demo.synthetic` notice above and below them, no source time, no link, nothing fetched, and no "Data: seats.aero" line (it is not seats.aero's data). Settings does not repeat that line either: its About group says it.
+- **What goes to Anthropic** is said in full wherever it is said before connecting (the "Connect Anthropic" panel, About): the question, the earlier questions and answers in the conversation, the search included, and the seats.aero results Ask reads. The "Connect Anthropic" panel is a setup step (a labelled region in a plain card), not an alert.
+- **Tests changed with it** (iOS tests may be updated with a recorded reason): `settings-anthropic.test.ts`'s route/markup test now checks the five groups in order and that no key is typed on the Settings page; the harness's no-key test expects the welcome instead of a disabled Run; its Anthropic positive control opens `/settings/anthropic` first; the mobile-results no-key test checks the welcome, then a removed key with results on screen; the T01 check that `<html lang>` stayed "en" now expects the app to set it (U-039).
+
+## U-039 · One language setting for the whole shell, set on <html>; Ask's own chrome stays English until T15–T17
+
+T11. The language and the appearance are device preferences in `app/settings-store.ts` (file namespace `settings-v1`, the same two-slot storage as the workspace): the device's language until one is chosen in Settings, changed in place without remounting, so what is on screen is kept. `ShellEffects` (App.tsx) applies both at the top, for every route, including the editor outside the tab chrome: the theme through `applyThemePreference`, and `document.documentElement.lang` so sheets and anything outside a screen's own root are read in the right language. Translated in T11: Settings and both key pages, the first run and the example, the query editor (labels, errors, place list, date rule, mixed cabin, programs, discard sheet — approved rows by key), the text search (label, button, and Chinese examples that the deterministic parser reads with nothing missing), Watches, the no-key callout, and the chrome's data line. Engine messages from core (parse failures, run failures) are English and are marked `lang="en"` where shown on a Chinese screen. **Not translated here:** the Ask screen's own chrome (`ask/labels.ts`, 80+ strings bound to its tests and its spend/stop honesty rules) stays English, marked `lang="en"` on a Chinese screen, and is translated with its rework in T15–T17. A21 is therefore partial until then (ACCEPTANCE).
+
+## U-040 · The keyboard is followed through visualViewport, with no keyboard plugin
+
+T11, plan 02 T11 ("query submit与AI composer跟随visual viewport，不锁死底部"). WKWebView shrinks only the visual viewport when the keyboard opens. `app/keyboard.ts` works as follows:
+- **Whether the keyboard is up** comes from its own height, `innerHeight − visualViewport.height`, which does not change when WebKit pans the view to a field. It must be at least 120 px: smaller than any iPhone keyboard, larger than an iPad accessory bar. While pinch-zoomed, the keyboard is treated as closed.
+- **The covered height** is `innerHeight − height − offsetTop`, which is smaller when the view is panned. It is published as `--ag-keyboard-inset`, and `data-keyboard="open"` is set on <html> while the keyboard is up.
+- **Layout:** the query editor and the tab chrome size themselves to the space above the keyboard, so "Find award options" stays visible and reachable while typing. The tab bar is hidden while the keyboard is up, as a native keyboard covers it.
+- **When the keyboard opens** (only then, not on every pan), the field being typed in is scrolled back into view within its scroller, so a footer that moved up never covers it. Ask's text box and its Ask/Stop button are then brought up together (`useKeepInView`).
+
+No `@capacitor/keyboard` dependency was added. This was verified in the browser with a stand-in visualViewport, including a panned 260 pt keyboard at 320 × 568. The tests fail when the reveal or the Ask hook is removed. A real keyboard on the Simulator or a device is not verified.
+
+## U-041 · Checking a seats.aero key costs one counted call and saves only an accepted key
+
+T11, docs/04 S08. Core `seatsaero/key-check.ts` sends the smallest documented Cached Search (SEA→NRT, today, take 10). Before sending, it reserves one call on the device's quota; it releases that reservation only if no request reached the transport. The outcomes:
+- 401/403: "invalid".
+- A transport failure or timeout: "network". The call stays counted, because the request may have arrived, and the screen says the check may still count.
+- Any other failure: "unknown".
+- A 200 whose body does not parse: still proves the key was accepted.
+- Two outcomes send nothing and say so:
+  - "malformed": the key has a space or a line break inside it. seats.aero is not asked, so it is not said to have refused the key.
+  - "quota": the day's calls are used up. Nothing is sent, and the screen says the count starts again at midnight UTC.
+- Nothing here throws. `SearchEngine.checkKey` also turns a failing quota store into "unknown", and the screen catches anything else.
+
+The shell's `SearchEngine.checkKey` runs it with the engine's own quota and native transport. The Settings page writes the key to the Keychain only after `ok`, and never shows it again except for its last four characters. The key is checked only when the user presses the button. It is ported from the web's `validateSeatsAeroKey`, which is left as it is.
+
+## U-042 · Choosing Light or Dark does not yet set the iOS status bar
+
+T11 review (L/F4). The appearance chosen in Settings is applied to the page (`data-theme` on <html>). The native status bar follows the system appearance: Info.plist has `UIViewControllerBasedStatusBarAppearance`, and Capacitor's bridge view controller returns the default style. No status-bar plugin is installed, and none is added (no new dependencies). So with Dark chosen on a device in Light mode, the clock and battery may be drawn dark on the dark header, and the reverse. Fixing it needs a few lines of native code in the app target: set `overrideUserInterfaceStyle`, or the status-bar style, from a message the page sends. Such code can only be checked on the Simulator or a device, where nothing has been run yet. It is carried to T21 (cross-size, accessibility, visual polish) as a known native gap. Until then, "System" is the default and matches the status bar.
+
+## U-043 · The honesty scan also reads the approved rows the shell renders through copy()
+
+T11 review (TEST-7). The shell's approved sentences come from core `present.ts` COPY through `copy("key", locale)`, and the scan of source strings saw only the key. `apps/ios/src/honesty.test.ts` now:
+- Reads every `copy()` call in the shell. The key must be a literal.
+- Scans each row it renders, in English and Chinese, for cadence promises and background claims.
+- Checks that COPY's web-only scheduled-check rows would fail the scan the moment the shell renders one.
+
+The scan's first catch was this task's own "Keep watching" / "继续关注", which reads as a continuity promise. It became "Keep this watch" / "保留此关注".

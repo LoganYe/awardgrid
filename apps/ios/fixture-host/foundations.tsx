@@ -131,10 +131,10 @@ export function FoundationsGallery() {
       <Button onClick={() => setOpen(true)}>Open sample sheet</Button>
       <Button onClick={() => setFilterOpen(true)}>Open filter sheet</Button>
       {vanishing ? null : <Button onClick={() => setVanishing(true)}>Open from a vanishing button</Button>}
-      <Sheet open={vanishing} title="Vanishing opener" onClose={() => setVanishing(false)}>
+      <Sheet open={vanishing} title="Vanishing opener" closeLabel="Close" onClose={() => setVanishing(false)}>
         <p>The button that opened this is gone.</p>
       </Sheet>
-      <Sheet open={filterOpen} title="Filter sheet" onClose={() => setFilterOpen(false)}>
+      <Sheet open={filterOpen} title="Filter sheet" closeLabel="Close" onClose={() => setFilterOpen(false)}>
         <TextField label="Search note" autoFocus />
         <SegmentedControl<Sort>
           label="Sort"
@@ -147,7 +147,7 @@ export function FoundationsGallery() {
           ]}
         />
       </Sheet>
-      <Sheet open={open} title="Sample sheet" onClose={() => setOpen(false)}>
+      <Sheet open={open} title="Sample sheet" closeLabel="Close" onClose={() => setOpen(false)}>
         <TextField label="Note" />
         <Button variant="primary" onClick={() => setOpen(false)}>
           Done

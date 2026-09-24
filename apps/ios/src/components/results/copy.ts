@@ -4,6 +4,7 @@
  * this file holds the screen's labels. apps/ios/src/honesty.test.ts reads it.
  */
 import type { Locale } from "../../app/locale";
+import { ASK_ABOUT_SEARCH } from "../../ask/labels";
 
 export interface ResultsCopy {
   title: string;
@@ -97,14 +98,16 @@ export interface ResultsCopy {
   searchAgain: string;
   watch: string;
   /** The link to Ask with this search as context. English: Ask's own label (ask/labels.ts ASK_ABOUT_SEARCH). */
-  askAbout: string | null;
+  askAbout: string;
   watchNeedsText: string;
   watching: string;
   alreadyWatching: string;
   watchLimit: string;
-  noKey: { before: string; settings: string; after: string };
+  noKey: { before: string; link: string; after: string };
   runFailed: Record<"no_key" | "quota" | "network" | "seatsaero" | "invalid_query" | "other", string>;
   quota: (used: number, limit: number) => string;
+  /** The data line at the end of every screen in the chrome but Search, which says it in its status line. */
+  attribution: string;
 }
 
 export const RESULTS: Record<Locale, ResultsCopy> = {
@@ -195,12 +198,12 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     newSearch: "Build a search",
     searchAgain: "Search again",
     watch: "Watch this search",
-    askAbout: null,
+    askAbout: ASK_ABOUT_SEARCH,
     watchNeedsText: "A watch keeps a search as its text, and this search has conditions its text cannot hold, so it cannot be watched yet.",
     watching: "Watching this search. It is checked when you open the app.",
     alreadyWatching: "You are already watching this search.",
     watchLimit: "You have reached the limit of 20 watches.",
-    noKey: { before: "No seats.aero key yet. Add your own Pro key in ", settings: "Settings", after: " — awardgrid has no key of its own and never will." },
+    noKey: { before: "No seats.aero key on this device, so search is off. ", link: "Connect seats.aero", after: " with your own Pro key: awardgrid has no key of its own." },
     runFailed: {
       no_key: "Add your seats.aero Pro API key in Settings.",
       quota: "Not enough seats.aero calls are left today for this search. It was not sent.",
@@ -210,6 +213,7 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
       other: "The search could not be completed.",
     },
     quota: (used, limit) => `seats.aero calls today: ${used} of ${limit}`,
+    attribution: "Data: seats.aero · your own keys, on this device",
   },
   zh: {
     title: "查票",
@@ -302,7 +306,7 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     watching: "已关注此查询。打开本应用时检查。",
     alreadyWatching: "你已关注此查询。",
     watchLimit: "关注数量已达上限 20 个。",
-    noKey: { before: "尚未添加 seats.aero 密钥。请在", settings: "设置", after: "中添加你自己的 Pro 密钥——awardgrid 没有也不会有自己的密钥。" },
+    noKey: { before: "本机没有 seats.aero 密钥，暂时无法查票。请", link: "连接 seats.aero", after: "，使用你自己的 Pro 密钥：awardgrid 没有自己的密钥。" },
     runFailed: {
       no_key: "请在设置中添加你的 seats.aero Pro API 密钥。",
       quota: "今日剩余的 seats.aero 调用不足以完成此查询，未发送。",
@@ -312,5 +316,6 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
       other: "查询未能完成。",
     },
     quota: (used, limit) => `今日 seats.aero 调用：${used} / ${limit}`,
+    attribution: "数据：seats.aero · 使用你自己的密钥，保存在本机",
   },
 };

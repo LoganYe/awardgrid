@@ -1,9 +1,9 @@
 /**
- * The shell's language (UI/UX v1 T07). The results screen speaks English or Chinese; the other screens are English
- * until T11, which adds the setting and moves every string into the dictionaries. Until then the language comes from
- * the device (or the test host), and only the screens that are translated mark themselves with it, so VoiceOver never
- * reads English text as Chinese.
+ * The shell's language (UI/UX v1 T07, T11). The device's language until one is chosen in Settings (app/settings-store);
+ * every screen that speaks it marks itself with `lang`, and a part still in English is marked `lang="en"`, so
+ * VoiceOver never reads English text as Chinese.
  */
+import { useCallback, useSyncExternalStore } from "react";
 import type { Locale } from "@awardgrid/core/workspace/present";
 
 export type { Locale } from "@awardgrid/core/workspace/present";
@@ -17,3 +17,15 @@ export function detectLocale(language: string | undefined): Locale {
 export function langTag(locale: Locale): string {
   return locale === "zh" ? "zh-CN" : "en";
 }
+
+/**
+ * The language a screen speaks now (T11): the one chosen in Settings, else the device's. A change re-renders the
+ * screen in place, so what is on it is kept. Services without a settings store (unit tests) speak their `locale`.
+ */
+export function useLocale(services: { locale?: Locale; settings?: { subscribe(listener: () => void): () => void; locale(): Locale } }): Locale {
+  const settings = services.settings;
+  const subscribe = useCallback((listener: () => void) => (settings ? settings.subscribe(listener) : () => {}), [settings]);
+  const read = () => (settings ? settings.locale() : (services.locale ?? "en"));
+  return useSyncExternalStore(subscribe, read, read);
+}
+

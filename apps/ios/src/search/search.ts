@@ -32,6 +32,7 @@ import { notFetchedPairsFrom } from "@awardgrid/core/seatsaero/not-fetched";
 import { Quota, QuotaExceededError } from "@awardgrid/core/seatsaero/quota";
 import { RoutesCatalog } from "@awardgrid/core/seatsaero/routes";
 import { type GetTripsResult, runGetTrips } from "@awardgrid/core/seatsaero/trips";
+import { type KeyCheckOutcome, checkSeatsKey } from "@awardgrid/core/seatsaero/key-check";
 
 /**
  * There is exactly one user, and `runFind` still wants an id because the core is shared with the
@@ -254,6 +255,20 @@ export class SearchEngine {
       return { ok: true, value };
     } catch (err) {
       return await this.#failure(err);
+    }
+  }
+
+  /**
+   * Check a seats.aero key before it is saved (T11): one call — the smallest Cached Search — through the same quota
+   * and transport as a search (core seatsaero/key-check.ts). Only on the user's request; never to render a screen.
+   */
+  async checkKey(draft: string): Promise<KeyCheckOutcome> {
+    try {
+      const { api_calls_used: _calls, ...outcome } = await checkSeatsKey({ apiKey: draft, userId: LOCAL_USER, fetch: this.#fetch, quota: this.quota });
+      return outcome;
+    } catch {
+      // The quota store itself failed; the engine answers with a value, as it does everywhere else.
+      return { ok: false, reason: "unknown" };
     }
   }
 

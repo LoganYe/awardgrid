@@ -149,6 +149,16 @@ textarea {
   margin: 0 0 var(--space-2);
 }
 
+/* A title that takes focus (Watches, after a watch is stopped): ringed only for the keyboard. */
+.ag-title:focus {
+  outline: none;
+}
+
+.ag-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
 /* ---- the grid, flat by definition ---- */
 .ag-grid {
   border-collapse: collapse;
@@ -347,6 +357,32 @@ textarea {
 
 .ask-callout-neutral {
   border-left-color: var(--fg-muted);
+}
+
+/* The first AI entry without a key (T11): a setup step in a plain card, not an error. */
+.ask-connect {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: 16px;
+  background: var(--ag-surface);
+  color: var(--ag-text);
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.ask-connect p {
+  margin: 0;
+}
+
+.ask-connect-title {
+  margin: 0;
+  font-size: var(--ag-type-section);
+  line-height: var(--ag-leading-section);
+  font-weight: var(--ag-weight-title);
 }
 
 /* Answers are data: flat, hairline-bordered, no shadow (surfaces.css flat mode). */

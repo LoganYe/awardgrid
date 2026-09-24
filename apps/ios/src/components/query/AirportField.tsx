@@ -14,7 +14,7 @@
 import { type EditorLanguage, placeName, placeOptions } from "@awardgrid/core/workspace/query-editor";
 import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui";
-import { EDITOR } from "./labels";
+import { EDITOR_COPY } from "./labels";
 
 export interface AirportFieldProps {
   id: string;
@@ -37,6 +37,7 @@ interface Offer {
 }
 
 export function AirportField({ id, label, codes, onChange, text, onTextChange, error, lang = "en" }: AirportFieldProps) {
+  const EDITOR = EDITOR_COPY[lang];
   const auto = useId();
   const listId = `${auto}-list`;
   const helpId = `${auto}-help`;
@@ -57,7 +58,7 @@ export function AirportField({ id, label, codes, onChange, text, onTextChange, e
     const typed = text.trim().toUpperCase();
     if (found.length === 0 && /^[A-Z]{3}$/.test(typed)) found.push({ key: `code-${typed}`, airports: [typed], title: EDITOR.typedCode(typed), detail: null, code: typed });
     return found;
-  }, [text, lang]);
+  }, [text, lang, EDITOR]);
 
   const typing = open && text.trim() !== "";
   const showList = typing && offers.length > 0;

@@ -167,8 +167,8 @@ describe("Notice", () => {
 
 describe("Sheet", () => {
   it("renders nothing when closed, and a labelled modal dialog when open", () => {
-    expect(html(h(Sheet, { open: false, title: "T", onClose: () => {}, children: "body" }))).toBe("");
-    const out = html(h(Sheet, { open: true, title: "Sample sheet", onClose: () => {}, children: "body" }));
+    expect(html(h(Sheet, { open: false, title: "T", onClose: () => {}, closeLabel: "Close", children: "body" }))).toBe("");
+    const out = html(h(Sheet, { open: true, title: "Sample sheet", onClose: () => {}, closeLabel: "Close", children: "body" }));
     expect(out).toContain('role="dialog" aria-modal="true"');
     const labelled = /aria-labelledby="([^"]+)"/.exec(out)?.[1];
     expect(out).toContain(`id="${labelled}"`);

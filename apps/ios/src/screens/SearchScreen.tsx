@@ -34,8 +34,7 @@ import { textReproducesQuery } from "@awardgrid/core/workspace/query-editor";
 import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
-import { langTag } from "../app/locale";
-import { ASK_ABOUT_SEARCH } from "../ask/labels";
+import { langTag, useLocale } from "../app/locale";
 import type { ApiFailure, ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
 import type { LastSearchEntry } from "../search/last-search";
 import { TextSearch } from "../components/query/TextSearch";
@@ -45,6 +44,7 @@ import { AvailabilityMatrix } from "../components/results/AvailabilityMatrix";
 import { RESULTS } from "../components/results/copy";
 import { QuerySummary } from "../components/results/QuerySummary";
 import { Button, Icon, Notice, SegmentedControl } from "../components/ui";
+import { Welcome } from "./OnboardingScreen";
 import { RETURN_FOCUS } from "./QueryEditorScreen";
 
 /**
@@ -82,7 +82,7 @@ const CHIP_IDS = { programs: "chip-programs", stops: "chip-stops", more: "chip-m
 
 export function SearchScreen() {
   const services = useOutletContext<AppServices>();
-  const locale = services.locale;
+  const locale = useLocale(services);
   const t = RESULTS[locale];
   // What is shown follows the workspace: re-render when it changes, then read the shown snapshot's view.
   const workspace = useSyncExternalStore(services.workspace.subscribe, services.workspace.getState, services.workspace.getState);
@@ -122,9 +122,12 @@ export function SearchScreen() {
   const focusedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!returnFocus || focusedFor.current === location.key) return;
+    const target = document.getElementById(returnFocus);
+    // Not drawn yet (the first run's welcome waits for the Keychain to answer): tried again once it is.
+    if (!target) return;
     focusedFor.current = location.key;
-    document.getElementById(returnFocus)?.focus();
-  }, [returnFocus, location.key]);
+    target.focus();
+  }, [returnFocus, location.key, hasKey]);
 
   /** Run a search from this screen: a typed one (no results yet), or the shown one again. */
   const runSearch = useCallback(
@@ -254,7 +257,7 @@ export function SearchScreen() {
     hasKey === false ? (
       <Callout tone="danger">
         {t.noKey.before}
-        <strong>{t.noKey.settings}</strong>
+        <Link to="/settings/seats">{t.noKey.link}</Link>
         {t.noKey.after}
       </Callout>
     ) : null;
@@ -420,7 +423,7 @@ export function SearchScreen() {
               {t.watch}
             </Button>
             <Link to="/ask" className="ag-button">
-              {t.askAbout ?? ASK_ABOUT_SEARCH}
+              {t.askAbout}
             </Link>
           </div>
           {watchMessage ? (
@@ -431,11 +434,13 @@ export function SearchScreen() {
           {keyCallout}
           {quota ? <p className="ag-results-meta tabular">{t.quota(quota.used, quota.softLimit)}</p> : null}
         </>
+      ) : hasKey === false ? (
+        // First run (T11): no seats.aero key yet — what the app does, connect first, or look at an example.
+        <Welcome locale={locale} />
       ) : (
         <div className="ag-results-empty">
           <p className="ag-results-meta">{t.emptyIntro}</p>
-          {/* The parser reads English and Chinese, but this box's labels and examples are English until T11. */}
-          <TextSearch lang={english} busy={searching} disabled={hasKey === false} onSearch={(text) => void runSearch(() => services.searchText(text))} />
+          <TextSearch locale={locale} busy={searching} onSearch={(text) => void runSearch(() => services.searchText(text))} />
           {searching ? (
             // T06: the editor would show nothing to edit yet and would supersede the search in flight.
             <Button disabled disabledReason={t.editWhileRunning}>
@@ -446,7 +451,6 @@ export function SearchScreen() {
               {t.newSearch}
             </Link>
           )}
-          {keyCallout}
           {failureCallout}
           {quota ? <p className="ag-results-meta tabular">{t.quota(quota.used, quota.softLimit)}</p> : null}
         </div>

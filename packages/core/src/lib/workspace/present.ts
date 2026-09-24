@@ -16,7 +16,10 @@ import type { CoverageEvidence, CoverageSlice, EmptyKind, ISODate, ISOInstant, M
 
 export type Locale = "en" | "zh";
 
-/** Approved copy (fixtures/copy.zh-en.json), by key. */
+/**
+ * Approved copy (fixtures/copy.zh-en.json), every row, by key: the one table the app's approved sentences come from,
+ * in both languages (T11, U-037). `{name}` placeholders are filled by `copy(key, locale, vars)`.
+ */
 export const COPY = {
   "data.source": { en: "Data: seats.aero", zh: "数据：seats.aero" },
   "result.none": { en: "No matches in the checked range.", zh: "已查询的范围内没有匹配结果。" },
@@ -36,6 +39,35 @@ export const COPY = {
   "details.external": { en: "Check availability and fees on the program website.", zh: "请在计划网站核验库存与税费。" },
   "help.program": { en: "The membership program used to redeem; it may not operate the flight.", zh: "用于兑换的会员计划，不一定是执飞航司。" },
   "help.mixed": { en: "One itinerary can include different cabins. Check every segment.", zh: "同一行程可能包含不同舱位，需看每一段。" },
+  "query.submit": { en: "Find award options", zh: "查找兑换选项" },
+  "query.discard": { en: "Discard changes", zh: "放弃修改" },
+  "query.keep_editing": { en: "Keep editing", zh: "继续编辑" },
+  "compare.title": { en: "Compare selected options", zh: "比较所选" },
+  "compare.limit": { en: "You can compare up to 4 options.", zh: "最多比较4个选项。" },
+  "favorite.snapshot": { en: "Saved snapshot; availability may change.", zh: "收藏快照，库存可能变化。" },
+  "favorite.undo": { en: "Undo", zh: "撤销" },
+  "favorite.limit": { en: "Saved storage is full. Remove an item before saving.", zh: "收藏空间已满，请整理后再保存。" },
+  "watch.ios": { en: "Checked when you open or return to the app. No checks or push alerts while closed.", zh: "打开或回到本应用时检查；关闭后不检查，不发送推送。" },
+  "watch.baseline": { en: "Baseline saved", zh: "基线已建立" },
+  "watch.cached": { en: "Skipped while cached results are still valid", zh: "缓存期内未重查" },
+  "watch.quota": { en: "Deferred due to low quota", zh: "额度不足，暂缓检查" },
+  "watch.failed": { en: "Check failed; previous baseline kept", zh: "检查失败，已保留旧基线" },
+  "ai.entry": { en: "AI assistance", zh: "AI辅助" },
+  "ai.query_only": { en: "Only the query conditions will be sent.", zh: "仅附带查询条件。" },
+  "ai.selected": { en: "Query and {count} selected options will be sent.", zh: "附带查询条件及{count}个所选选项。" },
+  "ai.apply": { en: "Apply and search", zh: "应用并查找" },
+  "ai.keep": { en: "Keep current conditions", zh: "保留原条件" },
+  "ai.stale": { en: "The query has changed. Create a new proposal.", zh: "当前查询已改变，请重新生成修改建议。" },
+  "ai.stop": { en: "Stop subsequent steps", zh: "停止后续步骤" },
+  "ai.stop_note": { en: "Requests already sent cannot be recalled and may still be billed.", zh: "已发送的请求不能撤回，仍可能计费。" },
+  "ai.unfinished": { en: "The previous task did not finish.", zh: "上次任务未完成。" },
+  "ai.new_content": { en: "New content", zh: "有新内容" },
+  "key.check_cost": { en: "Checking this key sends a request to the data source.", zh: "检查密钥会向数据源发送一次请求。" },
+  "demo.synthetic": { en: "Illustrative data — not live availability", zh: "虚构示例数据，并非实时库存" },
+  "watch.foreground_only": { en: "Checked on open and foreground only.", zh: "仅打开或返回前台时检查。" },
+  "watch.scheduled_with_push": { en: "Scheduled checks and push delivery are configured. Check the last run status.", zh: "已配置定期检查与消息发送，请查看最近运行状态。" },
+  "watch.scheduled_only": { en: "Scheduled checks are configured; push delivery is not enabled.", zh: "已配置定期检查，未启用消息发送。" },
+  "watch.unavailable": { en: "No active checking capability has been confirmed.", zh: "尚未确认可用的检查能力。" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type CopyKey = keyof typeof COPY;

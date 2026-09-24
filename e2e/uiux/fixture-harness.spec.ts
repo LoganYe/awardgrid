@@ -31,10 +31,11 @@ test("fixture entry is explicit and does not call paid APIs", async ({ page }) =
   await expect(page.getByTestId("fixture-ready")).toHaveAttribute("data-state", "ready");
   expect((await requestLog(page)).anthropic).toBe(0);
   expect(external).toEqual([]);
-  // Beyond the plan's snippet: every paid counter, and the requested language is recorded but not applied.
+  // Beyond the plan's snippet: every paid counter, and the requested language is recorded by the host. The host
+  // does not apply it; the app does, from the device language it is given, on <html> since T11.
   expect(await requestLog(page)).toMatchObject({ seats: 0, anthropic: 0, trips: 0 });
   await expect(page.getByTestId("fixture-ready")).toHaveAttribute("data-lang", "zh");
-  expect(await page.evaluate(() => document.documentElement.lang)).toBe("en");
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe("zh-CN");
 });
 
 test("an unknown scenario id is refused before any page is opened", async ({ page }) => {
@@ -65,9 +66,10 @@ test("the host refuses a missing, unknown or unseeded scenario and never mounts 
 test("no-seats-key boots the real app without a key and sends nothing", async ({ page }) => {
   await openScenario(page, "no-seats-key");
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
-  // The shell's own no-key state: searching is not offered, and nothing is invented to fill the screen.
-  await expect(page.getByRole("button", { name: "Run" })).toBeDisabled();
-  await expect(page.getByRole("alert")).toContainText("No seats.aero key yet");
+  // The shell's own no-key state (the T11 first run): connect first or see a marked example; there is no search to
+  // run, and nothing is invented to fill the screen.
+  await expect(page.getByTestId("welcome").getByRole("link", { name: "Connect seats.aero" })).toBeVisible();
+  await expect(page.getByTestId("text-search-run")).toHaveCount(0);
   await expect(page.getByTestId("availability-list")).toHaveCount(0);
   expect(await requestLog(page)).toMatchObject({ seats: 0, anthropic: 0, trips: 0 });
   await evidenceShot(page, "t01-host-no-seats-key");
@@ -96,6 +98,7 @@ test("the Anthropic counter sees the app's real Anthropic path (positive control
   // one request through the injected Anthropic transport; the fixture transport refuses it without sending.
   await openScenario(page, "complete");
   await page.getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("link", { name: /Anthropic API key/ }).click();
   await page.getByRole("textbox", { name: "Anthropic API key" }).fill("fixture-typed-anthropic-key");
   await page.getByRole("button", { name: "Save Anthropic key" }).click();
   await expect.poll(async () => (await requestLog(page)).anthropic).toBeGreaterThanOrEqual(1);

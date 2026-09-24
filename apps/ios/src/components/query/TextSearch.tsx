@@ -1,43 +1,40 @@
 /**
  * Search by typing (docs/04 S02: "自由文字可作为另一入口解析，但不自动请求LLM"): one sentence, read by the deterministic
  * parser only — no AI — and run as a workspace revision when the person presses Run. Used on the empty Search screen
- * and at the top of the query editor. Examples fill the box; they never run by themselves.
+ * and at the top of the query editor. Examples, in the screen's language, fill the box; they never run by themselves.
  */
 import { useEffect, useRef, useState } from "react";
+import type { Locale } from "../../app/locale";
 import { Button, Chip } from "../ui";
-
-export const EXAMPLES = [
-  "HKG, SHA to SEA, next 30 days, business and first",
-  "SFO to NRT next 60 days business",
-  "LHR to JFK, next 2 weeks, first",
-] as const;
+import { EDITOR_COPY } from "./labels";
 
 export interface TextSearchProps {
   /** A search is being prepared or is running: Run is busy. */
   busy: boolean;
-  /** No key: Run cannot be used (the screen says why). */
-  disabled?: boolean;
   onSearch: (text: string) => void;
+  /** What the box starts with; the first example when not given. */
   initial?: string;
   /** An error about the text itself (a parse failure), shown under the box. */
   error?: string | null;
+  /** The language of `error` when it is not the screen's (the parser's messages are English). */
+  errorLang?: string;
   /** Whether Run is the screen's one filled action (spec §10: one primary per screen). */
   primary?: boolean;
-  /** The language this box's own words are in, when it differs from the screen's (English until T11). */
-  lang?: string;
+  locale?: Locale;
 }
 
-export function TextSearch({ busy, disabled = false, onSearch, initial = EXAMPLES[0], error, primary = true, lang }: TextSearchProps) {
-  const [text, setText] = useState(initial);
+export function TextSearch({ busy, onSearch, initial, error, errorLang, primary = true, locale = "en" }: TextSearchProps) {
+  const t = EDITOR_COPY[locale].text;
+  const [text, setText] = useState(initial ?? t.examples[0]!);
   const box = useRef<HTMLTextAreaElement>(null);
   // A text that could not be read: focus goes back to the box, whose description now carries the error.
   useEffect(() => {
     if (error) box.current?.focus();
   }, [error]);
   return (
-    <div className="ag-field ag-text-search" lang={lang}>
+    <div className="ag-field ag-text-search">
       <label htmlFor="q" className="ag-field-label">
-        Search by typing
+        {t.label}
       </label>
       <textarea
         ref={box}
@@ -50,17 +47,17 @@ export function TextSearch({ busy, disabled = false, onSearch, initial = EXAMPLE
         onChange={(e) => setText(e.target.value)}
       />
       {error ? (
-        <p id="q-error" role="alert" className="ag-field-error">
+        <p id="q-error" role="alert" className="ag-field-error" lang={errorLang}>
           {error}
         </p>
       ) : null}
       <div className="ag-text-search-actions">
-        <Button variant={primary ? "primary" : "secondary"} onClick={() => onSearch(text)} disabled={disabled} loading={busy} loadingLabel="Searching">
-          Run
+        <Button variant={primary ? "primary" : "secondary"} data-testid="text-search-run" onClick={() => onSearch(text)} loading={busy} loadingLabel={t.running}>
+          {t.run}
         </Button>
       </div>
-      <div className="ag-chip-row" role="group" aria-label="Examples">
-        {EXAMPLES.map((e) => (
+      <div className="ag-chip-row" role="group" aria-label={t.examplesLabel}>
+        {t.examples.map((e) => (
           <Chip key={e} variant="filter" onClick={() => setText(e)}>
             {e}
           </Chip>

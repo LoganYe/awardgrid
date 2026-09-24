@@ -10,7 +10,8 @@ import { isRealDate } from "@awardgrid/core/workspace/semantics";
 import type { DateRule, ISODate } from "@awardgrid/core/workspace/types";
 import { useId, useRef } from "react";
 import { Chip, SegmentedControl, TextField } from "../ui";
-import { EDITOR } from "./labels";
+import type { Locale } from "../../app/locale";
+import { EDITOR_COPY } from "./labels";
 
 export interface DateRuleFieldProps {
   /** Id of the first control, which takes focus when this field has the first error. */
@@ -19,6 +20,7 @@ export interface DateRuleFieldProps {
   onChange: (rule: DateRule) => void;
   today: ISODate;
   error?: string | null;
+  locale?: Locale;
 }
 
 const QUICK_DAYS = [30, 60] as const;
@@ -26,7 +28,8 @@ const QUICK_DAYS = [30, 60] as const;
 type FixedRule = Extract<DateRule, { kind: "fixed" }>;
 type RelativeRule = Extract<DateRule, { kind: "relative_days" }>;
 
-export function DateRuleField({ id, value, onChange, today, error }: DateRuleFieldProps) {
+export function DateRuleField({ id, value, onChange, today, error, locale = "en" }: DateRuleFieldProps) {
+  const EDITOR = EDITOR_COPY[locale];
   const auto = useId();
   const errorId = `${auto}-error`;
   const mode = value.kind === "fixed" ? "fixed" : "relative";
