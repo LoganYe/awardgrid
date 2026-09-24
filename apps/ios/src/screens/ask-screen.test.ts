@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AskEntry, EntryEnd } from "@awardgrid/core/ask/conversation";
 import { buildGrid } from "@awardgrid/core/grid/pivot";
 import { QueryObject } from "@awardgrid/core/query/schema";
+import { copy } from "@awardgrid/core/workspace/present";
 import type { AskActivity, AskService, AskState, ContextPreview } from "../ask/ask-service";
 import * as labels from "../ask/labels";
 import { MemoryKeyStore, type KeyStore } from "../native/keychain";
@@ -57,6 +58,10 @@ function fakeAsk(current: AskState): AskService {
     persist: vi.fn(async () => {}),
   };
 }
+
+/** T17: the approved Stop (S09 "停止后续步骤") and its note, never a claim that a request is recalled. */
+const STOP = copy("ai.stop", "en");
+const STOP_NOTE = copy("ai.stop_note", "en");
 
 const LAST_SEARCH: LastSearchEntry = (() => {
   const query = QueryObject.parse({
@@ -205,8 +210,8 @@ describe("idle", () => {
     expect(textarea(html)).toBe(`<textarea class="ag-input ask-input" aria-label="${labels.QUESTION_LABEL}" maxLength="1000" rows="1">`);
     // Ask waits for a question; nothing is running, so there is no Stop and no Stop note.
     expect(isDisabled(button(html, labels.ASK_BUTTON).attrs)).toBe(true);
-    expect(findButton(html, labels.STOP_BUTTON)).toBeUndefined();
-    expect(html).not.toContain(labels.STOP_NOTE);
+    expect(findButton(html, STOP)).toBeUndefined();
+    expect(html).not.toContain(STOP_NOTE);
     expect(html).toContain(labels.CONVERSATION_NOTE);
     expect(findButton(html, labels.NEW_CONVERSATION)).toBeUndefined();
     // Top to bottom (S09): title, what is sent and its choice, the suggestions, the conversation note, the composer.
@@ -247,8 +252,8 @@ describe("running", () => {
   it("renders Stop in Ask's place with the Stop note, the status region, and the entry list marked busy", () => {
     const html = render(runningState, { now: () => Date.parse(AT) + 12_400 });
     expect(findButton(html, labels.ASK_BUTTON)).toBeUndefined();
-    expect(button(html, labels.STOP_BUTTON).attrs).toBe(' type="button" class="ag-button ag-button-primary ask-send"');
-    expect(html).toContain(`<button type="button" class="ag-button ag-button-primary ask-send">${labels.STOP_BUTTON}</button><p class="ask-note ask-stop-note">${labels.STOP_NOTE}</p>`);
+    expect(button(html, STOP).attrs).toBe(' type="button" class="ag-button ag-button-primary ask-send"');
+    expect(html).toContain(`<button type="button" class="ag-button ag-button-primary ask-send">${STOP}</button><p class="ask-note ask-stop-note">${STOP_NOTE}</p>`);
     expect(html).toContain('<p role="status" class="sr-only">');
     expect(html).toContain('<ol class="ask-entries" data-surface="flat" aria-busy="true">');
     expect(html).not.toContain("aria-live");
@@ -260,7 +265,7 @@ describe("running", () => {
 
   it("turns Stop off once it has been pressed", () => {
     const html = render(state({ ...runningState, running: { entryId: "e1", activity: request, stopping: true } }));
-    expect(isDisabled(button(html, labels.STOP_BUTTON).attrs)).toBe(true);
+    expect(isDisabled(button(html, STOP).attrs)).toBe(true);
   });
 });
 

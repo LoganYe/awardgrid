@@ -31,6 +31,11 @@ export interface SearchPortOptions {
   now: () => Date;
   /** Called with each snapshot and the engine's answer, before the snapshot goes back to the workspace. */
   onAnswer?: (snapshot: ResultSnapshot, value: FindValue, run: SearchRun) => void;
+  /**
+   * T17: queue each search with the app's other spending entries (RequestCoordinator), so it starts after them and
+   * reads the quota they left. The run's own check for being superseded happens when its turn comes.
+   */
+  coordinate?: <T>(operation: () => Promise<T>) => Promise<T>;
 }
 
 /** How many unclaimed answers are kept; older ones belong to runs nobody is waiting for any more. */
@@ -68,7 +73,7 @@ export function createSearchPort(opts: SearchPortOptions): EngineSearchPort {
 
   return {
     execute(query, run) {
-      const next = tail.then(() => executeNow(query, run));
+      const next = tail.then(() => (opts.coordinate ? opts.coordinate(() => executeNow(query, run)) : executeNow(query, run)));
       tail = next.catch(() => undefined);
       return next;
     },

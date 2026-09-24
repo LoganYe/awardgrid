@@ -134,7 +134,7 @@ test("leaving the page does not stop the question; a new conversation asks first
   await expect(page.getByText("Conversation cleared.")).toBeVisible();
 });
 
-test("in Chinese: the page, what is sent and the references speak Chinese; the engine's own lines are marked English", async ({ page }) => {
+test("in Chinese: the page, what is sent, the references and the question's own lines speak Chinese", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "zh", ai: true });
   await searchAndSelectTwo(page);
   await openAsk(page);
@@ -145,7 +145,9 @@ test("in Chinese: the page, what is sent and the references speak Chinese; the e
   await page.getByRole("textbox", { name: "向 Claude 提问" }).fill("比较这两个。");
   await page.getByRole("button", { name: "提问", exact: true }).click();
   await expect(page.locator(".ask-entry")).toContainText("发送时附带了查询和 2 个结果：");
-  await expect(page.locator(".ask-meta")).toHaveAttribute("lang", "en");
+  // T17: a question's own lines speak Chinese too.
+  await expect(page.locator(".ask-meta")).toContainText("次请求");
+  await expect(page.locator(".ask-meta")).not.toHaveAttribute("lang", "en");
 });
 
 test("Back returns focus to the link that opened the page (review UI-1)", async ({ page }) => {

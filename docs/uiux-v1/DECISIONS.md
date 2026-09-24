@@ -520,3 +520,39 @@ T16, plan 03 T16, docs/02 D08, docs/03 §5, docs/04 S09, A27.
 - The AI scenarios use the scripted Anthropic.
 
 **Known, not changed.** The Phase 5 Simulator probe driver asks without a search (REG-1, refuted as pre-existing: the driver is already out of date, U-028). Its scripted searches would now be refused; carried to T21/T22 with the driver.
+
+## U-052 · One queue for the four spending entries; Stop stops the next steps; the Ask page's own lines speak Chinese
+
+T17, plan 03 T17, docs/02 D09, docs/04 S09, A28, A29, A21 (U-039, U-050).
+
+**The queue** (`workspace/request-coordinator.ts`, `RequestCoordinator.run(kind, operation, { signal, onStart })`)
+- **What is queued.** Each entry that spends seats.aero calls starts only after the one before it has finished:
+  - a Search run, through the search port;
+  - a watch run, as one job;
+  - each Ask tool call;
+  - each detail lookup.
+- **The count** stays where it was: the one Quota, fed by the transport's record of what was sent. The queue counts nothing.
+- **Queued at the outermost spending step, never re-entered.** A watch run calls the engine directly. An Ask question queues each tool call, not the whole question (a queued question would wait for itself behind its own watch wait). An applied proposal is a Search run.
+- **Failures.** A failed job rejects its own promise, and the next job runs.
+- **Stop while a job waits.** It rejects at once (`RequestNotStartedError`) and the job never starts, while the queue keeps its place (review COORD-1). A job whose turn has come is not ended by Stop: a native request in flight is not recalled, and is not said to be.
+- **Not queued.** The seats.aero key check is not one of D09's four entries, and stays outside (review COORD-3, refuted as out of scope).
+
+**Ask with the queue** (`ask-service.ts`)
+- **A call that never started.** A tool call stopped while it waits is recorded as the core outcome `stopped`, with no calls. Its ending reads as stopped before the next step began.
+- **Waiting is shown as waiting.** Until its turn comes, a tool call is the activity `queued`: "Waiting for another seats.aero request to finish. Nothing has been sent for this step yet." It becomes "Searching…" only when it starts (`onStart`, review COORD-2).
+- **Stop wording.** Stop reads the approved `ai.stop` ("Stop subsequent steps") with `ai.stop_note` (S09).
+- **Unfinished questions.** A question the app was closed during is unfinished on the next launch, as before, and nothing resends it. The Chinese ending starts with the approved `ai.unfinished`.
+
+**The Ask page's own lines** (`ask/entry-labels.ts`, `ENTRY_LABELS[locale]`)
+- **Which lines.** Steps, what is under way, endings, Stop moments, each failure code, the meta line (exact, or lower bounds when a count is not known), the announcements, the paused and waiting lines, the follow-up note and the Try again hint.
+- **English** is `labels.ts` itself, unchanged. `searchFromInput` is exported so Chinese reads Claude's input the same way.
+- **Chinese** says the same under the same rules, with cabin names from core (L10N-5, L10N-6).
+- **Core's own words** (a failure's details) follow the Chinese sentence, marked `lang="en"`.
+- **A21 is now met on every shell screen.** What remains in English is text core writes, always marked.
+
+**Tests changed, with reasons.**
+- `ask-screen.test.ts`: Stop is the approved `ai.stop` and `ai.stop_note`.
+- `ask.spec.ts`: the Chinese test now expects the meta line in Chinese, with no `lang="en"`.
+- `fixture-harness.spec.ts`: the unseeded example is `long-labels` (T21).
+
+**Fixture.** `ai-stopped`: saved partial results, and a saved conversation whose one question was stopped while its request was out. Its counts are lower bounds and Anthropic reported nothing.

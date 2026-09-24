@@ -15,8 +15,6 @@ export interface AskCopy {
   subline: string;
   questionLabel: string;
   ask: string;
-  stop: string;
-  stopNote: string;
   newConversation: string;
   conversationNote: string;
   confirmNewTitle: string;
@@ -81,8 +79,6 @@ export const ASK_COPY: Record<Locale, AskCopy> = {
       "Claude answers with your own Anthropic key. When it needs award data, this app searches seats.aero with your own Pro key, which is never sent to Anthropic. Claude sees the earlier questions in this conversation.",
     questionLabel: "Question for Claude",
     ask: "Ask",
-    stop: "Stop",
-    stopNote: "Stop sends nothing more. It cannot recall a request already sent.",
     newConversation: "New conversation",
     conversationNote: "Answers in this conversation are saved on this device until you start a new conversation.",
     confirmNewTitle: "Start a new conversation?",
@@ -147,8 +143,6 @@ export const ASK_COPY: Record<Locale, AskCopy> = {
     subline: "Claude 使用你自己的 Anthropic 密钥回答。需要奖励票数据时，本应用用你自己的 seats.aero Pro 密钥查询 seats.aero；这个密钥不会发给 Anthropic。Claude 能看到本次对话中之前的问题。",
     questionLabel: "向 Claude 提问",
     ask: "提问",
-    stop: "停止",
-    stopNote: "停止后不再发送后续步骤，但无法撤回已经发出的请求。",
     newConversation: "新对话",
     conversationNote: "本次对话的回答保存在本机，直到你开始新对话。",
     confirmNewTitle: "开始新对话？",

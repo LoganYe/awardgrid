@@ -64,7 +64,8 @@ import { createSeatsPort } from "./seats-port";
 import { ContextError, type ContextRefusal, attachedRows, buildAIContext, entryContext, lastSearchOf as searchOfQuery, readEntryContext, readEntryProposals } from "./context";
 import type { AttachedRow } from "@awardgrid/core/ask/prompt";
 import type { EntryContext, EntryProposal } from "@awardgrid/core/ask/conversation";
-import type { ScopeGate } from "@awardgrid/core/ask/tools";
+import type { ScopeGate, ToolRun, ToolRunner } from "@awardgrid/core/ask/tools";
+import { RequestNotStartedError, type RequestKind } from "../workspace/request-coordinator";
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import { proposalStatus } from "@awardgrid/core/workspace/proposals";
 import type { AIContext, ResultRef, ResultSnapshot, WorkspaceRow } from "@awardgrid/core/workspace/types";
@@ -127,6 +128,11 @@ export interface AskServiceDeps {
    * path and its quota). With `context`, questions get the scope gate and may propose; without this, applying is off.
    */
   runQuery?(query: QueryObject): Promise<unknown>;
+  /**
+   * T17: queue each tool call with the app's other spending entries (RequestCoordinator). A call still waiting when
+   * Stop is pressed never starts: it rejects with RequestNotStartedError and is recorded as stopped, with no calls.
+   */
+  coordinate?<T>(kind: RequestKind, operation: () => Promise<T>, signal?: AbortSignal, onStart?: () => void): Promise<T>;
   /** The watch run under way, or a resolved promise (AppServices.whenWatchesIdle). */
   whenWatchesIdle(): Promise<void>;
   now: () => Date;
@@ -156,6 +162,8 @@ export type AskActivity =
   | { kind: "request"; request: number; startedAt: string; resend: boolean }
   /** A tool call is under way. `input` is Claude's, not yet checked by the runner. */
   | { kind: "tool"; name: string; input: unknown }
+  /** T17: a tool call waits its turn behind another search, watch run or lookup; nothing has been sent for it yet. */
+  | { kind: "queued"; name: string; input: unknown }
   /** awardgrid was hidden before a step, which waits until it is visible again. */
   | { kind: "paused" }
   /** Between steps: nothing is out. The question waits to take its next step, for the last step's save to land or a watch run under way to finish. */
@@ -586,9 +594,28 @@ export function createAskService(deps: AskServiceDeps): AskService {
           },
         }
       : undefined;
+    const runner = createToolRunner(port, conv, gate);
+    // T17: each tool call waits its turn behind a search, a watch run or a lookup; the question itself is not queued
+    // (it waits for watch runs, and a queued question would wait for itself).
+    const tools: ToolRunner = deps.coordinate
+      ? {
+          run: (block) =>
+            deps.coordinate!("ask", () => runner.run(block), run.controller.signal, () => {
+              // Its turn came: only now is it said to be running.
+              if (run.activity.kind === "queued") {
+                run.activity = { kind: "tool", name: run.activity.name, input: run.activity.input };
+                emit();
+              }
+            }).catch((err: unknown) => {
+              if (err instanceof RequestNotStartedError) return notStartedRun(block);
+              throw err;
+            }),
+          usage: () => runner.usage(),
+        }
+      : runner;
     const outcome = await runQuestion({
       model,
-      tools: createToolRunner(port, conv, gate),
+      tools,
       proposals: gate !== undefined,
       conversation: conv,
       question: text,
@@ -656,7 +683,8 @@ export function createAskService(deps: AskServiceDeps): AskService {
         void save();
         break;
       case "tool_started":
-        run.activity = { kind: "tool", name: event.name, input: event.input };
+        // With the request queue, a tool call first waits its turn: said as waiting until it starts (T17).
+        run.activity = deps.coordinate ? { kind: "queued", name: event.name, input: event.input } : { kind: "tool", name: event.name, input: event.input };
         break;
       case "tool_finished":
         entry.steps.push({ kind: "tool", step: event.step });
@@ -947,6 +975,19 @@ export function createAskService(deps: AskServiceDeps): AskService {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** T17: a tool call Stop ended while it waited its turn: never started, nothing sent, said to Claude as such. */
+function notStartedRun(block: { id: string; name: string }): ToolRun {
+  return {
+    result: {
+      type: "tool_result",
+      tool_use_id: block.id,
+      content: JSON.stringify({ error: "stopped", message: "The person pressed Stop before this call started; nothing was sent." }),
+      is_error: true,
+    },
+    step: { tool: String(block.name), outcome: "stopped", calls: 0, fromCache: false, fromMemo: false, search: null, program: null, estimate: null },
+  };
+}
 
 /** Entries a closed app left running become unfinished, and the marker is cleared. Returns whether anything changed. */
 function markUnfinished(conversation: Conversation, now: Date): boolean {

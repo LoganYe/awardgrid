@@ -106,6 +106,8 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
   // T16: a question whose answer proposes a wider search, and a proposal left over from before the query changed.
   "ai-pending",
   "ai-stale",
+  // T17: a question stopped while its request was out: it may still have completed, and no next step ran.
+  "ai-stopped",
   "foundations",
   "inflight-old",
   "failed-old",
@@ -117,7 +119,6 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
 
 /** Where an unseeded scenario's state comes from. Informational, for the refusal message. */
 const SEEDED_BY: Record<string, string> = {
-  "ai-stopped": "T17 (request coordination)",
   "long-labels": "T21 (text scaling)",
   "web-user-a": "T18 (web surface)",
   "web-user-b": "T18 (web surface)",
@@ -273,7 +274,29 @@ function savedWatches(id: string, rows: readonly SyntheticRow[], now: Date): Rec
 const scenarios: readonly FixtureScenario[] = manifest.scenarios;
 
 /** Scenarios that open on results a previous launch saved: nothing is fetched to show them. */
-const SAVED_RESULTS: ReadonlySet<string> = new Set(["inflight-old", "failed-old", "missing-values", "partial", "coverage-unknown", "legacy-cache", "ai-pending", "ai-stale"]);
+const SAVED_RESULTS: ReadonlySet<string> = new Set(["inflight-old", "failed-old", "missing-values", "partial", "coverage-unknown", "legacy-cache", "ai-pending", "ai-stale", "ai-stopped"]);
+
+/**
+ * `ai-stopped`: a conversation saved by an earlier launch whose one question was stopped while its request to
+ * Anthropic was out. That request may still have completed and been billed; Anthropic never reported its usage; no
+ * next step ran. Its counts are lower bounds.
+ */
+function stoppedConversation(now: Date): Record<string, string> {
+  const at = new Date(now.getTime() - 3_600_000).toISOString();
+  const entry = {
+    id: "fixture-ask-stopped-1",
+    question: "Which program has the cheapest seats in this search?",
+    includeSearch: true,
+    context: { sent: "query_only", snapshotId: "fixture-previous-snapshot", revision: 1, refs: [], earlier: 0 },
+    askedAt: at,
+    steps: [],
+    texts: [],
+    usage: { requests: 1, inputTokens: 0, cacheReadTokens: 0, outputTokens: 0, lastRequestInputTokens: null, toolCalls: 0, seatsCalls: 0 },
+    end: { status: "stopped", committed: false, failure: null, stoppedDuring: "request", at },
+  };
+  const conversation = { id: "fixture-conversation-stopped", createdAt: at, committed: [], entries: [entry], seenIds: [], bookingUrls: [], flightsMemo: [], pending: null };
+  return { "ask.json": JSON.stringify({ version: 1, conversation }) };
+}
 
 /** The synthetic search with a later end: what `ai-pending`'s scripted answer proposes, and `ai-stale`'s leftover. */
 function widerSearch(): Record<string, unknown> {
@@ -335,7 +358,11 @@ export function environmentFor(id: string | null): FixtureEnvironment {
       scenario.id === "quota-low"
         ? { "quota.json": quotaAtSoftLimit(now) }
         : SAVED_RESULTS.has(scenario.id)
-          ? { ...savedWorkspace(rows, now, scenario.coverage), ...(scenario.id === "ai-stale" ? staleConversation(now) : {}) }
+          ? {
+              ...savedWorkspace(rows, now, scenario.coverage),
+              ...(scenario.id === "ai-stale" ? staleConversation(now) : {}),
+              ...(scenario.id === "ai-stopped" ? stoppedConversation(now) : {}),
+            }
           : scenario.id === "favorite-snapshot"
             ? savedFavorites(rows, now, scenario.coverage)
             : scenario.id.startsWith("watch-")

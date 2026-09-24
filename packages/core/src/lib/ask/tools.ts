@@ -284,6 +284,8 @@ export type ToolErrorCode =
   | "needs_confirmation"
   /** T16: a proposal for a search inside the included one, which needs no proposal. */
   | "inside_scope"
+  /** T17: Stop was pressed while this call waited its turn behind another spending entry; it never started. */
+  | "stopped"
   | "tool_failed";
 
 /** The search a search_awards call ran, after metro codes expanded: the `query` echoed in its result. */

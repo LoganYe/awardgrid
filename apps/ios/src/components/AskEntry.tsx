@@ -28,19 +28,8 @@ import type { AskActivity } from "../ask/ask-service";
 import { readEntryContext, readEntryProposals } from "../ask/context";
 import { proposalStatus } from "@awardgrid/core/workspace/proposals";
 import { QueryChangeProposal } from "./QueryChangeProposal";
-import {
-  ANNOUNCEMENTS,
-  FOLLOW_UP_NOTE,
-  PAUSED_STEP,
-  endLabel,
-  entryMetaLine,
-  failureView,
-  showsAttribution,
-  showsFollowUpNote,
-  stepLabel,
-  toolRunningLabel,
-  waitingLabel,
-} from "../ask/labels";
+import { failureView, showsAttribution, showsFollowUpNote } from "../ask/labels";
+import { ENTRY_LABELS, type EntryLabels } from "../ask/entry-labels";
 import { AnswerText } from "./AnswerText";
 
 export interface AskEntryProps {
@@ -100,6 +89,8 @@ export function AskEntry({
   onKeepProposal,
 }: AskEntryProps) {
   const c = ASK_COPY[locale];
+  // A question's lines in the page's language (T17); only core's own words stay English, marked.
+  const L = ENTRY_LABELS[locale];
   const english = locale === "en" ? undefined : "en";
   // What went with this question, as recorded from its payload; nothing is said for entries from before T15.
   const sentWith = readEntryContext(entry.context);
@@ -108,7 +99,9 @@ export function AskEntry({
   const end = entry.end;
   const failure = end?.status === "failed" && end.failure ? failureView(end.failure, entry.id === retryEntryId) : null;
   // A failed entry's sentence is its failure line; every other ending has its own line, and an answer has none.
-  const ending = failure === null ? endLabel(entry) : null;
+  const ending = failure === null ? L.endLabel(entry) : null;
+  // The failure in the page's language; core's own words follow it, marked English, when they are not the sentence.
+  const failureText = end?.status === "failed" && end.failure ? L.failure(end.failure) : null;
   const lastStep = entry.steps[entry.steps.length - 1];
 
   const askAgain = (
@@ -154,17 +147,15 @@ export function AskEntry({
       ) : null}
 
       {entry.steps.length > 0 ? (
-        <ol className="ask-steps" lang={english}>
+        <ol className="ask-steps">
           {entry.steps.map((step, i) => (
-            <li key={i}>{stepLabel(step, { searchIncluded: sentWith ? sentWith.sent !== "none" : entry.includeSearch })}</li>
+            <li key={i}>{L.stepLabel(step, { searchIncluded: sentWith ? sentWith.sent !== "none" : entry.includeSearch })}</li>
           ))}
         </ol>
       ) : null}
 
       {activity !== null ? (
-        <div lang={english}>
-          <ActivityLine activity={activity} waitSeconds={waitSeconds} pausedStepShown={lastStep?.kind === "paused"} />
-        </div>
+        <ActivityLine activity={activity} waitSeconds={waitSeconds} pausedStepShown={lastStep?.kind === "paused"} labels={L} />
       ) : null}
 
       {entry.texts.map((text, i) => (
@@ -186,22 +177,23 @@ export function AskEntry({
       {showsAttribution(entry, earlier) || (sentWith !== null && sentWith.refs.length > 0) ? <p className="ask-attribution">{c.attribution}</p> : null}
 
       {end !== null ? (
-        <p className="ask-meta tabular" lang={english}>
-          {entryMetaLine(entry)}
+        <p className="ask-meta tabular">
+          {L.entryMetaLine(entry)}
         </p>
       ) : null}
 
       {ending !== null ? (
-        <p className="ask-ending" lang={english}>
+        <p className="ask-ending">
           {ending}
         </p>
       ) : null}
 
       {failure !== null ? (
         <>
-          <div role={announce ? "alert" : undefined} className="ask-failure" lang={english}>
-            <p>{failure.message}</p>
-            {failure.requestIdLine !== null ? <p className="tabular">{failure.requestIdLine}</p> : null}
+          <div role={announce ? "alert" : undefined} className="ask-failure">
+            <p>{failureText?.text ?? failure.message}</p>
+            {failureText?.detail ? <p lang={english}>{failureText.detail}</p> : null}
+            {end?.failure?.requestId ? <p className="tabular">{L.requestIdLine(end.failure.requestId)}</p> : null}
           </div>
           <div className="ask-actions">
             {failure.action === "try_again" ? (
@@ -222,8 +214,8 @@ export function AskEntry({
             ) : null}
           </div>
           {failure.hint !== null ? (
-            <p className="ask-hint" lang={english}>
-              {failure.hint}
+            <p className="ask-hint">
+              {L.tryAgainHint}
             </p>
           ) : null}
         </>
@@ -232,8 +224,8 @@ export function AskEntry({
       {failure === null && end !== null && end.status !== "answered" ? <div className="ask-actions">{askAgain}</div> : null}
 
       {showsFollowUpNote(entry) ? (
-        <p className="ask-note" lang={english}>
-          {FOLLOW_UP_NOTE}
+        <p className="ask-note">
+          {L.followUpNote}
         </p>
       ) : null}
     </li>
@@ -245,19 +237,21 @@ export function AskEntry({
  * without the number; the status region announces the transition itself (design §6.5). A pause is already the
  * entry's last step when the service records it, so it is not written a second time.
  */
-function ActivityLine({ activity, waitSeconds, pausedStepShown }: { activity: AskActivity; waitSeconds: number; pausedStepShown: boolean }) {
+function ActivityLine({ activity, waitSeconds, pausedStepShown, labels }: { activity: AskActivity; waitSeconds: number; pausedStepShown: boolean; labels: EntryLabels }) {
   switch (activity.kind) {
     case "request":
       return (
         <p className="ask-activity tabular">
-          <span className="sr-only">{ANNOUNCEMENTS.waiting}</span>
-          <span aria-hidden="true">{waitingLabel(waitSeconds)}</span>
+          <span className="sr-only">{labels.announcements.waiting}</span>
+          <span aria-hidden="true">{labels.waitingLabel(waitSeconds)}</span>
         </p>
       );
     case "tool":
-      return <p className="ask-activity">{toolRunningLabel(activity.name, activity.input)}</p>;
+      return <p className="ask-activity">{labels.toolRunningLabel(activity.name, activity.input)}</p>;
     case "paused":
-      return pausedStepShown ? null : <p className="ask-activity">{PAUSED_STEP}</p>;
+      return pausedStepShown ? null : <p className="ask-activity">{labels.pausedStep}</p>;
+    case "queued":
+      return <p className="ask-activity">{labels.queuedStep}</p>;
     default:
       return null;
   }

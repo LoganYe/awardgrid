@@ -36,7 +36,8 @@ import { useKeepInView } from "../app/keyboard";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import { ASK_COPY } from "../ask/ask-copy";
 import type { AskNotice, AskState, ContextPreview } from "../ask/ask-service";
-import { ANNOUNCEMENTS, includeSearchLabel, searchSummary, toolRunningLabel } from "../ask/labels";
+import { ENTRY_LABELS } from "../ask/entry-labels";
+import { includeSearchLabel, searchSummary } from "../ask/labels";
 import { AskEntry } from "../components/AskEntry";
 import { Button, IconButton, Sheet } from "../components/ui";
 import type { KeyStore } from "../native/keychain";
@@ -91,7 +92,10 @@ export function endedSinceOpen(entry: Entry, atOpen: AskState): boolean {
  * or a tool call that started after the screen opened, or a question that ended after it opened. A question that
  * ended before, or one the app was closed during, says nothing, and neither does a step between two others.
  */
-export function askAnnouncement(state: AskState, atOpen: AskState): string {
+export function askAnnouncement(state: AskState, atOpen: AskState, locale: Locale = "en"): string {
+  const L = ENTRY_LABELS[locale];
+  const ANNOUNCEMENTS = L.announcements;
+  const toolRunningLabel = L.toolRunningLabel;
   const running = state.running;
   if (running !== null) {
     const { activity } = running;
@@ -329,8 +333,8 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
   return (
     <div className="ask-screen" lang={langTag(locale)}>
       {/* Always mounted: a live region only announces changes once it is already in the accessibility tree. */}
-      <p role="status" className="sr-only" lang={english}>
-        {askAnnouncement(state, atOpen)}
+      <p role="status" className="sr-only">
+        {askAnnouncement(state, atOpen, locale)}
       </p>
 
       {header(true)}
@@ -450,14 +454,15 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
         {/* One button in one place: Ask, or Stop while a question runs. */}
         {running !== null ? (
           <button type="button" className="ag-button ag-button-primary ask-send" disabled={running.stopping} onClick={() => ask.stop()}>
-            {c.stop}
+            {copy("ai.stop", locale)}
           </button>
         ) : (
           <button type="button" className="ag-button ag-button-primary ask-send" disabled={cannotStart || draft.trim().length === 0} onClick={send}>
             {c.ask}
           </button>
         )}
-        {running !== null ? <p className="ask-note ask-stop-note">{c.stopNote}</p> : null}
+        {/* The approved "Stop subsequent steps" and its note (S09): never a claim that a request is recalled. */}
+        {running !== null ? <p className="ask-note ask-stop-note">{copy("ai.stop_note", locale)}</p> : null}
       </div>
 
       <Sheet open={confirmNew} title={c.confirmNewTitle} closeLabel={c.close} onClose={() => setConfirmNew(false)}>

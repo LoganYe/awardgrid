@@ -34,6 +34,7 @@ import { type ApiResult, type FindValue, type ParsedText, SearchEngine } from ".
 import { createSearchPort } from "../workspace/search-port";
 import { searchViewFromSnapshot } from "../workspace/snapshot-view";
 import { createDetailService, type DetailService } from "../workspace/detail-service";
+import { RequestCoordinator } from "../workspace/request-coordinator";
 import { SettingsStore } from "./settings-store";
 import { FavoritesStore } from "../store/favorites-store";
 import type { KeyCheckOutcome } from "@awardgrid/core/seatsaero/key-check";
@@ -122,6 +123,8 @@ export interface AppServices {
   lastWatchRun(): readonly WatchCheckResult[];
   /** Resolves once no watch run is under way: when the run in flight finishes, or at once. Ask waits on it before each tool call. */
   whenWatchesIdle(): Promise<void>;
+  /** T17: the one queue for the entries that spend seats.aero calls; read-only use (what runs, what waits). */
+  requests: Pick<RequestCoordinator, "active" | "waiting" | "idle">;
   /** Subscribe to "the watches changed"; returns the unsubscribe function. */
   onWatchesChanged(listener: () => void): () => void;
   /** Tell subscribers the watches changed, after a screen edits the store itself. */
@@ -322,10 +325,13 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   // The workspace's runs go through the same engine, one at a time; restoring it sends nothing. Each answer is
   // recorded for the Search screen and Ask BEFORE the workspace can show it, with the text that was typed when the
   // run came from the text search (`lastSearch` is created just below; answers only arrive after bootstrap returns).
+  // T17: the one queue for the entries that spend seats.aero calls (search, watch, Ask tool call, lookup).
+  const requests = new RequestCoordinator();
   const searchPort = createSearchPort({
     engine,
     keys,
     now,
+    coordinate: (operation) => requests.run("search", operation),
     onAnswer: (snapshot, value, run) => {
       const typed = run.meta as TypedSearch | undefined;
       lastSearch.record(snapshot.id, {
@@ -339,7 +345,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   const workspace = new WorkspaceStore({ search: searchPort, now: () => now().toISOString(), storage: new SlotFileStorage(snapshots.files) });
   const details = createDetailService({
     workspace,
-    getTrips: (option, apiKey) => engine.getTrips(option, apiKey),
+    // T17: a lookup starts after any search, watch run or Ask tool call before it.
+    getTrips: (option, apiKey) => requests.run("detail", () => engine.getTrips(option, apiKey)),
     readKey: () => readKey(keys),
     now,
   });
@@ -395,6 +402,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       // one shown pending, and publishing (or showing another) makes it stale (T16 review).
       revision: () => workspace.getState().displayedSnapshot?.revision ?? 0,
     },
+    // T17: each tool call is queued with the other spending entries; one still waiting at Stop never starts.
+    coordinate: (kind, operation, signal, onStart) => requests.run(kind, operation, { signal, onStart }),
     // T16: an applied proposal is a search like any other: the workspace runs it, and what it spent is saved.
     runQuery: async (query) => {
       await workspace.run(query);
@@ -522,7 +531,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       if (inFlight) return inFlight;
       inFlight = (async () => {
         try {
-          const results = await checkWatches({ engine, store: watches, apiKey: await keys.get(), now });
+          // T17: one watch run is one job in the queue: it starts after a search or lookup under way, and they after it.
+          const results = await requests.run("watch", async () => checkWatches({ engine, store: watches, apiKey: await keys.get(), now }));
           await persist();
           lastRun = results;
           notify();
@@ -535,6 +545,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     },
     lastWatchRun: () => lastRun,
     whenWatchesIdle,
+    requests,
     onWatchesChanged(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

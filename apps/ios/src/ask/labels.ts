@@ -138,6 +138,8 @@ export const ANNOUNCEMENTS = {
 // ---------------------------------------------------------------------------
 
 export const PAUSED_STEP = "Paused while you were away from awardgrid.";
+/** T17: a tool call waiting its turn behind another search or lookup; nothing sent for it yet. */
+export const QUEUED_STEP = "Waiting for another seats.aero request to finish. Nothing has been sent for this step yet.";
 
 /**
  * `searchIncluded` (T16): whether the question went with a search, which a search it refused is said against. Absent
@@ -161,6 +163,8 @@ function proposalStepLabel(step: ToolStep): string {
       return "No further proposal: this question already made its one proposal, or reached its tool-call limit. No calls.";
     case "inside_scope":
       return "No proposal needed: that search is inside the one you included. No calls.";
+    case "stopped":
+      return "No proposal: you pressed Stop before it was made. No calls.";
     case "too_wide":
       return `Proposal refused: it covers more airport pairs than the ${MAX_PAIRS} one search may cover. No calls.`;
     case "invalid_place":
@@ -197,6 +201,9 @@ function searchStepLabel(step: ToolStep, searchIncluded: boolean): string {
       return "Search not run: Claude used a place code awardgrid does not know. No calls.";
     case "invalid_input":
       return "Search not run: the search Claude asked for was not valid. No calls.";
+    case "stopped":
+      // T17: Stop came while it waited its turn behind another search or lookup.
+      return "Search not started: you pressed Stop before it began. No calls.";
     case "needs_confirmation":
       // T16: outside the search the person included, or none was; only a proposal they apply can run it.
       if (!searchIncluded) return "Search not run: no search went with this question, so only a search you apply from a proposal can run. No calls.";
@@ -221,6 +228,8 @@ function searchStepLabel(step: ToolStep, searchIncluded: boolean): string {
 function flightsStepLabel(step: ToolStep, searchIncluded: boolean): string {
   const spent = `${callsLabel(step.calls)}.`;
   switch (step.outcome) {
+    case "stopped":
+      return "Flights not looked up: you pressed Stop before the lookup began. No calls.";
     case "needs_confirmation":
       // T16: a lookup costs a call, so it too stays inside what the person included.
       return searchIncluded
@@ -271,6 +280,8 @@ const STOPPED_BETWEEN = "Stopped before the next step began. Nothing more will b
 export function stoppedLabel(during: StopMoment, tool: ToolStep | null = null): string {
   if (during === "request") return STOPPED_DURING_REQUEST;
   if (during === "between") return STOPPED_BETWEEN;
+  // T17: Stop came while the step waited its turn, so it never began.
+  if (tool?.outcome === "stopped") return STOPPED_BETWEEN;
   if (tool !== null && tool.calls === 0) return STOPPED_DURING_FREE_STEP;
   return tool?.tool === GET_FLIGHTS ? STOPPED_DURING_LOOKUP : STOPPED_DURING_SEARCH;
 }
@@ -656,8 +667,11 @@ function lastToolStep(steps: readonly EntryStep[]): ToolStep | null {
   return null;
 }
 
-/** A summary from Claude's raw search_awards input, or null when a field a summary needs has the wrong shape. */
-function searchFromInput(input: unknown): SummarySearch | null {
+/**
+ * A summary from Claude's raw search_awards input, or null when a field a summary needs has the wrong shape. Exported
+ * for the Chinese lines (./entry-labels.ts, T17), which read the input the same way.
+ */
+export function searchFromInput(input: unknown): SummarySearch | null {
   if (input === null || typeof input !== "object") return null;
   const fields = input as Record<string, unknown>;
   const codes = (value: unknown): string[] | null =>
