@@ -1,0 +1,1 @@
+ALTER TABLE `availability_cache` ADD `time_evidence` text;

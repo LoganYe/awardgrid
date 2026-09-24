@@ -7,6 +7,7 @@ Mapped read-only on 2026-09-23 at `9c69c6c` (branch `uiux/quiet-precision-v1`). 
 | Plan says | Here | Note |
 |---|---|---|
 | `pnpm …` | `export PATH="$HOME/.local/node-arm64/bin:$PATH"` first, then `pnpm …` | Default non-interactive `node` is x64 under Rosetta; `node_modules` is arm64. pnpm 12.3.4 via corepack. |
+| where to work | worktree `/Users/yegaoyang/Desktop/workspace/awardgrid-uiux` | The main checkout stays on `main`: production runs from it and reads `drizzle/`, `LEGAL.md`, `build/plugin` at runtime (DECISIONS U-009). |
 | `pnpm build`, `pnpm e2e` (web) | **Only in a separate git worktree** | The main checkout's `.next` is served by the production LaunchAgent on :3000 (`DECISIONS.md` #67). See `DECISIONS.md` U-003. |
 | `pnpm exec playwright test --config=playwright.uiux.config.ts` | same (new file) | The existing `playwright.config.ts` now ignores `e2e/uiux/**` so the web suite does not pick these specs up. |
 | core tests | `pnpm --filter @awardgrid/core exec vitest run <file>` | Existing `packages/core/**/*.test.ts` files are never edited (Phase 1 rule); only new test files are added. |
@@ -56,6 +57,7 @@ Mapped read-only on 2026-09-23 at `9c69c6c` (branch `uiux/quiet-precision-v1`). 
 | `src/app/` | exists | Pages `/`, `/grid`, `/login`, `/register`, `/settings`, `/queries` (web "watches"), `/legal`. Ask is a drawer inside `/grid`. |
 | `src/components/grid/` | exists | Matrix only (no list/calendar), roving grid keyboard, virtualization, drawers (single slot: cell or ask). |
 | `src/components/workspace/` | **new** (T19) | |
+| `src/lib/db/` | exists | Drizzle schema + SQLite stores. T02 adds migration `0003_availability_time_basis.sql` (nullable `availability_cache.time_evidence`). |
 | `src/lib/server/` | exists | `find.ts` (`findGridForUser`, `getTripsForUser`, `parseForUser` — the latter calls the LLM when deterministic parsing misses fields and a server key is set), `queries.ts`. |
 | Web scheduling | exists | `src/lib/scheduler/*`, `src/cli/worker*.ts`, `src/lib/notify/*` (Telegram). No capability module; env booleans only. |
 | Web AI | exists, different engine | Claude Agent SDK subprocess (`src/lib/ask/`), not `@awardgrid/core/ask`. |

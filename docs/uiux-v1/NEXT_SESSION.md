@@ -5,7 +5,7 @@ Read first: the handoff pack's `CLAUDE_CODE_PROMPT.md` and `RESUME_PROMPT.md`, t
 ## Environment (every shell)
 
 ```sh
-cd /Users/yegaoyang/Desktop/workspace/awardgrid
+cd /Users/yegaoyang/Desktop/workspace/awardgrid-uiux   # the WORKTREE; never work in ../awardgrid (production runs from it)
 export PATH="$HOME/.local/node-arm64/bin:$PATH"   # arm64 node + pnpm 12.3.4; the default node is x64/Rosetta
 git status --short && git log --oneline -5
 ```
@@ -14,15 +14,16 @@ Never in this checkout: `pnpm build`, `next build`, `scripts/check-no-secrets-in
 
 ## Where things stand
 
-- Branch `uiux/quiet-precision-v1`, one local commit per finished task (see `git log`). Nothing pushed.
-- T01 verified (fixture harness). T02 is next.
+- Branch `uiux/quiet-precision-v1` in the worktree above, one local commit per finished task (see `git log`). Nothing pushed.
+- T01, T02 verified. T03 is next.
+- If the worktree's `node_modules` is missing: `for d in node_modules apps/ios/node_modules packages/core/node_modules sites/landing/node_modules; do cp -Rc ../awardgrid/$d $d; done`; vendor: `rsync -a --exclude=.git ../awardgrid/vendor/travel-hacking-toolkit/ vendor/travel-hacking-toolkit/`; then `pnpm build:plugin`.
 - Open owner decision: restart `com.awardgrid.app` to fix the live stylesheet 404 (STATUS.md).
 
 ## Next commands
 
 ```sh
-# T02 red test (create packages/core/src/lib/workspace/semantics.test.ts first)
-pnpm --filter @awardgrid/core exec vitest run src/lib/workspace/semantics.test.ts
+# T03 red test (create packages/core/src/lib/workspace/coverage.test.ts first)
+pnpm --filter @awardgrid/core exec vitest run src/lib/workspace/coverage.test.ts
 # UI/UX browser suite (fixture host on 127.0.0.1:4310)
 pnpm exec playwright test --config=playwright.uiux.config.ts
 # Gates

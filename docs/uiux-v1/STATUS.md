@@ -1,8 +1,8 @@
 # UI/UX v1 execution status
 
-State: **M1 in progress** — T01 verified; T02 next.
+State: **M1 in progress** — T01, T02 verified; T03 next.
 Handoff pack: `/Users/yegaoyang/Desktop/workspace/awardgrid-claude-code-impl` (read in the order its `CLAUDE_CODE_PROMPT.md` sets).
-Repository: `/Users/yegaoyang/Desktop/workspace/awardgrid`, local branch `uiux/quiet-precision-v1` (created from `main` at `9c69c6c`; no worktree).
+Repository: `/Users/yegaoyang/Desktop/workspace/awardgrid`. Work happens in the worktree **`/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`** on local branch `uiux/quiet-precision-v1` (from `main` at `9c69c6c`); the main checkout stays on `main` because production runs from it (DECISIONS U-009).
 Design baseline: `2a1f353` is an ancestor of `9c69c6c`; the 4 commits after it are seats.aero decoding fixes, an Ask token-count fix and a docs entry. Nothing was reset or checked out.
 Working tree at start: clean (`git status` showed nothing to commit), so no user changes needed protecting.
 Authorization: local implementation and per-task local commits only. No push, PR, deploy, or live seats.aero / Anthropic request.
@@ -15,7 +15,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 
 | Milestone | State | Evidence |
 |---|---|---|
-| M1 truthful foundations (T01–T05) | in_progress | [baseline](evidence/T01-baseline.md), [T01](evidence/T01-fixture-harness.md) |
+| M1 truthful foundations (T01–T05) | in_progress | [baseline](evidence/T01-baseline.md), [T01](evidence/T01-fixture-harness.md), [T02](evidence/T02-truth-identity.md) |
 | M2 iOS search flow (T06–T11) | pending | — |
 | M3 context and persistence (T12–T17) | pending | — |
 | M4 Web and release validation (T18–T22) | pending | — |
@@ -25,7 +25,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 | Task | Title | State | Evidence / notes |
 |---|---|---|---|
 | T01 | Read-only baseline, evidence dir, isolated fixture harness | verified (browser mock + bundle) | [evidence](evidence/T01-fixture-harness.md); A01 verified |
-| T02 | Stable identity, source time, missing values | pending | |
+| T02 | Stable identity, source time, missing values | verified (unit) | [evidence](evidence/T02-truth-identity.md); A04 verified; A02/A03 unit-verified, component half with T07 |
 | T03 | Coverage evidence through cache and versioning | pending | |
 | T04 | Shared tokens and primitives, light/dark | pending | |
 | T05 | Versioned workspace and shared structured query entry | pending | |
@@ -60,9 +60,9 @@ Authorization: local implementation and per-task local commits only. No push, PR
 
 | Scope | State |
 |---|---|
-| Unit (vitest) | run per task; baseline and T01 green |
+| Unit (vitest) | run per task; baseline, T01, T02 green (root 823/2 skipped, core 753, ios 577) |
 | Web mock — existing web e2e (`pnpm e2e`) | baseline 583 passed / 145 skipped / 0 failed; not re-run (no web change yet, and it must run in a worktree from now on) |
-| iOS browser mock (`playwright.uiux.config.ts`) | T01: 10 passed |
+| iOS browser mock (`playwright.uiux.config.ts`) | 10 passed (T01 harness, re-run at T02) |
 | iOS Simulator | not run yet |
 | Physical device | not available to this session — unverified |
 | Live seats.aero / Anthropic key | not authorized — not run |
@@ -75,4 +75,4 @@ Authorization: local implementation and per-task local commits only. No push, PR
 
 ## Current next action
 
-T02: stable identity, source time and missing-value helpers in `packages/core/src/lib/workspace/` — red test first (`pnpm --filter @awardgrid/core exec vitest run src/lib/workspace/semantics.test.ts`).
+T03: coverage evidence through the cache — `restoreCoverage`, evidence on runFind results and cache coverage records, legacy → unknown. Red test first: `pnpm --filter @awardgrid/core exec vitest run src/lib/workspace/coverage.test.ts` (in the worktree).

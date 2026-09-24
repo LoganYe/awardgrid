@@ -30,14 +30,32 @@ export function fixtureRows(): AvailabilityRow[] {
   return availability.rows.map((row) => ({ ...(row as AvailabilityRow), time_basis: "provider_last_seen" as const }));
 }
 
+/** Whether a synthetic row belongs to a query's scope (pairs, dates, cabins, programs). */
+function inScope(row: AvailabilityRow, query: QueryObject): boolean {
+  const programs = query.programs && query.programs.length > 0 ? query.programs : null;
+  return (
+    query.origins.includes(row.origin) &&
+    query.destinations.includes(row.dest) &&
+    row.date >= query.date_from &&
+    row.date <= query.date_to &&
+    query.cabins.includes(row.cabin) &&
+    (programs === null || programs.includes(row.program))
+  );
+}
+
+/**
+ * A self-consistent snapshot: rows, row keys, scope key and coverage are all derived from the final query, so
+ * overriding `query` narrows the rows to that query instead of claiming complete coverage for rows it never asked
+ * for. `scopeKey` cannot be overridden on its own (it is always scopeKey(query)); `rows` and `coverage` may be,
+ * for tests that need a deliberately different state.
+ */
 export function fixtureSnapshot(overrides: Partial<ResultSnapshot> = {}): ResultSnapshot {
+  if (overrides.scopeKey !== undefined) throw new Error("fixtureSnapshot: override `query`, not `scopeKey`; the key is derived from it.");
   const query = overrides.query ?? fixtureQuery();
   const scope = scopeKey(query);
-  const rows: WorkspaceRow[] = fixtureRows().map((value) => ({
-    key: rowKey(value, scope),
-    value,
-    time: rowTimeEvidence(value, FIXTURE_NOW),
-  }));
+  const rows: WorkspaceRow[] = fixtureRows()
+    .filter((value) => inScope(value, query))
+    .map((value) => ({ key: rowKey(value, scope), value, time: rowTimeEvidence(value, FIXTURE_NOW) }));
   return {
     schemaVersion: 1,
     id: "fixture-snapshot-1",

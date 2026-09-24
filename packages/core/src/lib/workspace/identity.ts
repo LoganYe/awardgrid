@@ -19,9 +19,12 @@ import type { RowKey } from "./types";
 
 export const SCOPE_KEY_VERSION = "v1";
 
-/** encodeURIComponent, plus the five characters it leaves alone (!'()*), so the result is attribute- and URL-safe. */
+/**
+ * encodeURIComponent, plus the characters it leaves alone that matter here: !'()* (not attribute/URL-safe everywhere)
+ * and ~, the row-key separator — so no value can forge a component boundary.
+ */
 function encode(value: string): string {
-  return encodeURIComponent(value).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return encodeURIComponent(value).replace(/[!'()*~]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
 }
 
 /** Sorted, de-duplicated, each part encoded so a separator inside a value cannot forge a boundary. */
@@ -64,17 +67,19 @@ export function scopeDigest(scope: string): string {
 export type RowIdentity = Pick<AvailabilityRow, "program" | "source_id" | "origin" | "dest" | "date" | "cabin" | "include_filtered" | "min_cabin_pct">;
 
 /**
- * The key of one aggregate option within one scope. Safe in a DOM attribute or URL: only unreserved characters,
- * percent-escapes, `~` and `:`.
+ * The key of one aggregate option within one scope. Every component is encoded, so no value (program, source id,
+ * airport) can collide with another by containing the separator. Safe in a DOM attribute or URL: only unreserved
+ * characters, percent-escapes and the `~` separator.
  */
 export function rowKey(row: RowIdentity, scope: string): RowKey {
   return [
     scopeDigest(scope),
     encode(row.program),
     encode(row.source_id),
-    `${row.origin}-${row.dest}`,
-    row.date,
-    row.cabin,
+    encode(row.origin),
+    encode(row.dest),
+    encode(row.date),
+    encode(row.cabin),
     `${row.include_filtered ? "f" : "n"}${pct(row.min_cabin_pct)}`,
   ].join("~");
 }

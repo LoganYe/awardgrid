@@ -220,6 +220,12 @@ function toRow(r: AvailabilityCacheRow): AvailabilityRow {
   };
   // Only present when true, matching what normalize() produces and what callers compare against.
   if (include_filtered) row.include_filtered = true;
+  // Only present when recorded by the write that produced these values (see decodeTimeEvidence).
+  const evidence = decodeTimeEvidence(r.timeEvidence, r.fetchedAt);
+  if (evidence) {
+    row.time_basis = evidence.basis;
+    if (evidence.updated !== null) row.provider_updated_at = evidence.updated;
+  }
   // Same rule for the default 100: absent, exactly as normalize() leaves it.
   if (min_cabin_pct !== DEFAULT_MIN_CABIN_PCT) row.min_cabin_pct = min_cabin_pct;
   return row;
@@ -243,11 +249,41 @@ function toInsert(userId: string, r: AvailabilityRow): typeof availabilityCache.
     sourceId: r.source_id,
     bookingUrl: r.booking_url,
     fetchedAt: r.fetched_at,
+    timeEvidence: encodeTimeEvidence(r),
   };
 }
 
+const TIME_BASES: ReadonlySet<string> = new Set(["provider_last_seen", "provider_updated", "local_fallback"]);
+
+/** The time_evidence column: null when the row recorded no provenance (a row from before UI/UX v1 T02). */
+export function encodeTimeEvidence(r: Pick<AvailabilityRow, "time_basis" | "provider_updated_at" | "fetched_at">): string | null {
+  if (!r.time_basis) return null;
+  return JSON.stringify({ basis: r.time_basis, updated: r.provider_updated_at ?? null, at: r.fetched_at });
+}
+
+/**
+ * Parse the time_evidence column. Anything malformed, or written for a different fetch than the row's current
+ * fetched_at (an older build rewrote the values without knowing this column), is no evidence at all.
+ */
+export function decodeTimeEvidence(
+  json: string | null,
+  fetchedAt: string,
+): { basis: NonNullable<AvailabilityRow["time_basis"]>; updated: string | null } | null {
+  if (!json) return null;
+  try {
+    const v: unknown = JSON.parse(json);
+    if (typeof v !== "object" || v === null) return null;
+    const { basis, updated, at } = v as Record<string, unknown>;
+    if (typeof basis !== "string" || !TIME_BASES.has(basis) || at !== fetchedAt) return null;
+    if (updated !== null && typeof updated !== "string") return null;
+    return { basis: basis as NonNullable<AvailabilityRow["time_basis"]>, updated };
+  } catch {
+    return null;
+  }
+}
+
 /** SQLite's bound-parameter ceiling is 32,766; keep multi-row statements well under it. */
-const ROW_CHUNK = 400; // 16 columns
+const ROW_CHUNK = 400; // 17 columns
 const COVERAGE_CHUNK = 1000; // 7 columns
 
 function chunks<T>(items: readonly T[], size: number): T[][] {
@@ -402,6 +438,7 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
                 sourceId: sql`excluded.source_id`,
                 bookingUrl: sql`excluded.booking_url`,
                 fetchedAt: sql`excluded.fetched_at`,
+                timeEvidence: sql`excluded.time_evidence`,
               },
             })
             .run();

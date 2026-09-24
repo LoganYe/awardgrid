@@ -106,6 +106,15 @@ export const availabilityCache = sqliteTable(
     sourceId: text("source_id").notNull(),
     bookingUrl: text("booking_url"),
     fetchedAt: text("fetched_at").notNull(),
+    /**
+     * JSON {"basis","updated","at"}: which clock computed_last_seen came from (core grid/types.ts
+     * AvailabilityRow.time_basis), the provider's UpdatedAt when it sent one, and the fetched_at of
+     * the write that recorded them. Read back only while "at" still equals this row's fetched_at, so
+     * a writer that does not know the column (an older build after a rollback) cannot leave a stale
+     * label on newer values. Nullable and additive (migration 0003): rows written before it read back
+     * with no provenance, which the UI/UX v1 surfaces show as "provider time unknown".
+     */
+    timeEvidence: text("time_evidence"),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.program, t.origin, t.dest, t.date, t.cabin] }),

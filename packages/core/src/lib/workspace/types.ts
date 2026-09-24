@@ -24,8 +24,9 @@ export type RowKey = string;
  * Where a row's time came from.
  * - provider_last_seen: seats.aero ComputedLastSeen.
  * - provider_updated:   seats.aero UpdatedAt (the documented update time).
- * - local_fallback:     no provider time could be proven; only the local fetch time is known.
- * - unknown:            not even a valid local fetch time.
+ * - local_fallback:     the provider sent no usable time; only this device's fetch time is known.
+ * - unknown:            the time's provenance was never recorded (a row from before it was, or from a store that
+ *                       drops it), or there is no valid time at all. `fetchedAt` may still be shown on its own.
  */
 export type TimeBasis = "provider_last_seen" | "provider_updated" | "local_fallback" | "unknown";
 

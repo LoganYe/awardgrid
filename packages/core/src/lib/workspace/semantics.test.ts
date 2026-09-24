@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { availabilityToRows } from "../seatsaero/normalize";
 import { Availability } from "../seatsaero/types";
-import { knownFees, knownSeats, feesState, rowTimeEvidence, toTimeEvidence } from "./semantics";
+import { ageMs, feesState, isRealDate, knownFees, knownSeats, parseInstant, rowTimeEvidence, toTimeEvidence } from "./semantics";
 import { scopeKey, rowKey } from "./identity";
 import fixture from "../../../test/fixtures/uiux/availability-rows.json";
 import { QueryObject } from "../query/schema";
@@ -41,6 +41,8 @@ describe("knownSeats: only a positive whole count is a seat count", () => {
     [1.5, null],
     [Number.NaN, null],
     [Number.POSITIVE_INFINITY, null],
+    [1e21, null],
+    [2 ** 53 + 2, null],
     [1, 1],
     [9, 9],
   ])("%s → %s", (input, expected) => {
@@ -63,8 +65,19 @@ describe("knownFees / feesState: amount and currency are separate unknowns", () 
     [-100, "USD"],
     [86.2, "USD"],
     [Number.NaN, "USD"],
+    [1e21, "USD"],
+    [2 ** 53 + 2, "USD"],
+    [8620, "uſd"],
+    [8620, "ınr"],
+    [8620, "\u00a0USD\u2003"],
+    [8620, "ＵＳＤ"],
   ])("knownFees(%s, %j) is null", (cents, currency) => {
     expect(knownFees(cents as number | null, currency as string | null)).toBeNull();
+  });
+  it("never keeps a negative zero, which would print as -$0.00", () => {
+    expect(Object.is(knownFees(-0, "USD")!.cents, 0)).toBe(true);
+    const state = feesState(-0, "USD");
+    expect(state.kind === "known" && Object.is(state.cents, 0)).toBe(true);
   });
   it("tells 'no amount' from 'amount without a currency' — neither is free", () => {
     expect(feesState(null, "USD")).toEqual({ kind: "unknown" });
@@ -144,13 +157,45 @@ describe("rowTimeEvidence: a cached row proves its provider time only if it reco
       fetchedAt: base.fetched_at,
     });
     expect(rowTimeEvidence({ ...base, time_basis: "provider_updated" }, now).basis).toBe("provider_updated");
+    expect(rowTimeEvidence({ ...base, time_basis: "local_fallback" }, now)).toEqual({ basis: "local_fallback", providerAt: null, fetchedAt: base.fetched_at });
   });
 
-  it("never reads a legacy row's computed_last_seen as the provider's time", () => {
+  it("falls back to the provider's UpdatedAt when the recorded ComputedLastSeen is unusable", () => {
+    const row = { ...base, time_basis: "provider_last_seen" as const, computed_last_seen: "2026-10-18T08:35:00Z", provider_updated_at: "2026-10-16T00:00:00Z" };
+    expect(rowTimeEvidence(row, now)).toEqual({ basis: "provider_updated", providerAt: "2026-10-16T00:00:00Z", fetchedAt: base.fetched_at });
+  });
+
+  it("reads a row with no recorded provenance as unknown — not as a provider time, and not as local_fallback", () => {
     const legacy: AvailabilityRow = { ...base };
     delete legacy.time_basis;
-    expect(rowTimeEvidence(legacy, now)).toEqual({ basis: "local_fallback", providerAt: null, fetchedAt: base.fetched_at });
-    expect(rowTimeEvidence({ ...base, time_basis: "local_fallback" }, now).providerAt).toBeNull();
+    expect(rowTimeEvidence(legacy, now)).toEqual({ basis: "unknown", providerAt: null, fetchedAt: base.fetched_at });
+    const garbled = { ...base, time_basis: "provider" as unknown as AvailabilityRow["time_basis"] };
+    expect(rowTimeEvidence(garbled, now).basis).toBe("unknown");
+    expect(rowTimeEvidence({ ...legacy, fetched_at: "2099-01-01T00:00:00Z" }, now)).toEqual({ basis: "unknown", providerAt: null, fetchedAt: null });
+  });
+});
+
+describe("instants and dates are parsed strictly", () => {
+  it("rejects a zero-value or pre-1970 time instead of reading it as the 1900s", () => {
+    expect(parseInstant("0001-01-01T00:00:00Z")).toBeNull();
+    expect(parseInstant("0026-09-20T00:00:00Z")).toBeNull();
+    expect(parseInstant("1969-12-31T23:59:59Z")).toBeNull();
+    expect(parseInstant("1970-01-01T00:00:00Z")).toBe(0);
+    expect(toTimeEvidence({ providerLastSeen: "0001-01-01T00:00:00Z", providerUpdatedAt: "2026-10-16T00:00:00Z", now: fixture.now }).basis).toBe(
+      "provider_updated",
+    );
+  });
+
+  it("uses real Gregorian leap years", () => {
+    for (const ok of ["2028-02-29", "2000-02-29", "2026-12-31", "0004-02-29"]) expect(isRealDate(ok)).toBe(true);
+    for (const bad of ["2026-02-29", "1900-02-29", "2100-02-29", "2026-04-31", "2026-13-01", "2026-00-10", "2026-1-01"]) expect(isRealDate(bad)).toBe(false);
+  });
+
+  it("gives an age that is never negative, and none for a non-instant", () => {
+    expect(ageMs("2026-10-18T08:00:00Z", fixture.now)).toBe(30 * 60_000);
+    expect(ageMs("2026-10-18T08:30:30Z", fixture.now)).toBe(0); // inside the skew window
+    expect(ageMs("yesterday", fixture.now)).toBeNull();
+    expect(ageMs(null, fixture.now)).toBeNull();
   });
 });
 
@@ -177,5 +222,15 @@ describe("decoding records the time basis (seatsaero/normalize.ts)", () => {
     // Old consumers keep the field they always read, unchanged.
     expect(none!.computed_last_seen).toBe(fetchedAt);
     expect(rowTimeEvidence(none!, fixture.now)).toEqual({ basis: "local_fallback", providerAt: null, fetchedAt });
+    expect(seen!.provider_updated_at).toBe("2026-10-16T00:00:00Z");
+    expect("provider_updated_at" in none!).toBe(false);
   });
+
+  it.each(["2026-10-18T08:35:00Z", "", "2026-10-17 06:00", "0001-01-01T00:00:00Z"])(
+    "keeps the provider's UpdatedAt usable when ComputedLastSeen is %j",
+    (computed) => {
+      const [row] = availabilityToRows(payload({ ComputedLastSeen: computed, UpdatedAt: "2026-10-16T00:00:00Z" }), { fetchedAt });
+      expect(rowTimeEvidence(row!, fixture.now)).toEqual({ basis: "provider_updated", providerAt: "2026-10-16T00:00:00Z", fetchedAt });
+    },
+  );
 });

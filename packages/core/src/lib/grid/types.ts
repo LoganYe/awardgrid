@@ -44,6 +44,12 @@ export interface AvailabilityRow {
    * computed_last_seen before reads anything different now.
    */
   time_basis?: "provider_last_seen" | "provider_updated" | "local_fallback";
+  /**
+   * The provider's UpdatedAt, kept as sent whenever the payload had one. computed_last_seen prefers
+   * ComputedLastSeen; if that value turns out unusable (malformed, or ahead of the device clock),
+   * this is the provider time that can still be shown. Absent when not sent, and on older rows.
+   */
+  provider_updated_at?: string;
 }
 
 /**

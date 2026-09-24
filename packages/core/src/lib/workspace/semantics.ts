@@ -22,17 +22,21 @@ export const FUTURE_SKEW_MS = 60_000;
 
 /** A seat count only when the program reported one. seats.aero's 0 means "not provided", not "sold out". */
 export function knownSeats(value: number | null | undefined): number | null {
-  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
-/** An ISO 4217-shaped code, upper-cased, or null. A blank or malformed code is not a currency. */
+/**
+ * An ISO 4217-shaped code, upper-cased, or null. A blank or malformed code is not a currency. Checked as three
+ * ASCII letters BEFORE case-folding, so look-alikes ("uſd", "ınr") and non-ASCII padding are not folded into one.
+ */
 export function knownCurrency(currency: string | null | undefined): string | null {
-  const code = typeof currency === "string" ? currency.trim().toUpperCase() : "";
-  return /^[A-Z]{3}$/.test(code) ? code : null;
+  const code = typeof currency === "string" ? currency.replace(/^[ \t]+|[ \t]+$/g, "") : "";
+  return /^[A-Za-z]{3}$/.test(code) ? code.toUpperCase() : null;
 }
 
+/** Minor units: a safe, non-negative whole number. `-0` becomes 0 so it can never print as "-$0.00". */
 function knownCents(cents: number | null | undefined): number | null {
-  return typeof cents === "number" && Number.isInteger(cents) && cents >= 0 ? cents : null;
+  return typeof cents === "number" && Number.isSafeInteger(cents) && cents >= 0 ? cents + 0 : null;
 }
 
 /** An amount with its currency, or null when either is unknown. An explicit 0 with a currency is a real zero. */
@@ -58,9 +62,20 @@ export function feesState(cents: number | null, currency: string | null): FeesSt
 
 // ---- dates and instants --------------------------------------------------------------------------------------
 
-function daysInMonth(year: number, month: number): number {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
+
+/** Days in a proleptic Gregorian month, by arithmetic (Date.UTC reads years 0–99 as 1900–1999). */
+function daysInMonth(year: number, month: number): number {
+  return month === 2 ? (isLeapYear(year) ? 29 : 28) : [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
+/**
+ * The earliest instant believed as a data timestamp. Nothing in this domain predates it, and a zero-value time
+ * from a provider's backend ("0001-01-01T00:00:00Z") must read as "no time", never as a very old real one.
+ */
+export const EARLIEST_INSTANT_YEAR = 1970;
 
 /** A real Gregorian YYYY-MM-DD (rejects 2026-02-30, which Date.parse silently rolls into March). */
 export function isRealDate(value: unknown): value is string {
@@ -82,6 +97,7 @@ export function parseInstant(value: unknown): number | null {
   const m = INSTANT.exec(value);
   if (!m || !isRealDate(m[1])) return null;
   const [year, month, day] = m[1]!.split("-").map(Number) as [number, number, number];
+  if (year < EARLIEST_INSTANT_YEAR) return null;
   const hour = Number(m[2]);
   const minute = Number(m[3]);
   const second = m[4] === undefined ? 0 : Number(m[4]);
@@ -95,6 +111,18 @@ export function parseInstant(value: unknown): number | null {
     offsetMinutes = (m[7] === "-" ? -1 : 1) * (oh * 60 + om);
   }
   return Date.UTC(year, month - 1, day, hour, minute, second, millis) - offsetMinutes * 60_000;
+}
+
+/**
+ * Age of a believed time at `now`, in ms, or null when either value is not an instant. A time inside the clock-skew
+ * window (FUTURE_SKEW_MS ahead) is age 0; toTimeEvidence has already dropped anything further ahead, so a negative
+ * age can never be shown.
+ */
+export function ageMs(at: string | null | undefined, now: ISOInstant): number | null {
+  const atMs = parseInstant(at);
+  const nowMs = parseInstant(now);
+  if (atMs === null || nowMs === null) return null;
+  return Math.max(0, nowMs - atMs);
 }
 
 // ---- time evidence -------------------------------------------------------------------------------------------
@@ -131,18 +159,29 @@ export function toTimeEvidence(input: TimeEvidenceInput): TimeEvidence {
 }
 
 /**
- * Time evidence for a decoded or cached row. Only a row that recorded its basis when it was decoded
- * (seatsaero/normalize.ts `time_basis`) can prove a provider time. A row without it — written before this
- * field existed, or read back from a store that does not keep it — shows its local fetch time only: its
- * computed_last_seen may be that very fetch time in disguise.
+ * Time evidence for a decoded or cached row, by what it recorded when it was decoded (seatsaero/normalize.ts):
+ *
+ * - time_basis "provider_last_seen": computed_last_seen is the provider's ComputedLastSeen; if that is unusable
+ *   (malformed, or ahead of this clock), the provider's UpdatedAt (provider_updated_at) is still tried.
+ * - time_basis "provider_updated": computed_last_seen is the provider's UpdatedAt.
+ * - time_basis "local_fallback": the provider sent no time; only the fetch time is known.
+ * - no time_basis: the row was written before provenance was recorded (or by a store that does not keep it).
+ *   Its computed_last_seen may be the fetch time in disguise, and whether the provider sent a time is not known,
+ *   so the basis is "unknown" — shown apart from local_fallback — and only the fetch time is carried
+ *   (docs/03 §1: "legacy … 按unknown，本机fetchedAt可单独展示").
  */
-export function rowTimeEvidence(row: Pick<AvailabilityRow, "computed_last_seen" | "fetched_at" | "time_basis">, now: ISOInstant): TimeEvidence {
+export function rowTimeEvidence(
+  row: Pick<AvailabilityRow, "computed_last_seen" | "fetched_at" | "time_basis" | "provider_updated_at">,
+  now: ISOInstant,
+): TimeEvidence {
   switch (row.time_basis) {
     case "provider_last_seen":
-      return toTimeEvidence({ providerLastSeen: row.computed_last_seen, fetchedAt: row.fetched_at, now });
+      return toTimeEvidence({ providerLastSeen: row.computed_last_seen, providerUpdatedAt: row.provider_updated_at, fetchedAt: row.fetched_at, now });
     case "provider_updated":
       return toTimeEvidence({ providerUpdatedAt: row.computed_last_seen, fetchedAt: row.fetched_at, now });
-    default:
+    case "local_fallback":
       return toTimeEvidence({ fetchedAt: row.fetched_at, now });
+    default:
+      return { basis: "unknown", providerAt: null, fetchedAt: toTimeEvidence({ fetchedAt: row.fetched_at, now }).fetchedAt };
   }
 }

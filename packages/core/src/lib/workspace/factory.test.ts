@@ -28,6 +28,20 @@ describe("fixtureSnapshot", () => {
     expect(first!.seats_left).toBe(0);
   });
 
+  it("derives rows and coverage from an overridden query instead of keeping rows it never asked for", () => {
+    const query = QueryObject.parse({ ...fixtureSnapshot().query, origins: ["JFK"], programs: ["united"] });
+    const snap = fixtureSnapshot({ query });
+    expect(snap.rows).toEqual([]);
+    expect(snap.scopeKey).toBe(scopeKey(query));
+    expect(snap.coverage.slices.map((s) => [s.origin, s.programs])).toEqual([["JFK", ["united"]]]);
+    const onlyJ = fixtureSnapshot({ query: QueryObject.parse({ ...fixtureSnapshot().query, cabins: ["J"] }) });
+    expect(onlyJ.rows.map((r) => r.value.cabin)).toEqual(["J", "J", "J"]);
+  });
+
+  it("refuses a scopeKey override that would disagree with the query", () => {
+    expect(() => fixtureSnapshot({ scopeKey: "other" })).toThrow(/override `query`/);
+  });
+
   it("applies overrides without mutating the defaults", () => {
     expect(fixtureSnapshot({ id: "second", revision: 2 })).toMatchObject({ id: "second", revision: 2 });
     expect(fixtureSnapshot().id).toBe("fixture-snapshot-1");

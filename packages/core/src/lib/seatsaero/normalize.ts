@@ -64,6 +64,7 @@ export function availabilityToRows(av: Availability, opts: NormalizeOptions): Av
       airlines: splitAirlines(av[`${cabin}Airlines`]),
       computed_last_seen: computedLastSeen,
       time_basis: timeBasis,
+      ...(av.UpdatedAt != null ? { provider_updated_at: av.UpdatedAt } : {}),
       source_id: av.ID,
       booking_url: null,
       fetched_at: opts.fetchedAt,

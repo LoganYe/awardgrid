@@ -94,6 +94,15 @@ describe("rowKey", () => {
     expect(rowKey({ ...r, min_cabin_pct: 100 }, scope)).toBe(rowKey(r, scope));
   });
 
+  it("cannot be forged by a value that contains the separator", () => {
+    const a = rowKey({ ...rows[2]!, program: "a~b", source_id: "c" }, scope);
+    const b = rowKey({ ...rows[2]!, program: "a", source_id: "b~c" }, scope);
+    expect(a).not.toBe(b);
+    const pair1 = rowKey({ ...rows[2]!, origin: "A-B", dest: "C" }, scope);
+    const pair2 = rowKey({ ...rows[2]!, origin: "A", dest: "B-C" }, scope);
+    expect(pair1).not.toBe(pair2);
+  });
+
   it("is safe to put in a DOM attribute or a URL", () => {
     const key = rowKey({ ...rows[2]!, program: 'we"ird prog', source_id: "id with space/and|pipe" }, scope);
     expect(key).toMatch(/^[A-Za-z0-9._~%:-]+$/);
