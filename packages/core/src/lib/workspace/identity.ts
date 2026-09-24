@@ -8,9 +8,9 @@
  *                         row's own cache scope. Never an array index, never a value (miles, fees, seats) that can
  *                         change while the option stays the same one.
  *
- * max_miles is not sent upstream (seatsaero/find.ts applies it locally), but it changes which rows a snapshot
- * holds, so it is kept in the scope conservatively (docs/03: "默认保守纳入"): two snapshots that differ only in
- * max_miles are never treated as the same result.
+ * max_miles is not sent upstream, and the fetch keeps rows above it; the views apply it (grid/pivot.ts buildGrid,
+ * workspace/projection.ts). It still changes what a snapshot answers, so it is kept in the scope conservatively
+ * (docs/03: "默认保守纳入"): two snapshots that differ only in max_miles are never treated as the same result.
  */
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { AvailabilityRow } from "../grid/types";

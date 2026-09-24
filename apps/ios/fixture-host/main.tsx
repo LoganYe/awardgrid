@@ -112,8 +112,11 @@ async function start(): Promise<void> {
         // Both transports above are injected, so there is no native bridge to assert. Production never sets this.
         assertNative: () => {},
       }}
-      onReady={() => {
+      onReady={(services) => {
         window.clearTimeout(watchdog);
+        handle.rerunShown = async () => {
+          await services.rerunShown();
+        };
         // One frame later, so the router has rendered the first screen before tests start reading it.
         window.requestAnimationFrame(() => report("ready"));
       }}

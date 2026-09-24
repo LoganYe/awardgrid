@@ -4,8 +4,7 @@
  *
  * With results, the page is the S01 stack at the 390 pt default — header 52 (title, AI assistance), query summary 64
  * (the SHOWN snapshot's query; it opens the editor), filters 44 (each opens the editor at its condition: changing a
- * query condition is always an explicit submit), result view 44 (List, Calendar, or the older grid as Matrix until
- * T09, and the sort), status 28 (how many options, how fresh, the data attribution), 12 gap — then the view, and after
+ * query condition is always an explicit submit), result view 44 (List, Calendar or Matrix, and the sort), status 28 (how many options, how fresh, the data attribution), 12 gap — then the view, and after
  * it the actions (search again, watch, ask) and today's quota. Header and summary stay on screen while the list
  * scrolls. Without results it is a text search and the way into the editor.
  *
@@ -28,7 +27,6 @@
  * time it was saved, without running it. The screen marks itself with its language (the other screens are English
  * until T11).
  */
-import { buildGrid } from "@awardgrid/core/grid/pivot";
 import { SortBy } from "@awardgrid/core/query/schema";
 import { projectResults } from "@awardgrid/core/workspace/projection";
 import { type Locale, ageLabel, copy, coverageNotices, moreConditionsCount, optionsCount, sortLabel, sortShortLabel } from "@awardgrid/core/workspace/present";
@@ -40,10 +38,10 @@ import { langTag } from "../app/locale";
 import { ASK_ABOUT_SEARCH } from "../ask/labels";
 import type { ApiFailure, ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
 import type { LastSearchEntry } from "../search/last-search";
-import { GridTable } from "../components/GridTable";
 import { TextSearch } from "../components/query/TextSearch";
 import { AvailabilityCalendar } from "../components/results/AvailabilityCalendar";
 import { AvailabilityList } from "../components/results/AvailabilityList";
+import { AvailabilityMatrix } from "../components/results/AvailabilityMatrix";
 import { RESULTS } from "../components/results/copy";
 import { QuerySummary } from "../components/results/QuerySummary";
 import { Button, Icon, Notice, SegmentedControl } from "../components/ui";
@@ -183,22 +181,6 @@ export function SearchScreen() {
   const rows = projected?.rows ?? [];
   // Coverage speaks for the search, so it counts the snapshot's rows, not the ones a view filter lets through.
   const coverage = snapshot && value ? coverageNotices(snapshot.coverage, snapshot.rows.length, locale) : [];
-  // The Matrix (the older grid until T09) is rebuilt from the same rows; its empty cells keep the search's own
-  // reasons (not monitored, not checked). Its cells are picked by core ranking, which compares fees across
-  // currencies, so under the fee sort they are picked by miles and say so. It cannot tell a cell the view filter
-  // emptied from an empty one, so it is not drawn while a filter hides rows.
-  const matrixSort = prefs.sort === "fees_asc" ? "miles_asc" : prefs.sort;
-  const matrix = useMemo(
-    () =>
-      value && projected && prefs.kind === "matrix" && projected.hiddenByFilter === 0
-        ? buildGrid(
-            projected.rows.map((r) => r.value),
-            { ...value.query, sort_by: matrixSort },
-            { now: value.grid.meta.generated_at, unmonitored_pairs: value.grid.meta.unmonitored_pairs, not_fetched_pairs: value.grid.meta.not_fetched_pairs },
-          )
-        : null,
-    [value, projected, prefs.kind, matrixSort],
-  );
   // "Show all" takes its own button away: focus goes to the status line, and the change is announced.
   const [announcement, setAnnouncement] = useState("");
   const showAll = () => {
@@ -209,6 +191,24 @@ export function SearchScreen() {
   };
   // The filter row scrolls sideways when its chips do not fit; it then shows that there is more.
   const filtersRef = useRef<HTMLDivElement>(null);
+  // The sticky header and summary's real height (it grows with a long route or larger text; 0 when landscape makes
+  // it static), for the page's scroll padding and the matrix's height (results.css --results-sticky-h).
+  const stickyRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = stickyRef.current;
+    const main = el?.closest<HTMLElement>(".app-main");
+    if (!el || !main) return;
+    const measure = () => main.style.setProperty("--results-sticky-h", `${getComputedStyle(el).position === "sticky" ? el.offsetHeight : 0}px`);
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      main.style.removeProperty("--results-sticky-h");
+    };
+  }, []);
   const [filtersOverflow, setFiltersOverflow] = useState(false);
   useLayoutEffect(() => {
     const el = filtersRef.current;
@@ -250,7 +250,7 @@ export function SearchScreen() {
 
   return (
     <div className="ag-results" lang={langTag(locale)} data-run={workspace.run.kind} data-busy={String(searching)} data-revision={workspace.revision}>
-      <div className="ag-results-sticky">
+      <div className="ag-results-sticky" ref={stickyRef}>
         <header className="ag-results-header" data-testid="results-header">
           <h1 className="ag-results-title">{t.title}</h1>
           <Link to="/ask" className="ag-results-ai">
@@ -349,6 +349,7 @@ export function SearchScreen() {
                 {w}
               </Callout>
             ))}
+            {projected && projected.dynamicNotShown > 0 ? <Notice tone="info">{t.dynamicNotShown(projected.dynamicNotShown)}</Notice> : null}
             {projected && projected.hiddenByFilter > 0 ? (
               <Notice tone="info">
                 {t.hiddenByFilter(projected.hiddenByFilter)}{" "}
@@ -359,19 +360,16 @@ export function SearchScreen() {
             ) : null}
           </div>
 
-          {prefs.kind === "matrix" ? (
-            <div className="ag-results-matrix" data-testid="matrix-view">
-              {matrix ? (
-                <>
-                  {prefs.sort === "fees_asc" ? <p className="ag-results-meta">{t.matrixMilesOnly}</p> : null}
-                  <div lang={english}>
-                    <GridTable grid={matrix} now={now} saved={Boolean(shown?.savedAt)} />
-                  </div>
-                </>
-              ) : (
-                <p className="ag-results-meta">{t.matrixNoFilter}</p>
-              )}
-            </div>
+          {prefs.kind === "matrix" && projected ? (
+            <AvailabilityMatrix
+              snapshot={snapshot}
+              projected={projected}
+              sort={prefs.sort}
+              selected={selected}
+              onToggle={toggleRow}
+              now={now.toISOString()}
+              locale={locale}
+            />
           ) : prefs.kind === "calendar" && projected ? (
             <AvailabilityCalendar
               key={snapshot.id}

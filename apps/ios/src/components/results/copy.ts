@@ -31,10 +31,17 @@ export interface ResultsCopy {
   hiddenByFilter: (n: number) => string;
   showAll: string;
   showingAll: (n: number) => string;
-  /** The older grid picks each cell by miles: fees are never compared across currencies there. */
-  matrixMilesOnly: string;
-  /** The older grid cannot tell a filtered cell from an empty one, so it is not drawn under a view filter. */
-  matrixNoFilter: string;
+  /** What a matrix number is: the lowest miles, and miles are not equal across programs. */
+  matrixCaption: string;
+  matrixDate: string;
+  /** Keyboard hint, shown only with a fine pointer. */
+  matrixKeys: string;
+  /** The opened cell's heading over its options. */
+  cellHeading: (day: string, route: string, n: number) => string;
+  /** Other selected options in a matrix slot than the one it shows. */
+  othersSelected: (n: number) => string;
+  /** Dynamically priced options the query leaves out (T09 review): said, not silently dropped. */
+  dynamicNotShown: (n: number) => string;
   /** Fee groups under the fee sort: fees never compare across currencies. */
   feeGroup: (currency: string) => string;
   calendarCabin: string;
@@ -96,8 +103,12 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     hiddenByFilter: (n) => `${n} ${n === 1 ? "option is" : "options are"} hidden by your view filter.`,
     showAll: "Show all",
     showingAll: (n) => `Showing all ${n} ${n === 1 ? "option" : "options"}.`,
-    matrixMilesOnly: "Matrix cells show the lowest miles; fees are sorted only in the list.",
-    matrixNoFilter: "The matrix cannot apply a view filter yet. Show all options to use it.",
+    matrixCaption: "Each cell shows its lowest miles; miles in different programs are not equivalent.",
+    matrixDate: "Date",
+    matrixKeys: "Arrow keys move · Enter opens · Esc returns",
+    cellHeading: (day, route, n) => `${day} · ${route} · ${n} ${n === 1 ? "option" : "options"}`,
+    othersSelected: (n) => `${n} other selected`,
+    dynamicNotShown: (n) => `${n} dynamically priced ${n === 1 ? "option is" : "options are"} not shown: this search leaves dynamic pricing out (More filters).`,
     feeGroup: (currency) => `Fees in ${currency}`,
     calendarCabin: "Calendar cabin",
     calendarCaption: (cabin) => `Lowest miles by date · ${cabin}`,
@@ -167,8 +178,12 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     hiddenByFilter: (n) => `${n} 个选项被视图筛选隐藏。`,
     showAll: "显示全部",
     showingAll: (n) => `正在显示全部 ${n} 个选项。`,
-    matrixMilesOnly: "矩阵格显示最低里程；税费排序只用于列表。",
-    matrixNoFilter: "矩阵暂不支持视图筛选。显示全部选项后可使用。",
+    matrixCaption: "每格显示最低里程数；不同计划的里程不等值。",
+    matrixDate: "出发日期",
+    matrixKeys: "方向键移动 · Enter 查看 · Esc 返回",
+    cellHeading: (day, route, n) => `${day} · ${route} · ${n} 个选项`,
+    othersSelected: (n) => `另有 ${n} 个已选`,
+    dynamicNotShown: (n) => `有 ${n} 个动态定价选项未显示：本次查询不含动态定价（更多筛选）。`,
     feeGroup: (currency) => `税费（${currency}）`,
     calendarCabin: "日历舱位",
     calendarCaption: (cabin) => `各日期最低里程 · ${cabin}`,

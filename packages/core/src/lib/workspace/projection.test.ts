@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { fixturePrefs, fixtureQuery, fixtureSnapshot } from "../../../test/fixtures/uiux/factory";
 import type { AvailabilityRow } from "../grid/types";
 import { rowKey, scopeKey } from "./identity";
-import { calendarCabinFor, feeGroup, projectResults } from "./projection";
+import { calendarCabinFor, feeGroup, matrixModel, mobileColumns, projectResults } from "./projection";
 import type { ResultSnapshot, WorkspaceRow } from "./types";
 
 it("calendar minimum is backed by rows in the same filtered projection", () => {
@@ -53,10 +53,14 @@ describe("the filtered rows", () => {
   });
 
   it("with no filter nothing is hidden, and two programs on one day stay two rows", () => {
-    const snapshot = snapshotOf([
-      { date: "2026-10-05", cabin: "J", program: "aeroplan", miles: 70000 },
-      { date: "2026-10-05", cabin: "J", program: "united", miles: 70000 },
-    ]);
+    // A search over all programs (none listed): an Aeroplan and a United option on one day.
+    const snapshot = snapshotOf(
+      [
+        { date: "2026-10-05", cabin: "J", program: "aeroplan", miles: 70000 },
+        { date: "2026-10-05", cabin: "J", program: "united", miles: 70000 },
+      ],
+      { query: { ...fixtureQuery(), programs: undefined } },
+    );
     const p = projectResults(snapshot, fixturePrefs());
     expect(p.rows).toHaveLength(2);
     expect(p.hiddenByFilter).toBe(0);
@@ -258,3 +262,121 @@ describe("sorting", () => {
     expect(a.cells.map((c) => `${c.date}${c.cabin}`)).toEqual(["2026-10-18J", "2026-10-18F", "2026-10-19J", "2026-10-20J"]);
   });
 });
+
+describe("the matrix model (T09)", () => {
+  it("mobile columns: whole columns of at least 124 after the 88 date column, the rest shared out (docs/04 S03)", () => {
+    expect(mobileColumns(358)).toEqual({ date: 88, count: 2, width: 135 });
+    expect(mobileColumns(288)).toEqual({ date: 88, count: 1, width: 200 });
+    expect(mobileColumns(398)).toEqual({ date: 88, count: 2, width: 155 });
+    expect(mobileColumns(736)).toEqual({ date: 88, count: 5, width: 129.6 });
+    expect(mobileColumns(150)).toEqual({ date: 88, count: 1, width: 62 });
+  });
+
+  it("never more columns than routes: one route fills the width; three fill an iPad", () => {
+    expect(mobileColumns(358, 1)).toEqual({ date: 88, count: 1, width: 270 });
+    expect(mobileColumns(736, 3)).toEqual({ date: 88, count: 3, width: 216 });
+    expect(mobileColumns(358, 3)).toEqual({ date: 88, count: 2, width: 135 });
+  });
+
+  it("larger text: wider minimums, so fewer and wider columns (and a wider date column)", () => {
+    expect(mobileColumns(358, 3, 1.3)).toEqual({ date: 114, count: 1, width: 244 });
+    expect(mobileColumns(736, 3, 1.3)).toEqual({ date: 114, count: 3, width: 207.33 });
+    expect(mobileColumns(358, 3, 2)).toEqual({ date: 176, count: 1, width: 182 });
+  });
+
+  it("rows are the query's dates, columns its routes, each cell a slot per cabin asked, in cabin order", () => {
+    const snapshot = fixtureSnapshot({ query: { ...fixtureQuery(), cabins: ["F", "J"] } });
+    const m = matrixModel(snapshot, projectResults(snapshot, fixturePrefs()));
+    expect(m.dates).toHaveLength(30);
+    expect(m.routes.map((r) => `${r.origin}-${r.dest}`)).toEqual(["HKG-SEA"]);
+    expect(m.cabins).toEqual(["J", "F"]);
+    const oct18 = m.cells[m.dates.indexOf("2026-10-18")]![0]!;
+    expect(oct18.slots.map((s) => [s.cabin, s.state, s.best && snapshot.rows.find((r) => r.key === s.best)!.value.miles])).toEqual([
+      ["J", "results", 75000],
+      ["F", "results", 110000],
+    ]);
+    const oct19 = m.cells[m.dates.indexOf("2026-10-19")]![0]!;
+    expect(oct19.slots.map((s) => s.state)).toEqual(["results", "complete"]);
+  });
+
+  it("a slot's number is its lowest miles whatever the view's sort, ties broken within one currency; its keys are the projection's", () => {
+    const query = { ...fixtureQuery(), programs: undefined };
+    const snapshot = snapshotOf(
+      [
+        { date: "2026-10-05", cabin: "J", program: "united", miles: 70000, fees_cents: 9000, currency: "USD", seats_left: 1, source_id: "a" },
+        { date: "2026-10-05", cabin: "J", program: "aeroplan", miles: 70000, fees_cents: 100, currency: "CAD", seats_left: 1, source_id: "b" },
+        // More miles, but first under the fee sort (CAD 0) and the seat sort (9 seats): it must not be the slot's number.
+        { date: "2026-10-05", cabin: "J", program: "aeroplan", miles: 90000, fees_cents: 0, currency: "CAD", seats_left: 9, source_id: "c" },
+      ],
+      { query },
+    );
+    for (const sort of ["fees_asc", "seats_desc", "date_asc", "miles_asc"] as const) {
+      const p = projectResults(snapshot, fixturePrefs({ sort }));
+      const m = matrixModel(snapshot, p);
+      const slot = m.cells[m.dates.indexOf("2026-10-05")]![0]!.slots[0]!;
+      expect(slot.rowKeys).toHaveLength(3);
+      const best = snapshot.rows.find((r) => r.key === slot.best)!.value;
+      expect(best.miles, sort).toBe(70000);
+      // CAD sorts before USD by code, never by converting: the pick is deterministic and currency-honest.
+      expect(best.currency, sort).toBe("CAD");
+      expect(slot.rowKeys.every((k) => p.rows.some((r) => r.key === k))).toBe(true);
+    }
+  });
+
+  it("empty slots carry why: hidden by the filter, not monitored, partial, unknown or checked", () => {
+    const query = { ...fixtureQuery(), origins: ["HKG", "PVG"] };
+    const base = fixtureSnapshot({ query });
+    const slices = base.coverage.slices.map((s) => (s.origin === "PVG" ? { ...s, state: "unmonitored" as const, reason: "not_monitored" as const } : s));
+    const snapshot = { ...base, coverage: { ...base.coverage, slices } };
+    const m = matrixModel(snapshot, projectResults(snapshot, fixturePrefs({ localFilter: { maxMiles: 80000 } })));
+    const i = m.dates.indexOf("2026-10-20");
+    expect(m.cells[i]![0]!.slots[0]).toMatchObject({ cabin: "J", state: "hidden", hidden: 1, best: null });
+    expect(m.cells[i]![1]!.slots.map((s) => s.state)).toEqual(["unmonitored", "unmonitored"]);
+    const partial = { ...base, coverage: { ...base.coverage, state: "partial" as const, slices: base.coverage.slices.map((s) => ({ ...s, state: "partial" as const, reason: "page_cap" as const })) } };
+    const pm = matrixModel(partial, projectResults(partial, fixturePrefs()));
+    expect(pm.cells[pm.dates.indexOf("2026-10-02")]![0]!.slots[0]!.state).toBe("partial");
+    const unknown = { ...base, coverage: { ...base.coverage, state: "unknown" as const, slices: [] } };
+    const um = matrixModel(unknown, projectResults(unknown, fixturePrefs()));
+    expect(um.cells[0]![0]!.slots[0]!.state).toBe("unknown");
+  });
+});
+
+describe("the query's own conditions (T09 review)", () => {
+  it("a row above the query's mileage cap is not shown in any view, and is not 'hidden by your filter'", () => {
+    const query = { ...fixtureQuery(), max_miles: 80000 };
+    const snapshot = snapshotOf(
+      [
+        { date: "2026-10-05", cabin: "J", miles: 70000 },
+        { date: "2026-10-06", cabin: "J", miles: 110000 },
+      ],
+      { query },
+    );
+    const p = projectResults(snapshot, fixturePrefs());
+    expect(p.rows.map((r) => r.value.miles)).toEqual([70000]);
+    expect(p.hiddenByFilter).toBe(0);
+    const oct6 = p.days.find((d) => d.date === "2026-10-06")!;
+    expect(oct6).toMatchObject({ minMiles: null, hidden: 0, coverage: "complete" });
+    const m = matrixModel(snapshot, p);
+    expect(m.cells[m.dates.indexOf("2026-10-06")]![0]!.slots[0]!.state).toBe("complete");
+  });
+
+  it("nonstop, cabins and programs asked for, and dynamic pricing only when asked — the dynamic ones counted", () => {
+    const query = { ...fixtureQuery(), direct_only: true, cabins: ["J" as const], programs: ["aeroplan"] };
+    const snapshot = snapshotOf(
+      [
+        { date: "2026-10-05", cabin: "J", miles: 1, direct: true },
+        { date: "2026-10-05", cabin: "J", miles: 2, direct: false },
+        { date: "2026-10-05", cabin: "F", miles: 3, direct: true },
+        { date: "2026-10-05", cabin: "J", miles: 4, direct: true, program: "united" },
+        { date: "2026-10-05", cabin: "J", miles: 5, direct: true, dynamic: true },
+      ],
+      { query },
+    );
+    const p = projectResults(snapshot, fixturePrefs());
+    expect(p.rows.map((r) => r.value.miles)).toEqual([1]);
+    expect(p.dynamicNotShown).toBe(1);
+    const withDynamic = { ...snapshot, query: { ...query, include_filtered: true } };
+    expect(projectResults(withDynamic, fixturePrefs()).rows.map((r) => r.value.miles)).toEqual([1, 5]);
+  });
+});
+

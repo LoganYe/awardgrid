@@ -66,10 +66,10 @@ test("view, sort and calendar choices send nothing and keep the selection", asyn
   await day(page, "2026-10-18").click();
   await expect(dayCard.getByRole("checkbox")).toBeChecked();
 
-  // The Matrix reads the same rows: Oct 18's Business cell is the list's 75,000.
+  // The Matrix reads the same rows: Oct 18's Business slot is the list's 75,000, Oct 20's the 82,000.
   await view(page, "Matrix").click();
-  await expect(page.getByTestId("matrix-view").locator("table.ag-grid")).toContainText("75,000");
-  await expect(page.getByTestId("matrix-view").locator("table.ag-grid")).toContainText("82,000");
+  await expect(page.getByRole("gridcell", { name: /^HKG → SEA, Sun, Oct 18: Business J lowest 75,000 miles/ })).toBeVisible();
+  await expect(page.getByRole("gridcell", { name: /^HKG → SEA, Tue, Oct 20: Business J lowest 82,000 miles/ })).toBeVisible();
 
   await view(page, "List").click();
   await expect(list.locator(`[data-row-key="${key}"]`).getByRole("checkbox")).toBeChecked();
@@ -302,9 +302,11 @@ test("a saved view filter: every view says what it hides, never 'no matches'; Sh
   await expect(oct20).not.toContainText("no matches");
   await expect(calendar(page).locator(".ag-cal-legend")).toContainText("∗ hidden by your view filter");
 
+  // The matrix applies the same filter, and says what it hides rather than "no matches".
   await view(page, "Matrix").click();
-  await expect(page.getByTestId("matrix-view")).toContainText("The matrix cannot apply a view filter yet.");
-  await expect(page.getByTestId("matrix-view").locator("table")).toHaveCount(0);
+  const oct20cell = page.getByRole("gridcell", { name: /^HKG → SEA, Tue, Oct 20: Business J hidden by your view filter/ });
+  await expect(oct20cell).toContainText("Hidden by your view filter");
+  await expect(page.getByRole("grid")).not.toContainText("82,000");
 
   await view(page, "List").click();
   await page.getByRole("button", { name: "Show all" }).focus();
@@ -318,12 +320,12 @@ test("a saved view filter: every view says what it hides, never 'no matches'; Sh
   expect([log.seats, log.anthropic, log.trips]).toEqual([0, 0, 0]);
 });
 
-test("under the fee sort the matrix picks cells by miles, and says so", async ({ page }) => {
+test("whatever the sort, a matrix cell shows its lowest miles, and the caption says so", async ({ page }) => {
   await openScenario(page, "missing-values", "ios", { lang: "en" });
   await sortPicker(page).selectOption("fees_asc");
   await view(page, "Matrix").click();
-  await expect(page.getByTestId("matrix-view")).toContainText("Matrix cells show the lowest miles; fees are sorted only in the list.");
-  await expect(page.getByTestId("matrix-view").locator("table.ag-grid")).toBeVisible();
+  await expect(page.getByTestId("matrix-view")).toContainText("Each cell shows its lowest miles; miles in different programs are not equivalent.");
+  await expect(page.getByRole("gridcell", { name: /^HKG → SEA, Sun, Oct 18: Business J lowest 75,000 miles/ })).toBeVisible();
 });
 
 test("the chosen view and sort are kept on this device: a relaunch opens them without a request", async ({ page }) => {

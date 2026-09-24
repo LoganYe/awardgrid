@@ -11,6 +11,7 @@ import { projectResults } from "@awardgrid/core/workspace/projection";
 import type { ResultSnapshot } from "@awardgrid/core/workspace/types";
 import { AvailabilityCalendar } from "./AvailabilityCalendar";
 import { AvailabilityList } from "./AvailabilityList";
+import { AvailabilityMatrix } from "./AvailabilityMatrix";
 
 const NOW = "2026-10-18T08:30:00.000Z";
 
@@ -124,6 +125,45 @@ describe("AvailabilityCalendar rounding", () => {
     const html = calendar({ ...base, rows: [odd, ...base.rows.slice(1)] });
     expect(html).toMatch(/aria-label="Sun, Oct 18: lowest 68,450 miles, 1 option"[^>]*>.*?<span class="ag-cal-min">68\.5K<\/span><span class="ag-cal-approx">≈<\/span>/);
     expect(html).toContain("≈ rounded up; choose the day for exact miles");
+  });
+});
+
+describe("AvailabilityMatrix selection", () => {
+  /** Oct 18 Business: Aeroplan 75,000 (shown, the lowest) and United 90,000, in a search over all programs. */
+  function withTwo() {
+    const base = fixtureSnapshot({ query: { ...fixtureQuery(), programs: undefined } });
+    const aeroplan = base.rows.find((r) => r.value.date === "2026-10-18" && r.value.cabin === "J")!;
+    const united = { ...aeroplan, key: `${aeroplan.key}-united`, value: { ...aeroplan.value, program: "united", source_id: "united-1", miles: 90000 } };
+    return { snapshot: { ...base, rows: [...base.rows, united] }, aeroplan, united };
+  }
+  const render = (snapshot: ResultSnapshot, selected: string[]) =>
+    renderToStaticMarkup(
+      createElement(AvailabilityMatrix, {
+        snapshot,
+        projected: projectResults(snapshot, fixturePrefs()),
+        sort: "miles_asc",
+        selected: new Set(selected),
+        onToggle: () => {},
+        now: NOW,
+        locale: "en",
+      }),
+    );
+  const oct18 = (html: string) => html.match(/<td[^>]*data-date="2026-10-18"[^>]*>.*?<\/td>/)![0];
+
+  it("the frame and tick mark the option the slot shows, and its name says selected", () => {
+    const { snapshot, aeroplan } = withTwo();
+    const cell = oct18(render(snapshot, [aeroplan.key]));
+    expect(cell).toMatch(/class="ag-mx-slot" data-state="results" data-selected="true"><span class="ag-mx-line"><span class="ag-mx-miles">75,000<\/span><span class="ag-mx-cabin">J<\/span><span class="ag-mx-tick">✓<\/span>/);
+    expect(cell).toMatch(/aria-label="[^"]*seat count not provided, selected; First F/);
+  });
+
+  it("another selected option of the slot is said in words, never as a tick beside the shown one", () => {
+    const { snapshot, united } = withTwo();
+    const cell = oct18(render(snapshot, [united.key]));
+    expect(cell).not.toContain("data-selected");
+    expect(cell).not.toContain("✓");
+    expect(cell).toContain('<span class="ag-mx-others">1 other selected</span>');
+    expect(cell).toMatch(/aria-label="[^"]*seat count not provided, 1 other option selected; First F/);
   });
 });
 

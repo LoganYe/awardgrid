@@ -35,6 +35,11 @@ export interface FixtureHostHandle {
   state: FixtureHostState;
   error: string | null;
   log: FixtureRequestLog;
+  /**
+   * Run the shown search again, from outside the page — as a search that finishes while the user is elsewhere in the
+   * screen would arrive (T09: the matrix keeps its focus across a new snapshot). Absent until the app is ready.
+   */
+  rerunShown?: () => Promise<void>;
 }
 
 declare global {

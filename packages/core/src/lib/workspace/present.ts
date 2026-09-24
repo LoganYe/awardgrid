@@ -12,7 +12,7 @@ import { type Cabin, DEFAULT_MIN_CABIN_PCT, type QueryObject, type SortBy } from
 import { SOURCE_NAMES } from "../seatsaero/types";
 import { cabinName } from "./query-editor";
 import { FUTURE_SKEW_MS, ageMs, feesState, knownSeats, parseInstant } from "./semantics";
-import type { CoverageEvidence, CoverageSlice, ISODate, ISOInstant, ProjectedDay, TimeEvidence, WorkspaceRow } from "./types";
+import type { CoverageEvidence, CoverageSlice, EmptyKind, ISODate, ISOInstant, MatrixModel, ProjectedDay, TimeEvidence, WorkspaceRow } from "./types";
 
 export type Locale = "en" | "zh";
 
@@ -61,6 +61,16 @@ export function dayLabel(date: ISODate, locale: Locale): string {
   const d = utc(date);
   if (locale === "zh") return `${zhMonthDay(d)} · ${ZH_WEEKDAYS[d.getUTCDay()]}`;
   return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(d);
+}
+
+/** A row header's two lines: "Oct 18" / "Sun", "10月18日" / "周日" — in UTC. */
+export function dayParts(date: ISODate, locale: Locale): { date: string; weekday: string } {
+  const d = utc(date);
+  if (locale === "zh") return { date: zhMonthDay(d), weekday: ZH_WEEKDAYS[d.getUTCDay()]! };
+  return {
+    date: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(d),
+    weekday: new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" }).format(d),
+  };
 }
 
 /** "Oct 1 – 30" / "10月1–30日"; across months "Oct 30 – Nov 5" / "10月30日–11月5日"; the year only when it differs. */
@@ -141,6 +151,40 @@ export function timeLabel(time: TimeEvidence, now: ISOInstant, locale: Locale, t
 
 export function programLabel(program: string): string {
   return (SOURCE_NAMES as Record<string, string>)[program] ?? program;
+}
+
+/** Each program's own name without its airline, for a compact matrix cell (spec §14); the full name is `programLabel`. */
+const PROGRAM_SHORT: Record<string, string> = {
+  eurobonus: "EuroBonus",
+  virginatlantic: "Flying Club",
+  aeromexico: "Club Premier",
+  american: "AAdvantage",
+  delta: "SkyMiles",
+  etihad: "Etihad Guest",
+  united: "MileagePlus",
+  emirates: "Skywards",
+  aeroplan: "Aeroplan",
+  alaska: "Mileage Plan",
+  velocity: "Velocity",
+  qantas: "Qantas FF",
+  connectmiles: "ConnectMiles",
+  azul: "TudoAzul",
+  smiles: "Smiles",
+  flyingblue: "Flying Blue",
+  jetblue: "TrueBlue",
+  qatar: "Privilege Club",
+  turkish: "Miles&Smiles",
+  singapore: "KrisFlyer",
+  ethiopian: "ShebaMiles",
+  saudia: "AlFursan",
+  finnair: "Finnair Plus",
+  lufthansa: "Miles & More",
+  frontier: "Frontier",
+  spirit: "Spirit",
+};
+
+export function programShortLabel(program: string): string {
+  return PROGRAM_SHORT[program] ?? programLabel(program);
 }
 
 /** "HKG, PVG → SEA" / "HKG、PVG → SEA". */
@@ -295,8 +339,8 @@ export function weekdayHeads(locale: Locale): Array<{ day: number; short: string
   return order.map((day) => (locale === "zh" ? { day, short: ZH_DAYS[day]!, long: `星期${ZH_DAYS[day]!}` } : { day, short: EN_DAYS[day]![0], long: EN_DAYS[day]![1] }));
 }
 
-/** What an empty calendar day is: hidden by the view filter, checked and empty, not monitored, not checked to the end, or unknown. */
-export type EmptyDayKind = "hidden" | ProjectedDay["coverage"];
+/** What an empty calendar day or matrix slot is: hidden by the view filter, checked and empty, not monitored, not checked to the end, or unknown. */
+export type EmptyDayKind = EmptyKind;
 
 export function emptyDayKind(day: Pick<ProjectedDay, "coverage" | "hidden">): EmptyDayKind {
   return day.hidden > 0 ? "hidden" : day.coverage;
@@ -328,3 +372,34 @@ export function calendarDayName(day: Pick<ProjectedDay, "date" | "rowKeys" | "mi
   return `${head}${lowest} ${miles}${zh ? "，" : ", "}${optionsCount(day.rowKeys.length, locale)}`;
 }
 
+// ---- the matrix (T09) ------------------------------------------------------------------------------------------
+
+/**
+ * A matrix cell's full name: route and day, then every cabin slot — its lowest miles ("lowest retrieved" where not
+ * proven complete, "lowest shown" beside rows the view filter hides), program and seats, and whether it is selected
+ * (the option shown, or other options of the slot) — or why it is empty.
+ */
+export function matrixCellName(
+  cell: Pick<MatrixModel["cells"][number][number], "origin" | "dest" | "date" | "slots">,
+  rowOf: ReadonlyMap<string, WorkspaceRow["value"]>,
+  locale: Locale,
+  selected: ReadonlySet<string> = new Set(),
+): string {
+  const zh = locale === "zh";
+  const sep = zh ? "，" : ", ";
+  const slots = cell.slots.map((slot) => {
+    const head = `${cabinName(slot.cabin, locale)} ${slot.cabin} `;
+    const row = slot.best ? rowOf.get(slot.best) : undefined;
+    if (slot.state !== "results" || !row) return head + emptyDayLabel(slot.state === "results" ? "unknown" : slot.state, locale);
+    const lowest = slot.hidden > 0 ? (zh ? "当前显示最低" : "lowest shown") : slot.coverage === "complete" ? (zh ? "最低" : "lowest") : zh ? "已取得最低" : "lowest retrieved";
+    const miles = zh ? `${formatMiles(row.miles)} 里程` : `${formatMiles(row.miles)} miles`;
+    const seats = seatsLabel(row.seats_left, locale);
+    const others = slot.rowKeys.filter((k) => k !== slot.best && selected.has(k)).length;
+    const marks = [
+      selected.has(slot.best!) ? (zh ? "已选" : "selected") : null,
+      others > 0 ? (zh ? `另有 ${others} 个已选` : `${others} other ${others === 1 ? "option" : "options"} selected`) : null,
+    ].filter((m): m is string => m !== null);
+    return `${head}${lowest} ${miles}${sep}${programLabel(row.program)}${sep}${zh ? seats : seats.charAt(0).toLowerCase() + seats.slice(1)}${marks.map((m) => sep + m).join("")}`;
+  });
+  return `${cell.origin} → ${cell.dest}${sep}${dayLabel(cell.date, locale)}${zh ? "：" : ": "}${slots.join(zh ? "；" : "; ")}`;
+}

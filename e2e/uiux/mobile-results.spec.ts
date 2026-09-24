@@ -175,15 +175,17 @@ test("focus comes back to what opened the editor: a chip, or the summary even mi
   expect((await requestLog(page)).anthropic).toBe(0);
 });
 
-test("in Chinese, the parts still in English say so: the text search and the matrix", async ({ page }) => {
+test("in Chinese, the parts still in English say so (the text search); the matrix speaks Chinese since T09", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "zh" });
   await expect(page.locator(".ag-results")).toHaveAttribute("lang", "zh-CN");
   await expect(page.locator("#q").locator("xpath=ancestor::*[@lang][1]")).toHaveAttribute("lang", "en");
   await expect(page.getByRole("navigation", { name: "主导航" })).toBeVisible();
   await openScenario(page, "missing-values", "ios", { lang: "zh" });
   await page.getByTestId("results-view").getByText("矩阵", { exact: true }).click();
-  // The grid is English until T09; the notes around it are the screen's own language.
-  await expect(page.locator(".ag-results-matrix table.ag-grid").locator("xpath=ancestor::*[@lang][1]")).toHaveAttribute("lang", "en");
+  // The T09 matrix is translated: no English island around it, and its headers are Chinese.
+  const grid = page.getByRole("grid");
+  await expect(grid.locator("xpath=ancestor::*[@lang][1]")).toHaveAttribute("lang", "zh-CN");
+  await expect(grid.getByRole("columnheader").first()).toHaveText("出发日期");
   expect((await requestLog(page)).seats).toBe(0);
 });
 

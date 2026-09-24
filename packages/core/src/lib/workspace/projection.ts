@@ -23,7 +23,7 @@ import { programDisplayName } from "../grid/ranking";
 import type { AvailabilityRow } from "../grid/types";
 import { CABIN_ORDER, type Cabin, type QueryObject } from "../query/schema";
 import { feesState, knownSeats } from "./semantics";
-import type { ProjectedCell, ProjectedDay, ProjectedResults, ResultSnapshot, ViewPreferences, WorkspaceRow } from "./types";
+import type { MatrixModel, MatrixSlot, ProjectedCell, ProjectedDay, ProjectedResults, ResultSnapshot, ViewPreferences, WorkspaceRow } from "./types";
 
 /** The calendar's cabin: the one chosen, if the query asked for it; else the query's first in cabin order (D07). */
 export function calendarCabinFor(query: Pick<QueryObject, "cabins">, chosen: Cabin): Cabin {
@@ -88,6 +88,20 @@ export function sortRows(rows: readonly WorkspaceRow[], sort: ViewPreferences["s
   return [...rows].sort(COMPARATORS[sort]);
 }
 
+/**
+ * The query's own row conditions, as the grid applies them (pivot.ts rowMatchesQuery, isHiddenDynamic): its cabins,
+ * its programs (none listed = all), its mileage cap, nonstop when asked, and dynamic pricing only when asked. A row
+ * outside them is not part of the answer to this query, whatever the cache held.
+ */
+function inQuery(row: AvailabilityRow, query: QueryObject): "in" | "dynamic" | "out" {
+  if (!query.cabins.includes(row.cabin)) return "out";
+  if (query.programs && query.programs.length > 0 && !query.programs.includes(row.program)) return "out";
+  if (query.max_miles !== undefined && row.miles > query.max_miles) return "out";
+  if (query.direct_only && !row.direct) return "out";
+  if (row.dynamic === true && !query.include_filtered) return "dynamic";
+  return "in";
+}
+
 function passesFilter(row: AvailabilityRow, filter: ViewPreferences["localFilter"]): boolean {
   if (filter.maxMiles !== undefined && row.miles > filter.maxMiles) return false;
   if (filter.onlyKnownSeats && knownSeats(row.seats_left) === null) return false;
@@ -100,35 +114,40 @@ type DayCoverage = ProjectedDay["coverage"];
 const weaker = (a: DayCoverage, b: DayCoverage): DayCoverage => (STRENGTH[b] < STRENGTH[a] ? b : a);
 
 /**
- * What the snapshot proved for one day and cabin. For each route and each program asked (all programs = only a slice
- * for all programs proves it, as coverage.ts provesScope), the slices covering the day and cabin decide: none or any
- * unknown → unknown; all unmonitored → unmonitored; all complete or unmonitored → complete; else partial. The day
- * takes the weakest, and is unknown whenever the snapshot's own verdict is.
+ * What the snapshot proved for one route, day and cabin. For each program asked (all programs = only a slice for all
+ * programs proves it, as coverage.ts provesScope), the slices covering the day and cabin decide: none or any unknown
+ * → unknown; all unmonitored → unmonitored; all complete or unmonitored → complete; else partial. The route takes the
+ * weakest program, and is unknown whenever the snapshot's own verdict is.
  */
-function dayCoverage(snapshot: ResultSnapshot, date: string, cabin: Cabin): DayCoverage {
+function routeCoverage(snapshot: ResultSnapshot, origin: string, destination: string, date: string, cabin: Cabin): DayCoverage {
   if (snapshot.coverage.state === "unknown") return "unknown";
   const asked = snapshot.query.programs && snapshot.query.programs.length > 0 ? [...new Set(snapshot.query.programs)] : [null];
+  let route: DayCoverage = "unmonitored";
+  for (const program of asked) {
+    const slices = snapshot.coverage.slices.filter(
+      (s) =>
+        s.origin === origin &&
+        s.destination === destination &&
+        s.dateFrom <= date &&
+        date <= s.dateTo &&
+        s.cabins.includes(cabin) &&
+        (s.programs === null || (program !== null && s.programs.includes(program))),
+    );
+    let state: DayCoverage;
+    if (slices.length === 0 || slices.some((s) => s.state === "unknown")) state = "unknown";
+    else if (slices.every((s) => s.state === "unmonitored")) state = "unmonitored";
+    else if (slices.every((s) => s.state === "complete" || s.state === "unmonitored")) state = "complete";
+    else state = "partial";
+    route = weaker(route, state);
+  }
+  return route;
+}
+
+/** A calendar day takes the weakest of its routes: "unmonitored" only when no route is monitored. */
+function dayCoverage(snapshot: ResultSnapshot, date: string, cabin: Cabin): DayCoverage {
   let day: DayCoverage = "unmonitored";
   for (const origin of snapshot.query.origins) {
-    for (const destination of snapshot.query.destinations) {
-      for (const program of asked) {
-        const slices = snapshot.coverage.slices.filter(
-          (s) =>
-            s.origin === origin &&
-            s.destination === destination &&
-            s.dateFrom <= date &&
-            date <= s.dateTo &&
-            s.cabins.includes(cabin) &&
-            (s.programs === null || (program !== null && s.programs.includes(program))),
-        );
-        let route: DayCoverage;
-        if (slices.length === 0 || slices.some((s) => s.state === "unknown")) route = "unknown";
-        else if (slices.every((s) => s.state === "unmonitored")) route = "unmonitored";
-        else if (slices.every((s) => s.state === "complete" || s.state === "unmonitored")) route = "complete";
-        else route = "partial";
-        day = weaker(day, route);
-      }
-    }
+    for (const destination of snapshot.query.destinations) day = weaker(day, routeCoverage(snapshot, origin, destination, date, cabin));
   }
   return day;
 }
@@ -136,7 +155,15 @@ function dayCoverage(snapshot: ResultSnapshot, date: string, cabin: Cabin): DayC
 export function projectResults(snapshot: ResultSnapshot, prefs: ViewPreferences): ProjectedResults {
   const kept: WorkspaceRow[] = [];
   const hidden: WorkspaceRow[] = [];
-  for (const row of snapshot.rows) (passesFilter(row.value, prefs.localFilter) ? kept : hidden).push(row);
+  let dynamicNotShown = 0;
+  for (const row of snapshot.rows) {
+    const verdict = inQuery(row.value, snapshot.query);
+    if (verdict !== "in") {
+      if (verdict === "dynamic") dynamicNotShown += 1;
+      continue;
+    }
+    (passesFilter(row.value, prefs.localFilter) ? kept : hidden).push(row);
+  }
   const rows = sortRows(kept, prefs.sort);
   const count = (key: (r: AvailabilityRow) => string) => {
     const counts = new Map<string, number>();
@@ -179,5 +206,51 @@ export function projectResults(snapshot: ResultSnapshot, prefs: ViewPreferences)
     (a, b) => cmpStr(a.date, b.date) || cmpStr(a.origin, b.origin) || cmpStr(a.dest, b.dest) || CABIN_ORDER.indexOf(a.cabin) - CABIN_ORDER.indexOf(b.cabin),
   );
 
-  return { rows, days, cells, coverage: snapshot.coverage, hiddenByFilter: hidden.length };
+  return { rows, days, cells, coverage: snapshot.coverage, hiddenByFilter: hidden.length, dynamicNotShown };
+}
+
+// ---- the matrix (T09) ------------------------------------------------------------------------------------------
+
+/**
+ * The phone matrix's columns (docs/04 S03): an 88 pt date column, then as many whole data columns of at least 124 as
+ * fit — at least one, and no more than there are routes — sharing the rest equally. `contentWidth` is the width
+ * inside the page gutters (358 at 390). Larger text (`scale`, --ag-text-scale) widens both minimums, so the columns
+ * get fewer and wider rather than their text spilling into the next one.
+ */
+export function mobileColumns(contentWidth: number, routes = Number.POSITIVE_INFINITY, scale = 1): { date: number; count: number; width: number } {
+  const s = Math.max(1, scale);
+  const date = Math.round(88 * s);
+  const fit = Math.max(1, Math.floor((contentWidth - date) / (124 * s)));
+  const count = Math.max(1, Math.min(fit, routes));
+  return { date, count, width: Math.round(((contentWidth - date) / count) * 100) / 100 };
+}
+
+/**
+ * The matrix from the same projection: the query's dates by its routes (query order), each cell one slot per cabin
+ * asked (cabin order). A slot shows its lowest miles (the projection's miles order: ties by fees within one currency,
+ * never across); an empty slot says why — the view filter hid its rows, or what the search proved for that route,
+ * day and cabin. Pure; nothing is fetched.
+ */
+export function matrixModel(snapshot: ResultSnapshot, projected: ProjectedResults): MatrixModel {
+  const q = snapshot.query;
+  const dates = enumerateDates(q.date_from, q.date_to);
+  const routes = q.origins.flatMap((origin) => q.destinations.map((dest) => ({ origin, dest })));
+  const cabins = CABIN_ORDER.filter((c) => q.cabins.includes(c));
+  const byCell = new Map(projected.cells.map((c) => [`${c.date}|${c.origin}|${c.dest}|${c.cabin}`, c]));
+  const cells = dates.map((date) =>
+    routes.map(({ origin, dest }) => ({
+      origin,
+      dest,
+      date,
+      slots: cabins.map((cabin): MatrixSlot => {
+        const cell = byCell.get(`${date}|${origin}|${dest}|${cabin}`);
+        const rowKeys = cell?.rowKeys ?? [];
+        const hidden = cell?.hidden ?? 0;
+        const coverage = routeCoverage(snapshot, origin, dest, date, cabin);
+        if (rowKeys.length > 0) return { cabin, rowKeys, best: rowKeys[0]!, hidden, state: "results", coverage };
+        return { cabin, rowKeys, best: null, hidden, state: hidden > 0 ? "hidden" : coverage, coverage };
+      }),
+    })),
+  );
+  return { dates, routes, cabins, cells };
 }

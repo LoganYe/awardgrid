@@ -134,6 +134,30 @@ export interface ProjectedCell {
   hidden: number;
 }
 
+/** Why a matrix slot or calendar day has no options shown: the view filter, or what the search proved. */
+export type EmptyKind = "hidden" | ProjectedDay["coverage"];
+
+/** One cabin of one matrix cell (T09): its rows, the one it shows (lowest miles), or why it is empty. */
+export interface MatrixSlot {
+  cabin: Cabin;
+  rowKeys: RowKey[];
+  /** The row whose miles the slot shows: the lowest, ties by fees within one currency (projection order). */
+  best: RowKey | null;
+  hidden: number;
+  state: "results" | EmptyKind;
+  /** What the search proved for this route, day and cabin; with results, "lowest" needs "complete". */
+  coverage: ProjectedDay["coverage"];
+}
+
+/** The matrix (T09): the query's dates by its routes, each cell a slot per cabin asked, in cabin order. */
+export interface MatrixModel {
+  dates: ISODate[];
+  routes: Array<{ origin: string; dest: string }>;
+  cabins: Cabin[];
+  /** cells[dateIndex][routeIndex]. */
+  cells: Array<Array<{ origin: string; dest: string; date: ISODate; slots: MatrixSlot[] }>>;
+}
+
 export interface ProjectedResults {
   rows: WorkspaceRow[];
   days: ProjectedDay[];
@@ -141,6 +165,12 @@ export interface ProjectedResults {
   coverage: CoverageEvidence;
   /** Rows of the snapshot the local filter hides (additive, T08): the views say so rather than "no results". */
   hiddenByFilter: number;
+  /**
+   * Rows the snapshot holds that the query itself leaves out (additive, T09 review) — above its mileage cap, another
+   * cabin or program, not nonstop when it asks for nonstop — never shown and never counted as hidden; of them, the
+   * dynamically priced ones the query did not ask for are counted, so a view can say they exist.
+   */
+  dynamicNotShown: number;
 }
 
 // ---- run state and platform ports (T05) --------------------------------------------------------------------

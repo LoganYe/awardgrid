@@ -14,10 +14,14 @@ import {
   coverageLabel,
   coverageNotices,
   dayLabel,
+  dayParts,
+  matrixCellName,
+  programShortLabel,
   feesLabel,
   formatMiles,
   monthLabel,
   moreConditionsCount,
+  programLabel,
   querySubline,
   rangeLabel,
   resultName,
@@ -216,6 +220,49 @@ describe("sort labels", () => {
     expect(sortShortLabel("seats_desc", "en")).toBe("Most seats");
     expect(sortShortLabel("fees_asc", "zh")).toBe("税费升序");
     expect(sortLabel("miles_asc", "en")).toBe("Miles, lowest first");
+  });
+});
+
+describe("the matrix's words (T09)", () => {
+  it("row headers: the date and its weekday on two lines, in UTC", () => {
+    expect(dayParts("2026-10-18", "en")).toEqual({ date: "Oct 18", weekday: "Sun" });
+    expect(dayParts("2026-10-18", "zh")).toEqual({ date: "10月18日", weekday: "周日" });
+  });
+
+  it("program short names, from the program's own name; an unknown code keeps its full label", () => {
+    expect(programShortLabel("aeroplan")).toBe("Aeroplan");
+    expect(programShortLabel("flyingblue")).toBe("Flying Blue");
+    expect(programShortLabel("american")).toBe("AAdvantage");
+    expect(programShortLabel("some-new-program")).toBe(programLabel("some-new-program"));
+  });
+
+  it("a cell is named by route, day and every slot: its lowest (or lowest retrieved / shown), program and seats, or why it is empty", () => {
+    const snapshot = fixtureSnapshot();
+    const byKey = new Map(snapshot.rows.map((r) => [r.key, r.value]));
+    const [j, f] = [snapshot.rows[0]!, snapshot.rows[1]!];
+    const cell = {
+      origin: "HKG",
+      dest: "SEA",
+      date: "2026-10-18",
+      slots: [
+        { cabin: "J" as const, rowKeys: [j.key], best: j.key, hidden: 0, state: "results" as const, coverage: "complete" as const },
+        { cabin: "F" as const, rowKeys: [], best: null, hidden: 0, state: "complete" as const, coverage: "complete" as const },
+      ],
+    };
+    expect(matrixCellName(cell, byKey, "en")).toBe("HKG → SEA, Sun, Oct 18: Business J lowest 75,000 miles, Air Canada Aeroplan, seat count not provided; First F no matches");
+    expect(matrixCellName(cell, byKey, "zh")).toBe("HKG → SEA，10月18日 · 周日：商务舱 J 最低 75,000 里程，Air Canada Aeroplan，席位未提供；头等舱 F 无匹配");
+    const partial = { ...cell, slots: [{ ...cell.slots[0]!, coverage: "partial" as const }, { ...cell.slots[1]!, rowKeys: [f.key], best: f.key, state: "results" as const, hidden: 1 }] };
+    expect(matrixCellName(partial, byKey, "en")).toBe(
+      "HKG → SEA, Sun, Oct 18: Business J lowest retrieved 75,000 miles, Air Canada Aeroplan, seat count not provided; First F lowest shown 110,000 miles, Air Canada Aeroplan, seat count not provided",
+    );
+    // Selection, in words: the shown option itself, or another option in the same slot.
+    expect(matrixCellName(cell, byKey, "en", new Set([j.key]))).toBe(
+      "HKG → SEA, Sun, Oct 18: Business J lowest 75,000 miles, Air Canada Aeroplan, seat count not provided, selected; First F no matches",
+    );
+    const other = { ...cell, slots: [{ ...cell.slots[0]!, rowKeys: [j.key, "other-1", "other-2"] }, cell.slots[1]!] };
+    expect(matrixCellName(other, byKey, "en", new Set(["other-2"]))).toContain("seat count not provided, 1 other option selected;");
+    expect(matrixCellName(other, byKey, "zh", new Set(["other-1", "other-2"]))).toContain("席位未提供，另有 2 个已选；");
+    expect(matrixCellName(cell, byKey, "zh", new Set([j.key]))).toContain("席位未提供，已选；");
   });
 });
 
