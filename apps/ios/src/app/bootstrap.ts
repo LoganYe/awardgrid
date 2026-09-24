@@ -26,7 +26,8 @@ import { type KeyStore, keychain } from "../native/keychain";
 import { type Locale, detectLocale } from "./locale";
 import { type LastSearchStore, createWorkspaceLastSearch } from "../search/last-search";
 import { AskStore } from "../store/ask-store";
-import { SnapshotStore } from "../store/persistence";
+import { type FileStore, SnapshotStore, WATCHES_FILE } from "../store/persistence";
+import { migrateLegacyWatch } from "@awardgrid/core/workspace/watch-migration";
 import { DeviceQuotaStore } from "../store/quota-store";
 import { WatchStore } from "../store/watch-store";
 import { type ApiResult, type FindValue, type ParsedText, SearchEngine } from "../search/search";
@@ -125,6 +126,55 @@ export interface AppServices {
   onWatchesChanged(listener: () => void): () => void;
   /** Tell subscribers the watches changed, after a screen edits the store itself. */
   notifyWatchesChanged(): void;
+}
+
+/**
+ * Watches from before T14 become structured ones (core workspace/watch-migration.ts): a date rule only on the parser's
+ * proof, the rest kept as text and marked for review; none dropped. The old file is copied aside first, once, so it
+ * stays readable after the first save in the new format (docs/02 D04). Nothing is fetched.
+ */
+export async function migrateWatches(store: WatchStore, files: FileStore, now: Date): Promise<number> {
+  const legacy = store.unmigrated();
+  if (legacy.length === 0) return 0;
+  try {
+    const raw = await files.read(WATCHES_FILE);
+    if (raw !== null && (await files.read(WATCHES_V1_BACKUP)) === null) await files.write(WATCHES_V1_BACKUP, raw);
+  } catch {
+    // The copy is a courtesy; the migration keeps the watches either way.
+  }
+  const today = now.toISOString().slice(0, 10);
+  for (const watch of legacy) {
+    const migrated = await migrateLegacyWatch({ id: watch.id, name: watch.name, enabled: watch.enabled, text: watch.text }, today);
+    store.update(watch.id, { draft: migrated.draft, review: migrated.review ?? null });
+  }
+  return legacy.length;
+}
+
+/** Where the pre-T14 watches file is kept, as it was, once migrated. */
+export const WATCHES_V1_BACKUP = "watches.v1.json";
+
+/**
+ * Read watches.json without ever losing it (T14: old data is never deleted). A file the device cannot read, or one
+ * from a newer version, is held: the store takes no change and nothing is written over it. A damaged file (not a
+ * watches file) is copied aside as it was, and the list starts empty; if the copy fails, it is held too.
+ */
+export async function restoreWatches(store: WatchStore, snapshots: SnapshotStore, now: Date): Promise<void> {
+  const file = await snapshots.readWatchesFile();
+  if (file.kind === "unreadable") return store.holdUnreadable();
+  if (file.kind === "read") {
+    store.restore(file.snapshot);
+    return;
+  }
+  store.restore(null);
+  if (file.kind === "damaged") {
+    const aside = `watches.damaged-${now.toISOString().replace(/[:.]/g, "-")}.json`;
+    try {
+      await snapshots.files.write(aside, file.raw);
+      store.noteKeptAside(aside);
+    } catch {
+      store.holdUnreadable();
+    }
+  }
 }
 
 export type PersistReport = { ok: true } | { ok: false; failed: string[]; message: string };
@@ -243,11 +293,12 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   const quotaStore = new DeviceQuotaStore();
   const watches = new WatchStore();
 
-  // Warm start. All best-effort: a missing or corrupt snapshot costs one cold search (or, for
-  // watches, an empty list), and must never stop the app from launching.
+  // Warm start. All best-effort: a missing or corrupt snapshot costs one cold search, and must never stop the app
+  // from launching. Watches are the person's own: one that cannot be read is kept, never written over (T14).
   cache.restore(await snapshots.loadCache());
   quotaStore.restore(await snapshots.loadQuota());
-  watches.restore(await snapshots.loadWatches());
+  await restoreWatches(watches, snapshots, now());
+  await migrateWatches(watches, snapshots.files, now());
 
   // The observer wraps whatever transport we end up with, rather than living inside the native
   // adapter. Putting it in the adapter looked tidier and was wrong: any other transport — a test
@@ -362,7 +413,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
         quotaStore.markClean();
       });
     }
-    if (watches.dirty) {
+    // A held store (a newer or unreadable file) is never written: that would be writing over the person's watches.
+    if (watches.dirty && !watches.hold) {
       await attempt("watches", async () => {
         await snapshots.saveWatches(watches.snapshot());
         watches.markClean();

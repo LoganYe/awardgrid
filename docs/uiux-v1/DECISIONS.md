@@ -363,3 +363,74 @@ T13 review (F2). Before this, `capacitorFiles.read` turned every Filesystem erro
 **Effect elsewhere.**
 - A workspace or settings file that cannot be read is restored as empty or the defaults, as before.
 - Their next save is refused instead of written over. For the workspace, the save report and bar say so (U-046).
+
+## U-048 · A watch is its structured query and date rule; old text watches are migrated only on the parser's proof
+
+T14, plan 03 T14, docs/02 D05, docs/03 SavedQueryV2, docs/04 S07.
+
+**What a watch is now**
+- `Watch` (core `watch/watch.ts`) may carry `draft` (the structured query and its date rule), `review` ("dates" or "unparsed") and `unseenChanges` (what changed, with old and new miles, newest first, at most 30).
+- `lastResult` also records:
+  - `compared`: the dates both checks covered. It is null when the check could not compare, and absent on results from before T14, where it is unknown, so neither sentence is shown.
+  - `refused`: a 401 or 403.
+  - `unresolved`: the conditions could not be run.
+- `SavedQueryV2.draft` is `QueryDraft | null`, with an optional `review`. This widens docs/03's type: a text the parser cannot read keeps no draft instead of a guessed one.
+- `watches.json` is version 2. Version 1 is still read.
+
+**Migration** (core `workspace/watch-migration.ts`)
+- It runs at launch, after the store is read, using the deterministic parser only (no AI and no request). The v1 file is copied to `watches.v1.json` once, before the first write.
+- The date rule is proven by reading the phrase on four days: today, tomorrow, the day after its first date, and the day after its last.
+  - **Relative** when today's and tomorrow's windows start on each day with the same length ("next 30 days", "未来两周").
+  - **Fixed** only when all four readings give the same dates, which in practice means full ISO dates. A month name read in September gives Oct 1–31 twice, but the rest of the month once October starts. A date without a year moves to next year once it has passed. Both are **unclear** (review finding MIG-02).
+- An unclear watch keeps its text and is still checked by it, as before, marked `review: "dates"`.
+- A text the parser cannot read keeps no draft (`review: "unparsed"`) and is still checked by its text. None is dropped.
+
+**A new watch** of the search on screen (`draftForWatch`)
+- It keeps the snapshot's own query, so every structured field goes through: programs, nonstop, mixed cabin, mileage cap and dynamic pricing.
+- Its dates are relative only when its sentence proves it and gives exactly those dates. Otherwise they are fixed: a search for "October" watches Oct 1–31 and does not roll to next year.
+- The "this search cannot be watched by its words" gate (`watchNeedsText`, T06) is gone: any search can be watched.
+
+**The runner** (`apps/ios/src/watch/runner.ts`)
+- **What it runs.** A structured watch runs `resolveDraft(draft, today)` through `engine.searchQuery`, never its old text read again. A watch under review, or one not migrated, reads its text.
+- **What it does not run.**
+  - Fixed dates that have all passed are skipped as `dates_passed`, and nothing is spent.
+  - A draft that no longer resolves (a damaged file) is not replaced by the text. Nothing is sent, and the card says the conditions need editing (review finding RUN-03).
+- **Unchanged from before:** sequential checks, quota re-read between watches, the 45-minute attempt clock, the first check setting a baseline only, a quiet check keeping unseen changes, and a failure leaving the baseline. A refused key also starts the attempt clock.
+- **An edit made while a check is out wins** (review finding RUN-01). Each watch is read when its turn comes, and again when its request returns. If it was edited, restarted or removed meanwhile, that check writes nothing. Unseen changes are carried from the watch as it is now, so what was marked seen stays seen.
+
+**Editing a watch**
+- The query editor has a watch mode: the title "Edit watch", no text search, and "Save watch" with "Saving sends nothing."
+- Saving stores the conditions and date rule, clears `review`, and restarts the watch: the baseline is cleared and the next check sets a new one, reporting nothing.
+- Leaving with unsaved edits asks in the watch's own words.
+
+**The Watches screen (S07)**
+- **Card heading and conditions.** Each card is headed by its route, in the screen's language. Its conditions line starts with "Next N days" for a moving window and names the programs, not a count.
+- **Control names.** Edit, the switch and Stop are each named with the full heading and conditions. The Stop sheet shows the conditions too.
+- **The state line.** Each state is said only while it is true:
+  - A failure newer than the last success is said even when it held this run's check back. It is never "cached results are still valid" (review findings RUN-02 and UX-02).
+  - "Dates have passed" is not said once the dates are edited (UX-03).
+  - "Previous baseline kept" is said only when there was one (UX-04).
+- **Unseen changes** are listed in `<details>` and marked seen when the screen opens.
+- **"Watch saved"** is set just after the page appears, into a status region that is already present and empty, so it is announced. The history entry then forgets it.
+
+**Duplicates.** Two watches are the same when their conditions and date rule are, whatever the sort (U-030). Editing one watch into a copy of another is allowed (review finding MIG-06 was refuted: the spec does not ask for it).
+
+**Fixture.** `watch-baseline`, `watch-changes` and `watch-failure` are seeded. The harness's "unseeded" example is now `ai-pending` (T16).
+
+## U-049 · A watches file this version cannot use is kept, never written over
+
+T14, plan 03 T14 Step 4 ("旧数据损坏不删", damaged old data is never deleted), with U-047. The T14 review refuted MIG-01 only because the behaviour predates T14. Step 4 asks for it, so T14 closes it.
+
+Before this, an unreadable, damaged or newer-version `watches.json` loaded as an empty list, and the next save wrote over it. A single entry the store could not read was dropped on the next write.
+
+Now (`SnapshotStore.readWatchesFile`, `restoreWatches` in bootstrap, `WatchStore`):
+- **Unreadable** (the storage throws): the store is held. It takes no change, nothing is written over the file, and the Watches screen says why.
+- **From a newer version:** held in the same way, because this version could misread its baselines.
+- **Damaged** (not a watches file, such as a torn write):
+  - It is copied aside unchanged as `watches.damaged-<time>.json`, the list starts empty, and the screen names the copy.
+  - The store is marked dirty, so the next save replaces the damaged file (the copy stays) instead of copying it again at every launch.
+  - If the copy fails, the store is held.
+- **An entry this version cannot read** is carried unchanged in every write and counted on the screen.
+- Adding a watch while held is refused, with "Watches cannot be changed on this device right now. Open Watches to see why."
+
+Not verified: the device Filesystem's real rejection for an unreadable file (as in U-047).

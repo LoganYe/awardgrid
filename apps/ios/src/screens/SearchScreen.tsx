@@ -30,7 +30,8 @@
 import { SortBy } from "@awardgrid/core/query/schema";
 import { projectResults } from "@awardgrid/core/workspace/projection";
 import { type Locale, ageLabel, copy, coverageNotices, moreConditionsCount, optionsCount, sortLabel, sortShortLabel } from "@awardgrid/core/workspace/present";
-import { textReproducesQuery } from "@awardgrid/core/workspace/query-editor";
+import { describeQuery, textReproducesQuery } from "@awardgrid/core/workspace/query-editor";
+import { draftForWatch } from "@awardgrid/core/workspace/watch-migration";
 import { type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Link, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from "react-router";
@@ -185,27 +186,33 @@ export function SearchScreen() {
     else setSaveMessage({ snapshotId: about, text: f.readOnly, ok: false });
   };
 
+  // A watch keeps the search on screen as its structured query and date rule (T14, core draftForWatch): what a check
+  // runs, whatever text the search was typed as.
   const watchThis = useCallback(async () => {
-    if (shownText === null) return;
-    const trimmed = shownText.trim();
+    const snap = services.workspace.getState().displayedSnapshot;
+    if (!snap) return;
+    const draft = draftForWatch(snap.query, (madeOn ?? snap.createdAt).slice(0, 10));
+    const title = describeQuery(snap.query, draft.dates);
     const added = services.watches.add({
       id: crypto.randomUUID(),
-      name: trimmed.length > 60 ? `${trimmed.slice(0, 59)}…` : trimmed,
-      text: trimmed,
+      name: title.length > 60 ? `${title.slice(0, 59)}…` : title,
+      text: shownText?.trim() || title,
+      draft,
+      review: null,
       lastCheckedAt: null,
       baseline: [],
       dropThresholdPct: 10,
       enabled: true,
-      createdAt: new Date().toISOString(),
+      createdAt: services.now().toISOString(),
     });
     if (!added.ok) {
-      setWatchMessage(added.reason === "duplicate" ? t.alreadyWatching : t.watchLimit);
+      setWatchMessage(added.reason === "duplicate" ? t.alreadyWatching : added.reason === "held" ? t.watchHeld : t.watchLimit);
       return;
     }
     setWatchMessage(t.watching);
     await services.persist();
     services.notifyWatchesChanged();
-  }, [services, shownText, t]);
+  }, [services, shownText, t, madeOn]);
 
   const searching = busy || running;
   const value = shown?.value ?? null;
@@ -456,7 +463,7 @@ export function SearchScreen() {
             <Button onClick={searchAgain} disabled={hasKey === false} loading={searching} loadingLabel={t.searching}>
               {t.searchAgain}
             </Button>
-            <Button onClick={() => void watchThis()} disabled={!reproduces} disabledReason={reproduces ? null : t.watchNeedsText}>
+            <Button onClick={() => void watchThis()}>
               {t.watch}
             </Button>
             <Button onClick={() => void saveResults()} loading={saving} loadingLabel={FAVORITES[locale].saving}>

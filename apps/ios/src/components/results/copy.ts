@@ -99,10 +99,11 @@ export interface ResultsCopy {
   watch: string;
   /** The link to Ask with this search as context. English: Ask's own label (ask/labels.ts ASK_ABOUT_SEARCH). */
   askAbout: string;
-  watchNeedsText: string;
   watching: string;
   alreadyWatching: string;
   watchLimit: string;
+  /** T14: the watches file is held (newer version, or unreadable), so no watch is added. */
+  watchHeld: string;
   noKey: { before: string; link: string; after: string };
   runFailed: Record<"no_key" | "quota" | "network" | "seatsaero" | "invalid_query" | "other", string>;
   quota: (used: number, limit: number) => string;
@@ -199,10 +200,10 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     searchAgain: "Search again",
     watch: "Watch this search",
     askAbout: ASK_ABOUT_SEARCH,
-    watchNeedsText: "A watch keeps a search as its text, and this search has conditions its text cannot hold, so it cannot be watched yet.",
     watching: "Watching this search. It is checked when you open the app.",
     alreadyWatching: "You are already watching this search.",
     watchLimit: "You have reached the limit of 20 watches.",
+    watchHeld: "Watches cannot be changed on this device right now. Open Watches to see why.",
     noKey: { before: "No seats.aero key on this device, so search is off. ", link: "Connect seats.aero", after: " with your own Pro key: awardgrid has no key of its own." },
     runFailed: {
       no_key: "Add your seats.aero Pro API key in Settings.",
@@ -302,10 +303,10 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     searchAgain: "重新查询",
     watch: "关注此查询",
     askAbout: "就此查询问 AI",
-    watchNeedsText: "关注以文字保存查询，而此查询含有文字无法表达的条件，暂时不能关注。",
     watching: "已关注此查询。打开本应用时检查。",
     alreadyWatching: "你已关注此查询。",
     watchLimit: "关注数量已达上限 20 个。",
+    watchHeld: "目前无法在本机修改关注。打开“关注”页查看原因。",
     noKey: { before: "本机没有 seats.aero 密钥，暂时无法查票。请", link: "连接 seats.aero", after: "，使用你自己的 Pro 密钥：awardgrid 没有自己的密钥。" },
     runFailed: {
       no_key: "请在设置中添加你的 seats.aero Pro API 密钥。",

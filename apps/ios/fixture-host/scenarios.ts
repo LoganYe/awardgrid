@@ -11,7 +11,9 @@
  */
 import availability from "@awardgrid/core/test-fixtures/uiux/availability-rows.json";
 import { fixtureQuery, fixtureSnapshot } from "@awardgrid/core/test-fixtures/uiux/factory";
-import { describeQuery } from "@awardgrid/core/workspace/query-editor";
+import { describeQuery, draftFromQuery } from "@awardgrid/core/workspace/query-editor";
+import { snapshot } from "@awardgrid/core/watch";
+import type { AvailabilityRow } from "@awardgrid/core/grid/types";
 import manifest from "@awardgrid/core/test-fixtures/uiux/scenarios.json";
 import { FAVORITES_NAMESPACE } from "../src/store/favorites-store";
 import { DEFAULT_PREFERENCES, WORKSPACE_NAMESPACE } from "../src/workspace/workspace-store";
@@ -93,6 +95,9 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
   "multi-program",
   "storage-failure",
   "favorite-snapshot",
+  "watch-baseline",
+  "watch-changes",
+  "watch-failure",
   "foundations",
   "inflight-old",
   "failed-old",
@@ -104,9 +109,6 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
 
 /** Where an unseeded scenario's state comes from. Informational, for the refusal message. */
 const SEEDED_BY: Record<string, string> = {
-  "watch-baseline": "T14 (watch migration)",
-  "watch-changes": "T14 (watch migration)",
-  "watch-failure": "T14 (watch migration)",
   "ai-pending": "T16 (proposals)",
   "ai-stale": "T16 (proposals)",
   "ai-stopped": "T17 (request coordination)",
@@ -221,6 +223,47 @@ function savedFavorites(rows: readonly SyntheticRow[], now: Date, coverage: stri
   return { [`${FAVORITES_NAMESPACE}.a.json`]: JSON.stringify({ generation: 1, value: { schemaVersion: 1, items: [favorite] } }) };
 }
 
+/**
+ * One watch from an earlier launch (T14), in the device format (watches.json, version 2): the synthetic query as its
+ * structured conditions, with the state its scenario names.
+ *   - watch-baseline: never checked; the check at launch sets the baseline and reports nothing new.
+ *   - watch-changes: checked two hours ago, with changes found then and not seen yet; its baseline is what the
+ *     transport answers now, so the check at launch is quiet and must keep them.
+ *   - watch-failure: checked two hours ago; the check at launch fails (the transport refuses), and the baseline stays.
+ */
+function savedWatches(id: string, rows: readonly SyntheticRow[], now: Date): Record<string, string> {
+  const query = fixtureQuery();
+  const described = { ...query, raw_text: describeQuery(query) };
+  const at = (hoursAgo: number) => new Date(now.getTime() - hoursAgo * 3_600_000).toISOString();
+  const checked = id !== "watch-baseline";
+  const cells = snapshot(rows as unknown as AvailabilityRow[]);
+  const [first, second] = cells;
+  const watch = {
+    id: "fixture-watch-1",
+    name: described.raw_text.length > 60 ? `${described.raw_text.slice(0, 59)}…` : described.raw_text,
+    text: described.raw_text,
+    draft: draftFromQuery(described),
+    review: null,
+    lastCheckedAt: checked ? at(2) : null,
+    lastAttemptAt: checked ? at(2) : null,
+    baseline: checked ? cells : [],
+    baselineWindow: checked ? { date_from: query.date_from, date_to: query.date_to } : null,
+    dropThresholdPct: 10,
+    lastResult: checked ? { at: at(2), status: "checked", firstCheck: false, compared: { date_from: query.date_from, date_to: query.date_to } } : null,
+    unseen: id === "watch-changes" ? { new: 1, dropped: 0, cheaper: 1, since: at(2) } : null,
+    unseenChanges:
+      id === "watch-changes" && first && second
+        ? [
+            { kind: "new", key: second.key, before: null, after: { miles: second.miles, fees_cents: second.fees_cents }, at: at(2) },
+            { kind: "cheaper", key: first.key, before: { miles: first.miles + 10000, fees_cents: first.fees_cents }, after: { miles: first.miles, fees_cents: first.fees_cents }, at: at(2) },
+          ]
+        : null,
+    enabled: true,
+    createdAt: at(24),
+  };
+  return { "watches.json": JSON.stringify({ version: 2, watches: [watch] }) };
+}
+
 const scenarios: readonly FixtureScenario[] = manifest.scenarios;
 
 /** Scenarios that open on results a previous launch saved: nothing is fetched to show them. */
@@ -247,8 +290,10 @@ export function environmentFor(id: string | null): FixtureEnvironment {
           ? savedWorkspace(rows, now, scenario.coverage)
           : scenario.id === "favorite-snapshot"
             ? savedFavorites(rows, now, scenario.coverage)
-            : {},
+            : scenario.id.startsWith("watch-")
+              ? savedWatches(scenario.id, rows, now)
+              : {},
     failWrites: scenario.id === "storage-failure",
-    searchMode: scenario.id === "inflight-old" ? "hold" : scenario.id === "failed-old" ? "fail" : "answer",
+    searchMode: scenario.id === "inflight-old" ? "hold" : scenario.id === "failed-old" || scenario.id === "watch-failure" ? "fail" : "answer",
   };
 }

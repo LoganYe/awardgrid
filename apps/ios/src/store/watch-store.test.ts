@@ -6,7 +6,9 @@
  */
 import { describe, expect, it } from "vitest";
 import type { Watch } from "@awardgrid/core/watch";
-import { MAX_WATCHES, WATCH_SNAPSHOT_VERSION, WatchStore } from "./watch-store";
+import { draftFromQuery } from "@awardgrid/core/workspace/query-editor";
+import { fixtureQuery } from "@awardgrid/core/test-fixtures/uiux/factory";
+import { LEGACY_WATCH_SNAPSHOT_VERSION, MAX_WATCHES, WATCH_SNAPSHOT_VERSION, WatchStore } from "./watch-store";
 
 function watch(over: Partial<Watch> = {}): Watch {
   return {
@@ -113,5 +115,42 @@ describe("WatchStore", () => {
     for (const forbidden of ["scheduleCron", "nextRunAt", "nextCheckAt", "dueAt", "cron"]) {
       expect(record, `${forbidden} must not exist on a Watch`).not.toHaveProperty(forbidden);
     }
+  });
+
+  it("reads a file from before T14, keeping its watches for the migration, and says which are not migrated", () => {
+    const s = new WatchStore();
+    expect(s.restore({ version: LEGACY_WATCH_SNAPSHOT_VERSION, watches: [watch(), watch({ id: "w2", text: "SFO to NRT next 60 days business" })] })).toBe(2);
+    expect(s.unmigrated().map((w) => w.id)).toEqual(["w1", "w2"]);
+    s.update("w1", { draft: null, review: "unparsed" });
+    expect(s.unmigrated().map((w) => w.id)).toEqual(["w2"]);
+  });
+
+  it("a file from a newer version is held: nothing read, nothing added or changed, so nothing is written over it (T14)", () => {
+    const s = new WatchStore();
+    expect(s.restore({ version: 3, watches: [watch()] })).toBe(0);
+    expect(s.hold).toBe("newer");
+    expect(s.add(watch({ id: "w2" }))).toEqual({ ok: false, reason: "held" });
+    expect(s.dirty).toBe(false);
+  });
+
+  it("an entry this version cannot read is carried unchanged in every write, never dropped (T14)", () => {
+    const s = new WatchStore();
+    const odd = { id: 7, note: "from somewhere else" };
+    expect(s.restore({ version: 2, watches: [watch(), odd as unknown as Watch] })).toBe(1);
+    expect(s.carried).toBe(1);
+    s.update("w1", { enabled: false });
+    expect(s.snapshot().watches).toContainEqual(odd);
+    expect(s.snapshot().watches).toHaveLength(2);
+  });
+
+  it("the same structured search twice is a duplicate; different conditions with the same text are not (T14)", () => {
+    const s = new WatchStore();
+    const draft = draftFromQuery({ ...fixtureQuery(), programs: undefined });
+    expect(s.add(watch({ draft }))).toEqual({ ok: true });
+    expect(s.add(watch({ id: "w2", draft: structuredClone(draft) }))).toEqual({ ok: false, reason: "duplicate" });
+    expect(s.add(watch({ id: "w3", draft: { ...draft, query: { ...draft.query, direct_only: !draft.query.direct_only } } }))).toEqual({ ok: true });
+    // Sorting is the view's (U-030): the same conditions sorted another way are the same watch (T14 review MIG-05).
+    const sorted = draft.query.sort_by === "fees_asc" ? "miles_asc" : "fees_asc";
+    expect(s.add(watch({ id: "w4", draft: { ...draft, query: { ...draft.query, sort_by: sorted } } }))).toEqual({ ok: false, reason: "duplicate" });
   });
 });

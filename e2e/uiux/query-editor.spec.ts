@@ -272,7 +272,7 @@ test.describe("where the UTC day is not the local day", () => {
   });
 });
 
-test("what the text cannot hold: a mileage cap is written, mixed cabin makes the search unwatchable as text", async ({ page }) => {
+test("what the text cannot hold: a mileage cap is written; mixed cabin is kept by the search, and by a watch of it (T14)", async ({ page }) => {
   await openScenario(page, "complete");
   await searchFirst(page);
   await openEditor(page);
@@ -287,9 +287,9 @@ test("what the text cannot hold: a mileage cap is written, mixed cabin makes the
   await page.getByLabel("Mixed cabin", { exact: true }).selectOption("75");
   await page.getByRole("button", { name: "Find award options" }).click();
   await settled(page);
+  // T14: a watch keeps the search's structured conditions, so a search its text cannot reproduce can be watched.
   const watch = page.getByRole("button", { name: "Watch this search" });
-  await expect(watch).toBeDisabled();
-  await expect(watch).toHaveAccessibleDescription(/cannot be watched yet/);
+  await expect(watch).toBeEnabled();
   // Search again runs that search itself (75 % mixed cabin kept), not a re-reading of its words.
   await page.getByRole("button", { name: /^Search again/ }).click();
   await settled(page);

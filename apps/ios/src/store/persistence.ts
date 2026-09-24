@@ -97,6 +97,16 @@ export const WATCHES_FILE = "watches.json";
 
 type WatchSnapshot = import("./watch-store").WatchSnapshot;
 
+/**
+ * What is in watches.json (T14: old data is never deleted). Unlike the cache, a watches file that cannot be used is
+ * not a cold start to write over: it is the person's own watches.
+ *   - "absent": no file, the first run.
+ *   - "read": a watches file (any version; the store decides what it can read).
+ *   - "damaged": text that is not a watches file (torn or foreign). It is copied aside before anything is written.
+ *   - "unreadable": the storage could not read it. Nothing may be written over it.
+ */
+export type WatchesFile = { kind: "absent" } | { kind: "read"; snapshot: WatchSnapshot } | { kind: "damaged"; raw: string } | { kind: "unreadable" };
+
 export class SnapshotStore {
   readonly #files: FileStore;
 
@@ -136,6 +146,20 @@ export class SnapshotStore {
 
   async loadWatches(): Promise<WatchSnapshot | null> {
     return parse<WatchSnapshot>(await this.#readOrNull(WATCHES_FILE));
+  }
+
+  /** watches.json, told apart: absent, a watches file, damaged, or unreadable (see WatchesFile). */
+  async readWatchesFile(): Promise<WatchesFile> {
+    let raw: string | null;
+    try {
+      raw = await this.#files.read(WATCHES_FILE);
+    } catch {
+      return { kind: "unreadable" };
+    }
+    if (raw === null) return { kind: "absent" };
+    const snapshot = parse<WatchSnapshot>(raw);
+    const looksRight = snapshot !== null && typeof snapshot === "object" && typeof snapshot.version === "number" && Array.isArray(snapshot.watches);
+    return looksRight ? { kind: "read", snapshot } : { kind: "damaged", raw };
   }
 
   async saveWatches(snapshot: WatchSnapshot): Promise<void> {

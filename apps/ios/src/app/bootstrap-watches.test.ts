@@ -149,3 +149,85 @@ describe("watches through AppServices", () => {
     expect(files.files.has(WATCHES_FILE)).toBe(false);
   });
 });
+
+describe("watches from before T14", () => {
+  it("are migrated at launch: a proven relative rule becomes structured, the rest is kept for review, none dropped, the old file copied aside", async () => {
+    const files = new MemoryFileStore();
+    const v1 = JSON.stringify({
+      version: 1,
+      watches: [watch(), watch({ id: "w2", name: "October", text: "HKG to SEA October business" }), watch({ id: "w3", name: "Unread", text: "somewhere warm" })],
+    });
+    files.files.set(WATCHES_FILE, v1);
+    const { svc } = await start(files);
+    const byId = (id: string) => svc.watches.get(id)!;
+    expect(byId("w1").draft!.dates).toEqual({ kind: "relative_days", days: 30, clock: "UTC" });
+    expect(byId("w1").review ?? null).toBeNull();
+    expect(byId("w2").review).toBe("dates");
+    expect(byId("w3")).toMatchObject({ review: "unparsed", draft: null, text: "somewhere warm" });
+    expect(files.files.get("watches.v1.json")).toBe(v1);
+    // Saved in the new format, which reads back without migrating again.
+    await svc.persist();
+    expect(JSON.parse(files.files.get(WATCHES_FILE)!).version).toBe(2);
+    const again = await start(files);
+    expect(again.svc.watches.get("w1")!.draft!.dates).toEqual({ kind: "relative_days", days: 30, clock: "UTC" });
+    expect(files.files.get("watches.v1.json")).toBe(v1);
+  });
+});
+
+describe("a watches file this version cannot use is never lost (T14: old data is never deleted)", () => {
+  it("a damaged file is copied aside as it was before anything is written, once; the list starts empty", async () => {
+    const files = new MemoryFileStore();
+    const torn = '{"version":2,"watches":[{"id":"w1","te';
+    files.files.set(WATCHES_FILE, torn);
+    const { svc } = await start(files);
+    const aside = svc.watches.keptAside!;
+    expect(aside).toMatch(/^watches\.damaged-2026-10-01T00-00-00-000Z\.json$/);
+    expect(files.files.get(aside)).toBe(torn);
+    expect(svc.watches.add(watch({ id: "w9" }))).toEqual({ ok: true });
+    await svc.persist();
+    expect(JSON.parse(files.files.get(WATCHES_FILE)!).watches.map((w: Watch) => w.id)).toEqual(["w9"]);
+    expect(files.files.get(aside)).toBe(torn);
+    // The next launch reads the new file: nothing is copied aside again.
+    const again = await start(files);
+    expect(again.svc.watches.keptAside).toBeNull();
+    expect([...files.files.keys()].filter((k) => k.startsWith("watches.damaged-"))).toHaveLength(1);
+  });
+
+  it("a file from a newer version is held: never written over, however the app is used", async () => {
+    const files = new MemoryFileStore();
+    const newer = JSON.stringify({ version: 3, watches: [{ id: "future", text: "HKG to SEA", rule: { kind: "something new" } }] });
+    files.files.set(WATCHES_FILE, newer);
+    const { svc } = await start(files);
+    expect(svc.watches.hold).toBe("newer");
+    expect(svc.watches.add(watch())).toEqual({ ok: false, reason: "held" });
+    await svc.checkWatches();
+    await svc.persist();
+    expect(files.files.get(WATCHES_FILE)).toBe(newer);
+  });
+
+  it("a file the device cannot read is held: nothing is written over it", async () => {
+    class Unreadable extends MemoryFileStore {
+      override async read(path: string) {
+        if (path === WATCHES_FILE) throw new Error("The file could not be read.");
+        return super.read(path);
+      }
+    }
+    const files = new Unreadable();
+    files.files.set(WATCHES_FILE, JSON.stringify({ version: 2, watches: [watch()] }));
+    const { svc } = await start(files);
+    expect(svc.watches.hold).toBe("unreadable");
+    expect(svc.watches.add(watch({ id: "w2" }))).toEqual({ ok: false, reason: "held" });
+    await svc.persist();
+    expect(JSON.parse(files.files.get(WATCHES_FILE)!).watches.map((w: Watch) => w.id)).toEqual(["w1"]);
+  });
+
+  it("an entry this version cannot read survives a save", async () => {
+    const files = new MemoryFileStore();
+    files.files.set(WATCHES_FILE, JSON.stringify({ version: 2, watches: [watch(), { id: 42 }] }));
+    const { svc } = await start(files);
+    expect(svc.watches.carried).toBe(1);
+    svc.watches.update("w1", { enabled: false });
+    await svc.persist();
+    expect(JSON.parse(files.files.get(WATCHES_FILE)!).watches).toContainEqual({ id: 42 });
+  });
+});

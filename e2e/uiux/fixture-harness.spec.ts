@@ -48,7 +48,7 @@ test("the host refuses a missing, unknown or unseeded scenario and never mounts 
     ["", /No scenario given/],
     ["?scenario=not-a-scenario", /Unknown synthetic scenario/],
     // A real id whose state is not built yet is refused, not booted as the base environment.
-    ["?scenario=watch-baseline", /not seeded by the fixture host yet \(T14/],
+    ["?scenario=ai-pending", /not seeded by the fixture host yet \(T16/],
   ];
   for (const [query, reason] of cases) {
     await page.goto(`/${query}`);
@@ -60,7 +60,7 @@ test("the host refuses a missing, unknown or unseeded scenario and never mounts 
     expect(await page.evaluate(() => document.getElementById("root")!.dataset.mounted ?? null)).toBeNull();
     expect(await page.evaluate(() => window.__uiuxFixture?.scenario ?? null)).toBeNull();
   }
-  await expect(openScenario(page, "watch-baseline")).rejects.toThrow(/not seeded/);
+  await expect(openScenario(page, "ai-pending")).rejects.toThrow(/not seeded/);
 });
 
 test("no-seats-key boots the real app without a key and sends nothing", async ({ page }) => {

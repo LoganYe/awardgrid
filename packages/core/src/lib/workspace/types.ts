@@ -261,9 +261,18 @@ export interface SavedQueryV2 {
   schemaVersion: 2;
   id: string;
   title: string;
-  draft: QueryDraft;
+  /**
+   * The structured query and date rule a check runs. Null only when the old text could not be read at all (T14,
+   * `review: "unparsed"`): the text is then kept, and checked as before, until the person sets the conditions.
+   */
+  draft: QueryDraft | null;
   enabled: boolean;
   legacyRawText?: string;
+  /**
+   * Why the person must confirm this watch's conditions (T14): its date phrase means something else on another day
+   * ("dates"), or its text could not be read ("unparsed"). Until then a check reads the old text, as it always did.
+   */
+  review?: "dates" | "unparsed";
 }
 
 export interface FavoriteV1 {

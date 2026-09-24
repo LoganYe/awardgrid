@@ -37,6 +37,7 @@ import { AirportField } from "../components/query/AirportField";
 import { DateRuleField } from "../components/query/DateRuleField";
 import { EDITOR_COPY, fieldErrorText } from "../components/query/labels";
 import { TextSearch } from "../components/query/TextSearch";
+import { WATCHES } from "./watches-copy";
 import { Button, Chip, Icon, IconButton, Sheet, Switch, TextField } from "../components/ui";
 
 const CABINS: readonly Cabin[] = ["J", "F", "W", "Y"];
@@ -84,11 +85,16 @@ export function QueryEditorScreen() {
   // The control that opened the editor (a filter chip), so focus goes back to it; else the summary.
   const returnTo = (useLocation().state as { from?: string } | null)?.from ?? RETURN_FOCUS;
   const today = services.now().toISOString().slice(0, 10);
-  // Opened from a saved snapshot whose dates have passed (T13): its conditions, to change the dates.
-  const seeded = (useLocation().state as { query?: QueryObject } | null)?.query ?? null;
+  // Opened from a saved snapshot whose dates have passed (T13): its conditions, to change the dates. Opened from a watch
+  // (T14): its own conditions and date rule, saved back to it rather than run.
+  const navState = (useLocation().state as { query?: QueryObject; watchId?: string } | null) ?? null;
+  const seeded = navState?.query ?? null;
+  const editingWatch = navState?.watchId ? (services.watches.get(navState.watchId) ?? null) : null;
+  const W = WATCHES[locale];
   const [initial] = useState<QueryDraft>(() => {
     // The view's sort rides along, so a search from here keeps the order the results are read in (U-030).
     const { displayedSnapshot: shown, preferences } = services.workspace.getState();
+    if (editingWatch) return editingWatch.draft ?? blankDraft(today, preferences.sort);
     if (seeded) return draftFromQuery({ ...seeded, sort_by: preferences.sort });
     return shown ? draftFromQuery({ ...shown.query, sort_by: preferences.sort }) : blankDraft(today, preferences.sort);
   });
@@ -111,7 +117,7 @@ export function QueryEditorScreen() {
   // An error goes once its field changes; the rest stay until the next submit checks them again.
   const clear = (field: DraftField) => setErrors((list) => list.filter((e) => e.field !== field));
 
-  const leave = () => navigate("/", { replace: true, state: { focus: returnTo } });
+  const leave = () => (editingWatch ? navigate("/watches", { replace: true, state: { focus: returnTo } }) : navigate("/", { replace: true, state: { focus: returnTo } }));
   // Opened straight onto the Programs sheet (from its chip), closing it lands on the Programs row, not the page.
   const closePrograms = () => {
     setProgramsOpen(false);
@@ -176,6 +182,26 @@ export function QueryEditorScreen() {
     // before its fields were edited.
     const query: QueryObject = { ...resolved, raw_text: describeQuery(resolved, draft.dates), language: "en" };
     submitted.current = true;
+    if (editingWatch) {
+      // A watch keeps these conditions and this date rule (T14), confirmed, and starts again from them: its old
+      // baseline was of other conditions, so the next check sets a new one rather than report false changes.
+      const title = query.raw_text;
+      services.watches.update(editingWatch.id, {
+        draft: { query, dates: draft.dates },
+        review: null,
+        name: title.length > 60 ? `${title.slice(0, 59)}…` : title,
+        text: title,
+        baseline: [],
+        baselineWindow: null,
+        lastCheckedAt: null,
+        lastAttemptAt: null,
+        lastResult: null,
+      });
+      void services.persist();
+      services.notifyWatchesChanged();
+      navigate("/watches", { replace: true, state: { focus: returnTo, said: W.savedWatch } });
+      return;
+    }
     void services.workspace.run(query).then(() => services.persist());
     leave();
   };
@@ -192,13 +218,14 @@ export function QueryEditorScreen() {
       <header className="query-editor-header">
         <IconButton icon="chevron-left" label={EDITOR.back} onClick={back} />
         <h1 ref={heading} tabIndex={-1} className="query-editor-title">
-          {EDITOR.title}
+          {editingWatch ? W.editTitle : EDITOR.title}
         </h1>
       </header>
 
       <div className="query-editor-body">
         <p className="query-editor-intro">{EDITOR.intro}</p>
 
+        {editingWatch ? null : (
         <TextSearch
           primary={false}
           busy={typing.busy}
@@ -208,6 +235,7 @@ export function QueryEditorScreen() {
           locale={locale}
           onSearch={(text) => void searchByText(text)}
         />
+        )}
 
         <AirportField
           id={FIELD_FOCUS.origins}
@@ -350,9 +378,9 @@ export function QueryEditorScreen() {
 
       <footer className="query-editor-footer">
         <Button variant="primary" block onClick={submit}>
-          {EDITOR.submit}
+          {editingWatch ? W.saveWatch : EDITOR.submit}
         </Button>
-        <p className="query-editor-note">{EDITOR.submitNote}</p>
+        <p className="query-editor-note">{editingWatch ? W.saveWatchNote : EDITOR.submitNote}</p>
       </footer>
 
       <Sheet open={programsOpen} title={EDITOR.programs} closeLabel={EDITOR.programsDone} onClose={closePrograms}>
@@ -370,7 +398,7 @@ export function QueryEditorScreen() {
       </Sheet>
 
       <Sheet open={confirmLeave} title={EDITOR.discardTitle} closeLabel={EDITOR.close} onClose={() => setConfirmLeave(false)}>
-        <p>{EDITOR.discardBody}</p>
+        <p>{editingWatch ? W.discardWatch : EDITOR.discardBody}</p>
         <Button variant="primary" block onClick={() => setConfirmLeave(false)}>
           {EDITOR.keepEditing}
         </Button>
