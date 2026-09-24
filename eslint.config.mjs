@@ -125,4 +125,30 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // Production iOS source may not reach test fixtures or the UI/UX fixture host (docs/uiux-v1 A01): synthetic
+    // rows or a scenario switch in the shipped bundle would be fake data in production. Tests may import core's
+    // fixtures, and so may src/probes/**, the Simulator probe build that a constant-false flag compiles out of
+    // every normal build (R1 in apps/ios/probes/run-probes.sh checks it). The Anthropic rule above is repeated
+    // because this entry replaces it for these files.
+    files: ["apps/ios/src/**/*.ts", "apps/ios/src/**/*.tsx"],
+    ignores: ["apps/ios/src/**/*.test.ts", "apps/ios/src/**/*.test.tsx", "apps/ios/src/probes/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@anthropic-ai/sdk", "@anthropic-ai/sdk/*"],
+              message: "Anthropic calls go through @awardgrid/core/ask's createAskClient, which refuses the WebView fetch.",
+            },
+            {
+              group: ["@awardgrid/core/test-fixtures", "@awardgrid/core/test-fixtures/*", "**/fixture-host", "**/fixture-host/*"],
+              message: "Test fixtures and the UI/UX fixture host are test-only; production source must not import them.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);

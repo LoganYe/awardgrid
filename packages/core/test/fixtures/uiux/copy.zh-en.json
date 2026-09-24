@@ -1,0 +1,287 @@
+{
+  "status": "proposed UI copy",
+  "rows": [
+    {
+      "key": "data.source",
+      "en": "Data: seats.aero",
+      "zh": "数据：seats.aero",
+      "when": "Any surface showing award data"
+    },
+    {
+      "key": "result.none",
+      "en": "No matches in the checked range.",
+      "zh": "已查询的范围内没有匹配结果。",
+      "when": "Complete checked scope only"
+    },
+    {
+      "key": "result.partial",
+      "en": "Results are incomplete.",
+      "zh": "结果不完整。",
+      "when": "Known partial"
+    },
+    {
+      "key": "result.unknown",
+      "en": "Coverage completeness is unknown.",
+      "zh": "完整性未知。",
+      "when": "Missing evidence / legacy cache"
+    },
+    {
+      "key": "result.unmonitored",
+      "en": "These routes are not monitored by the data source.",
+      "zh": "数据源未监测这些机场对。",
+      "when": "Explicit provider catalog evidence"
+    },
+    {
+      "key": "result.min_partial",
+      "en": "Lowest among the results retrieved",
+      "zh": "已取得结果中的最低值",
+      "when": "Partial calendar/matrix"
+    },
+    {
+      "key": "fees.unknown",
+      "en": "Fees not yet confirmed",
+      "zh": "税费待确认",
+      "when": "Null amount"
+    },
+    {
+      "key": "fees.currency_unknown",
+      "en": "Currency not provided",
+      "zh": "币种未提供",
+      "when": "Amount present but currency missing"
+    },
+    {
+      "key": "seats.unknown",
+      "en": "Seat count not provided",
+      "zh": "席位未提供",
+      "when": "0/null/undefined count"
+    },
+    {
+      "key": "time.provider_unknown",
+      "en": "Source update time unknown",
+      "zh": "来源更新时间未知",
+      "when": "No proven provider timestamp"
+    },
+    {
+      "key": "time.local",
+      "en": "Fetched on this device at {time}",
+      "zh": "本机获取于 {time}",
+      "when": "Local time only"
+    },
+    {
+      "key": "run.old",
+      "en": "Showing previous results; the new search failed.",
+      "zh": "新条件查询失败，当前显示此前结果。",
+      "when": "New run failed with old snapshot"
+    },
+    {
+      "key": "run.inflight",
+      "en": "Searching; previous results remain available.",
+      "zh": "正在查询，此前结果仍可查看。",
+      "when": "Active request"
+    },
+    {
+      "key": "query.submit",
+      "en": "Find award options",
+      "zh": "查找兑换选项",
+      "when": "Main query CTA"
+    },
+    {
+      "key": "query.discard",
+      "en": "Discard changes",
+      "zh": "放弃修改",
+      "when": "Dirty draft exit"
+    },
+    {
+      "key": "query.keep_editing",
+      "en": "Keep editing",
+      "zh": "继续编辑",
+      "when": "Dirty draft exit"
+    },
+    {
+      "key": "details.load",
+      "en": "View flight itineraries",
+      "zh": "查看具体航班",
+      "when": "Explicit trip request"
+    },
+    {
+      "key": "details.copy",
+      "en": "Copy search details",
+      "zh": "复制查询条件",
+      "when": "No trusted link"
+    },
+    {
+      "key": "details.external",
+      "en": "Check availability and fees on the program website.",
+      "zh": "请在计划网站核验库存与税费。",
+      "when": "Before external program site"
+    },
+    {
+      "key": "compare.title",
+      "en": "Compare selected options",
+      "zh": "比较所选",
+      "when": "At least 2 selected"
+    },
+    {
+      "key": "compare.limit",
+      "en": "You can compare up to 4 options.",
+      "zh": "最多比较4个选项。",
+      "when": "Fifth selection"
+    },
+    {
+      "key": "favorite.snapshot",
+      "en": "Saved snapshot; availability may change.",
+      "zh": "收藏快照，库存可能变化。",
+      "when": "Every saved result"
+    },
+    {
+      "key": "favorite.undo",
+      "en": "Undo",
+      "zh": "撤销",
+      "when": "Delete undo, accessible control"
+    },
+    {
+      "key": "favorite.limit",
+      "en": "Saved storage is full. Remove an item before saving.",
+      "zh": "收藏空间已满，请整理后再保存。",
+      "when": "No silent eviction"
+    },
+    {
+      "key": "watch.ios",
+      "en": "Checked when you open or return to the app. No checks or push alerts while closed.",
+      "zh": "打开或回到本应用时检查；关闭后不检查，不发送推送。",
+      "when": "iOS capability only"
+    },
+    {
+      "key": "watch.baseline",
+      "en": "Baseline saved",
+      "zh": "基线已建立",
+      "when": "First successful check"
+    },
+    {
+      "key": "watch.cached",
+      "en": "Skipped while cached results are still valid",
+      "zh": "缓存期内未重查",
+      "when": "TTL skip"
+    },
+    {
+      "key": "watch.quota",
+      "en": "Deferred due to low quota",
+      "zh": "额度不足，暂缓检查",
+      "when": "Low headroom"
+    },
+    {
+      "key": "watch.failed",
+      "en": "Check failed; previous baseline kept",
+      "zh": "检查失败，已保留旧基线",
+      "when": "Failed check"
+    },
+    {
+      "key": "ai.entry",
+      "en": "AI assistance",
+      "zh": "AI辅助",
+      "when": "Contextual entry"
+    },
+    {
+      "key": "ai.query_only",
+      "en": "Only the query conditions will be sent.",
+      "zh": "仅附带查询条件。",
+      "when": "Actual query-only payload"
+    },
+    {
+      "key": "ai.selected",
+      "en": "Query and {count} selected options will be sent.",
+      "zh": "附带查询条件及{count}个所选选项。",
+      "when": "Exactly that serialized count"
+    },
+    {
+      "key": "ai.apply",
+      "en": "Apply and search",
+      "zh": "应用并查找",
+      "when": "Validated proposal"
+    },
+    {
+      "key": "ai.keep",
+      "en": "Keep current conditions",
+      "zh": "保留原条件",
+      "when": "Dismiss proposal"
+    },
+    {
+      "key": "ai.stale",
+      "en": "The query has changed. Create a new proposal.",
+      "zh": "当前查询已改变，请重新生成修改建议。",
+      "when": "Revision mismatch"
+    },
+    {
+      "key": "ai.stop",
+      "en": "Stop subsequent steps",
+      "zh": "停止后续步骤",
+      "when": "No recall promise"
+    },
+    {
+      "key": "ai.stop_note",
+      "en": "Requests already sent cannot be recalled and may still be billed.",
+      "zh": "已发送的请求不能撤回，仍可能计费。",
+      "when": "During/after Stop"
+    },
+    {
+      "key": "ai.unfinished",
+      "en": "The previous task did not finish.",
+      "zh": "上次任务未完成。",
+      "when": "Process interrupted"
+    },
+    {
+      "key": "ai.new_content",
+      "en": "New content",
+      "zh": "有新内容",
+      "when": "User scrolled up"
+    },
+    {
+      "key": "key.check_cost",
+      "en": "Checking this key sends a request to the data source.",
+      "zh": "检查密钥会向数据源发送一次请求。",
+      "when": "Before validation action"
+    },
+    {
+      "key": "demo.synthetic",
+      "en": "Illustrative data — not live availability",
+      "zh": "虚构示例数据，并非实时库存",
+      "when": "Every demo surface"
+    },
+    {
+      "key": "help.program",
+      "en": "The membership program used to redeem; it may not operate the flight.",
+      "zh": "用于兑换的会员计划，不一定是执飞航司。",
+      "when": "Program help"
+    },
+    {
+      "key": "help.mixed",
+      "en": "One itinerary can include different cabins. Check every segment.",
+      "zh": "同一行程可能包含不同舱位，需看每一段。",
+      "when": "Cabin help"
+    },
+    {
+      "key": "watch.foreground_only",
+      "en": "Checked on open and foreground only.",
+      "zh": "仅打开或返回前台时检查。",
+      "when": "Foreground capability without scheduler"
+    },
+    {
+      "key": "watch.scheduled_with_push",
+      "en": "Scheduled checks and push delivery are configured. Check the last run status.",
+      "zh": "已配置定期检查与消息发送，请查看最近运行状态。",
+      "when": "Web configured capabilities, not a health guarantee"
+    },
+    {
+      "key": "watch.scheduled_only",
+      "en": "Scheduled checks are configured; push delivery is not enabled.",
+      "zh": "已配置定期检查，未启用消息发送。",
+      "when": "Web schedule without configured push"
+    },
+    {
+      "key": "watch.unavailable",
+      "en": "No active checking capability has been confirmed.",
+      "zh": "尚未确认可用的检查能力。",
+      "when": "Unknown or unconfigured capability"
+    }
+  ]
+}

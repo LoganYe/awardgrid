@@ -6,7 +6,7 @@
   "description": "The awardgrid client shell (docs/PIVOT.md \u00a76 Phase 2): a Capacitor app that runs on the user's own seats.aero key, with no server of ours anywhere.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/check-fixture-free-bundle.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

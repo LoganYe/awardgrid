@@ -10,9 +10,9 @@
  * This is also where watches are checked: once when the app opens and again each time it returns
  * to the foreground, and at no other time. There is no background check (../watch/capabilities.ts).
  */
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, RouterProvider, createHashRouter } from "react-router";
-import { type AppServices, bootstrap } from "./bootstrap";
+import { type AppServices, type BootstrapOptions, bootstrap } from "./bootstrap";
 import { askNavLabel } from "../ask/labels";
 import { AskScreen } from "../screens/AskScreen";
 import { SearchScreen } from "../screens/SearchScreen";
@@ -117,9 +117,21 @@ export function Chrome({ services }: { services: AppServices }) {
   );
 }
 
-export function App() {
+export interface AppProps {
+  /**
+   * The ports to boot with. Only the UI/UX test host (apps/ios/fixture-host) passes these; main.tsx renders
+   * `<App />`, so production boots with bootstrap()'s own native defaults exactly as before.
+   */
+  bootstrapOptions?: BootstrapOptions;
+  /** Told once the services exist. Test host only, for the same reason. */
+  onReady?: (services: AppServices) => void;
+}
+
+export function App({ bootstrapOptions, onReady }: AppProps = {}) {
   const [services, setServices] = useState<AppServices | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Read once, at boot: a new options object on a later render must not boot a second set of services.
+  const boot = useRef({ bootstrapOptions, onReady });
 
   useEffect(() => {
     // A probe build sends seats.aero requests to the local mock (../probes/probe-transport.ts); any other build is unchanged.
@@ -127,8 +139,14 @@ export function App() {
       ? import("../probes/probe-transport").then((m) => bootstrap(m.probeBootstrapOptions()))
       : E2E
         ? import("../probes/probe-transport").then((m) => bootstrap(m.e2eBootstrapOptions()))
-        : bootstrap();
-    booted.then(setServices, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+        : bootstrap(boot.current.bootstrapOptions);
+    booted.then(
+      (ready) => {
+        setServices(ready);
+        boot.current.onReady?.(ready);
+      },
+      (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    );
   }, []);
 
   useEffect(() => {

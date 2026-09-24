@@ -79,6 +79,12 @@ export interface BootstrapOptions {
   anthropicFetch?: typeof fetch;
   /** Whether awardgrid is visible. Injected in tests; production reads document.visibilityState. */
   visibility?: Visibility;
+  /**
+   * Ask's check that native HTTP exists before it sends anything. Production leaves it unset, so Ask keeps
+   * its default (assertNativeHttpAvailable). Only a host that injects BOTH transports itself (the UI/UX test
+   * host) replaces it, since there the injected anthropicFetch is the transport and no native bridge exists.
+   */
+  assertNative?: () => void;
 }
 
 /** Only seats.aero's own responses are authoritative about seats.aero's quota. */
@@ -186,6 +192,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     whenWatchesIdle,
     now,
     visibility: opts.visibility,
+    assertNative: opts.assertNative,
   });
 
   const persist = async (): Promise<void> => {
