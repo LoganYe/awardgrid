@@ -87,7 +87,9 @@
  * Disabled: legible (text-muted on surface-subtle is 4.66:1 light, 6.02:1 dark), never an opacity fade. opacity is
  * set to 1 on every disabled control because iOS WebKit's own stylesheet fades disabled form controls.
  */
-.ag-button:disabled {
+.ag-button:disabled,
+/* Unavailable but still focusable (a place focus returns to, T12), with its reason beside it. */
+.ag-button[aria-disabled="true"]:not([aria-busy="true"]) {
   border-color: var(--ag-divider);
   background: var(--ag-surface-subtle);
   color: var(--ag-text-muted);

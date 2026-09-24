@@ -17,7 +17,9 @@ import { RESULTS } from "../components/results/copy";
 import { Icon, type IconName, applyThemePreference } from "../components/ui";
 import { installKeyboardInset } from "./keyboard";
 import { langTag, useLocale } from "./locale";
+import { TraySlot } from "./tray-slot";
 import { AskScreen } from "../screens/AskScreen";
+import { CompareScreen } from "../screens/CompareScreen";
 import { QueryEditorScreen } from "../screens/QueryEditorScreen";
 import { DetailScreen } from "../screens/DetailScreen";
 import { ExampleScreen } from "../screens/OnboardingScreen";
@@ -86,7 +88,8 @@ export function Chrome({ services }: { services: AppServices }) {
   const t = RESULTS[locale];
   const { pathname } = useLocation();
   // An option's details (T10) open over the Search screen, which stays as it is underneath: same scroll, same chrome.
-  const detailOpen = pathname.startsWith("/detail/");
+  // The comparison (T12) opens over the Search screen the same way.
+  const detailOpen = pathname.startsWith("/detail/") || pathname === "/compare";
   const place = detailOpen ? "/" : pathname;
   const onSearch = place === "/";
   // One scrolling area serves every tab, so each tab's position is kept and restored when it is shown again.
@@ -100,18 +103,23 @@ export function Chrome({ services }: { services: AppServices }) {
     el.scrollTop = positions.current.get(place) ?? 0;
     shownPath.current = place;
   }, [place]);
+  const [traySlot, setTraySlot] = useState<HTMLDivElement | null>(null);
   const tabs: Array<{ to: string; icon: IconName; label: string; badge: number }> = [
     { to: "/", icon: "search", label: t.tabs.search, badge: 0 },
     { to: "/watches", icon: "bell", label: t.tabs.watches, badge: unseen },
     { to: "/settings", icon: "gear", label: t.tabs.settings, badge: 0 },
   ];
   return (
+    <TraySlot.Provider value={traySlot}>
     <div className="app-shell">
       <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(place, e.currentTarget.scrollTop)}>
         <Outlet context={services} />
         {/* Not on Search (its status line says it), Settings (its About says it) or the example (made up, not seats.aero's). */}
         {onSearch || place === "/settings" || place === "/example" ? null : <p className="app-attribution">{t.attribution}</p>}
       </main>
+      {/* The comparison bar (T12) sits here, above the tab bar and outside the scrolling area, so it never covers a
+          result, a focused control or the matrix (SearchScreen portals it in). */}
+      <div ref={setTraySlot} className="app-tray-slot" />
       <nav className="app-tabs" aria-label={t.tabsLabel} lang={langTag(locale)} inert={detailOpen || undefined}>
         {tabs.map((tab) => (
           <NavLink key={tab.to} to={tab.to} end={tab.to === "/"} className="app-tab">
@@ -129,6 +137,7 @@ export function Chrome({ services }: { services: AppServices }) {
         ))}
       </nav>
     </div>
+    </TraySlot.Provider>
   );
 }
 
@@ -225,7 +234,12 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
                 {
                   // The Search screen, and an option's details over it (T10).
                   element: <SearchScreen />,
-                  children: [{ index: true, Component: NoDetail }, { path: "detail/:snapshotId/:rowKey", element: <DetailScreen /> }],
+                  children: [
+                    { index: true, Component: NoDetail },
+                    { path: "detail/:snapshotId/:rowKey", element: <DetailScreen /> },
+                    // The comparison (T12), over the results like the details, so they are as they were on return.
+                    { path: "compare", element: <CompareScreen /> },
+                  ],
                 },
                 { path: "ask", element: <AskScreen /> },
                 { path: "watches", element: <WatchesScreen /> },

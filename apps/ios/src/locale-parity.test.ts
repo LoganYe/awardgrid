@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { EDITOR_COPY, allFieldErrors } from "./components/query/labels";
 import { RESULTS } from "./components/results/copy";
 import { CONNECT_ANTHROPIC } from "./screens/AskScreen";
+import { COMPARE } from "./screens/compare-copy";
 import { WELCOME } from "./screens/OnboardingScreen";
 import { SETTINGS } from "./screens/settings-copy";
 import { WATCHES } from "./screens/watches-copy";
@@ -20,6 +21,7 @@ const TABLES: Record<string, { en: unknown; zh: unknown }> = {
   watches: WATCHES,
   welcome: WELCOME,
   connectAnthropic: CONNECT_ANTHROPIC,
+  compare: COMPARE,
 };
 
 /** Any Chinese character or Chinese punctuation: English must have none. */

@@ -48,6 +48,15 @@
   color: var(--ag-text-secondary);
 }
 
+/* The comparison bar's place (T12): between the scrolling area and the tab bar, taking its own height. */
+.app-tray-slot {
+  flex: none;
+}
+
+:root[data-keyboard="open"] .app-tray-slot {
+  display: none;
+}
+
 .app-tabs {
   flex: none;
   display: grid;
@@ -835,7 +844,8 @@
 .ag-mx-scroll {
   overflow: auto;
   /* Room for the page's sticky header and summary (measured) and the tab bar, so the grid's own header stays in view. */
-  max-height: calc(100dvh - var(--results-sticky-h, calc(env(safe-area-inset-top) + 116px)) - var(--ag-tabbar-height) - env(safe-area-inset-bottom) - var(--ag-space-4));
+  /* The comparison bar (T12), when shown, takes its own space above the tab bar. */
+  max-height: calc(100dvh - var(--results-sticky-h, calc(env(safe-area-inset-top) + 116px)) - var(--ag-tabbar-height) - env(safe-area-inset-bottom) - var(--compare-tray-h, 0px) - var(--ag-space-4));
   /* No side border: the scrollport must be the full content width (358 = 88 + 2 × 135 at 390). */
   border-radius: var(--ag-radius-small);
   background: var(--ag-surface);

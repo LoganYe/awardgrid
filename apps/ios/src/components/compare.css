@@ -1,0 +1,329 @@
+/*
+ * The comparison bar and page (UI/UX v1 T12; docs/04 S05). Tokens only. Phone: header 52, content 358, two columns of
+ * 173 with a 12 gap; field labels 13/18, values 16/24, miles 22/28; pickers and buttons 44. Nothing is cut: rows grow
+ * to their longest value, and a narrow screen or large text reads one option at a time.
+ */
+
+/* ---- the bar on the Search screen ---- */
+
+.ag-compare-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-2) var(--ag-space-3);
+  padding: var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-right)) var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-left));
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+.ag-compare-tray-count {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-compare-tray-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-2);
+}
+
+.ag-compare-tray-status {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-danger);
+}
+
+/* Empty: hidden only visually, so the live region stays in the accessibility tree and a refusal is announced. */
+.ag-compare-tray-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- the page ---- */
+
+/* Over the Search screen, like an option's details (T10): the results stay as they were underneath. */
+.ag-compare {
+  --compare-gutter-start: max(var(--ag-gutter), env(safe-area-inset-left));
+  --compare-gutter-end: max(var(--ag-gutter), env(safe-area-inset-right));
+  position: fixed;
+  inset: 0 0 var(--ag-keyboard-inset, 0px);
+  z-index: var(--ag-z-modal);
+  display: flex;
+  flex-direction: column;
+  background: var(--ag-canvas);
+  color: var(--ag-text);
+}
+
+.ag-compare-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: calc(52px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--compare-gutter-end) 0 max(var(--ag-space-1), env(safe-area-inset-left));
+  border-bottom: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+.ag-compare-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-compare-title:focus {
+  outline: none;
+}
+
+.ag-compare-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-compare-count {
+  flex: none;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-compare-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-4) var(--compare-gutter-end) calc(var(--ag-space-6) + env(safe-area-inset-bottom)) var(--compare-gutter-start);
+}
+
+.ag-compare-note {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+/* The two pickers line up with the two columns below them (12 apart, as the table); the mode switch has its own row. */
+.ag-compare-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ag-space-3);
+  align-items: end;
+}
+
+.ag-compare-tools[data-wide] {
+  gap: var(--ag-space-4);
+}
+
+.ag-compare-tools .ag-compare-mode {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.ag-compare-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  min-width: 0;
+}
+
+.ag-compare-picker-label {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text-secondary);
+}
+
+.ag-compare-picker .ag-input {
+  min-height: var(--ag-touch-target);
+  width: 100%;
+}
+
+.ag-compare-mode {
+  align-self: flex-start;
+}
+
+/*
+ * Only the table scrolls sideways. 4 pt of padding on each side keeps the first and last columns' focus rings (2 pt
+ * ring, 2 pt offset) inside the scroller, and the negative margin keeps the columns on the 16 pt gutters.
+ */
+.ag-compare-scroll {
+  margin-inline: -4px;
+  padding-inline: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/* The field names stay at the scroller's left edge while the values scroll. */
+.ag-compare-scroll .ag-compare-label-text {
+  position: sticky;
+  left: 0;
+}
+
+/* Columns 12 apart on a phone (16 wide): the spacing's outer edge is taken back so the table meets the gutters. */
+.ag-compare-table {
+  width: calc(100% + 2 * var(--ag-space-3));
+  margin-inline: calc(-1 * var(--ag-space-3));
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: var(--ag-space-3) 0;
+}
+
+.ag-compare-table[data-wide] {
+  width: calc(100% + 2 * var(--ag-space-4));
+  margin-inline: calc(-1 * var(--ag-space-4));
+  border-spacing: var(--ag-space-4) 0;
+}
+
+.ag-compare-head {
+  padding: 0 0 var(--ag-space-2);
+  text-align: start;
+  vertical-align: top;
+  font-weight: normal;
+}
+
+.ag-compare-actions {
+  padding: 0 0 var(--ag-space-3);
+  vertical-align: top;
+}
+
+/* One weight for the heading everywhere: bold only where .ag-compare-strong says so. */
+.ag-compare-head-text,
+.ag-compare-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--ag-space-1) / 2);
+  margin: 0 0 var(--ag-space-2);
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  font-weight: normal;
+}
+
+.ag-compare-label-text {
+  display: inline-block;
+}
+
+.ag-compare-label {
+  padding: var(--ag-space-3) 0 var(--ag-space-1);
+  border-top: 1px solid var(--ag-divider);
+  text-align: start;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text-secondary);
+}
+
+.ag-compare-value {
+  padding: 0 0 var(--ag-space-1);
+  vertical-align: top;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.ag-compare-value > span {
+  display: block;
+}
+
+.ag-compare-value .ag-compare-figure {
+  display: inline;
+  font-size: calc(22px * var(--ag-text-scale));
+  line-height: calc(28px * var(--ag-text-scale));
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-compare-value .ag-compare-unit {
+  display: inline;
+  color: var(--ag-text-secondary);
+}
+
+.ag-compare-strong {
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-compare-muted {
+  color: var(--ag-text-secondary);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+/* The button primitive's own height (48 on a phone); only the inner spacing is this page's. */
+.ag-button.ag-compare-out,
+.ag-button.ag-compare-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  padding-inline: var(--ag-space-2);
+}
+
+.ag-compare-out .ag-icon,
+.ag-compare-out svg,
+.ag-compare-remove svg {
+  flex: none;
+}
+
+/* One option at a time. */
+.ag-compare-card {
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: 16px;
+  background: var(--ag-surface);
+}
+
+.ag-compare-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ag-space-2);
+}
+
+.ag-compare-list {
+  margin: 0;
+}
+
+.ag-compare-pair {
+  padding: var(--ag-space-2) 0 0;
+}
+
+.ag-compare-pair + .ag-compare-pair {
+  margin-top: var(--ag-space-2);
+  border-top: 1px solid var(--ag-divider);
+}
+
+.ag-compare-pair .ag-compare-label {
+  padding: 0 0 var(--ag-space-1);
+  border-top: 0;
+}
+
+.ag-compare-pair .ag-compare-value {
+  margin: 0;
+  padding: 0;
+}
+
+.ag-compare-empty,
+.ag-compare-one {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  align-items: flex-start;
+}
+
+.ag-compare-empty p,
+.ag-compare-one p {
+  margin: 0;
+}

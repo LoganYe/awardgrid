@@ -239,3 +239,52 @@ T11 review (TEST-7). The shell's approved sentences come from core `present.ts` 
 - Checks that COPY's web-only scheduled-check rows would fail the scan the moment the shell renders one.
 
 The scan's first catch was this task's own "Keep watching" / "继续关注", which reads as a continuity promise. It became "Keep this watch" / "保留此关注".
+
+## U-044 · At most four chosen, each kept to its own snapshot; the comparison fetches nothing and ranks nothing
+
+T12, docs/03 §2, docs/04 S05, spec §13.
+
+**Choosing** (core `workspace/selection.ts` `toggleSelection`; `WorkspaceStore.setSelected`)
+- **Limit.** At most four references. A fifth is refused where it was made (the list, a calendar day or a matrix cell), and the bar says the approved "You can compare up to 4 options.". Nothing chosen is swapped out.
+- **Clearing.** Choosing an option again clears it. Choosing and clearing fetch nothing and never change what is shown.
+- **Across searches.** A reference names its own snapshot. The same row in a newer search is another option, and a choice is never moved to it (docs/03 §2).
+- **Kept copies.** A copy of each chosen row, with its query and snapshot time, is kept when it is chosen. If its snapshot leaves the history (at most ten are kept, T05), the comparison shows that copy and says so. An option found nowhere is shown as gone, never invented.
+- **Not saved.** The selection lives in memory and is not saved across a relaunch. Saving what was chosen is favourites (T13).
+
+**The bar** (`CompareTray`)
+- **Where it sits.** Shown only while something is chosen. The tab chrome draws it in its own slot between the scrolling area and the tab bar (a portal from the Search screen), so it takes its own space and never covers a result, a focused control or the matrix. The matrix scroller subtracts the bar's measured height. The bar is inert while details or the comparison are open, and it gives way to the keyboard as the tab bar does.
+- **What it shows.** The count out of four (across searches), "Clear", and "Compare selected options".
+- **Fewer than two chosen.** The compare button is unavailable but still focusable (`aria-disabled`), with its reason beside it, because focus returns to it. `ui.css` styles `aria-disabled` buttons like disabled ones, except while loading.
+- **The refusal message.** Its live region stays in the accessibility tree while empty (hidden only visually).
+- **Clear** moves focus to the results' title.
+
+**The comparison** (`/compare`)
+- **Page.** A child route of the Search screen drawn over it, like an option's details (T10). The results stay mounted and inert, so Back finds their scroll, calendar day and matrix cell as they were. A 52 pt header shows the count out of four.
+- **Fields.** Fixed order: route and date, cabin, program, miles, fees, itineraries, seats, source time, program website.
+- **Telling options apart.** Options are numbered in the order chosen. When they come from more than one search, each says which ("From the search of Oct 18, 09:12"). Headings, picker text and Remove names therefore never read the same for two options.
+- **Figures.** Every figure is the chosen snapshot's own.
+  - Itineraries appear only if already loaded on this device, with how long ago. Looking never loads them.
+  - A kept copy says its itineraries cannot be loaded from here.
+  - The program link is the trusted one (T10 `detailLink`).
+- **Notes, when they apply.** These are read as the columns read fees (`feesState`):
+  - "Comparing sends nothing".
+  - Miles from different programs are not ranked or scored.
+  - Fees in more than one currency are not converted.
+  - Amounts with no currency are not comparable.
+  - How many fees are unconfirmed.
+
+  No totals, no CPP, no "best".
+- **Layout** (core `compareLayout`):
+  - A phone shows two columns at a time (173 each, 12 apart), with a labelled 44 pt picker above each column for a third or fourth option. The picker text leads with what differs: number, miles, program. Picking in one column what the other shows swaps them.
+  - "Read one by one" lists every option in turn; focus moves to the button that switches back.
+  - At 320 wide or 200% text, only the one-by-one reading is available.
+  - Wider screens show up to four columns, 16 apart and at least 220 each. When they do not fit, only the table scrolls sideways; field names stay in view, and focus rings are not clipped.
+- **Semantics.** A real table. Column headers name the option only. The Remove buttons are in a row of their own. Each value's `headers` names its option and its field.
+- **Removing and leaving.**
+  - Removing an option is said ("Removed. 2 of 4 chosen."), and focus goes to the page title.
+  - With fewer than two left, the page says so.
+  - Back or Esc returns to the results, with focus on "Compare selected options", or on the results' title when nothing is chosen any more.
+
+**Not in T12**
+- The details page's own "add to compare" (spec §13 names it; T10's two-button footer is kept, and choosing is done from the result).
+- The Web comparison (T19).

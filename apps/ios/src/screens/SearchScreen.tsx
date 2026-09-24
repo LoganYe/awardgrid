@@ -31,7 +31,8 @@ import { SortBy } from "@awardgrid/core/query/schema";
 import { projectResults } from "@awardgrid/core/workspace/projection";
 import { type Locale, ageLabel, copy, coverageNotices, moreConditionsCount, optionsCount, sortLabel, sortShortLabel } from "@awardgrid/core/workspace/present";
 import { textReproducesQuery } from "@awardgrid/core/workspace/query-editor";
-import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { Link, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { langTag, useLocale } from "../app/locale";
@@ -41,6 +42,8 @@ import { TextSearch } from "../components/query/TextSearch";
 import { AvailabilityCalendar } from "../components/results/AvailabilityCalendar";
 import { AvailabilityList } from "../components/results/AvailabilityList";
 import { AvailabilityMatrix } from "../components/results/AvailabilityMatrix";
+import { TraySlot } from "../app/tray-slot";
+import { CompareTray } from "../components/CompareTray";
 import { RESULTS } from "../components/results/copy";
 import { QuerySummary } from "../components/results/QuerySummary";
 import { Button, Icon, Notice, SegmentedControl } from "../components/ui";
@@ -232,7 +235,11 @@ export function SearchScreen() {
   // T10: an option's details open over the results (a child route), which stay mounted underneath — inert while the
   // details are open — so coming back finds view, selection, scroll and the matrix or calendar exactly as they were.
   const navigate = useNavigate();
-  const detailOpen = useMatch("/detail/:snapshotId/:rowKey") !== null;
+  const detailPage = useMatch("/detail/:snapshotId/:rowKey") !== null;
+  // The comparison (T12) opens over the results the same way.
+  const comparePage = useMatch("/compare") !== null;
+  const detailOpen = detailPage || comparePage;
+  const traySlot = useContext(TraySlot);
   // A details load spends a call without a workspace run: read the counter again when the details close.
   useEffect(() => {
     if (!detailOpen) void services.engine.quotaView().then(setQuota);
@@ -243,11 +250,17 @@ export function SearchScreen() {
     },
     [navigate, snapshotId],
   );
+  // Choosing for comparison (T12): at most four. A fifth is refused where it was made and said in the bar, cleared
+  // first so the same refusal is announced again.
+  const [limitNotice, setLimitNotice] = useState<string | null>(null);
   const toggleRow = useCallback(
     (rowKey: string, on: boolean) => {
-      if (snapshotId) services.workspace.setSelected({ snapshotId, rowKey }, on);
+      if (!snapshotId) return;
+      const result = services.workspace.setSelected({ snapshotId, rowKey }, on);
+      setLimitNotice(null);
+      if (!result.ok && result.reason === "limit") window.requestAnimationFrame(() => setLimitNotice(copy("compare.limit", locale)));
     },
-    [services, snapshotId],
+    [services, snapshotId, locale, setLimitNotice],
   );
   const programs = value?.query.programs?.length ?? 0;
 
@@ -456,6 +469,23 @@ export function SearchScreen() {
         </div>
       )}
     </div>
+    {workspace.selected.length > 0 && traySlot
+      ? createPortal(
+          <CompareTray
+            count={workspace.selected.length}
+            locale={locale}
+            notice={limitNotice}
+            inert={detailOpen}
+            onClear={() => {
+              setLimitNotice(null);
+              services.workspace.clearSelection();
+              // The bar, and the button pressed, are gone with the selection: focus goes to the results' title.
+              window.requestAnimationFrame(() => document.getElementById("search-title")?.focus());
+            }}
+          />,
+          traySlot,
+        )
+      : null}
     <Outlet context={services} />
     </>
   );

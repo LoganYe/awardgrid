@@ -302,6 +302,87 @@ describe("WorkspaceStore history and view state", () => {
   });
 });
 
+describe("WorkspaceStore selection (T12)", () => {
+  async function runs(n: number) {
+    const { search, calls } = manualPort();
+    const store = new WorkspaceStore({ search, now: () => FIXTURE_NOW });
+    for (let i = 1; i <= n; i++) {
+      const done = store.run(fixtureQuery());
+      calls[i - 1]!.resolve(answer(calls[i - 1]!, `s${i}`));
+      await done;
+    }
+    return store;
+  }
+
+  it("four at most: a fifth is refused and nothing is swapped out; choosing one again clears it", async () => {
+    // Two snapshots: four options chosen from the first, the fifth tried from the second.
+    const store = await runs(2);
+    const rows = store.history().find((x) => x.id === "s1")!.rows;
+    expect(rows.length).toBeGreaterThanOrEqual(4);
+    for (const row of rows.slice(0, 4)) expect(store.setSelected({ snapshotId: "s1", rowKey: row.key }, true)).toEqual({ ok: true });
+    const four = store.getState().selected;
+    expect(store.setSelected({ snapshotId: "s2", rowKey: rows[0]!.key }, true)).toEqual({ ok: false, reason: "limit" });
+    expect(store.getState().selected).toEqual(four);
+    store.setSelected({ snapshotId: "s1", rowKey: rows[0]!.key }, false);
+    expect(store.getState().selected.map((r) => r.rowKey)).toEqual(rows.slice(1, 4).map((r) => r.key));
+    store.clearSelection();
+    expect(store.getState().selected).toEqual([]);
+  });
+
+  it("a reference to no kept row cannot be chosen", async () => {
+    const store = await runs(1);
+    expect(store.setSelected({ snapshotId: "s1", rowKey: "not-a-row" }, true)).toEqual({ ok: false, reason: "unknown" });
+    expect(store.setSelected({ snapshotId: "nope", rowKey: store.getState().displayedSnapshot!.rows[0]!.key }, true)).toEqual({ ok: false, reason: "unknown" });
+    expect(store.getState().selected).toEqual([]);
+  });
+
+  it("a newer search keeps the chosen reference to its own snapshot, and the same row in the new one is another option", async () => {
+    const { search, calls } = manualPort();
+    const store = new WorkspaceStore({ search, now: () => FIXTURE_NOW });
+    const a = store.run(fixtureQuery());
+    calls[0]!.resolve(answer(calls[0]!, "s1"));
+    await a;
+    const key = store.getState().displayedSnapshot!.rows[0]!.key;
+    store.setSelected({ snapshotId: "s1", rowKey: key }, true);
+    const b = store.run(fixtureQuery());
+    calls[1]!.resolve(answer(calls[1]!, "s2"));
+    await b;
+    // The new snapshot has the same row; the choice still names s1 and is read from s1.
+    expect(store.getState().displayedSnapshot!.rows.some((r) => r.key === key)).toBe(true);
+    expect(store.getState().selected).toEqual([{ snapshotId: "s1", rowKey: key }]);
+    expect(store.selectionEntries()[0]).toMatchObject({ source: "snapshot", ref: { snapshotId: "s1", rowKey: key } });
+    // Choosing the same row in s2 adds a second option; it does not replace the first.
+    store.setSelected({ snapshotId: "s2", rowKey: key }, true);
+    expect(store.getState().selected).toEqual([
+      { snapshotId: "s1", rowKey: key },
+      { snapshotId: "s2", rowKey: key },
+    ]);
+  });
+
+  it("once its snapshot is evicted, a chosen option is read from the copy kept when it was chosen", async () => {
+    const { search, calls } = manualPort();
+    const store = new WorkspaceStore({ search, now: () => FIXTURE_NOW });
+    const first = store.run(fixtureQuery());
+    calls[0]!.resolve(answer(calls[0]!, "s1"));
+    await first;
+    const chosen = store.getState().displayedSnapshot!.rows[1]!;
+    store.setSelected({ snapshotId: "s1", rowKey: chosen.key }, true);
+    for (let i = 2; i <= 12; i++) {
+      const done = store.run(fixtureQuery());
+      calls[i - 1]!.resolve(answer(calls[i - 1]!, `s${i}`));
+      await done;
+    }
+    expect(store.history().map((s) => s.id)).not.toContain("s1");
+    const [entry] = store.selectionEntries();
+    expect(entry).toMatchObject({ source: "kept_copy", ref: { snapshotId: "s1", rowKey: chosen.key } });
+    expect(entry!.row).toEqual(chosen);
+    // Choosing and clearing never ran a search: the twelve calls are the twelve runs.
+    store.clearSelection();
+    expect(store.selectionEntries()).toEqual([]);
+    expect(calls).toHaveLength(12);
+  });
+});
+
 describe("WorkspaceStore persistence", () => {
   async function persisted() {
     const storage = new MemoryStorage();

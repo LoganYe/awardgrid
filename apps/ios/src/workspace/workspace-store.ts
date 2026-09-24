@@ -20,6 +20,7 @@
  * queued run whose signal this store aborted when a newer run started.
  */
 import { restoreCoverage } from "@awardgrid/core/workspace/coverage";
+import { type CompareEntry, type SelectionFragment, refKey, resolveSelection, toggleSelection } from "@awardgrid/core/workspace/selection";
 import { scopeKey } from "@awardgrid/core/workspace/identity";
 import { isRealDate, parseInstant } from "@awardgrid/core/workspace/semantics";
 import type {
@@ -100,6 +101,11 @@ export class WorkspaceStore {
   #current: AbortController | null = null;
   /** Ids of the snapshots that came back from disk at launch. */
   readonly #restored = new Set<SnapshotId>();
+  /**
+   * A copy of each chosen option as it was when chosen (T12), so a comparison can still show it after its snapshot
+   * has left the history. Kept in memory with the selection, which is not saved.
+   */
+  readonly #fragments = new Map<string, SelectionFragment>();
   #state: WorkspaceState = {
     revision: 0,
     draft: null,
@@ -202,14 +208,42 @@ export class WorkspaceStore {
   }
 
   /**
-   * Select or clear one result of a snapshot. Local only: never fetches, never changes what is shown. (Limits and the
-   * compare bar arrive with T12.)
+   * Choose or clear one result of a snapshot for comparison (T12; core workspace/selection.ts). Local only: never
+   * fetches, never changes what is shown. At most four: a fifth is refused with `limit` and nothing is swapped out. A
+   * reference that names no kept snapshot row cannot be chosen (`unknown`). The same row in a newer search is another
+   * reference; a chosen one is never moved to it.
    */
-  setSelected(ref: ResultRef, on: boolean): void {
+  setSelected(ref: ResultRef, on: boolean): { ok: true } | { ok: false; reason: "limit" | "unknown" } {
     const has = this.#state.selected.some((r) => r.snapshotId === ref.snapshotId && r.rowKey === ref.rowKey);
-    if (on === has) return;
-    const selected = on ? [...this.#state.selected, ref] : this.#state.selected.filter((r) => !(r.snapshotId === ref.snapshotId && r.rowKey === ref.rowKey));
-    this.#set({ selected });
+    if (on === has) return { ok: true };
+    if (on) {
+      const snapshot = this.#history.find((s) => s.id === ref.snapshotId);
+      const row = snapshot?.rows.find((r) => r.key === ref.rowKey);
+      if (!snapshot || !row) return { ok: false, reason: "unknown" };
+      const next = toggleSelection(this.#state.selected, ref);
+      if (next.reason) return { ok: false, reason: next.reason };
+      this.#fragments.set(refKey(ref), { ref, row, query: snapshot.query, snapshotCreatedAt: snapshot.createdAt });
+      this.#set({ selected: next.selected });
+      return { ok: true };
+    }
+    this.#fragments.delete(refKey(ref));
+    this.#set({ selected: toggleSelection(this.#state.selected, ref).selected });
+    return { ok: true };
+  }
+
+  /** Clear every chosen option. */
+  clearSelection(): void {
+    if (this.#state.selected.length === 0) return;
+    this.#fragments.clear();
+    this.#set({ selected: [] });
+  }
+
+  /**
+   * The chosen options, in the order chosen, each read from its own snapshot, or from the copy kept when it was chosen
+   * once that snapshot has been evicted. Nothing is fetched.
+   */
+  selectionEntries(): CompareEntry[] {
+    return resolveSelection(this.#state.selected, this.#history, this.#fragments);
   }
 
   /** View, sort, calendar cabin and local filter. Local only: never fetches. */
