@@ -23,6 +23,7 @@ import { type AskService, type Visibility, createAskService } from "../ask/ask-s
 import { anthropicKeychain } from "../native/anthropic-key";
 import { createNativeFetch } from "../native/http";
 import { type KeyStore, keychain } from "../native/keychain";
+import { type Locale, detectLocale } from "./locale";
 import { type LastSearchStore, createWorkspaceLastSearch } from "../search/last-search";
 import { AskStore } from "../store/ask-store";
 import { SnapshotStore } from "../store/persistence";
@@ -57,6 +58,10 @@ export interface AppServices {
    * the shape the screen already renders. A parse failure, or no key, never starts a run.
    */
   searchText(text: string): Promise<ApiResult<FindValue>>;
+  /** The first half of `searchText`: the key check and the deterministic parse. Sends nothing. */
+  prepareText(text: string): Promise<ApiResult<ParsedText>>;
+  /** The second half: run a parsed text as a workspace revision, labelled with the text. */
+  runParsed(text: string, parsed: ParsedText): Promise<ApiResult<FindValue>>;
   /**
    * Run the shown search again as its structured query, labelled with its text: for a search whose text cannot
    * reproduce it (a mixed-cabin rule, dynamic pricing, a single airport that shares its city's code).
@@ -68,6 +73,8 @@ export interface AppServices {
   lastWorkspaceSave(): PersistResult | null;
   /** The app's clock (injected in tests and the fixture host): screens date things with it, not with new Date(). */
   now(): Date;
+  /** The language the translated screens speak (UI/UX v1 T07; the setting arrives in T11). */
+  locale: Locale;
   /**
    * Persist the snapshots and Ask's conversation. The quota and watch writes are skipped when nothing moved.
    * cache.json is written on every call, and so is ask.json whenever there is a conversation, whole, so a long
@@ -112,6 +119,8 @@ export interface BootstrapOptions {
    * host) replaces it, since there the injected anthropicFetch is the transport and no native bridge exists.
    */
   assertNative?: () => void;
+  /** The language the translated screens speak. Default: the device's (navigator.language). */
+  locale?: Locale;
 }
 
 /** A run that came from the Search screen's text: what was typed, and what the parser said about it. */
@@ -322,10 +331,13 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     ask,
     workspace,
     searchText,
+    prepareText: async (text) => engine.parseText(text, await readKey(keys)),
+    runParsed: (text, parsed) => runTyped({ text, parsed }),
     rerunShown,
     lastSearch,
     lastWorkspaceSave: () => lastWorkspaceSave,
     now,
+    locale: opts.locale ?? detectLocale(typeof navigator === "undefined" ? undefined : navigator.language),
     persist,
     async clearCache() {
       // Memory first: if the file went first and a persist() landed in between, it would write

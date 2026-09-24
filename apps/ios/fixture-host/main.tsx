@@ -106,6 +106,8 @@ async function start(): Promise<void> {
         snapshots: new SnapshotStore(files),
         now: () => env.now,
         fetchImpl: syntheticSeatsFetch(env.rows, env.routes, handle.log, env.searchMode),
+        // The requested language reaches the translated screens; the host's own page stays English (U-007).
+        locale: handle.requestedLang === "zh" ? "zh" : handle.requestedLang === "en" ? "en" : undefined,
         anthropicFetch: refusingAnthropicFetch(handle.log),
         // Both transports above are injected, so there is no native bridge to assert. Production never sets this.
         assertNative: () => {},

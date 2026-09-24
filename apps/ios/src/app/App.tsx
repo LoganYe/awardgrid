@@ -10,10 +10,12 @@
  * This is also where watches are checked: once when the app opens and again each time it returns
  * to the foreground, and at no other time. There is no background check (../watch/capabilities.ts).
  */
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { NavLink, Outlet, RouterProvider, createHashRouter } from "react-router";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { NavLink, Outlet, RouterProvider, createHashRouter, useLocation } from "react-router";
 import { type AppServices, type BootstrapOptions, bootstrap } from "./bootstrap";
-import { askNavLabel } from "../ask/labels";
+import { RESULTS } from "../components/results/copy";
+import { Icon, type IconName } from "../components/ui";
+import { langTag } from "./locale";
 import { AskScreen } from "../screens/AskScreen";
 import { QueryEditorScreen } from "../screens/QueryEditorScreen";
 import { SearchScreen } from "../screens/SearchScreen";
@@ -49,12 +51,11 @@ function useUnseenCount(services: AppServices): number {
   return useSyncExternalStore(subscribe, count, count);
 }
 
-/** Whether a question is under way. The service runs it, not the Ask screen, so the nav says so from any screen. */
-function useAskRunning(services: AppServices): boolean {
+/** Whether a question is under way. The service runs it, not the Ask screen, so the Search header says so. */
+export function useAskRunning(services: Pick<AppServices, "ask">): boolean {
   return useSyncExternalStore(services.ask.subscribe, services.ask.isRunning, services.ask.isRunning);
 }
 
-/** The header with its nav, the screen, and the footer. Exported for app-chrome.test.ts. */
 /**
  * A full-height page outside the tab chrome (UI/UX v1 T06: the query editor, docs/04 S02). It shows no award data,
  * so it carries no data attribution; the screens it returns to do.
@@ -67,65 +68,58 @@ export function FullPage({ services }: { services: AppServices }) {
   );
 }
 
+/**
+ * The tab chrome (UI/UX v1 T07; docs/04 S01; reference results-light.png): the screen in a scrolling area, and a
+ * bottom tab bar — Search, Watches, Settings — above the home indicator. Saved joins the bar with T13; AI assistance
+ * is reached from the Search header, which also says when a question is under way. The page itself never scrolls (the
+ * shell's html/body overflow rule would stop sticky headers), the area above the bar does.
+ *
+ * LEGAL.md: "Every screen that shows award data carries the attribution 'Data: seats.aero'". The Search screen says it
+ * in its status line; every other screen in the chrome carries it at the end of its content.
+ */
 export function Chrome({ services }: { services: AppServices }) {
   const unseen = useUnseenCount(services);
-  const asking = useAskRunning(services);
-  const nav: Array<[string, string]> = [
-    ["/", "Search"],
-    ["/ask", askNavLabel(asking)],
-    ["/watches", unseen > 0 ? `Watches (${unseen})` : "Watches"],
-    ["/settings", "Settings"],
+  const t = RESULTS[services.locale];
+  const { pathname } = useLocation();
+  const onSearch = pathname === "/";
+  // One scrolling area serves every tab, so each tab's position is kept and restored when it is shown again.
+  const main = useRef<HTMLElement>(null);
+  const positions = useRef(new Map<string, number>());
+  const shownPath = useRef(pathname);
+  useLayoutEffect(() => {
+    const el = main.current;
+    if (!el || shownPath.current === pathname) return;
+    positions.current.set(shownPath.current, el.scrollTop);
+    el.scrollTop = positions.current.get(pathname) ?? 0;
+    shownPath.current = pathname;
+  }, [pathname]);
+  const tabs: Array<{ to: string; icon: IconName; label: string; badge: number }> = [
+    { to: "/", icon: "search", label: t.tabs.search, badge: 0 },
+    { to: "/watches", icon: "bell", label: t.tabs.watches, badge: unseen },
+    { to: "/settings", icon: "gear", label: t.tabs.settings, badge: 0 },
   ];
   return (
-    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-      {/* Both rows wrap, so a 375 pt phone with "Ask (working)" and "Watches (12)" wraps instead of clipping. */}
-      <header
-        className="chrome-top chrome-x"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          columnGap: 16,
-          rowGap: 6,
-          alignItems: "center",
-          paddingBottom: 10,
-          borderBottom: "1px solid var(--line)",
-          background: "var(--bg-raised)",
-        }}
-      >
-        <strong style={{ fontSize: 16 }}>awardgrid</strong>
-        <nav style={{ display: "flex", flexWrap: "wrap", columnGap: 12, rowGap: 6 }} aria-label="Main navigation">
-          {nav.map(([to, label]) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className="ag-nav-link"
-              style={({ isActive }) => ({
-                textDecoration: "none",
-                color: isActive ? "var(--accent)" : "var(--fg-muted)",
-                fontWeight: isActive ? 600 : 400,
-              })}
-            >
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-
-      <main className="chrome-x" style={{ flex: 1, paddingTop: 16, paddingBottom: 16 }}>
+    <div className="app-shell">
+      <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(pathname, e.currentTarget.scrollTop)}>
         <Outlet context={services} />
+        {onSearch ? null : <p className="app-attribution">Data: seats.aero · your own keys, on this device</p>}
       </main>
-
-      {/*
-        LEGAL.md: "Every screen that shows award data carries the attribution 'Data: seats.aero'".
-        It lives in the shell so no screen can forget it.
-      */}
-      <footer
-        className="chrome-bottom chrome-x"
-        style={{ paddingTop: 10, borderTop: "1px solid var(--line)", color: "var(--fg-muted)", fontSize: 12, background: "var(--bg-raised)" }}
-      >
-        Data: seats.aero · your own keys, on this device
-      </footer>
+      <nav className="app-tabs" aria-label={t.tabsLabel} lang={langTag(services.locale)}>
+        {tabs.map((tab) => (
+          <NavLink key={tab.to} to={tab.to} end={tab.to === "/"} className="app-tab">
+            <Icon name={tab.icon} />
+            <span className="app-tab-label">{tab.label}</span>
+            {tab.badge > 0 ? (
+              <>
+                <span className="app-tab-badge" aria-hidden="true">
+                  {tab.badge}
+                </span>
+                <span className="sr-only">{t.unseen(tab.badge)}</span>
+              </>
+            ) : null}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }

@@ -22,8 +22,8 @@ export interface ScenarioOptions {
   /** Emulated system appearance. The iOS shell follows the system, so this is the real mechanism, not a flag. */
   theme?: "light" | "dark";
   /**
-   * Language asked of the host. Recorded on #fixture-status (data-lang) only: the shell renders English until
-   * i18n reaches it (T07/T11), and labelling English text as Chinese would mislead screen readers and axe.
+   * Language asked of the host, recorded on #fixture-status (data-lang) and passed to the app as its locale: the
+   * translated screens (results and tab bar since T07, U-026) speak it; the others stay English until T11.
    */
   lang?: "zh" | "en";
   /**
@@ -151,6 +151,31 @@ export async function requestLog(page: Page): Promise<RequestCounts> {
 export const EVIDENCE_DIR = path.resolve(import.meta.dirname, "..", "..", "docs", "uiux-v1", "evidence", "screens");
 
 /**
+ * Run a typed search the way a person would (UI/UX v1 T07): from the empty Search screen, or through the query editor
+ * when results are shown. Resolves once the search has settled — a new revision finished or failed, or the attempt
+ * was refused before it ran (no key, unreadable text) — and the Search screen is no longer busy.
+ */
+export async function searchByText(page: Page, text: string): Promise<void> {
+  const root = page.locator(".ag-results[data-run]");
+  await root.waitFor();
+  const before = Number(await root.getAttribute("data-revision"));
+  if (await page.getByTestId("query-summary").isVisible()) await page.getByTestId("query-summary").getByRole("link").click();
+  await page.locator("#q").fill(text);
+  await page.getByRole("button", { name: /^Run/ }).click();
+  await page.waitForFunction(
+    (rev) => {
+      const refused = document.querySelector("#q-error, .ag-results [role='alert']");
+      const el = document.querySelector<HTMLElement>(".ag-results[data-run]");
+      if (!el) return Boolean(refused);
+      const settled = el.dataset.busy === "false" && el.dataset.run !== "running";
+      return settled && (Number(el.dataset.revision) > rev || Boolean(refused));
+    },
+    before,
+    { timeout: 15_000 },
+  );
+}
+
+/**
  * Save a screenshot of the real app as evidence, only when UIUX_EVIDENCE=1 (so routine runs leave tracked files
  * alone). Never a copy of a reference image. Returns the path written, or null.
  */
@@ -160,9 +185,15 @@ export async function evidenceShot(page: Page, name: string, options: { fullPage
   const file = path.join(EVIDENCE_DIR, `${name}.png`);
   // A full-page capture measures the page first: wait until its height has held for two readings 250 ms apart, so a
   // screen that is still filling in (a Keychain read, a store load) is not cut at the height it had a moment ago.
-  // Polled from here, not inside waitForFunction, whose predicate cannot usefully return a Promise.
+  // Polled from here, not inside waitForFunction, whose predicate cannot usefully return a Promise. The tab chrome
+  // scrolls an inner area (.app-main), not the page: its overflow is added to the page's height.
   if (options.fullPage) {
-    const height = () => page.evaluate(() => document.documentElement.scrollHeight);
+    const height = () =>
+      page.evaluate(() => {
+        const inner = document.querySelector<HTMLElement>(".app-main");
+        const extra = inner ? Math.max(0, inner.scrollHeight - inner.clientHeight) : 0;
+        return document.documentElement.scrollHeight + extra;
+      });
     let last = await height();
     for (let tries = 0; ; tries++) {
       await page.waitForTimeout(250);
@@ -172,6 +203,14 @@ export async function evidenceShot(page: Page, name: string, options: { fullPage
       last = now;
     }
   }
+  const viewport = page.viewportSize();
+  const inner = options.fullPage ? await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>(".app-main");
+    return el ? Math.max(0, el.scrollHeight - el.clientHeight) : 0;
+  }) : 0;
+  // Grow the viewport by what the inner area hides, capture, and put it back.
+  if (viewport && inner > 0) await page.setViewportSize({ width: viewport.width, height: viewport.height + inner });
   await page.screenshot({ path: file, animations: "disabled", fullPage: options.fullPage ?? false });
+  if (viewport && inner > 0) await page.setViewportSize(viewport);
   return file;
 }

@@ -94,14 +94,14 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
   "foundations",
   "inflight-old",
   "failed-old",
+  "missing-values",
+  "partial",
+  "coverage-unknown",
+  "legacy-cache",
 ]);
 
 /** Where an unseeded scenario's state comes from. Informational, for the refusal message. */
 const SEEDED_BY: Record<string, string> = {
-  // T03 built the evidence; these states become visible once result cards show coverage.
-  partial: "T07 (coverage on result cards)",
-  "coverage-unknown": "T07 (coverage on result cards)",
-  "legacy-cache": "T07 (coverage on result cards)",
   "favorite-snapshot": "T13 (favourites)",
   "watch-baseline": "T14 (watch migration)",
   "watch-changes": "T14 (watch migration)",
@@ -162,7 +162,7 @@ function quotaAtSoftLimit(now: Date): string {
  * day the snapshot was made, not the 1–30 October it holds). Written in the device format: SlotFileStorage's first slot,
  * `{generation, value}`, value being the WorkspaceStore's saved shape. The workspace spec proves the app restores it.
  */
-function savedWorkspace(rows: readonly SyntheticRow[], now: Date): Record<string, string> {
+function savedWorkspace(rows: readonly SyntheticRow[], now: Date, coverage: string): Record<string, string> {
   const wanted = new Set(rows.map((r) => `${r.program}|${r.source_id}|${r.date}|${r.cabin}`));
   const query = fixtureQuery();
   const described = { ...query, raw_text: describeQuery(query) };
@@ -173,12 +173,31 @@ function savedWorkspace(rows: readonly SyntheticRow[], now: Date): Record<string
     createdAt: new Date(now.getTime() - 2 * 3_600_000).toISOString(),
     receipt: { sentCalls: 2, fromCache: false },
   });
-  const snapshot = { ...base, rows: base.rows.filter((r) => wanted.has(`${r.value.program}|${r.value.source_id}|${r.value.date}|${r.value.cabin}`)) };
+  let kept = base.rows.filter((r) => wanted.has(`${r.value.program}|${r.value.source_id}|${r.value.date}|${r.value.cabin}`));
+  let evidence = base.coverage;
+  if (coverage === "partial") {
+    // Stopped at the page cap: the pairs are partial, not proven checked to the end.
+    evidence = { ...base.coverage, state: "partial", slices: base.coverage.slices.map((sl) => ({ ...sl, state: "partial" as const, reason: "page_cap" as const })) };
+  } else if (coverage === "unknown") {
+    // A cache from before coverage evidence (or one restoreCoverage could not prove): nothing is claimed.
+    evidence = { state: "unknown", scopeKey: base.scopeKey, slices: [] };
+  }
+  if (coverage === "unknown" && rows.length > 1) {
+    // legacy-cache: rows from before time provenance — no basis, so the provider's time is not inferred.
+    kept = kept.map((r) => {
+      const { time_basis: _basis, ...value } = r.value;
+      return { ...r, value, time: { basis: "unknown" as const, providerAt: null, fetchedAt: r.time.fetchedAt } };
+    });
+  }
+  const snapshot = { ...base, rows: kept, coverage: evidence };
   const value = { schemaVersion: 1, revision: 1, displayedId: snapshot.id, previousId: null, preferences: DEFAULT_PREFERENCES, snapshots: [snapshot] };
   return { [`${WORKSPACE_NAMESPACE}.a.json`]: JSON.stringify({ generation: 1, value }) };
 }
 
 const scenarios: readonly FixtureScenario[] = manifest.scenarios;
+
+/** Scenarios that open on results a previous launch saved: nothing is fetched to show them. */
+const SAVED_RESULTS: ReadonlySet<string> = new Set(["inflight-old", "failed-old", "missing-values", "partial", "coverage-unknown", "legacy-cache"]);
 
 export function environmentFor(id: string | null): FixtureEnvironment {
   const scenario = id ? scenarios.find((s) => s.id === id) : undefined;
@@ -197,8 +216,8 @@ export function environmentFor(id: string | null): FixtureEnvironment {
     files:
       scenario.id === "quota-low"
         ? { "quota.json": quotaAtSoftLimit(now) }
-        : scenario.id === "inflight-old" || scenario.id === "failed-old"
-          ? savedWorkspace(rows, now)
+        : SAVED_RESULTS.has(scenario.id)
+          ? savedWorkspace(rows, now, scenario.coverage)
           : {},
     failWrites: scenario.id === "storage-failure",
     searchMode: scenario.id === "inflight-old" ? "hold" : scenario.id === "failed-old" ? "fail" : "answer",

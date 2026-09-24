@@ -5,8 +5,8 @@ The 38 requirements from the handoff pack (`packages/core/test/fixtures/uiux/acc
 | ID | Task | Category | Requirement | Method | State | Evidence |
 |---|---|---|---|---|---|---|
 | A01 | T01 | Safety | No external requests in fixture mode; normal build has no fixture-host route or fake key fallback | mock browser + bundle check | verified (browser mock + bundle) | [T01](evidence/T01-fixture-harness.md) |
-| A02 | T02 | Data | 0/undefined seats renders unknown; null fee unknown; explicit 0 plus USD is zero, not unknown | unit + component | unit verified; component with T07 | [T02](evidence/T02-truth-identity.md) |
-| A03 | T02 | Data | Fresh local fetch never hides stale or unknown provider time; future timestamp is not just now | unit + component | unit verified; component with T07 | [T02](evidence/T02-truth-identity.md) |
+| A02 | T02 | Data | 0/undefined seats renders unknown; null fee unknown; explicit 0 plus USD is zero, not unknown | unit + component | unit + component verified (iOS browser mock) | [T02](evidence/T02-truth-identity.md), [T07](evidence/T07-mobile-results.md) |
+| A03 | T02 | Data | Fresh local fetch never hides stale or unknown provider time; future timestamp is not just now | unit + component | unit verified; component verified (iOS browser mock) for provider age and unknown legacy time; the future-time case is unit only | [T02](evidence/T02-truth-identity.md), [T07](evidence/T07-mobile-results.md) |
 | A04 | T02 | Data | Same source id J and F has distinct row keys; array reordering preserves identities | unit | verified (unit) | [T02](evidence/T02-truth-identity.md) |
 | A05 | T03 | Data | Partial/unknown coverage survives cache save/restore; missing legacy evidence never becomes complete | unit + integration | verified (unit + store integration) | [T03](evidence/T03-coverage-evidence.md) |
 | A06 | T04 | Visual | Both themes match tokens and 32 contrast pairs; dark primary has dark on-accent text | computed CSS + contrast | verified (unit + iOS browser mock, Chromium) | [T04](evidence/T04-tokens-primitives.md) |
@@ -15,7 +15,7 @@ The 38 requirements from the handoff pack (`packages/core/test/fixtures/uiux/acc
 | A09 | T05 | Network | search(text,key) and searchQuery(query,key) share executor, quota and cache; no Anthropic request | unit + integration | verified (unit + integration; browser `anthropic: 0`) | [T05](evidence/T05-workspace.md) |
 | A10 | T06 | Query | Manual one-field change needs no LLM; typing/selecting months makes zero API requests | browser network | verified (iOS browser mock; "no LLM" also by code path) | [T06](evidence/T06-query-editor.md) |
 | A11 | T06 | Query | Strict dates, leap days, 92-span cap and explicit relative clock behave as fixtures specify | unit + browser | verified (unit + iOS browser mock) | [T06](evidence/T06-query-editor.md) |
-| A12 | T07 | UX | 390 default artboard uses 244 pre-result stack, ≥164 card, 16 gutter and safe area; no clipped core data | geometry + visual | pending | — |
+| A12 | T07 | UX | 390 default artboard uses 244 pre-result stack, ≥164 card, 16 gutter and safe area; no clipped core data | geometry + visual | verified in iOS browser mock (390 and 320, light/dark, en/zh); safe area on a notched device unverified | [T07](evidence/T07-mobile-results.md) |
 | A13 | T08 | Data | List/calendar/matrix use same snapshot and effective filter; every min maps to displayed support rows | unit + integration | pending | — |
 | A14 | T08 | Network | Views/sort/local filter change send zero requests and preserve selection | browser network | pending | — |
 | A15 | T09 | Access | One grid tab stop; arrow/home/end/enter/escape; virtualized focus and total indices stay accurate | keyboard + screen-reader | pending | — |

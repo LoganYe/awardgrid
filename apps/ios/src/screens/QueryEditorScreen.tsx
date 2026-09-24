@@ -7,6 +7,10 @@
  * nothing, and no AI is involved. The one request is the explicit "Find award options", which runs the resolved
  * query as a new workspace revision on the shared search path and returns to the results.
  *
+ * The page can also be searched by typing (T07): one sentence, read by the deterministic parser (no AI), run when the
+ * person presses Run — a parse failure or a missing key stays here, under the box. Opened from a results filter
+ * (`?section=programs|stops|more`), the page opens at that condition.
+ *
  * Leaving with changes asks first ("Discard changes" / "Keep editing"); leaving without changes just goes back. Esc
  * is Back. Focus moves to the title when the page opens and returns to "Edit search" when it closes. Text typed in
  * an airport box but never chosen counts as a change and stops the submit. A draft that cannot run shows each error
@@ -26,11 +30,12 @@ import {
 } from "@awardgrid/core/workspace/query-editor";
 import type { QueryDraft } from "@awardgrid/core/workspace/types";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router";
+import { useLocation, useNavigate, useOutletContext, useSearchParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { AirportField } from "../components/query/AirportField";
 import { DateRuleField } from "../components/query/DateRuleField";
 import { EDITOR, fieldErrorText } from "../components/query/labels";
+import { TextSearch } from "../components/query/TextSearch";
 import { Button, Chip, Icon, IconButton, Sheet, Switch, TextField } from "../components/ui";
 
 const CABINS: readonly Cabin[] = ["J", "F", "W", "Y"];
@@ -71,6 +76,10 @@ function blankDraft(today: string): QueryDraft {
 export function QueryEditorScreen() {
   const services = useOutletContext<AppServices>();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const section = params.get("section");
+  // The control that opened the editor (a filter chip), so focus goes back to it; else the summary.
+  const returnTo = (useLocation().state as { from?: string } | null)?.from ?? RETURN_FOCUS;
   const today = services.now().toISOString().slice(0, 10);
   const [initial] = useState<QueryDraft>(() => {
     const shown = services.workspace.getState().displayedSnapshot;
@@ -79,7 +88,8 @@ export function QueryEditorScreen() {
   const [draft, setDraft] = useState<QueryDraft>(initial);
   const [errors, setErrors] = useState<DraftFieldError[]>([]);
   const [confirmLeave, setConfirmLeave] = useState(false);
-  const [programsOpen, setProgramsOpen] = useState(false);
+  const [programsOpen, setProgramsOpen] = useState(section === "programs");
+  const [typing, setTyping] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
   // What is typed in each airport box but not chosen yet.
   const [pending, setPending] = useState({ origins: "", destinations: "" });
   const submitted = useRef(false);
@@ -94,10 +104,35 @@ export function QueryEditorScreen() {
   // An error goes once its field changes; the rest stay until the next submit checks them again.
   const clear = (field: DraftField) => setErrors((list) => list.filter((e) => e.field !== field));
 
-  const leave = () => navigate("/", { replace: true, state: { focus: RETURN_FOCUS } });
+  const leave = () => navigate("/", { replace: true, state: { focus: returnTo } });
+  // Opened straight onto the Programs sheet (from its chip), closing it lands on the Programs row, not the page.
+  const closePrograms = () => {
+    setProgramsOpen(false);
+    if (section === "programs") window.requestAnimationFrame(() => document.getElementById("query-programs-row")?.focus());
+  };
   const back = () => (dirty ? setConfirmLeave(true) : leave());
 
-  useEffect(() => heading.current?.focus(), []);
+  // Focus: the condition the page was opened for, else the title.
+  useEffect(() => {
+    const target = section === "stops" ? "query-direct" : section === "more" ? FIELD_FOCUS.max_miles : null;
+    const el = target ? document.getElementById(target) : null;
+    if (el) {
+      el.scrollIntoView({ block: "center" });
+      el.focus();
+    } else if (section !== "programs") heading.current?.focus();
+  }, [section]);
+
+  const searchByText = async (text: string) => {
+    setTyping({ busy: true, error: null });
+    const prepared = await services.prepareText(text);
+    if (!prepared.ok) {
+      setTyping({ busy: false, error: prepared.message ?? prepared.error });
+      return;
+    }
+    submitted.current = true;
+    void services.runParsed(text, prepared.value).then(() => services.persist());
+    leave();
+  };
   // Esc is Back, unless something inside already used it (the place list, a sheet) or an IME is composing.
   const onEscape = useEffectEvent((event: KeyboardEvent) => {
     if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || programsOpen || confirmLeave) return;
@@ -156,6 +191,8 @@ export function QueryEditorScreen() {
 
       <div className="query-editor-body">
         <p className="query-editor-intro">{EDITOR.intro}</p>
+
+        <TextSearch primary={false} busy={typing.busy} error={typing.error} initial="" onSearch={(text) => void searchByText(text)} />
 
         <AirportField
           id={FIELD_FOCUS.origins}
@@ -258,7 +295,7 @@ export function QueryEditorScreen() {
           </p>
         </div>
 
-        <button type="button" className="query-row query-row-button" onClick={() => setProgramsOpen(true)}>
+        <button id="query-programs-row" type="button" className="query-row query-row-button" onClick={() => setProgramsOpen(true)}>
           <span>{EDITOR.programs}</span>
           <span className="query-row-value">
             {programs.length === 0 ? EDITOR.programsAll : EDITOR.programsCount(programs.length)}
@@ -300,7 +337,7 @@ export function QueryEditorScreen() {
         <p className="query-editor-note">{EDITOR.submitNote}</p>
       </footer>
 
-      <Sheet open={programsOpen} title={EDITOR.programs} closeLabel={EDITOR.programsDone} onClose={() => setProgramsOpen(false)}>
+      <Sheet open={programsOpen} title={EDITOR.programs} closeLabel={EDITOR.programsDone} onClose={closePrograms}>
         <p className="ag-field-help">{EDITOR.programsHelp}</p>
         <div className="ag-chip-row">
           <Chip selected={programs.length === 0} onClick={() => set({ programs: undefined })}>

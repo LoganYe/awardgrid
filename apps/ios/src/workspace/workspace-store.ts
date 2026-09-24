@@ -23,6 +23,7 @@ import { restoreCoverage } from "@awardgrid/core/workspace/coverage";
 import { scopeKey } from "@awardgrid/core/workspace/identity";
 import { isRealDate, parseInstant } from "@awardgrid/core/workspace/semantics";
 import type {
+  ResultRef,
   ResultSnapshot,
   RunState,
   SearchPort,
@@ -191,6 +192,17 @@ export class WorkspaceStore {
     if (shown?.id === id) return;
     this.#dirty = true;
     this.#set({ displayedSnapshot: target, previousSnapshot: shown });
+  }
+
+  /**
+   * Select or clear one result of a snapshot. Local only: never fetches, never changes what is shown. (Limits and the
+   * compare bar arrive with T12.)
+   */
+  setSelected(ref: ResultRef, on: boolean): void {
+    const has = this.#state.selected.some((r) => r.snapshotId === ref.snapshotId && r.rowKey === ref.rowKey);
+    if (on === has) return;
+    const selected = on ? [...this.#state.selected, ref] : this.#state.selected.filter((r) => !(r.snapshotId === ref.snapshotId && r.rowKey === ref.rowKey));
+    this.#set({ selected });
   }
 
   /** View, sort, calendar cabin and local filter. Local only: never fetches. */

@@ -1,0 +1,64 @@
+/**
+ * One availability option as a card (UI/UX v1 T07; docs/04 S01; reference results-light.png): route, the day with
+ * its weekday and the cabin in words, miles in large tabular digits, the program, fees, seats and the source time —
+ * every one of them from the trusted snapshot row, and unknown values said as unknown (core present.ts).
+ *
+ * The selection checkbox is a sibling of the card's content, never nested in another control, with a 44 pt target.
+ * The card and its checkbox are named in full — route, day, cabin, program, miles, fees, seats (spec §19) — so two
+ * options on the same route and day are never announced alike; a selected card also says "Selected" in words.
+ * Opening details arrives with T10; until then the card has no open action and shows no chevron.
+ */
+import { cabinName } from "@awardgrid/core/workspace/query-editor";
+import { dayLabel, feesLabel, formatMiles, programLabel, resultName, seatsLabel, timeLabel } from "@awardgrid/core/workspace/present";
+import type { SnapshotId, WorkspaceRow } from "@awardgrid/core/workspace/types";
+import type { Locale } from "../../app/locale";
+import { RESULTS } from "./copy";
+
+export interface AvailabilityCardProps {
+  row: WorkspaceRow;
+  snapshotId: SnapshotId;
+  selected: boolean;
+  onToggle: (selected: boolean) => void;
+  /** The app's clock, as an ISO instant, for the source time's age. */
+  now: string;
+  locale: Locale;
+}
+
+export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, locale }: AvailabilityCardProps) {
+  const t = RESULTS[locale];
+  const v = row.value;
+  const route = `${v.origin} → ${v.dest}`;
+  const day = dayLabel(v.date, locale);
+  const cabin = cabinName(v.cabin, locale);
+  const name = resultName(v, locale);
+  return (
+    <article className="ag-result-card" data-testid="availability-card" data-row-key={row.key} data-snapshot={snapshotId} aria-label={name}>
+      <div className="ag-result-card-top">
+        <div className="ag-result-card-head">
+          <h2 className="ag-result-route">{route}</h2>
+          <p className="ag-result-when">
+            <span>{day}</span>
+            <span className="ag-result-cabin">{cabin}</span>
+          </p>
+        </div>
+        <div className="ag-result-select-wrap">
+          {selected ? <span className="ag-result-selected">{t.selected}</span> : null}
+          <label className="ag-result-select">
+            <input type="checkbox" checked={selected} aria-label={t.select(name)} onChange={(e) => onToggle(e.target.checked)} />
+          </label>
+        </div>
+      </div>
+      <div className="ag-result-line">
+        <p className="ag-result-miles" data-testid="card-miles">
+          <span className="ag-miles">{formatMiles(v.miles)}</span> <span className="ag-result-unit">{t.milesUnit}</span>
+        </p>
+        <p className="ag-result-fees">{feesLabel(v.fees_cents, v.currency, locale)}</p>
+      </div>
+      <div className="ag-result-line">
+        <p className="ag-result-program">{programLabel(v.program)}</p>
+        <p className="ag-result-seats">{seatsLabel(v.seats_left, locale)}</p>
+      </div>
+      <p className="ag-result-time">{timeLabel(row.time, now, locale)}</p>
+    </article>
+  );
+}

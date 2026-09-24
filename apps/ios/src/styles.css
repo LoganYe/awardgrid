@@ -13,6 +13,7 @@
 @import "@awardgrid/tokens/precision.css";
 @import "./components/ui/ui.css";
 @import "./components/query/query.css";
+@import "./components/results/results.css";
 
 /*
  * One palette on screen while the shell moves to Quiet Precision (UI/UX v1 T04, DECISIONS U-012). The screens not yet

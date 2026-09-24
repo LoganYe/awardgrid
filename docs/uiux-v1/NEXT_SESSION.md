@@ -15,14 +15,15 @@ Never in this checkout: `pnpm build`, `next build`, `scripts/check-no-secrets-in
 ## Where things stand
 
 - Branch `uiux/quiet-precision-v1` in the worktree above, one local commit per finished task (see `git log`). Nothing pushed.
-- T01–T06 verified. T07 is next: see STATUS "Current next action".
+- T01–T07 verified (unit + iOS browser mock). T08 is next: see STATUS "Current next action".
 - If the worktree's `node_modules` is missing: `for d in node_modules apps/ios/node_modules packages/core/node_modules sites/landing/node_modules; do cp -Rc ../awardgrid/$d $d; done`; vendor: `rsync -a --exclude=.git ../awardgrid/vendor/travel-hacking-toolkit/ vendor/travel-hacking-toolkit/`; then `pnpm build:plugin`.
 - Open owner decision: restart `com.awardgrid.app` to fix the live stylesheet 404 (STATUS.md).
 
 ## Next commands
 
 ```sh
-# T07: read plan 02 T07 and docs/04 S01 first; write its red test before any code
+# T08: read plan 02 T08 and docs/03 §2 (projectResults) first; write its red test before any code
+pnpm --filter @awardgrid/core exec vitest run src/lib/workspace/projection.test.ts
 # Evidence screenshots: run only the task's own spec with UIUX_EVIDENCE=1 (the harness spec rewrites T01's screenshots)
 UIUX_EVIDENCE=1 pnpm exec playwright test --config=playwright.uiux.config.ts e2e/uiux/<task>.spec.ts
 # UI/UX browser suite (fixture host on 127.0.0.1:4310)
@@ -30,3 +31,5 @@ pnpm exec playwright test --config=playwright.uiux.config.ts
 # Gates
 pnpm typecheck && pnpm lint && pnpm test && pnpm --filter @awardgrid/ios build
 ```
+
+If port 4310 is taken, a stopped Playwright run left its fixture Vite behind: `lsof -nP -iTCP:4310 -sTCP:LISTEN`, and stop it only if it is this worktree's `vite.fixture.config.ts`.

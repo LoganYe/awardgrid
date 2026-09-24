@@ -8,15 +8,19 @@
  * nothing leaves the machine (./test.ts fails any test that attempted a non-loopback request).
  */
 import { expect, test } from "./test";
-import { evidenceShot, openScenario, realHostPattern, requestLog, takeExternalRequests } from "./helpers";
+import { evidenceShot, openScenario, realHostPattern, requestLog, searchByText, takeExternalRequests } from "./helpers";
 
 const SEARCH_TEXT = "Synthetic HKG to SEA October business and first";
 
 async function search(page: import("@playwright/test").Page, text = SEARCH_TEXT) {
-  await page.locator("#q").fill(text);
-  await page.getByRole("button", { name: "Run" }).click();
-  await expect(page.getByRole("button", { name: "Run" })).toBeEnabled();
+  await searchByText(page, text);
 }
+
+/**
+ * A result card showing these miles (T07: results are cards, in the query's sort order — cheapest first here — and
+ * the older grid is the Matrix view). Which card it is does not matter to the harness; that it came through does.
+ */
+const cardMiles = (page: import("@playwright/test").Page, miles: string) => page.getByTestId("availability-card").getByTestId("card-miles").filter({ hasText: miles });
 
 test("fixture entry is explicit and does not call paid APIs", async ({ page }) => {
   const external: string[] = [];
@@ -43,7 +47,7 @@ test("the host refuses a missing, unknown or unseeded scenario and never mounts 
     ["", /No scenario given/],
     ["?scenario=not-a-scenario", /Unknown synthetic scenario/],
     // A real id whose state is not built yet is refused, not booted as the base environment.
-    ["?scenario=partial", /not seeded by the fixture host yet \(T07/],
+    ["?scenario=favorite-snapshot", /not seeded by the fixture host yet \(T13/],
   ];
   for (const [query, reason] of cases) {
     await page.goto(`/${query}`);
@@ -55,7 +59,7 @@ test("the host refuses a missing, unknown or unseeded scenario and never mounts 
     expect(await page.evaluate(() => document.getElementById("root")!.dataset.mounted ?? null)).toBeNull();
     expect(await page.evaluate(() => window.__uiuxFixture?.scenario ?? null)).toBeNull();
   }
-  await expect(openScenario(page, "partial")).rejects.toThrow(/not seeded/);
+  await expect(openScenario(page, "favorite-snapshot")).rejects.toThrow(/not seeded/);
 });
 
 test("no-seats-key boots the real app without a key and sends nothing", async ({ page }) => {
@@ -64,7 +68,7 @@ test("no-seats-key boots the real app without a key and sends nothing", async ({
   // The shell's own no-key state: searching is not offered, and nothing is invented to fill the screen.
   await expect(page.getByRole("button", { name: "Run" })).toBeDisabled();
   await expect(page.getByRole("alert")).toContainText("No seats.aero key yet");
-  await expect(page.locator("table.ag-grid")).toHaveCount(0);
+  await expect(page.getByTestId("availability-list")).toHaveCount(0);
   expect(await requestLog(page)).toMatchObject({ seats: 0, anthropic: 0, trips: 0 });
   await evidenceShot(page, "t01-host-no-seats-key");
 });
@@ -76,8 +80,8 @@ test("a search in the complete scenario goes through the synthetic transport, ne
   });
   await openScenario(page, "complete");
   await search(page);
-  // The row came from the synthetic payload through the production parse → runFind → normalize → grid path.
-  await expect(page.locator("table.ag-grid tbody td .miles").first()).toHaveText("75,000");
+  // The row came from the synthetic payload through the production parse → runFind → normalize → snapshot path.
+  await expect(cardMiles(page, "75,000")).toBeVisible();
   const log = await requestLog(page);
   expect(log.seats).toBeGreaterThanOrEqual(1);
   expect(log.trips).toBe(0);
@@ -108,7 +112,7 @@ test("storage: preserveStorage relaunches onto saved state; a default launch sta
   // Relaunch keeping storage: the cache restored from the file store answers the same search with no call.
   await openScenario(page, "complete", "ios", { preserveStorage: true });
   await search(page);
-  await expect(page.locator("table.ag-grid tbody td .miles").first()).toHaveText("75,000");
+  await expect(cardMiles(page, "75,000")).toBeVisible();
   expect((await requestLog(page)).seats).toBe(0);
 
   // Relaunch without it: the namespace was emptied, so the same search costs a call again.
@@ -122,12 +126,12 @@ test("each seeded scenario applies its defining state", async ({ page }) => {
   // complete-empty: a successful, checked, empty range — not "unmonitored", not an error.
   await openScenario(page, "complete-empty");
   await search(page);
-  await expect(page.getByText(/^No availability for that query\./)).toBeVisible();
+  await expect(page.getByText("No matches in the checked range.")).toBeVisible();
 
   // unmonitored: the provider's route catalog does not list the pair.
   await openScenario(page, "unmonitored");
   await search(page);
-  await expect(page.getByText(/does not monitor these routes/)).toBeVisible();
+  await expect(page.getByText("These routes are not monitored by the data source.")).toBeVisible();
 
   // quota-low: the soft limit is already used, so the search is refused before any call is sent.
   await openScenario(page, "quota-low");
@@ -139,13 +143,13 @@ test("each seeded scenario applies its defining state", async ({ page }) => {
   // no-ai-key: ordinary search works with no Anthropic key at all.
   await openScenario(page, "no-ai-key");
   await search(page);
-  await expect(page.locator("table.ag-grid tbody td .miles").first()).toHaveText("75,000");
+  await expect(cardMiles(page, "75,000")).toBeVisible();
   expect((await requestLog(page)).anthropic).toBe(0);
 
   // multi-program: the override row is served as a second program.
   await openScenario(page, "multi-program");
   await search(page, "Synthetic HKG to SEA October business");
-  await expect(page.locator("table.ag-grid tbody td .meta", { hasText: "american" })).toHaveCount(1);
+  await expect(page.getByTestId("availability-card").filter({ hasText: "American Airlines AAdvantage" })).toHaveCount(1);
 
   // storage-failure: the app's writes are attempted and all fail; nothing lands in storage.
   await openScenario(page, "storage-failure");

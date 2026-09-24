@@ -1,0 +1,464 @@
+/*
+ * The tab chrome and the results screen (UI/UX v1 T07; docs/04 S01; reference results-light.png). Tokens only.
+ *
+ * At the 390 pt default the stack above the first card is header 52, query summary 64, filters 44, result view 44,
+ * status 28 and a 12 gap: 244 below the safe area. Header and summary are sticky inside the scrolling area (116).
+ * Cards are 358 × at least 164 with 16 corners and 14/16 padding; miles are tabular lining figures.
+ *
+ * The gutter is 16, or the horizontal safe area when that is wider (a phone in landscape). With a short landscape
+ * screen the header and summary stop being sticky (spec §11), so they never take most of the height.
+ */
+
+.ag-results {
+  --results-gutter-start: max(var(--ag-gutter), env(safe-area-inset-left));
+  --results-gutter-end: max(var(--ag-gutter), env(safe-area-inset-right));
+}
+
+/* ---- chrome ---- */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--ag-canvas);
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.app-page {
+  padding-top: calc(env(safe-area-inset-top) + var(--ag-space-4));
+  padding-bottom: var(--ag-space-4);
+}
+
+.app-attribution {
+  margin: var(--ag-space-6) 0 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.app-tabs {
+  flex: none;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  min-height: calc(var(--ag-tabbar-height) + env(safe-area-inset-bottom));
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+.app-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--ag-space-1) / 2);
+  min-height: var(--ag-touch-target);
+  color: var(--ag-text-secondary);
+  font-size: var(--ag-type-label);
+  line-height: var(--ag-leading-label);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active: accent AND weight, so it is not colour alone. */
+.app-tab[aria-current="page"] {
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+}
+
+.app-tab:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+.app-tab-badge {
+  position: absolute;
+  top: var(--ag-space-1);
+  left: calc(50% + var(--ag-space-2));
+  min-width: var(--ag-space-4);
+  padding: 0 var(--ag-space-1);
+  border-radius: var(--ag-radius-pill);
+  background: var(--ag-accent);
+  color: var(--ag-on-accent);
+  font-size: var(--ag-type-label);
+  line-height: var(--ag-space-4);
+  font-weight: var(--ag-weight-strong);
+  text-align: center;
+}
+
+/* ---- results stack ---- */
+
+.ag-results {
+  min-height: 100%;
+  padding-bottom: var(--ag-space-6);
+  color: var(--ag-text);
+}
+
+.ag-results-sticky {
+  position: sticky;
+  top: 0;
+  z-index: var(--ag-z-sticky);
+  background: var(--ag-surface);
+}
+
+/* At least 52 below the safe area; larger text makes it taller instead of pushing the title off the top. */
+.ag-results-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--ag-space-3);
+  min-height: calc(var(--ag-header-height) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-results-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: var(--ag-touch-target);
+  padding: 0 var(--ag-space-2);
+  margin-right: calc(-1 * var(--ag-space-2));
+  border-radius: var(--ag-radius-control);
+  color: var(--ag-accent);
+  font-size: var(--ag-type-control);
+  line-height: var(--ag-leading-control);
+  font-weight: var(--ag-weight-strong);
+  text-decoration: none;
+}
+
+.ag-query-summary {
+  display: flex;
+  min-height: var(--ag-query-summary-min);
+  border-bottom: 1px solid var(--ag-divider);
+}
+
+.ag-query-summary-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-3);
+  padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
+  color: var(--ag-text);
+  text-decoration: none;
+}
+
+.ag-query-summary-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ag-query-summary-route {
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+  overflow-wrap: anywhere;
+}
+
+.ag-query-summary-sub {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-results-ai:focus-visible,
+.ag-query-summary-link:focus-visible,
+.ag-results-filters .ag-chip:focus-visible .ag-chip-face {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+.ag-results-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-chip-slot);
+  padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+/* The end inset stays reachable when the row scrolls (a flex row drops its trailing padding). */
+.ag-results-filters::after {
+  content: "";
+  flex: none;
+  width: 1px;
+}
+
+/* More chips than fit: the far edge fades, so the row visibly continues. */
+.ag-results-filters[data-overflow] {
+  mask-image: linear-gradient(to right, black calc(100% - var(--ag-space-8)), transparent);
+}
+
+.ag-results-filters .ag-chip {
+  flex: none;
+  color: var(--ag-text);
+  text-decoration: none;
+}
+
+.ag-results-view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-3);
+  min-height: var(--ag-segmented-height);
+  padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-segmented {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.ag-results-sort,
+.ag-results-status,
+.ag-results-meta {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-results-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--ag-space-3);
+  min-height: calc(var(--ag-space-6) + var(--ag-space-1));
+  padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-notes:not(:empty) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-meta {
+  margin: var(--ag-space-2) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-6) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-matrix {
+  padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-4);
+  padding: var(--ag-space-4) var(--results-gutter-end) var(--ag-space-4) var(--results-gutter-start);
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .ag-results-sticky {
+    position: static;
+  }
+}
+
+.ag-results-empty > .ag-results-meta {
+  margin: 0;
+}
+
+.ag-text-search-actions {
+  display: flex;
+  gap: var(--ag-space-2);
+}
+
+.ag-callout {
+  margin: 0;
+  padding: var(--ag-space-2) var(--ag-space-3);
+  border: 1px solid var(--ag-divider);
+  border-left-width: calc(var(--ag-space-1) - 1px);
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-surface);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ag-callout-danger {
+  border-left-color: var(--ag-danger);
+}
+
+.ag-callout-warn {
+  border-left-color: var(--ag-warning);
+}
+
+/* ---- cards ---- */
+
+.ag-result-list {
+  display: grid;
+  gap: var(--ag-card-gap);
+  padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-result-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-card-min);
+  padding: calc(var(--ag-space-3) + var(--ag-space-1) / 2) var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-card);
+  background: var(--ag-surface);
+}
+
+.ag-result-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ag-space-2);
+}
+
+.ag-result-card-head {
+  min-width: 0;
+}
+
+.ag-result-route {
+  margin: 0;
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* Route 17/24, then 4, then the day and cabin line at 13/20 (S01). */
+.ag-result-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ag-space-2);
+  margin: var(--ag-space-1) 0 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-result-cabin {
+  padding: 0 var(--ag-space-2);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-accent-soft);
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-result-select-wrap {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ag-space-1);
+}
+
+/* Selected says so in words too, not only with the ticked box. */
+.ag-result-selected {
+  margin-top: calc(var(--ag-space-1) / 2);
+  padding: 0 var(--ag-space-2);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-accent-soft);
+  color: var(--ag-accent);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* The selection box: its own 44 target, beside the content, never inside another control. */
+.ag-result-select {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ag-touch-target);
+  min-height: var(--ag-touch-target);
+  margin: calc(-1 * var(--ag-space-2)) calc(-1 * var(--ag-space-3)) 0 0;
+  cursor: pointer;
+}
+
+.ag-result-select input {
+  inline-size: var(--ag-space-5);
+  block-size: var(--ag-space-5);
+  margin: 0;
+  accent-color: var(--ag-accent);
+}
+
+.ag-result-select:has(input:focus-visible) {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+  border-radius: var(--ag-radius-control);
+}
+
+.ag-result-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: var(--ag-space-3);
+}
+
+.ag-result-line > p {
+  margin: 0;
+}
+
+/* Miles, then 6, then the program and seats line (the card's other gaps are 8). */
+.ag-result-line + .ag-result-line {
+  margin-top: calc(-1 * var(--ag-space-1) / 2);
+}
+
+.ag-result-miles {
+  min-width: 0;
+}
+
+.ag-miles {
+  font-size: var(--ag-type-miles);
+  line-height: var(--ag-leading-miles);
+  font-weight: var(--ag-weight-title);
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.ag-result-unit,
+.ag-result-fees,
+.ag-result-seats {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-result-fees,
+.ag-result-seats {
+  text-align: end;
+}
+
+.ag-result-program {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ag-result-time {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: calc(var(--ag-leading-meta) - var(--ag-space-1) / 2);
+  color: var(--ag-text-secondary);
+}

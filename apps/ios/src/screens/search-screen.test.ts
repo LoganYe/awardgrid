@@ -1,29 +1,42 @@
 /**
- * The Search screen keeps the last search for Ask (design §6.1, §6.2): it opens on the last successful search, as typed
- * and as answered, and offers "Ask Claude about this search" whenever a result is shown.
+ * The Search screen (UI/UX v1 T07): with a shown snapshot it is the results stack — query summary, cards, status,
+ * the ways to search again, watch and ask; without one, a text search and the way into the editor. The last search is
+ * what Ask is offered, and the screen marks itself with its language. Replaces the pre-T07 layout test (DECISIONS
+ * U-025).
  *
  * Rendered through react-dom/server under a router outlet, as the shell mounts it. Effects do not run there, so no key
- * is read and nothing is searched; the screen's first render is what is asserted. No DOM, no network, no clock.
+ * is read and nothing is searched; the screen's first render is what is asserted. No DOM, no network.
  */
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
-import { buildGrid } from "@awardgrid/core/grid/pivot";
-import { QueryObject } from "@awardgrid/core/query/schema";
+import { fixtureSnapshot } from "@awardgrid/core/test-fixtures/uiux/factory";
+import type { ResultSnapshot, WorkspaceState } from "@awardgrid/core/workspace/types";
 import type { AppServices } from "../app/bootstrap";
 import { ASK_ABOUT_SEARCH } from "../ask/labels";
-import { type LastSearchStore, createLastSearch } from "../search/last-search";
-import { WorkspaceStore } from "../workspace/workspace-store";
+import type { LastSearchEntry, LastSearchStore } from "../search/last-search";
+import { searchViewFromSnapshot } from "../workspace/snapshot-view";
+import { DEFAULT_PREFERENCES } from "../workspace/workspace-store";
 import { SearchScreen } from "./SearchScreen";
 
-const TEXT = "SEA to TYO 2026-10-01 to 2026-10-30 business";
-const NOW = new Date("2026-10-01T12:00:00.000Z");
+const NOW = new Date("2026-10-18T08:30:00.000Z");
 
-function render(lastSearch: LastSearchStore = createLastSearch()): string {
-  // The screen follows the workspace (UI/UX v1 T05); an idle one is enough for a first render.
-  const workspace = new WorkspaceStore({ search: { execute: () => new Promise(() => {}) }, now: () => "2026-10-01T00:00:00.000Z" });
-  const services = { lastSearch, workspace, now: () => NOW } as unknown as AppServices;
+function render(opts: { snapshot?: ResultSnapshot | null; entry?: LastSearchEntry | null; locale?: "en" | "zh" } = {}): string {
+  const snapshot = opts.snapshot ?? null;
+  const state: WorkspaceState = {
+    revision: snapshot ? 1 : 0,
+    draft: null,
+    run: { kind: "idle" },
+    displayedSnapshot: snapshot,
+    previousSnapshot: null,
+    selected: [],
+    preferences: DEFAULT_PREFERENCES,
+  };
+  const workspace = { subscribe: () => () => {}, getState: () => state };
+  const lastSearch: LastSearchStore = { get: () => opts.entry ?? null, set: () => {} };
+  const ask = { subscribe: () => () => {}, isRunning: () => false };
+  const services = { lastSearch, workspace, ask, now: () => NOW, locale: opts.locale ?? "en" } as unknown as AppServices;
   return renderToStaticMarkup(
     createElement(
       MemoryRouter,
@@ -33,56 +46,60 @@ function render(lastSearch: LastSearchStore = createLastSearch()): string {
   );
 }
 
-describe("SearchScreen and the last search", () => {
-  it("opens on the last successful search, with its grid and a link to Ask about it", () => {
-    const query = QueryObject.parse({ origins: ["SEA"], destinations: ["NRT", "HND"], date_from: "2026-10-01", date_to: "2026-10-30", cabins: ["J"], raw_text: TEXT, language: "en" });
-    const lastSearch = createLastSearch();
-    lastSearch.set({
-      text: TEXT,
-      value: {
-        grid: buildGrid([], query, { now: new Date("2026-10-01T00:00:00.000Z") }),
-        query,
-        warnings: [],
-        notices: [],
-        quota: { used: 12, remaining: 988, softLimit: 950, resetAt: "2026-10-02T00:00:00.000Z" },
-        served_from_cache: false,
-        api_calls_used: 1,
-        fetched_at_min: null,
-      },
-    });
-    const html = render(lastSearch);
-    expect(html).toContain(`>${TEXT}</textarea>`);
-    expect(html).toContain("No availability for that query.");
-    expect(html).toContain("Watch this search");
-    expect(html).toContain(`<a class="ag-button" href="/ask" data-discover="true">${ASK_ABOUT_SEARCH}</a>`);
-    expect(html.indexOf("Watch this search")).toBeLessThan(html.indexOf(ASK_ABOUT_SEARCH));
+const shown = () => {
+  const snapshot = fixtureSnapshot();
+  return { snapshot, entry: { text: snapshot.query.raw_text, value: searchViewFromSnapshot(snapshot) } };
+};
+
+describe("SearchScreen with a shown search", () => {
+  it("shows the query summary, one card per result, the status line with its attribution, and the actions", () => {
+    const html = render(shown());
+    expect(html).toContain('data-testid="query-summary"');
+    expect(html.match(/data-testid="availability-card"/g)).toHaveLength(fixtureSnapshot().rows.length);
+    expect(html).toContain("Data: seats.aero");
+    expect(html).toContain(`>${ASK_ABOUT_SEARCH}</a>`);
+    expect(html).toContain(">Watch this search<");
+    expect(html).toContain(">Search again<");
+    expect(html).toMatch(/<a\b[^>]*href="\/ask"[^>]*>.*AI assistance/);
+    expect(html).not.toContain('id="q"');
   });
 
-  it("with no search yet: the first example, no result, and no link to Ask", () => {
-    const html = render();
-    expect(html).toContain(">HKG, SHA to SEA, next 30 days, business and first</textarea>");
-    expect(html).not.toContain(ASK_ABOUT_SEARCH);
-    expect(html).not.toContain("Watch this search");
+  it("dates a restored snapshot as saved, by the app's clock, and never says calls it does not know", () => {
+    const { snapshot, entry } = shown();
+    const html = render({ snapshot, entry: { ...entry, savedAt: "2026-10-18T06:30:00.000Z" } });
+    expect(html).toContain("saved on this device 2 h ago");
+    expect(html).not.toMatch(/\d+ seats\.aero calls?/);
+  });
+
+  it("a fresh answer says how many calls it cost, or that the count is not known; a cache hit says how old it is", () => {
+    const { snapshot, entry } = shown();
+    expect(render({ snapshot, entry: { ...entry, value: { ...entry.value, served_from_cache: false, api_calls_used: 3 } } })).toContain("3 seats.aero calls");
+    const unknown = render({ snapshot, entry: { ...entry, value: { ...entry.value, served_from_cache: false, api_calls_used: null } } });
+    expect(unknown).toContain("seats.aero calls not known");
+    expect(unknown).not.toMatch(/\d+ seats\.aero calls?/);
+    const cached = render({ snapshot, entry: { ...entry, value: { ...entry.value, served_from_cache: true, fetched_at_min: "2026-10-18T08:00:00.000Z" } } });
+    expect(cached).toContain("from this device&#x27;s cache, fetched 30 min ago");
+  });
+
+  it("a saved time later than the clock is not shown as an age", () => {
+    const { snapshot, entry } = shown();
+    expect(render({ snapshot, entry: { ...entry, savedAt: "2026-10-19T00:00:00.000Z" } })).toMatch(/saved on this device<\/span>|saved on this device</);
+  });
+
+  it("speaks Chinese when asked, and says so", () => {
+    const html = render({ ...shown(), locale: "zh" });
+    expect(html).toMatch(/<div class="ag-results" lang="zh-CN"/);
+    expect(html).toContain(">查票</h1>");
+    expect(html).toContain("数据：seats.aero");
   });
 });
 
-describe("SearchScreen and a saved snapshot", () => {
-  it("shows a snapshot restored at launch as saved on this device, not as a fresh search", () => {
-    const query = QueryObject.parse({ origins: ["SEA"], destinations: ["NRT"], date_from: "2026-10-01", date_to: "2026-10-30", cabins: ["J"], raw_text: TEXT, language: "en" });
-    const saved: LastSearchStore = {
-      get: () => ({
-        text: TEXT,
-        savedAt: "2026-10-01T10:00:00.000Z",
-        value: { grid: buildGrid([], query, { now: new Date("2026-10-01T00:00:00.000Z") }), query, warnings: [], served_from_cache: false, api_calls_used: null, fetched_at_min: null },
-      }),
-      set: () => {},
-    };
-    const html = render(saved);
-    // Dated by the app's clock, not the wall clock.
-    expect(html).toContain("Saved on this device 2 h ago");
-    expect(html).toContain("No availability in these saved results.");
-    expect(html).not.toContain("right now");
-    expect(html).not.toMatch(/\d+ seats\.aero calls? /);
-    expect(html).not.toContain("null");
+describe("SearchScreen with no search yet", () => {
+  it("offers a text search with an example and the way into the editor, and no Ask link", () => {
+    const html = render();
+    expect(html).toContain(">HKG, SHA to SEA, next 30 days, business and first</textarea>");
+    expect(html).toMatch(/<a\b[^>]*href="\/edit"[^>]*>Build a search<\/a>/);
+    expect(html).not.toContain(ASK_ABOUT_SEARCH);
+    expect(html).not.toContain("Watch this search");
   });
 });
