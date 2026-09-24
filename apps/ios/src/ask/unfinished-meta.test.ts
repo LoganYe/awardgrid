@@ -67,12 +67,34 @@ describe("an unfinished entry's meta line", () => {
 });
 
 describe("every other ending", () => {
+  // The totals an ending carries are exact when every request reported its usage, which is what a
+  // non-null lastRequestInputTokens says. An ending that read its last response always has one.
+  const reported = { requests: 2, inputTokens: 9000, cacheReadTokens: 3956, outputTokens: 400, seatsCalls: 2, lastRequestInputTokens: 4500 };
+
   it.each<EntryEnd["status"]>(["answered", "empty", "truncated", "refused", "too_long", "stopped", "deadline", "request_limit", "failed"])(
-    "%s keeps the exact meta line: the loop's own totals were saved with its ending",
+    "%s keeps the exact meta line once its last request reported",
     (status) => {
-      const counts = { requests: 2, inputTokens: 9000, cacheReadTokens: 3956, outputTokens: 400, seatsCalls: 2 };
-      expect(labels.entryMetaLine(entry(status, counts))).toBe(labels.metaLine(usage(counts)));
-      expect(labels.entryMetaLine(entry(status, counts))).not.toContain(labels.UNFINISHED_COUNTS);
+      expect(labels.entryMetaLine(entry(status, reported))).toBe(labels.metaLine(usage(reported)));
+      expect(labels.entryMetaLine(entry(status, reported))).not.toContain(labels.UNFINISHED_COUNTS);
+      expect(labels.entryMetaLine(entry(status, reported))).not.toContain(labels.UNREPORTED_COUNTS);
     },
   );
+
+  // K2, on the owner's key: Stop landed 7.6 s into the first request, and the line read "1 request ·
+  // 0 input tokens … · seats.aero calls: 0" beside copy saying that request may still be billed.
+  it.each<EntryEnd["status"]>(["stopped", "deadline", "request_limit", "failed"])(
+    "%s states no count for a request that never reported, and says so",
+    (status) => {
+      const line = labels.entryMetaLine(entry(status, { requests: 1 }));
+      expect(line).toBe(`${labels.MODEL_NAME} · at least 1 request · ${labels.UNREPORTED_COUNTS}`);
+      expect(line).not.toMatch(/\b0 input tokens|\b0 output tokens|seats\.aero calls: 0/);
+    },
+  );
+
+  it("keeps the counts earlier requests did report, as lower bounds", () => {
+    const line = labels.entryMetaLine(entry("stopped", { requests: 2, inputTokens: 9000, cacheReadTokens: 3956, outputTokens: 400, seatsCalls: 2 }));
+    expect(line).toBe(
+      `Claude Opus 5 · at least 2 requests · at least 9,000 input tokens (at least 3,956 read from cache) · at least 400 output tokens · seats.aero calls: at least 2 · ${labels.UNREPORTED_COUNTS}`,
+    );
+  });
 });

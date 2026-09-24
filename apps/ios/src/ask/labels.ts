@@ -359,6 +359,12 @@ export function metaLine(usage: QuestionUsage): string {
 
 /** Closes an unfinished entry's meta line, whose counts are lower bounds. */
 export const UNFINISHED_COUNTS = "This question may have used more than awardgrid saved before it was closed";
+/**
+ * A request went out and its usage never came back: Stop, or a failure, while it was in flight. The loop's totals are
+ * right about what Anthropic reported, and Anthropic reported nothing for that request, so a zero there would read as
+ * "it cost nothing" beside copy that says the request may still be billed (docs/PHASE5.md §3.7, K2).
+ */
+export const UNREPORTED_COUNTS = "Anthropic never reported what the last request used";
 
 /**
  * The meta line for an unfinished entry, whose counts are the ones ask.json held when awardgrid was closed. They can be
@@ -369,6 +375,11 @@ export const UNFINISHED_COUNTS = "This question may have used more than awardgri
  * left out.
  */
 export function unfinishedMetaLine(usage: QuestionUsage): string {
+  return interruptedMetaLine(usage, UNFINISHED_COUNTS);
+}
+
+/** Every count as a lower bound, zeros left out, and one sentence saying what the line cannot vouch for. */
+function interruptedMetaLine(usage: QuestionUsage, closing: string): string {
   const parts = [MODEL_NAME];
   if (usage.requests > 0) parts.push(`at least ${count(usage.requests, "request", "requests")}`);
   if (usage.inputTokens > 0) {
@@ -377,16 +388,22 @@ export function unfinishedMetaLine(usage: QuestionUsage): string {
   }
   if (usage.outputTokens > 0) parts.push(`at least ${count(usage.outputTokens, "output token", "output tokens")}`);
   if (usage.seatsCalls > 0) parts.push(`seats.aero calls: at least ${thousands(usage.seatsCalls)}`);
-  parts.push(UNFINISHED_COUNTS);
+  parts.push(closing);
   return parts.join(" · ");
 }
 
 /**
- * The meta line under an ended entry. Only an unfinished entry's counts can be short: every other ending writes the
- * loop's own totals with it (ask-service.ts end), and an ending whose write did not land is read back as unfinished.
+ * The meta line under an ended entry, which states a count only where one is known.
+ *
+ * An unfinished entry's counts are whatever ask.json held when awardgrid was closed. An ending that interrupted a
+ * request in flight — Stop, or a failure — carries the loop's totals, which are right about what Anthropic reported
+ * and say nothing about the request that never answered: `lastRequestInputTokens` is null exactly then. Both are
+ * worded as lower bounds. Every other ending read its last response, so its totals are exact.
  */
 export function entryMetaLine(entry: Pick<AskEntry, "end" | "usage">): string {
-  return entry.end?.status === "unfinished" ? unfinishedMetaLine(entry.usage) : metaLine(entry.usage);
+  if (entry.end?.status === "unfinished") return unfinishedMetaLine(entry.usage);
+  if (entry.usage.requests > 0 && entry.usage.lastRequestInputTokens === null) return interruptedMetaLine(entry.usage, UNREPORTED_COUNTS);
+  return metaLine(entry.usage);
 }
 
 export const ATTRIBUTION = "Data: seats.aero";
