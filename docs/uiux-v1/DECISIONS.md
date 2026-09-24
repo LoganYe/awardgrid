@@ -434,3 +434,44 @@ Now (`SnapshotStore.readWatchesFile`, `restoreWatches` in bootstrap, `WatchStore
 - Adding a watch while held is refused, with "Watches cannot be changed on this device right now. Open Watches to see why."
 
 Not verified: the device Filesystem's real rejection for an unreadable file (as in U-047).
+
+## U-050 · What goes with a question is built once, from the trusted snapshot, and the page says exactly that
+
+T15, plan 03 T15, docs/04 S09, docs/03 §5, A26.
+
+**The context** (`apps/ios/src/ask/context.ts`)
+- `buildAIContext(snapshot, selectedRefs, sendRows)` is the plan's interface. It reads the workspace's displayed snapshot, the one every view projects.
+- Results are attached only when chosen, and each is found in that snapshot by its key. A reference to another snapshot or to an unknown row is refused and nothing is sent. Attaching with nothing selected is query-only, and says so. At most 4 results, each once.
+- Attached results go as R1, R2… with seats.aero's values. Unknown taxes, seats and age go as null, never 0.
+
+**The payload** (core `ask/prompt.ts` and `loop.ts`, additive)
+- The question's user turn gains up to three lines, and only when they apply:
+  - the search's other conditions: a mileage cap, a mixed-cabin minimum under 100%, dynamic pricing;
+  - that the results on screen are partial, or of unknown completeness;
+  - the attached results.
+- The seven-field search JSON keeps its bytes. An existing core test pins it, and the prompt cache depends on it.
+
+**The page** (`screens/AskScreen.tsx`, `ask.css`, `ask/ask-copy.ts`)
+- **What is sent.** The context panel is built by the service's `preview()`, the same function a question uses, and says exactly what goes:
+  - The approved `ai.query_only` or `ai.selected` row, or "Only your question will be sent."
+  - The search, in the results summary's words.
+  - The earlier questions that go with it. They are counted as questions, not messages: a tool round is not a question (review finding CTX-1).
+  - Partial or unknown coverage.
+  - A selection that cannot be attached, said as such (CTX-4).
+- **Keeping it true.** The page redraws when the workspace changes. `ask()` carries the snapshot the page showed; if another is on screen by the tap, nothing is sent (`search_changed`, CTX-3).
+- **Layout.** `/ask` is a full-height page, like the editor (S09):
+  - A 52 header with Back, which returns focus to the link that opened it, and New conversation.
+  - The context panel, at least 64 tall and at most 30% of the space above the keyboard. It shrinks to 64 while typing, and New conversation gives way.
+  - The conversation, oldest first with the newest at the bottom. A reader at the end follows new content. A reader higher up is not moved, and the approved `ai.new_content` button offers the way down.
+  - The composer: a text box 52 to 144, with Ask/Stop at 44.
+- **Clearing.** New conversation asks first, from the header, a failure or a full conversation.
+- **References.** Each attached result on an entry is one 44pt link, labelled R1 and so on, to that card's details, resolved from the workspace again. The model's text is never made into a link. Details opened from Ask say "Return to AI assistance".
+- **Language** (U-039, partly done). The page's own words are translated. A question's steps, endings, failures and meta line, and core's messages, stay English, marked `lang="en"`, until T17 reworks them. The Stop wording (`ai.stop` / `ai.stop_note`) is T17's.
+
+**Fixture.** `openScenario(..., { ai: true })` gives the app an Anthropic key and a scripted Anthropic. It answers one synthetic text after 400 ms and records each question's context shape (search yes/no, R-names, earlier count, partial yes/no), never its text, key or headers. Without `ai`, every Anthropic request is refused, as before. The `ai-*` scenarios stay unseeded (T16, T17).
+
+**Tests changed, with reasons** (iOS tests may be updated with a recorded reason):
+- `ask-screen.test.ts`: entries read oldest first; the context panel replaces "Include my last search: …"; New conversation is in the header; a refusal sits after the conversation, above the composer; the wiring view has a header. Added: no New conversation beside the wiring message, and a refused selection.
+- `onboarding.spec.ts`: Ask has no tab bar now, so "the tab bar gives way to the keyboard" moved to the Anthropic key page, a tab screen with a field (review REG-07).
+- `workspace.spec.ts`: leaves Ask by its Back, not the tab bar.
+- The stand-in keyboard moved from `onboarding.spec.ts` to `helpers.ts`.

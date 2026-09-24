@@ -15,9 +15,10 @@ Never in this checkout: `pnpm build`, `next build`, `scripts/check-no-secrets-in
 ## Where things stand
 
 - Branch `uiux/quiet-precision-v1` in the worktree above, one local commit per finished task (see `git log`). Nothing pushed.
-- T01–T14 verified (unit + iOS browser mock). T15 is next: see STATUS "Current next action".
+- T01–T15 verified (unit + iOS browser mock). T16 is next: see STATUS "Current next action".
 - Carried forward:
-  - Translate Ask's own chrome in T15–T17 (U-039; A21 stays partial until then).
+  - Ask's page is translated (T15); its steps, endings, failures and meta line are T17's (U-039, U-050; A21 partial until then).
+  - `/ask` is a full-height page (U-050). What a question sends is built once (`ask/context.ts`, `AskService.preview`), and each entry records it (`AskEntry.context`). Browser tests use `openScenario(..., { ai: true })` for the scripted Anthropic and `anthropicContexts(page)` for what it received. The stand-in keyboard is in `e2e/uiux/helpers.ts`.
   - The status bar under a chosen theme is for T21 (U-042).
   - Every new `Sheet` needs a translated `closeLabel`.
   - New shell copy goes into a per-language table that `apps/ios/src/locale-parity.test.ts` checks.
@@ -33,7 +34,7 @@ Never in this checkout: `pnpm build`, `next build`, `scripts/check-no-secrets-in
 ## Next commands
 
 ```sh
-# T15: read plan 03 T15 first; write its red test before any code
+# T16: read plan 03 T16 first; write its red test before any code
 # Evidence screenshots: run only the task's own spec with UIUX_EVIDENCE=1 (the harness spec rewrites T01's screenshots)
 UIUX_EVIDENCE=1 pnpm exec playwright test --config=playwright.uiux.config.ts e2e/uiux/<task>.spec.ts
 # UI/UX browser suite (fixture host on 127.0.0.1:4310)

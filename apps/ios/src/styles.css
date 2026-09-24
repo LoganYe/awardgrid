@@ -263,17 +263,7 @@ textarea {
 
 /* ---- Ask ---- */
 
-.ask-screen {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  max-width: 720px;
-  margin: 0 auto;
-}
-
-.ask-screen p {
-  margin: 0;
-}
+/* The page itself (a full-height column since T15) is laid out in ./screens/ask.css. */
 
 .ask-subline {
   color: var(--fg-muted);

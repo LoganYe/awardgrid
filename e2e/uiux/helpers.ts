@@ -31,6 +31,11 @@ export interface ScenarioOptions {
    * emptied. Only storage is kept; the scenario's keys and transports are re-applied as on a real launch.
    */
   preserveStorage?: boolean;
+  /**
+   * T15: give the app an Anthropic key and the host's scripted Anthropic, which answers one synthetic text and records
+   * each question's context shape (`anthropicContexts`). Without it, every Anthropic request is refused and counted.
+   */
+  ai?: boolean;
 }
 
 export interface RequestCounts {
@@ -122,6 +127,7 @@ export async function openScenario(page: Page, id: string, surface: Surface = "i
   const params = new URLSearchParams({ scenario: id });
   if (options.lang) params.set("lang", options.lang);
   if (options.preserveStorage) params.set("preserve", "1");
+  if (options.ai) params.set("ai", "1");
   await page.goto(`/?${params.toString()}`);
   await page.waitForFunction(() => document.getElementById("fixture-status")?.dataset.state !== "booting", null, {
     timeout: 15_000,
@@ -131,6 +137,11 @@ export async function openScenario(page: Page, id: string, surface: Surface = "i
     error: window.__uiuxFixture?.error ?? null,
   }));
   if (state.state !== "ready") throw new Error(`The fixture host did not start "${id}": ${state.error ?? state.state}`);
+}
+
+/** T15: the context shape of each question the scripted Anthropic answered, in order (see FixtureRequestLog). */
+export async function anthropicContexts(page: Page): Promise<FixtureRequestLog["anthropicContext"]> {
+  return page.evaluate(() => window.__uiuxFixture?.log.anthropicContext ?? []);
 }
 
 export async function requestLog(page: Page): Promise<RequestCounts> {
@@ -215,3 +226,40 @@ export async function evidenceShot(page: Page, name: string, options: { fullPage
   if (viewport && inner > 0) await page.setViewportSize(viewport);
   return file;
 }
+
+/**
+ * A stand-in for the software keyboard: the visual viewport loses `height` at the bottom, as in WKWebView, where the
+ * layout viewport does not change. Not a device keyboard: that is left for the Simulator and device runs.
+ */
+export async function fakeKeyboard(page: Page) {
+  await page.addInitScript(() => {
+    const target = new EventTarget();
+    let covered = 0;
+    let panned = 0;
+    const fields: Record<string, () => number> = {
+      height: () => window.innerHeight - covered,
+      width: () => window.innerWidth,
+      offsetTop: () => panned,
+      offsetLeft: () => 0,
+      pageTop: () => window.scrollY,
+      pageLeft: () => window.scrollX,
+      scale: () => 1,
+    };
+    const view = new Proxy(target, {
+      get(t, key) {
+        if (typeof key === "string" && key in fields) return fields[key]!();
+        const value = Reflect.get(t, key);
+        return typeof value === "function" ? value.bind(t) : value;
+      },
+    });
+    Object.defineProperty(window, "visualViewport", { configurable: true, get: () => view });
+    (window as unknown as { __keyboard: (h: number, pan?: number) => void }).__keyboard = (h: number, pan = 0) => {
+      covered = h;
+      panned = pan;
+      target.dispatchEvent(new Event("resize"));
+    };
+  });
+}
+/** Open (or close, with 0) the stand-in keyboard; `pan` is how far WebKit has panned the visible part up to a field. */
+export const keyboard = (page: Page, height: number, pan = 0) =>
+  page.evaluate(([h, p]) => (window as unknown as { __keyboard: (h: number, pan?: number) => void }).__keyboard(h!, p), [height, pan] as const);

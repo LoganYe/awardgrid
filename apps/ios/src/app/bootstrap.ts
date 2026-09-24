@@ -386,6 +386,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       await persist();
     },
     lastSearch,
+    // T15: the search and any attached results come from the one snapshot every view shows, and its selection.
+    context: { snapshot: () => workspace.getState().displayedSnapshot, selected: () => workspace.getState().selected, subscribe: (listener) => workspace.subscribe(listener) },
     whenWatchesIdle,
     now,
     visibility: opts.visibility,

@@ -36,7 +36,7 @@ import {
 } from "./conversation";
 import { describeAskError } from "./errors";
 import { ASK_EFFORT, ASK_MAX_TOKENS, ASK_MODEL, ASK_QUESTION_LIMIT_MS, ASK_REQUEST_LIMIT_MS, MAX_MODEL_REQUESTS } from "./limits";
-import { ASK_SYSTEM_PROMPT, buildUserTurn, checkQuestion, closingBlock, type LastSearch } from "./prompt";
+import { ASK_SYSTEM_PROMPT, buildUserTurn, checkQuestion, closingBlock, type AttachedRow, type LastSearch } from "./prompt";
 import { ASK_TOOLS, type ToolRunner, type ToolStep } from "./tools";
 
 export interface LoopDeps {
@@ -65,6 +65,10 @@ export interface RunQuestionOptions {
   question: string;
   /** The search the person chose to include, or null. */
   lastSearch: LastSearch | null;
+  /** Results attached from that search (T15), from the trusted snapshot; sent in the question's own user turn. */
+  attached?: readonly AttachedRow[];
+  /** Whether the results on screen for that search are complete (T15). */
+  coverage?: "complete" | "partial" | "unknown";
   deps: LoopDeps;
   /** Events for the screen, in order. A listener that throws is logged and ignored. */
   onEvent?: (event: AskEvent) => void;
@@ -144,7 +148,7 @@ export async function runQuestion(opts: RunQuestionOptions): Promise<AskOutcome>
   // The closing text goes with a question's last request; only a limit of one request would make that the first.
   const firstIsLast = (MAX_MODEL_REQUESTS as number) <= 1;
   const turns: Anthropic.MessageParam[] = [
-    buildUserTurn({ question: checked.question, today: startedAt, lastSearch: opts.lastSearch, closing: firstIsLast }),
+    buildUserTurn({ question: checked.question, today: startedAt, lastSearch: opts.lastSearch, attached: opts.attached, coverage: opts.coverage, closing: firstIsLast }),
   ];
   const texts: string[] = [];
   const usage: QuestionUsage = { requests: 0, inputTokens: 0, cacheReadTokens: 0, outputTokens: 0, lastRequestInputTokens: null, toolCalls: 0, seatsCalls: 0 };

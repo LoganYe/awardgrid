@@ -450,6 +450,10 @@ export const CONVERSATION_NOTE = "Answers in this conversation are saved on this
 /** Try again resends with the keys the question started on; after either changes in Settings, nothing is resent. */
 export const KEYS_CHANGED = "A key in Settings changed after this question failed, so its request was not resent. Ask again to use the keys on file now.";
 export const RETRY_UNAVAILABLE = "This request can no longer be resent. Ask again.";
+/** T15: the results a question was to be sent with are no longer in the results on screen. Nothing was sent. */
+/** T15: the search on screen changed between what the page said would go and the tap. Nothing was sent. */
+export const SEARCH_CHANGED = "The search on screen changed before this question was sent, so nothing was sent. Check what goes with it and ask again.";
+export const CONTEXT_CHANGED = "The results this question was to be sent with are no longer on screen, so nothing was sent. Choose them again on the Search screen.";
 
 // ---------------------------------------------------------------------------
 // The Ask screen (design §6.1-§6.3, §6.5)

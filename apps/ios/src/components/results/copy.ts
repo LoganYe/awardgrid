@@ -49,6 +49,8 @@ export interface ResultsCopy {
   detail: {
     title: string;
     back: string;
+    /** T15: the same Back, when the details were opened from an AI answer's reference. */
+    backToAsk: string;
     notInResults: string;
     via: (program: string) => string;
     loading: string;
@@ -145,6 +147,7 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     detail: {
       title: "Option details",
       back: "Return to results",
+      backToAsk: "Return to AI assistance",
       notInResults: "This option is not in your results.",
       via: (program) => `Redeemed through ${program}`,
       loading: "Loading flight itineraries",
@@ -249,6 +252,7 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     detail: {
       title: "兑换详情",
       back: "返回结果",
+      backToAsk: "返回 AI 辅助",
       notInResults: "该选项不在当前结果中。",
       via: (program) => `通过 ${program} 兑换`,
       loading: "正在载入具体航班",

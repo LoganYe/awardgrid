@@ -322,7 +322,7 @@ export function SearchScreen() {
           <h1 className="ag-results-title" id="search-title" tabIndex={-1}>
             {t.title}
           </h1>
-          <Link to="/ask" className="ag-results-ai">
+          <Link id="ask-entry-header" to="/ask" state={{ returnFocus: "ask-entry-header" }} className="ag-results-ai">
             <Icon name="sparkle" />
             <span>{asking ? t.aiWorking : t.ai}</span>
           </Link>
@@ -469,7 +469,7 @@ export function SearchScreen() {
             <Button onClick={() => void saveResults()} loading={saving} loadingLabel={FAVORITES[locale].saving}>
               {FAVORITES[locale].save}
             </Button>
-            <Link to="/ask" className="ag-button">
+            <Link id="ask-entry-results" to="/ask" state={{ returnFocus: "ask-entry-results" }} className="ag-button">
               {t.askAbout}
             </Link>
           </div>

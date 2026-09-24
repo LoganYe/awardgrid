@@ -24,6 +24,19 @@ export interface FixtureRequestLog {
    */
   directSeats: number;
   directAnthropic: number;
+  /**
+   * T15, only with the scripted Anthropic (`ai=1`): per request, what context its question carried, read from the
+   * request's own last user turn: whether a search went, which attached results (R1…), how many earlier questions
+   * the history resent, and whether partial coverage was said. A shape, never the text, the key or a header.
+   */
+  anthropicContext: FixtureAnthropicContext[];
+}
+
+export interface FixtureAnthropicContext {
+  search: boolean;
+  attached: string[];
+  earlier: number;
+  partial: boolean;
 }
 
 export type FixtureHostState = "booting" | "ready" | "error";

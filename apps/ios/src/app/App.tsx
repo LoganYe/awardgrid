@@ -276,6 +276,12 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
               element: <FullPage services={services} />,
               children: [{ index: true, element: <QueryEditorScreen /> }],
             },
+            // AI assistance, a full-height page (T15, docs/04 S09): its own header, context, conversation and composer.
+            {
+              path: "/ask",
+              element: <FullPage services={services} />,
+              children: [{ index: true, element: <AskScreen /> }],
+            },
             {
               path: "/",
               element: <Chrome services={services} />,
@@ -290,7 +296,6 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
                     { path: "compare", element: <CompareScreen /> },
                   ],
                 },
-                { path: "ask", element: <AskScreen /> },
                 { path: "watches", element: <WatchesScreen /> },
                 { path: "saved", element: <FavoritesScreen /> },
                 { path: "saved/:id", element: <SavedScreen /> },

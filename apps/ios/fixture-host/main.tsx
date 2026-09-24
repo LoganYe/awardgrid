@@ -23,8 +23,8 @@ import { LocalFixtureFiles } from "./files";
 import type { FixtureHostHandle, FixtureHostState } from "./protocol";
 import { FoundationsGallery } from "./foundations";
 import "./foundations.css";
-import { environmentFor } from "./scenarios";
-import { refusingAnthropicFetch, syntheticSeatsFetch } from "./transports";
+import { FIXTURE_ANTHROPIC_KEY, environmentFor } from "./scenarios";
+import { refusingAnthropicFetch, scriptedAnthropicFetch, syntheticSeatsFetch } from "./transports";
 
 const status = document.getElementById("fixture-status") as HTMLOutputElement;
 const handle: FixtureHostHandle = {
@@ -32,7 +32,7 @@ const handle: FixtureHostHandle = {
   requestedLang: null,
   state: "booting",
   error: null,
-  log: { seats: 0, trips: 0, anthropic: 0, writes: 0, seatsPaths: [], directSeats: 0, directAnthropic: 0 },
+  log: { seats: 0, trips: 0, anthropic: 0, writes: 0, seatsPaths: [], directSeats: 0, directAnthropic: 0, anthropicContext: [] },
 };
 window.__uiuxFixture = handle;
 
@@ -77,7 +77,9 @@ async function start(): Promise<void> {
   const keys = new MemoryKeyStore();
   if (env.seatsKey) await keys.set(env.seatsKey);
   const anthropicKeys = new MemoryKeyStore();
-  if (env.anthropicKey) await anthropicKeys.set(env.anthropicKey);
+  // `ai=1` (T15): an Anthropic key, and a scripted Anthropic that answers instead of refusing, for any scenario.
+  const scriptedAi = params.get("ai") === "1";
+  if (env.anthropicKey || scriptedAi) await anthropicKeys.set(env.anthropicKey ?? FIXTURE_ANTHROPIC_KEY);
   const files = new LocalFixtureFiles(handle.log, {
     preserve: params.get("preserve") === "1",
     seed: env.files,
@@ -108,7 +110,7 @@ async function start(): Promise<void> {
         fetchImpl: syntheticSeatsFetch(env.rows, env.routes, handle.log, env.searchMode),
         // The requested language reaches the translated screens; the host's own page stays English (U-007).
         locale: handle.requestedLang === "zh" ? "zh" : handle.requestedLang === "en" ? "en" : undefined,
-        anthropicFetch: refusingAnthropicFetch(handle.log),
+        anthropicFetch: scriptedAi ? scriptedAnthropicFetch(handle.log) : refusingAnthropicFetch(handle.log),
         // Both transports above are injected, so there is no native bridge to assert. Production never sets this.
         assertNative: () => {},
       }}

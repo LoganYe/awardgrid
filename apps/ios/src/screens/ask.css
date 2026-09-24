@@ -1,0 +1,222 @@
+/*
+ * AI assistance, a full-height page (T15; docs/04 S09). Tokens only. Header 52; what is sent at least 64; the
+ * conversation scrolls, oldest first; the composer at the bottom, above the keyboard: text box 52 to 144, Ask/Stop 44.
+ * Reading text 17/26 (the reading type).
+ */
+.ask-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: none;
+  margin: 0;
+  /* Above the software keyboard when it is up (app/keyboard.ts): the composer stays reachable while typing. */
+  height: calc(100dvh - var(--ag-keyboard-inset, 0px));
+  background: var(--ag-canvas);
+  color: var(--ag-text);
+}
+
+.ask-screen p {
+  margin: 0;
+}
+
+/* Secondary lines only; an answer, a question and a failure keep their own colour. */
+.ask-screen .ask-subline,
+.ask-screen .ask-context-note,
+.ask-screen .ask-context-search,
+.ask-sent,
+.ask-screen .ask-note {
+  color: var(--ag-text-secondary);
+}
+
+.ask-header {
+  flex: none;
+  z-index: var(--ag-z-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: calc(var(--ag-header-height) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--ag-space-2) 0;
+  border-bottom: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+/* Sized by its words, so at large text New conversation moves to its own line instead of covering the title. */
+.ask-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ask-title:focus {
+  outline: none;
+}
+
+.ask-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ask-new {
+  flex: none;
+  max-width: 100%;
+  margin-left: auto;
+  min-height: var(--ag-touch-target);
+  white-space: normal;
+}
+
+/* It gives way before the conversation does: at most 30% of the space above the keyboard, scrolling within. */
+.ask-context {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  min-height: 64px;
+  max-height: calc((100dvh - var(--ag-keyboard-inset, 0px)) * 0.3);
+  overflow-y: auto;
+  padding: var(--ag-space-3) var(--ag-gutter);
+  border-bottom: 1px solid var(--ag-divider);
+  background: var(--ag-surface-subtle);
+}
+
+.ask-context-title {
+  margin: 0;
+  font-size: var(--ag-type-label);
+  line-height: var(--ag-leading-label);
+  font-weight: var(--ag-weight-label);
+  color: var(--ag-text-secondary);
+}
+
+.ask-screen .ask-context-sends {
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  color: var(--ag-text);
+  overflow-wrap: anywhere;
+}
+
+.ask-screen .ask-context-note {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ask-context-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--ag-space-4);
+}
+
+/*
+ * While typing, what is sent stays one short panel (its details scroll within it), and New conversation gives way, as
+ * the tab bar does elsewhere: the header stays one line, and a clearing tap cannot land by accident mid-sentence.
+ */
+:root[data-keyboard="open"] .ask-context {
+  max-height: 64px;
+}
+
+:root[data-keyboard="open"] .ask-new {
+  display: none;
+}
+
+.ask-scroll {
+  flex: 1;
+  /* Some of the conversation always shows, whatever else the column holds. */
+  min-height: 96px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-4) var(--ag-gutter) var(--ag-space-6);
+}
+
+.ask-screen .ask-subline,
+.ask-screen .ask-answer {
+  font-size: var(--ag-type-reading);
+  line-height: var(--ag-leading-reading);
+}
+
+.ask-sent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ask-sent-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+}
+
+/* Each reference is one link across its row, a full-size target. */
+.ask-ref-link,
+.ask-ref-gone {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-touch-target);
+  padding: var(--ag-space-1) 0;
+  color: var(--ag-accent);
+  overflow-wrap: anywhere;
+}
+
+.ask-ref-gone {
+  color: var(--ag-text-secondary);
+}
+
+.ask-ref {
+  display: inline-block;
+  min-width: 2.2em;
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text);
+}
+
+.ask-new-content {
+  flex: none;
+  align-self: center;
+  margin: calc(-1 * (var(--ag-button-height) + var(--ag-space-2))) 0 var(--ag-space-2);
+  z-index: var(--ag-z-sticky);
+  box-shadow: var(--ag-shadow-popover);
+}
+
+.ask-screen .ask-composer {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-3) var(--ag-gutter) calc(var(--ag-space-3) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+/* The keyboard covers the home indicator, so its inset is not added above it. */
+:root[data-keyboard="open"] .ask-screen .ask-composer {
+  padding-bottom: var(--ag-space-3);
+}
+
+.ask-screen .ask-input {
+  min-height: 52px;
+  max-height: 144px;
+  resize: none;
+  field-sizing: content;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.ask-screen .ask-send {
+  align-self: end;
+  min-width: 72px;
+  min-height: var(--ag-touch-target);
+}
+
+.ask-screen .ask-stop-note {
+  grid-column: 1 / -1;
+}

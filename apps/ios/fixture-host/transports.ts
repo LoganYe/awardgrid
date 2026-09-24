@@ -238,3 +238,63 @@ export function refusingAnthropicFetch(log: FixtureRequestLog): typeof fetch {
     throw new FixtureAnthropicRefusedError();
   }) as typeof fetch;
 }
+
+const ANSWER_DELAY_MS = 400;
+
+/** The one answer the scripted Anthropic gives: synthetic, and about the attached results only by their names. */
+export const FIXTURE_AI_ANSWER = "R1 needs fewer miles than R2. Confirm on the program's own site before transferring points.";
+
+/**
+ * A scripted Anthropic for `ai=1` (plan 03 T15): every request is counted, its context's shape recorded (never its
+ * text, key or headers), and answered with one short synthetic text, streamed as the Messages API streams. Nothing
+ * leaves the page.
+ */
+export function scriptedAnthropicFetch(log: FixtureRequestLog): typeof fetch {
+  return (async (input: RequestInfo | URL, init?: RequestInit) => {
+    log.anthropic += 1;
+    const body = typeof init?.body === "string" ? init.body : input instanceof Request ? await input.clone().text() : "";
+    const context = contextOf(body);
+    if (context) log.anthropicContext.push(context);
+    // A moment, as a real answer takes: long enough for a test to scroll or leave while it is out.
+    await new Promise((resolve) => setTimeout(resolve, ANSWER_DELAY_MS));
+    return new Response(sseAnswer(FIXTURE_AI_ANSWER), { status: 200, headers: { "content-type": "text/event-stream", "request-id": `req_fixture_${log.anthropic}` } });
+  }) as typeof fetch;
+}
+
+/** The shape of a question's context, from its last user turn; null for a request that is not a question (a key check). */
+function contextOf(body: string): FixtureRequestLog["anthropicContext"][number] | null {
+  let parsed: { messages?: Array<{ role: string; content: unknown }> };
+  try {
+    parsed = JSON.parse(body) as typeof parsed;
+  } catch {
+    return null;
+  }
+  const messages = parsed.messages ?? [];
+  const last = messages[messages.length - 1];
+  const first = Array.isArray(last?.content) ? (last.content[0] as { type?: string; text?: string } | undefined) : undefined;
+  if (last?.role !== "user" || first?.type !== "text" || !first.text?.startsWith("Context from awardgrid")) return null;
+  const text = first.text;
+  return {
+    search: text.includes("The person's last search"),
+    attached: [...text.matchAll(/"ref":"(R\d+)"/g)].map((m) => m[1]!),
+    // Questions, not turns: a tool round's user turn of results is not a question.
+    earlier: messages.filter((m) => m.role === "user" && (typeof m.content === "string" || (Array.isArray(m.content) && (m.content[0] as { type?: string } | undefined)?.type === "text"))).length - 1,
+    partial: text.includes("are incomplete"),
+  };
+}
+
+function sseAnswer(text: string): string {
+  const usage = { input_tokens: 120, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 24 };
+  const events: Array<Record<string, unknown>> = [
+    {
+      type: "message_start",
+      message: { id: "msg_fixture", type: "message", role: "assistant", model: "claude-opus-5", content: [], stop_reason: null, stop_sequence: null, usage: { ...usage, output_tokens: 1 } },
+    },
+    { type: "content_block_start", index: 0, content_block: { type: "text", text: "", citations: null } },
+    { type: "content_block_delta", index: 0, delta: { type: "text_delta", text } },
+    { type: "content_block_stop", index: 0 },
+    { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null }, usage },
+    { type: "message_stop" },
+  ];
+  return events.map((event) => `event: ${String(event.type)}\ndata: ${JSON.stringify(event)}\n\n`).join("");
+}

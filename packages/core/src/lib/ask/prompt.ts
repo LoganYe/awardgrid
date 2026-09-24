@@ -52,6 +52,35 @@ export interface LastSearch {
   cabins: readonly string[];
   programs?: readonly string[] | null;
   direct_only: boolean;
+  /**
+   * T15: the search's other conditions, said on their own line only when set (searchConditionsLine), so a search
+   * without them is described in the same bytes as before.
+   */
+  max_miles?: number | null;
+  min_cabin_pct?: number;
+  include_filtered?: boolean;
+}
+
+/**
+ * One result the person attached to a question (UI/UX v1 T15), copied by awardgrid from the trusted snapshot on screen,
+ * never from a model. Named R1, R2… in the order sent. A null is unknown, never zero.
+ */
+export interface AttachedRow {
+  ref: string;
+  date: string;
+  origin: string;
+  destination: string;
+  program: string;
+  cabin: string;
+  miles: number;
+  /** Taxes and fees as seats.aero reported them, or null when unknown. */
+  taxes: { cents: number; currency: string | null } | null;
+  /** Seats left, or null when the program does not say. */
+  seats: number | null;
+  direct: boolean;
+  airlines: readonly string[];
+  /** How old seats.aero's data for this row was when the question was asked, or null when only the fetch time is known. */
+  age_minutes: number | null;
 }
 
 export type QuestionCheck =
@@ -85,6 +114,10 @@ export interface UserTurnOptions {
   lastSearch: LastSearch | null;
   /** Add the closing text, for a question whose first request is also its last. */
   closing?: boolean;
+  /** Results the person attached from that search (T15). Only sent with a search; absent or empty sends none. */
+  attached?: readonly AttachedRow[];
+  /** Whether the results on screen for that search are complete (T15); said when they are not, never guessed. */
+  coverage?: "complete" | "partial" | "unknown";
 }
 
 /**
@@ -103,7 +136,26 @@ export function buildUserTurn(opts: UserTurnOptions): Anthropic.MessageParam {
     opts.lastSearch === null
       ? "The person did not include a search."
       : `The person's last search on the Search screen, which they chose to include: ${searchContextJson(opts.lastSearch)}. search_awards with the same search reads it from this device's cache while it is fresh.`;
-  const context = ["Context from awardgrid, not written by the person:", `Today's date is ${utcDayKey(opts.today)} (UTC).`, searchLine].join("\n");
+  const attached = opts.lastSearch !== null && opts.attached && opts.attached.length > 0 ? opts.attached : null;
+  const attachedLine =
+    attached === null
+      ? null
+      : `The person also attached ${attached.length === 1 ? "1 result" : `${attached.length} results`} from that search, copied by awardgrid from the results on their screen (seats.aero's cached data): ${JSON.stringify(attached)}. They are named ${attached.map((row) => row.ref).join(", ")}; use those names when you refer to them. A null taxes, seats or age_minutes is unknown, not zero.`;
+  const conditionsLine = opts.lastSearch === null ? null : searchConditionsLine(opts.lastSearch);
+  const coverageLine =
+    opts.lastSearch === null || opts.coverage === undefined || opts.coverage === "complete"
+      ? null
+      : opts.coverage === "partial"
+        ? "The results on the person's screen for that search are incomplete: seats.aero did not return every route and date of it, so an option missing from them may still exist."
+        : "Whether the results on the person's screen for that search are complete is unknown.";
+  const context = [
+    "Context from awardgrid, not written by the person:",
+    `Today's date is ${utcDayKey(opts.today)} (UTC).`,
+    searchLine,
+    ...(conditionsLine === null ? [] : [conditionsLine]),
+    ...(coverageLine === null ? [] : [coverageLine]),
+    ...(attachedLine === null ? [] : [attachedLine]),
+  ].join("\n");
   return {
     role: "user",
     content: [{ type: "text", text: context }, { type: "text", text: checked.question }, ...(opts.closing ? [closingBlock()] : [])],
@@ -121,6 +173,18 @@ export function searchContextJson(search: LastSearch): string {
     programs: search.programs && search.programs.length > 0 ? [...search.programs] : null,
     direct_only: search.direct_only,
   });
+}
+
+/**
+ * T15: the search's other conditions, in words, when any is set (a mileage cap, a mixed-cabin minimum other than 100%,
+ * dynamic pricing included); null otherwise. Their own line, so the seven-field search above keeps its bytes.
+ */
+export function searchConditionsLine(search: LastSearch): string | null {
+  const parts: string[] = [];
+  if (typeof search.max_miles === "number") parts.push(`at most ${thousands(search.max_miles)} miles`);
+  if (typeof search.min_cabin_pct === "number" && search.min_cabin_pct !== 100) parts.push(`mixed-cabin itineraries with at least ${search.min_cabin_pct}% of the distance flown in the cabin asked for`);
+  if (search.include_filtered === true) parts.push("dynamically priced seats included");
+  return parts.length === 0 ? null : `That search also had these conditions: ${parts.join("; ")}.`;
 }
 
 function thousands(n: number): string {

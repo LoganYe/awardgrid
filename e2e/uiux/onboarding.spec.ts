@@ -9,7 +9,7 @@
  * in the Search header is a link.
  */
 import type { Page } from "@playwright/test";
-import { evidenceShot, openScenario, requestLog, searchByText } from "./helpers";
+import { evidenceShot, fakeKeyboard, keyboard, openScenario, requestLog, searchByText } from "./helpers";
 import { expect, test } from "./test";
 
 const SEARCH_TEXT = "Synthetic HKG to SEA October business and first";
@@ -31,43 +31,6 @@ async function watchClipboard(page: Page, text: string) {
     });
   }, text);
 }
-/**
- * A stand-in for the software keyboard: the visual viewport loses `height` at the bottom, as in WKWebView, where the
- * layout viewport does not change. Not a device keyboard: that is left for the Simulator and device runs.
- */
-async function fakeKeyboard(page: Page) {
-  await page.addInitScript(() => {
-    const target = new EventTarget();
-    let covered = 0;
-    let panned = 0;
-    const fields: Record<string, () => number> = {
-      height: () => window.innerHeight - covered,
-      width: () => window.innerWidth,
-      offsetTop: () => panned,
-      offsetLeft: () => 0,
-      pageTop: () => window.scrollY,
-      pageLeft: () => window.scrollX,
-      scale: () => 1,
-    };
-    const view = new Proxy(target, {
-      get(t, key) {
-        if (typeof key === "string" && key in fields) return fields[key]!();
-        const value = Reflect.get(t, key);
-        return typeof value === "function" ? value.bind(t) : value;
-      },
-    });
-    Object.defineProperty(window, "visualViewport", { configurable: true, get: () => view });
-    (window as unknown as { __keyboard: (h: number, pan?: number) => void }).__keyboard = (h: number, pan = 0) => {
-      covered = h;
-      panned = pan;
-      target.dispatchEvent(new Event("resize"));
-    };
-  });
-}
-/** Open (or close, with 0) the stand-in keyboard; `pan` is how far WebKit has panned the visible part up to a field. */
-const keyboard = (page: Page, height: number, pan = 0) =>
-  page.evaluate(([h, p]) => (window as unknown as { __keyboard: (h: number, pan?: number) => void }).__keyboard(h!, p), [height, pan] as const);
-
 /** Whether the control is on top at its own centre and its bottom is above `limit` (the keyboard's top). */
 async function reachableAbove(page: Page, name: string, limit: number) {
   const button = page.getByRole("button", { name, exact: true });
@@ -257,7 +220,21 @@ test("the keyboard at 320 × 568, panned up to a lower field: open all the same,
   expect(await requestLog(page)).toMatchObject({ seats: 0, anthropic: 0 });
 });
 
-test("the keyboard: the Ask box and its button come up together, and the tab bar gives way", async ({ page }) => {
+test("the keyboard: on a tab screen with a field, the tab bar gives way while it is up (moved from the Ask test, T15)", async ({ page }) => {
+  await fakeKeyboard(page);
+  await openScenario(page, "complete", "ios", { lang: "en" });
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("link", { name: /Anthropic API key/ }).click();
+  await page.getByRole("textbox", { name: "Anthropic API key" }).focus();
+  await keyboard(page, 300);
+  await expect(page.locator("html")).toHaveAttribute("data-keyboard", "open");
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeHidden();
+  await keyboard(page, 0);
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
+  expect((await requestLog(page)).anthropic).toBe(0);
+});
+
+test("the keyboard: the Ask box and its button come up together above it", async ({ page }) => {
   await fakeKeyboard(page);
   await openScenario(page, "complete", "ios", { lang: "en" });
   // A key typed in Settings: saving it checks it once, against the fixture's Anthropic stand-in, never the real one.
@@ -277,13 +254,13 @@ test("the keyboard: the Ask box and its button come up together, and the tab bar
   const height = Math.min(inner - 200, Math.max(300, Math.ceil(inner - ask.y) + 24));
   // The button would be under a keyboard of this height where it stands.
   expect(ask.y + ask.height).toBeGreaterThan(inner - height);
+  // AI assistance is a full-height page since T15 (S09): no tab bar to give way; its composer is its bottom bar.
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
   await box.focus();
   await keyboard(page, height);
-  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeHidden();
   await reachableAbove(page, "Ask", inner - height);
   await expect(box).toBeFocused();
   await keyboard(page, 0);
-  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
   // Typing and the keyboard sent nothing: the only Anthropic request was the key check.
   expect((await requestLog(page)).anthropic).toBe(checks);
 });

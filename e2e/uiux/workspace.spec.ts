@@ -65,8 +65,9 @@ test("inflight-old: while a new search runs, the previous results stay and are l
   await evidenceShot(page, "t05-inflight-old", { fullPage: true });
 
   // Leaving for Ask and coming back mid-search shows the same state: it is the workspace's, not the screen's.
+  // Ask is a full-height page since T15, left by its own Back.
   await page.getByTestId("results-header").getByRole("link", { name: /^AI assistance/ }).click();
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByText("Searching; previous results remain available.")).toBeVisible();
   await expect(page.getByRole("button", { name: /^Search again/ })).toHaveAttribute("aria-busy", "true");
   await expect(cards(page).getByText("75,000")).toBeVisible();

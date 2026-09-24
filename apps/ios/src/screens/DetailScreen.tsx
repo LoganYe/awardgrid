@@ -79,6 +79,8 @@ export function DetailScreen() {
   // Focus arrives on the page's heading, and goes back to what opened the page when it closes, however it closes —
   // or, when that is gone (a details link opened directly), to the results' status line or title.
   const returnFocus = useRef((location.state as { returnFocus?: string } | null)?.returnFocus ?? null);
+  // Opened from an AI answer's reference (T15): Back returns there, and says so.
+  const [fromAsk] = useState(() => (location.state as { from?: string } | null)?.from === "ask");
   useEffect(() => {
     heading.current?.focus();
     const back = returnFocus.current;
@@ -147,7 +149,7 @@ export function DetailScreen() {
 
   const header = (
     <header className="ag-detail-header">
-      <IconButton icon="chevron-left" label={d.back} onClick={close} />
+      <IconButton icon="chevron-left" label={fromAsk ? d.backToAsk : d.back} onClick={close} />
       <h1 className="ag-detail-title" tabIndex={-1} ref={heading}>
         {d.title}
       </h1>

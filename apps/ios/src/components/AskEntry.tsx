@@ -19,16 +19,16 @@
  */
 import { Link } from "react-router";
 import type { AskEntry as Entry } from "@awardgrid/core/ask/conversation";
+import { resultName } from "@awardgrid/core/workspace/present";
+import type { ResultRef, WorkspaceRow } from "@awardgrid/core/workspace/types";
+import type { Locale } from "../app/locale";
+import { ASK_COPY } from "../ask/ask-copy";
 import type { AskActivity } from "../ask/ask-service";
+import { readEntryContext } from "../ask/context";
 import {
   ANNOUNCEMENTS,
-  ASK_AGAIN,
-  ATTRIBUTION,
   FOLLOW_UP_NOTE,
-  NEW_CONVERSATION,
-  OPEN_SETTINGS,
   PAUSED_STEP,
-  TRY_AGAIN,
   endLabel,
   entryMetaLine,
   failureView,
@@ -64,6 +64,10 @@ export interface AskEntryProps {
   onTryAgain?: () => void;
   onAskAgain?: (entryId: string) => void;
   onNewConversation?: () => void;
+  /** The page's language (T15). A question's steps, endings, failures and meta line stay English until T17, marked so. */
+  locale?: Locale;
+  /** The trusted row a reference names, from the workspace (T15); null when it is no longer there. */
+  resolveRow?: (ref: ResultRef) => WorkspaceRow | null;
 }
 
 export function AskEntry({
@@ -79,7 +83,13 @@ export function AskEntry({
   onTryAgain,
   onAskAgain,
   onNewConversation,
+  locale = "en",
+  resolveRow,
 }: AskEntryProps) {
+  const c = ASK_COPY[locale];
+  const english = locale === "en" ? undefined : "en";
+  // What went with this question, as recorded from its payload; nothing is said for entries from before T15.
+  const sentWith = readEntryContext(entry.context);
   const end = entry.end;
   const failure = end?.status === "failed" && end.failure ? failureView(end.failure, entry.id === retryEntryId) : null;
   // A failed entry's sentence is its failure line; every other ending has its own line, and an answer has none.
@@ -88,7 +98,7 @@ export function AskEntry({
 
   const askAgain = (
     <button type="button" className="ag-button" disabled={askAgainDisabled} onClick={() => onAskAgain?.(entry.id)}>
-      {ASK_AGAIN}
+      {c.askAgain}
     </button>
   );
 
@@ -96,57 +106,109 @@ export function AskEntry({
     <li className="ag-surface ask-entry">
       <h2 className="ask-question">{entry.question}</h2>
 
+      {sentWith ? (
+        <div className="ask-sent">
+          <p>{sentWith.sent === "none" ? c.sentNothing : sentWith.sent === "query_only" ? c.sentSearch : c.sentSearchAndRows(sentWith.refs.length)}</p>
+          {sentWith.refs.length > 0 ? (
+            <ol className="ask-sent-rows">
+              {sentWith.refs.map((ref, i) => {
+                // The card as awardgrid has it, never the model's numbers; a link the details page resolves again.
+                const row = resolveRow?.(ref) ?? null;
+                const id = `ask-ref-${entry.id}-${i}`;
+                return (
+                  <li key={`${ref.snapshotId}/${ref.rowKey}`}>
+                    {row ? (
+                      // The whole row is the link, a full-size target, named with its reference.
+                      <Link id={id} className="ask-ref-link" to={`/detail/${encodeURIComponent(ref.snapshotId)}/${encodeURIComponent(ref.rowKey)}`} state={{ returnFocus: id, from: "ask" }}>
+                        <span className="ask-ref">R{i + 1}</span>
+                        <span>{resultName(row.value, locale)}</span>
+                      </Link>
+                    ) : (
+                      <span className="ask-ref-gone">
+                        <span className="ask-ref">R{i + 1}</span>
+                        <span>{c.rowGone}</span>
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          ) : null}
+          {sentWith.earlier > 0 ? <p>{c.sentEarlier(sentWith.earlier)}</p> : null}
+        </div>
+      ) : null}
+
       {entry.steps.length > 0 ? (
-        <ol className="ask-steps">
+        <ol className="ask-steps" lang={english}>
           {entry.steps.map((step, i) => (
             <li key={i}>{stepLabel(step)}</li>
           ))}
         </ol>
       ) : null}
 
-      {activity !== null ? <ActivityLine activity={activity} waitSeconds={waitSeconds} pausedStepShown={lastStep?.kind === "paused"} /> : null}
+      {activity !== null ? (
+        <div lang={english}>
+          <ActivityLine activity={activity} waitSeconds={waitSeconds} pausedStepShown={lastStep?.kind === "paused"} />
+        </div>
+      ) : null}
 
       {entry.texts.map((text, i) => (
         <AnswerText key={i} text={text} bookingUrls={bookingUrls} />
       ))}
 
-      {showsAttribution(entry, earlier) ? <p className="ask-attribution">{ATTRIBUTION}</p> : null}
+      {showsAttribution(entry, earlier) || (sentWith !== null && sentWith.refs.length > 0) ? <p className="ask-attribution">{c.attribution}</p> : null}
 
-      {end !== null ? <p className="ask-meta tabular">{entryMetaLine(entry)}</p> : null}
+      {end !== null ? (
+        <p className="ask-meta tabular" lang={english}>
+          {entryMetaLine(entry)}
+        </p>
+      ) : null}
 
-      {ending !== null ? <p className="ask-ending">{ending}</p> : null}
+      {ending !== null ? (
+        <p className="ask-ending" lang={english}>
+          {ending}
+        </p>
+      ) : null}
 
       {failure !== null ? (
         <>
-          <div role={announce ? "alert" : undefined} className="ask-failure">
+          <div role={announce ? "alert" : undefined} className="ask-failure" lang={english}>
             <p>{failure.message}</p>
             {failure.requestIdLine !== null ? <p className="tabular">{failure.requestIdLine}</p> : null}
           </div>
           <div className="ask-actions">
             {failure.action === "try_again" ? (
               <button type="button" className="ag-button ag-button-primary" disabled={busy} onClick={() => onTryAgain?.()}>
-                {TRY_AGAIN}
+                {c.tryAgain}
               </button>
             ) : null}
             {askAgain}
             {failure.goTo === "settings" ? (
               <Link to="/settings" className="ag-button">
-                {OPEN_SETTINGS}
+                {c.openSettings}
               </Link>
             ) : null}
             {failure.goTo === "new_conversation" ? (
               <button type="button" className="ag-button" disabled={busy} onClick={() => onNewConversation?.()}>
-                {NEW_CONVERSATION}
+                {c.newConversation}
               </button>
             ) : null}
           </div>
-          {failure.hint !== null ? <p className="ask-hint">{failure.hint}</p> : null}
+          {failure.hint !== null ? (
+            <p className="ask-hint" lang={english}>
+              {failure.hint}
+            </p>
+          ) : null}
         </>
       ) : null}
 
       {failure === null && end !== null && end.status !== "answered" ? <div className="ask-actions">{askAgain}</div> : null}
 
-      {showsFollowUpNote(entry) ? <p className="ask-note">{FOLLOW_UP_NOTE}</p> : null}
+      {showsFollowUpNote(entry) ? (
+        <p className="ask-note" lang={english}>
+          {FOLLOW_UP_NOTE}
+        </p>
+      ) : null}
     </li>
   );
 }

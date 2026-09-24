@@ -90,13 +90,31 @@ export interface EntryEnd {
   at: string;
 }
 
-/** One question as the person sees it. Entries are kept oldest first; the screen shows them newest first. */
+/**
+ * What went with a question besides its history (UI/UX v1 T15), recorded from the payload itself, never from a
+ * checkbox. Absent on entries from before T15.
+ */
+export interface EntryContext {
+  /** Of the person's search: nothing, its conditions, or its conditions and the results they attached. */
+  sent: "none" | "query_only" | "query_and_selected_rows";
+  /** The trusted snapshot the search and results came from; null when nothing of it was sent. */
+  snapshotId: string | null;
+  revision: number | null;
+  /** The results sent, in order (R1, R2…): references into that snapshot, never copies of a model's numbers. */
+  refs: Array<{ snapshotId: string; rowKey: string }>;
+  /** Earlier questions and answers in this conversation that were resent with it. */
+  earlier: number;
+}
+
+/** One question as the person sees it. Entries are kept oldest first, and shown that way (T15, docs/04 S09). */
 export interface AskEntry {
   id: string;
   /** The trimmed question. */
   question: string;
   /** Whether the person included their last search, so "Ask again" can repeat the choice. */
   includeSearch: boolean;
+  /** What was sent with it (T15). Read with care: a file from elsewhere may carry anything here. */
+  context?: EntryContext;
   /** ISO time the question started. */
   askedAt: string;
   steps: EntryStep[];

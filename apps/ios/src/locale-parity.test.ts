@@ -8,6 +8,7 @@ import { parseDeterministic } from "@awardgrid/core/query";
 import { describe, expect, it } from "vitest";
 import { EDITOR_COPY, allFieldErrors } from "./components/query/labels";
 import { RESULTS } from "./components/results/copy";
+import { ASK_COPY } from "./ask/ask-copy";
 import { CONNECT_ANTHROPIC } from "./screens/AskScreen";
 import { COMPARE } from "./screens/compare-copy";
 import { FAVORITES } from "./screens/favorites-copy";
@@ -22,6 +23,7 @@ const TABLES: Record<string, { en: unknown; zh: unknown }> = {
   watches: WATCHES,
   welcome: WELCOME,
   connectAnthropic: CONNECT_ANTHROPIC,
+  ask: ASK_COPY,
   compare: COMPARE,
   favorites: FAVORITES,
 };
@@ -54,6 +56,10 @@ const CASES: Record<string, unknown[][]> = {
   ],
   "watches.unseen": [[{ new: 1, dropped: 0, cheaper: 0 }], [{ new: 0, dropped: 2, cheaper: 3 }]],
   "favorites.usage": [[3, 100, "0.4", "5.0"]],
+  "ask.sendsEarlier": [[1], [3]],
+  "ask.attachRows": [[1], [3]],
+  "ask.sentSearchAndRows": [[1], [3]],
+  "ask.sentEarlier": [[1], [3]],
 };
 
 function call(fn: (...args: unknown[]) => unknown): { args: unknown[]; out: string } | null {
