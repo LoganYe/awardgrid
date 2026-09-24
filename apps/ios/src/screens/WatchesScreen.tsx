@@ -31,7 +31,7 @@ import { type Locale, langTag, useLocale } from "../app/locale";
 import { EDITOR_COPY } from "../components/query/labels";
 import { RESULTS } from "../components/results/copy";
 import { Button, Notice, Sheet, Switch } from "../components/ui";
-import { WATCH_CHECKS } from "../watch/capabilities";
+import { WATCH_CHECKS, watchCapabilityCopyKey } from "../watch/capabilities";
 import type { WatchCheckResult } from "../watch/runner";
 import { WATCHES, type WatchesCopy } from "./watches-copy";
 import "./watches.css";
@@ -191,8 +191,8 @@ export function WatchesScreen() {
         {t.title}
       </h1>
       <div className="ag-watches-info">
-        {/* What the platform does, from its capabilities: on iOS, checks on open and return only. */}
-        <p>{WATCH_CHECKS.inBackground ? copy("watch.foreground_only", locale) : copy("watch.ios", locale)}</p>
+        {/* What the platform does, from its capabilities (core capabilityMessageKey; T20): on iOS, checks on open and return only. */}
+        <p>{watchCapabilityCopyKey() === "watch.unavailable" ? copy("watch.unavailable", locale) : copy("watch.ios", locale)}</p>
         {WATCH_CHECKS.inBackground ? null : <p>{t.noBackground}</p>}
         <p>{t.skipSoon}</p>
       </div>

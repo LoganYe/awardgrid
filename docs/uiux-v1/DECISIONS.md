@@ -714,3 +714,48 @@ T19, plan 04 T19, docs/04 S10, spec §17, A31, A32.
 - **Coarse pointer.** Controls in the workspace's panels are 44; a fine pointer's Close is at least 36.
 - **Fixture.** The Web fixture gains the `partial` and `unmonitored` accounts. The Web server reports `partial` as complete, because its own coverage comes from its fetch, so the notice test uses `unmonitored`.
 - **Refuted and kept:** a reload of an address with `?q=` runs that search (U-053; the grid's convention).
+
+## U-055 · Watch capabilities from real signals; a worker heartbeat beside the database; the language model only on request
+
+T20, plan 04 T20, docs/02 D05, docs/05, A33, A34.
+
+**The capability sentence** (core `workspace/watch-capabilities.ts`).
+- `capabilityMessageKey(WatchCapabilities)` is the plan's interface. It maps capabilities to the approved rows `watch.foreground_only`, `watch.scheduled_with_push`, `watch.scheduled_only` and `watch.unavailable`, never from the viewport.
+- `runHealth(lastRun, now, staleAfterMs)` says how the scheduled checks are going: `unknown`, `never`, `ok`, `failed` or `stale`. It reads recorded runs only, so configuration alone is never "ok". A run recorded more than two minutes in the future counts as unknown (review CAP-1).
+- **iOS** (`apps/ios/src/watch/capabilities.ts`):
+  - Its capabilities are read from `WATCH_CHECKS` (on open only).
+  - The screen says iOS's own approved row `watch.ios` for the foreground-only case: that row is scoped to "iOS capability only" in the copy table.
+  - The screen's old ternary would have said "foreground only" if a background check existed; it now goes through core.
+  - A scheduled capability is refused on iOS (it is not built). The honesty test keeps every `copy()` key literal.
+
+**The Web's capabilities** (`src/components/queries/watch-capability.tsx`, `/queries`).
+- **The problem.** The web server cannot see the worker: it is a separate process, with no flag, heartbeat or table before T20.
+- **The heartbeat.** The worker now writes a small JSON file beside the shared database after every tick (`src/lib/scheduler/heartbeat.ts`):
+  - It is not in the database: no schema change and no migration, and the online database is untouched.
+  - The file is written atomically and holds the tick time, its outcome, and whether delivery is a real Telegram bot or the mock.
+  - In Docker both services mount `/data` with the same `DATABASE_PATH`, so the web server finds it.
+- **What `/queries` says** comes from those signals:
+  - **Scheduled checks:** a heartbeat exists.
+  - **Push:** that worker uses a real bot, this server has the token, and the account is linked.
+  - **No heartbeat:** `watch.unavailable`, with health "unknown", rather than a promised schedule nobody runs.
+  - **Health:** from the heartbeat's age (stale after 10 minutes; the worker ticks every minute) and its outcome, on its own line.
+- **Settings.** A linked account on a server with no bot is told its alerts are only logged (the existing `mock_explain`), no longer "Alerts go to your Telegram chat".
+- **Not changed:** under the mock transport a run is still recorded as notified. The run history never says "notified" in words; "prices dropped" is about the data.
+
+**The language model only on request** (`/api/parse`; the product rule: ordinary search never calls AI implicitly).
+- **Server.** `parseForUser` calls the model only with `allowLlm`, and `/api/parse` sets it only from the request's `use_llm`. Without it, an incomplete text is a 422. When the server could ask the model, the 422 carries `llm_offer`.
+- **Grid.** It then shows "Let AI read this text" as its own action, after a note that the text goes to Anthropic on this server's key. Pressing it re-sends that text with `use_llm`.
+  - The offer stands only while the bar holds the text that failed. Once the person edits it, the offer is withdrawn, so what is sent is always what the note describes (review AI-1).
+- **Workspace.** The T19 workspace never parses text.
+- **Test changed, with reason.** `src/lib/server/find.test.ts` "uses an injected LLM client only when…" now passes `allowLlm: true` (consent).
+- **Disclosure.** The red run of the new route case, on the old code, let the Anthropic SDK attempt one request with the placeholder "sk-test-not-a-key". No real key was involved and nothing could be billed. The fixed code makes no request.
+
+**Left as they were, recorded.**
+- **The header, `/` and login still lead to `/grid`.**
+  - Making the workspace the landing page, or adding it to the header, changes every page's header or redirects.
+  - It would also invalidate the Linux-only visual baselines, which only CI regenerates (`e2e/visual.spec.ts`, `VISUAL=1`).
+  - Owner decision. The workspace is at `/workspace` and in its own rail.
+- **The landing site** already says checks happen only on open, with no background check, no App Store listing, and Ask on the person's own key. Nothing changed; `pnpm build:landing` and the honesty tests pass.
+- **Web standing queries** keep their absolute-date `QueryObject`s, and nothing rewrites their dates. The Web workspace creates no watches.
+- **The CLI** prints an unknown seat count as 0 in its grid text (pre-existing, `find-main.ts` formatting). An operator's tool, outside the UI/UX surfaces; noted for the owner.
+- **Visual baselines.** The `/queries` page gains the capability block, so its Linux visual baselines need regenerating in CI (owner). Settings' unlinked state is unchanged.

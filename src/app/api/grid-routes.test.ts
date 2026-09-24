@@ -122,6 +122,32 @@ describe("POST /api/parse", () => {
     expect(body.notice).toMatchObject({ code: "parse.missing", vars: { text: "somewhere nice" } });
   });
 
+  it("with a server key, an incomplete text is not sent to the model: 422 offers it, and nothing reaches Anthropic (UI/UX v1 T20)", async () => {
+    const before = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = "sk-test-not-a-key";
+    const anthropic = vi.spyOn(globalThis, "fetch");
+    try {
+      const res = await parse(post("/api/parse", { text: "somewhere nice", today: "2026-10-01" }, aliceToken));
+      expect(res.status).toBe(422);
+      const body = (await res.json()) as { error: string; missing: string[]; llm_offer?: boolean };
+      expect(body.error).toBe("parse");
+      expect(body.llm_offer).toBe(true);
+      expect(anthropic.mock.calls.filter(([url]) => String(url).includes("anthropic"))).toEqual([]);
+    } finally {
+      anthropic.mockRestore();
+      if (before === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = before;
+    }
+  });
+
+  it("without a server key there is nothing to offer", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    const res = await parse(post("/api/parse", { text: "somewhere nice", today: "2026-10-01", use_llm: true }, aliceToken));
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { llm_offer?: boolean };
+    expect(body.llm_offer).toBeUndefined();
+  });
+
   it("400 on a malformed body", async () => {
     const res = await parse(post("/api/parse", "{not json", aliceToken));
     expect(res.status).toBe(400);

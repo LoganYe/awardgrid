@@ -636,6 +636,8 @@ export const en = {
   "grid.parse_failure.destinations": "Couldn't read the destination airports in this query.",
   "grid.parse_failure.dates": "Couldn't read the dates in this query.",
   "grid.parse_failure.generic": "Couldn't read this query.",
+  "grid.parse_failure.ai": "Let AI read this text",
+  "grid.parse_failure.ai_note": "This sends the text above to Anthropic, on this server's key. Nothing is sent until you choose it.",
   "grid.parse_failure.build": "Build it with chips instead",
 
   // ---- drawer shell (6.4: cell drawer, Ask drawer) ----
@@ -669,6 +671,11 @@ export const en = {
 
   // ---- Queries page (6.5, spec §4: row expand, inline delete, run history, edit drawer) ----
   "saved.details": "Details",
+  "saved.capability_label": "Checking on this server",
+  "saved.health.unknown": "No scheduled run is recorded on this server, so whether checks run is not known.",
+  "saved.health.ok": "The scheduler last ran {when}.",
+  "saved.health.stale": "The scheduler last ran {when} and has not run since. Scheduled checks may have stopped.",
+  "saved.health.failed": "The scheduler's last run, {when}, failed.",
   "saved.due_now": "due now",
   "saved.paused": "Paused",
   "saved.confirm_delete": "Delete this query?",

@@ -24,6 +24,7 @@ import { openDb, type Db } from "@/lib/db/client";
 import { parseMasterKey } from "@/lib/crypto/aes";
 import { createTransportFromEnv, runTelegramLinkPoller, TelegramTransport, type PollerEvent, type Transport } from "@/lib/notify";
 import { notifyFormatDigest, tick, type RunDeps, type SchedulerLogFields, type TickSummary } from "@/lib/scheduler";
+import { heartbeatPath, writeHeartbeat } from "@/lib/scheduler/heartbeat";
 
 /** The master tick runs every minute; `isDue` decides which saved queries actually run. */
 export const MASTER_TICK_CRON = "* * * * *";
@@ -55,6 +56,11 @@ export interface WorkerIo {
   schedule?: ScheduleFn;
   /** Run one tick immediately after start (default true) so a restart catches up at once. */
   tickOnStart?: boolean;
+  /**
+   * UI/UX v1 T20: where to write the heartbeat after each tick. Default: beside DATABASE_PATH's file; none for an
+   * injected database (tests), unless given here. Null turns it off.
+   */
+  heartbeatFile?: string | null;
   /** Long-poll seconds for getUpdates (default: the transport's). */
   pollTimeoutSec?: number;
 }
@@ -134,6 +140,15 @@ export async function startWorker(io: WorkerIo): Promise<WorkerHandle> {
     log,
   };
 
+  // The heartbeat beside the shared database (UI/UX v1 T20): how the web server learns that scheduled checks run and
+  // how the last tick went. Off for an injected database unless a file is given (tests).
+  const heartbeatFile = io.heartbeatFile !== undefined ? io.heartbeatFile : io.db ? null : heartbeatPath(env.DATABASE_PATH);
+  const beat = (ok: boolean) => {
+    if (heartbeatFile && !writeHeartbeat(heartbeatFile, { tickAt: now().toISOString(), ok, transport: transport instanceof TelegramTransport ? "telegram" : "mock" })) {
+      log("worker.heartbeat_failed", {});
+    }
+  };
+
   // 4. Master tick, serialised: node-cron's noOverlap covers its own executions and this
   //    promise covers the start-up tick and tickOnce().
   let inFlight: Promise<TickSummary | null> | null = null;
@@ -146,9 +161,12 @@ export async function startWorker(io: WorkerIo): Promise<WorkerHandle> {
     if (stopping) return Promise.resolve(null);
     inFlight = (async () => {
       try {
-        return await tick(db, deps);
+        const summary = await tick(db, deps);
+        beat(summary.errors.length === 0);
+        return summary;
       } catch (err) {
         log("worker.tick_failed", { error: err instanceof Error ? err.name : typeof err });
+        beat(false);
         return null;
       } finally {
         inFlight = null;

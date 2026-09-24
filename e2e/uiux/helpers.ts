@@ -186,6 +186,18 @@ const clocked = new WeakSet<Page>();
 /** The Web surface's clock: the fixture's "now", unless UIUX_WEB_NOW moves it (start-web.sh reads the same). */
 const WEB_NOW = process.env.UIUX_WEB_NOW || scenarios.now;
 
+/**
+ * T20: the Web surface's throwaway database, as start-web.sh names it, and the worker heartbeat file the server reads
+ * beside it (src/lib/scheduler/heartbeat.ts). Tests write the heartbeat to stand in for a worker; they never touch a
+ * real database.
+ */
+export function webDatabasePath(): string {
+  return path.resolve(process.env.UIUX_WEB_DB ?? path.join(process.env.TMPDIR ?? "/tmp", "awardgrid-uiux-web", `${new URL(WEB_URL).port}.db`));
+}
+export function webHeartbeatFile(): string {
+  return `${webDatabasePath()}.worker-heartbeat.json`;
+}
+
 /** T18: what the Web surface's seats.aero stand-in received, for one scenario's account (by its fake key). */
 export async function webRequestLog(page: Page, scenario: string): Promise<{ seats: number; trips: number; seatsPaths: string[] }> {
   const response = await page.request.get(`${WEB_MOCK_URL}/__log`);

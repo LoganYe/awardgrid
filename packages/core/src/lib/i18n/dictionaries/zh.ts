@@ -598,6 +598,8 @@ export const zh: Record<keyof typeof en, string> = {
   "grid.parse_failure.destinations": "无法识别这个查询中的到达机场。",
   "grid.parse_failure.dates": "无法识别这个查询中的日期。",
   "grid.parse_failure.generic": "无法识别这个查询。",
+  "grid.parse_failure.ai": "让 AI 读取这段文字",
+  "grid.parse_failure.ai_note": "这会把上面的文字发送给 Anthropic（使用本服务器的密钥）。你选择之前不会发送任何内容。",
   "grid.parse_failure.build": "改用筛选条件构建",
 
   // ---- drawer shell (6.4: cell drawer, Ask drawer) ----
@@ -631,6 +633,11 @@ export const zh: Record<keyof typeof en, string> = {
 
   // ---- Queries page (6.5, spec §4: row expand, inline delete, run history, edit drawer) ----
   "saved.details": "详情",
+  "saved.capability_label": "本服务器的检查",
+  "saved.health.unknown": "本服务器没有记录到定期运行，无法确认检查是否在运行。",
+  "saved.health.ok": "调度最近一次运行：{when}。",
+  "saved.health.stale": "调度最近一次运行于{when}，之后没有再运行，定期检查可能已停止。",
+  "saved.health.failed": "调度最近一次运行（{when}）失败。",
   "saved.due_now": "已到运行时间",
   "saved.paused": "已暂停",
   "saved.confirm_delete": "删除这条查询？",

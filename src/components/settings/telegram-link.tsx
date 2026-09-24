@@ -150,10 +150,11 @@ export function TelegramLink({ linked, mock }: TelegramLinkProps) {
         )}
       </div>
 
-      {isLinked && <p className="t-meta text-fg-muted">{t("settings.telegram.linked_hint")}</p>}
+      {/* "Alerts go to your Telegram chat" only where they do: a server with no bot only logs them (UI/UX v1 T20). */}
+      {isLinked && !mock && <p className="t-meta text-fg-muted">{t("settings.telegram.linked_hint")}</p>}
 
-      {/* Why this account cannot be linked here, said once, whether or not Link was pressed. */}
-      {(mock || state.phase === "unavailable") && !isLinked && (
+      {/* Why this account cannot be linked here, or its alerts are only logged, said once, whether or not Link was pressed. */}
+      {(mock || state.phase === "unavailable") && (
         <p className="t-meta text-fg-muted" data-telegram-mock-explain>
           {t("settings.telegram.mock_explain")}
         </p>

@@ -1,3 +1,6 @@
+import { capabilityMessageKey, type WatchCapabilities } from "@awardgrid/core/workspace/watch-capabilities";
+import type { CopyKey } from "@awardgrid/core/workspace/present";
+
 /**
  * What a watch actually does on this platform — the single source of truth for every claim the app
  * and the landing page make about it.
@@ -29,3 +32,25 @@ export const WATCH_CHECKS = {
   /** Not built. Flipping this without building it makes the honesty test stop protecting the copy. */
   inBackground: false,
 } as const;
+
+/**
+ * This platform's watch capabilities, for core's capability sentence (UI/UX v1 T20, A33): checks on open and return,
+ * no scheduled checks, no push. Read from WATCH_CHECKS, so the sentence cannot drift from what is built.
+ */
+export const IOS_WATCH_CAPABILITIES: WatchCapabilities = {
+  checkOnForeground: WATCH_CHECKS.onOpen,
+  scheduledChecks: WATCH_CHECKS.inBackground,
+  pushEnabled: false,
+};
+
+/**
+ * The approved sentence for iOS: core's key from the capabilities, with iOS's own row ("watch.ios", which also says
+ * there are no push alerts) where the capability is foreground only. iOS has no scheduler: were one built, this, the
+ * screen and honesty.test.ts change together, so a scheduled sentence is refused here rather than shown.
+ */
+export function watchCapabilityCopyKey(cap: WatchCapabilities = IOS_WATCH_CAPABILITIES): Extract<CopyKey, "watch.ios" | "watch.unavailable"> {
+  const key = capabilityMessageKey(cap);
+  if (key === "watch.foreground_only") return "watch.ios";
+  if (key === "watch.unavailable") return "watch.unavailable";
+  throw new Error(`No iOS sentence for "${key}": iOS has no scheduler.`);
+}

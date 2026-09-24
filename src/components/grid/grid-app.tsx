@@ -165,13 +165,16 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
     return () => window.clearTimeout(id);
   }, [initialQuery, hasKey, runFind]);
 
-  async function onSubmitText(raw: string) {
+  // The text a parse failure is about: "Let AI read this text" re-sends exactly it, with the person's consent.
+  const [lastText, setLastText] = useState("");
+  async function onSubmitText(raw: string, useLlm = false) {
     inflight.current?.abort();
+    setLastText(raw);
     setPhase("parsing");
     setFailure(null);
     setExportError(null);
     setOpenChip(null);
-    const res = await apiParse(raw, localToday());
+    const res = await apiParse(raw, localToday(), undefined, { useLlm });
     if (!res.ok) {
       // A parse failure keeps the text in the bar and offers the chips instead (spec §3.7).
       setFailure(res);
@@ -344,7 +347,15 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
         disabledTitle={t("grid.toolbar.run_disabled_quota")}
       />
 
-      {failure?.error === "parse" && <ParseFailure failure={failure} onBuildWithChips={buildWithChips} />}
+      {failure?.error === "parse" && (
+        <ParseFailure
+          failure={failure}
+          onBuildWithChips={buildWithChips}
+          // The offer is about the text above: once the bar says something else, it is withdrawn, so what goes to
+          // Anthropic is always what the note describes (T20 review AI-1). Running the new text asks afresh.
+          onUseAi={text.trim() === lastText ? () => void onSubmitText(lastText, true) : undefined}
+        />
+      )}
 
       {query && (
         <ChipRow

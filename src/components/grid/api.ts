@@ -27,6 +27,8 @@ export interface ApiFailure {
   requested?: number;
   /** seatsaero */
   kind?: string;
+  /** parse (UI/UX v1 T20): the server could let the language model read the text, if the person asks. */
+  llm_offer?: boolean;
 }
 
 export type ApiResult<T> = { ok: true; value: T } | ApiFailure;
@@ -87,6 +89,7 @@ async function failureFrom(res: Response): Promise<ApiFailure> {
   if (typeof body.remaining === "number") out.remaining = body.remaining;
   if (typeof body.requested === "number") out.requested = body.requested;
   if (typeof body.kind === "string") out.kind = body.kind;
+  if (body.llm_offer === true) out.llm_offer = true;
   return out;
 }
 
@@ -106,8 +109,12 @@ function json(body: unknown): RequestInit {
   return { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
 }
 
-export function apiParse(text: string, today: string, signal?: AbortSignal): Promise<ApiResult<ParseResponse>> {
-  return request<ParseResponse>("/api/parse", json({ text, today }), signal);
+/**
+ * Parse the text deterministically. `useLlm` is the person's explicit choice to let the language model read it (it
+ * leaves for Anthropic): never set implicitly (UI/UX v1 T20).
+ */
+export function apiParse(text: string, today: string, signal?: AbortSignal, opts: { useLlm?: boolean } = {}): Promise<ApiResult<ParseResponse>> {
+  return request<ParseResponse>("/api/parse", json({ text, today, ...(opts.useLlm ? { use_llm: true } : {}) }), signal);
 }
 
 export function apiFind(query: QueryObject, orientation: Orientation, signal?: AbortSignal): Promise<ApiResult<FindResponse>> {
