@@ -1798,7 +1798,13 @@ step 3's probe mode, §1's two (§1.7) and §2.12's one, each with a key it reje
   evidence the prompt cache works on real requests. That first question also found what no mock could:
   `Route` required `NumDaysOut`, which the live Get Routes omits and the documentation defaults to 0,
   so a search threw away rows two calls had paid for. The schema now defaults it, and `Distance` with
-  it. K2, K4, K5 and K6 have still not run, and no run has been made on a device.
+  it. _Amended again by the rest of that run (§3.5-§3.8):_ K1's four questions ran at a p95 of 31.6 s, so
+  #68's promotion rule is not met; K2's Stop left the committed history untouched and the copy honest,
+  and found two more defects of the same family — Get Trips omits `TaxesCurrency` (`1f47284`), and a
+  stopped question printed zero tokens for a request Anthropic never reported on (`918d1b9`), which was
+  E8's defect in a second place. K2's billing half, K4, K5 and K6 have still not run: the first needs the
+  owner's Console, the next two need a device, and K6 needs the model choice #69 asks for, because
+  `ASK_EFFORT` cannot change without editing a core test.
 
 #### Assumptions register (the docs are silent; each is stated, and each has a check)
 

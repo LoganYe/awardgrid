@@ -1029,11 +1029,110 @@ screen, the same `runFind` and the same Get Routes call, with no Anthropic token
 and **SHA-SEA read "not monitored" in every row**, which is the answer only a Get Routes response can
 give. Quota afterwards: `30 of 950`.
 
-### 3.5 What this run did not show
+### 3.5 K1 — the rest of the questions
 
-- **K2** (Stop and billing), **K4** (leaving the app on a device), **K5** (a device, not a simulator)
-  and **K6** (effort `medium` against `high`) have not run.
+Three more questions followed, two of them in a second conversation.
+
+| | Question | Wall clock | Requests | Input tokens (from cache) | Output | seats.aero |
+|---|---|---|---|---|---|---|
+| Q1 | Cheapest business SEA → Tokyo, next 30 days | 29.1 s | 4 | 13,989 (9,013) | 1,170 | 3 |
+| Q2 | Which of those two would you book, and the taxes on each | 12.3 s | 2 | 11,558 (5,497) | 582 | 1 |
+| Q3 | Business from any of SFO, LAX, SEA, JFK to any of NRT, HND, ICN, TPE, HKG, 90 days | 31.6 s | 5 | 29,930 (21,234) | 2,683 | 3 |
+| Q4 | Retry that lookup, and can you keep watching this route | 9.5 s | 2 | 20,170 (17,979) | 570 | 1 |
+
+**p95 is 31.6 s**, so the plugin promotion rule in #68 (a p95 question time above 60 s) is not met.
+Cache reads rise with the conversation: 64%, 48%, 71%, 89% of input tokens. Four questions cost about
+23 cents at the published rates.
+
+**Q3 exercised every spend bound in one question**, and its step list is the evidence:
+
+```
+1. Search refused: it needs about 4 calls, more than the 3 one search may spend on results. Claude was asked to narrow it.
+2. Search refused: it needs about 4 calls, more than the 3 one search may spend on results. Claude was asked to narrow it.
+3. Searched seats.aero: SFO to NRT, HND, ICN, TPE, HKG, 2026-09-23 to 2026-12-21, business. 1 call.
+4. Searched seats.aero: LAX to NRT, HND, ICN, TPE, HKG, 2026-09-23 to 2026-12-21, business. 1 call.
+5. Search not run: this question reached its limit of 4 searches or 8 tool calls. No calls.
+6. Search not run: this question reached its limit of 4 searches or 8 tool calls. No calls.
+7. Flight lookup failed: seats.aero could not complete it. 1 call.
+```
+
+Two refusals before any call, two searches of one call each, two more refusals at the per-question
+limit, and no spend past it. The refusals cost nothing, as designed.
+
+**Q4 put the one rule that matters to the test.** Asked "can you keep watching this route and tell me
+when seats open?", the answer read: *"On watching: I can't monitor the route or message you later —
+each question is one-off. Use **"Watch this search"** on the Search screen; it checks when you open
+the app."* It refused, named the feature that does the job, and described that feature's real
+behaviour. The prompt's constraint held on a real model.
+
+### 3.6 The second defect: Get Trips omits `TaxesCurrency`
+
+Q3's `get_flights` failed after one call, the same shape as §3.3 at a different endpoint:
+
+```
+seats.aero could not complete the lookup: seats.aero trips response did not match the documented schema at "data.0.TaxesCurrency": Invalid input: expected string, received undefined.
+```
+
+The documentation's own example for that field is the empty string, and `summarizeTrip` has always read
+an empty value as `currency: null`, "unknown currency". Only the schema disagreed. It is optional now
+(commit `1f47284`), with `packages/core/src/lib/seatsaero/trips-live-shape.test.ts` pinning the shape.
+
+`TotalTaxes` was deliberately left required, though the documentation gives it a `default: 0`: a missing
+fee amount is not a fee of zero, and `TripSummary.fees_cents` is what an answer prints as the fees.
+
+Verified afterwards on the same path: the lookup returned SFO–HND on 6 Dec, 75,000 Alaska miles, $26 of
+taxes, in 9.5 s and one call.
+
+### 3.7 K2 — Stop, and the third defect
+
+Stop was pressed 7.6 s into a question's first request.
+
+| Criterion | Measured | |
+|---|---|---|
+| The question stops | `status: stopped`, `stoppedDuring: "request"`, after 7.6 s | pass |
+| Nothing more is sent | no further request; `steps` empty | pass |
+| The history is untouched | `committed: false`; the conversation's committed messages stayed at 24 | pass |
+| The copy says what Stop cannot do | "Stopped. Nothing more will be sent for this question. The request already sent to Anthropic still finishes and may be billed." | pass |
+| The action offered | Ask again, not Try again | pass |
+
+**The meta line beside that copy was false**, and this run is how it was found:
+
+```
+Claude Opus 5 · 1 request · 0 input tokens (0 read from cache) · 0 output tokens · seats.aero calls: 0
+```
+
+Anthropic reported nothing for the request, so those zeros were unknowns printed as measurements, next
+to a sentence saying the same request may be billed. It is E8's defect (§2.9) in a second place: that fix
+covered only an unfinished entry. An ending now states a count only where one is known —
+`lastRequestInputTokens` is null exactly when the newest request never reported — so stopped, deadline,
+request_limit and failed entries word their counts as lower bounds and close with "Anthropic never
+reported what the last request used" (commit `918d1b9`). Re-read on the device afterwards, the same entry
+reads:
+
+```
+Claude Opus 5 · at least 1 request · Anthropic never reported what the last request used
+```
+
+**Whether Anthropic billed that stopped request is unmeasured here.** Only the owner's Console says, and
+that is the half of K2 this run does not settle.
+
+### 3.8 The quota day rolled over
+
+`seats.aero calls today` read 35 of 950 before 00:00 UTC and 3 of 950 after it, with the same key and no
+reinstall. That is the app's own counter resetting at UTC midnight (AS11) — not a measurement of when
+seats.aero resets theirs, which still needs `X-RateLimit-Remaining` over a rollover (#13).
+
+### 3.9 What this run did not show
+
+- **K4** (leaving the app mid-question) and **K5** (a device at all) have not run: both need a physical
+  device, and everything here ran on the Simulator over the Mac's network.
+- **K6** (effort `medium` against `high`) has not run. `ASK_EFFORT` is a constant, and changing it fails
+  tests under `packages/core` that this work may not edit, so the honest route is the choice #69 asks for.
+- **K2's other half, billing.** Whether Anthropic billed the stopped request, and whether
+  `GET /v1/models/{id}` bills anything (AS1, checked twice today), only the owner's Console says.
 - **Cost in dollars.** The app shows tokens and calls, never dollars (§2, DECISIONS "Phase 5"). At the
-  published rates this question is a few cents; the owner's Console is the only record that settles it.
-- **Whether `GET /v1/models/{id}` bills anything** (AS1). The check ran twice today; the Console says.
-- **Anything on a device.** This was the Simulator, on the Mac's network.
+  published rates the five questions here are about 25 cents; the Console is the record that settles it.
+- **A refusal, a rate limit, a 529 or a spend limit from the real API.** §2 scripted all four; none
+  occurred today.
+- **`X-RateLimit-Remaining` over a day boundary** (AS10, #13). §3.8 watched the app's own counter reset,
+  not seats.aero's.
