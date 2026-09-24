@@ -28,7 +28,7 @@ Scope verified: **unit + iOS browser mock** (vitest; Playwright against the fixt
 |---|---|---|
 | `pnpm typecheck` | 0 | |
 | `pnpm lint` | 0 | 0 errors, the pre-existing `grid-table.tsx` warning |
-| `pnpm test` | 0 | root 919 passed / 2 skipped · core 799 · ios (T04 files: 18 primitive tests) · no existing test file edited by T04 |
+| `pnpm test` | 0 | root 919 passed / 2 skipped · core 799 · ios green (count with T05's first tests: 642; T04 alone: 595, below) · no existing test file edited by T04 |
 | `pnpm --filter @awardgrid/ios build` | 0 | fixture-free bundle check passes (now also guards the gallery) |
 | `pnpm build:landing` | 0 | |
 | `pnpm build` (worktree `.next` only) | 0 | the main checkout's `.next/BUILD_ID` unchanged (Sep 23 19:13) |
@@ -50,7 +50,18 @@ Dark primary is `#63D2D6` with `#102326` text; in both themes every primitive's 
 
 ## Isolation check
 
-(filled in after the commit)
+The commit `b000c03` alone, in a throwaway `git worktree` of it (node_modules cloned from the worktree, nothing installed), without any T05 file:
+
+| Command | Exit | Result |
+|---|---|---|
+| `pnpm typecheck` | 0 | |
+| `pnpm lint` | 0 | the pre-existing warning only |
+| `pnpm --filter @awardgrid/ios test` | 0 | 27 files, 595 passed |
+| `pnpm exec vitest run src/styles` | 0 | 90 passed (token guards, old and new) |
+| `pnpm --filter @awardgrid/ios build` | 0 | fixture-free bundle check passes |
+| `pnpm exec playwright test --config=playwright.uiux.config.ts` | 0 | 35 passed (harness 10 + foundations 25) |
+
+Raw log: `evidence/raw/t04-isolation.log` (git-ignored). The worktree was removed afterwards.
 
 ## Not verified here
 
