@@ -8,7 +8,7 @@ import path from "node:path";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Button, Chip, IconButton, Notice, SegmentedControl, Sheet, TextField, applyThemePreference, isThemePreference } from "./index";
+import { Button, Chip, IconButton, Notice, SegmentedControl, Sheet, Switch, TextField, applyThemePreference, isThemePreference } from "./index";
 
 const html = (node: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(node);
 
@@ -132,6 +132,15 @@ describe("SegmentedControl", () => {
     const missing = html(h(SegmentedControl<"a" | "b" | "c">, { label: "Cabin", value: "z" as "a", onChange: () => {}, options }));
     expect(missing).not.toContain('aria-checked="true"');
     expect(missing.match(/tabindex="0"/g)).toHaveLength(1);
+  });
+});
+
+describe("Switch", () => {
+  it("is a button with role switch that reports its state, with a decorative track", () => {
+    const on = html(h(Switch, { checked: true, onChange: () => {}, "aria-label": "Nonstop only" }));
+    expect(on).toMatch(/<button[^>]*type="button"[^>]*role="switch"[^>]*aria-checked="true"/);
+    expect(on).toContain('class="ag-switch-track" aria-hidden="true"');
+    expect(html(h(Switch, { checked: false, onChange: () => {}, "aria-label": "x" }))).toContain('aria-checked="false"');
   });
 });
 

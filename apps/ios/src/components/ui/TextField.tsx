@@ -28,7 +28,7 @@ export function TextField({ label, help, error, id, className, ...rest }: TextFi
         {...rest}
         id={inputId}
         className={["ag-input", className].filter(Boolean).join(" ")}
-        aria-invalid={error ? true : undefined}
+        aria-invalid={error ? true : rest["aria-invalid"]}
         aria-describedby={describedBy}
       />
       {error ? (

@@ -15,15 +15,14 @@ Never in this checkout: `pnpm build`, `next build`, `scripts/check-no-secrets-in
 ## Where things stand
 
 - Branch `uiux/quiet-precision-v1` in the worktree above, one local commit per finished task (see `git log`). Nothing pushed.
-- T01–T05 verified (M1). T06 is next: see STATUS "Current next action".
+- T01–T06 verified. T07 is next: see STATUS "Current next action".
 - If the worktree's `node_modules` is missing: `for d in node_modules apps/ios/node_modules packages/core/node_modules sites/landing/node_modules; do cp -Rc ../awardgrid/$d $d; done`; vendor: `rsync -a --exclude=.git ../awardgrid/vendor/travel-hacking-toolkit/ vendor/travel-hacking-toolkit/`; then `pnpm build:plugin`.
 - Open owner decision: restart `com.awardgrid.app` to fix the live stylesheet 404 (STATUS.md).
 
 ## Next commands
 
 ```sh
-# T06 red test (create packages/core/src/lib/workspace/query-editor.test.ts first)
-pnpm --filter @awardgrid/core exec vitest run src/lib/workspace/query-editor.test.ts
+# T07: read plan 02 T07 and docs/04 S01 first; write its red test before any code
 # Evidence screenshots: run only the task's own spec with UIUX_EVIDENCE=1 (the harness spec rewrites T01's screenshots)
 UIUX_EVIDENCE=1 pnpm exec playwright test --config=playwright.uiux.config.ts e2e/uiux/<task>.spec.ts
 # UI/UX browser suite (fixture host on 127.0.0.1:4310)

@@ -89,3 +89,19 @@ docs/03 §3, copy `run.inflight` / `run.old`. While a new search runs, the shown
 ## U-020 · A queued run that a newer run superseded is not sent
 
 docs/03 §3; T05 review. The workspace aborts a run's signal as soon as a newer run starts; the production search port runs searches one at a time and skips a queued one whose signal is aborted, before any request (its answer could only be dropped). A request already sent cannot be recalled (docs/PHASE0.md §3), so a superseded run that was already under way still completes and may cost calls; the quota counter records them. The run handle's `signal` and `meta` are additive fields on the core `SearchRun` type.
+
+## U-021 · The query editor is a full-height route; its words live in one labels file until T11
+
+docs/04 S02, plan 02 T06. `/edit` is a top-level route outside the tab chrome (`FullPage`, with its own `<main>`): a 52 pt header with Back, the fields in the spec's order, and a sticky 48 pt "Find award options" (copy `query.submit`) above the safe area. It shows no award data, so it carries no data attribution. The shell has no locale until T11, so every editor string is English in `apps/ios/src/components/query/labels.ts` (the honesty test reads it), each marked with its approved copy key where one exists (`query.submit`, `query.discard`, `query.keep_editing`, `help.mixed`, `help.program`); T11 moves them into the i18n dictionaries with the Chinese strings. Core's `cabinName` and `placeName` already answer in both languages.
+
+## U-022 · A query built in the editor carries a sentence that describes it
+
+A QueryObject's `raw_text` is shown as the search's text (the Search screen's box, Ask's "last search"). After fields are edited, the words originally typed no longer describe the query, so the editor sets `raw_text = describeQuery(query, dateRule)` ("HKG to SEA, next 30 days, business, nonstop, on Air Canada Aeroplan, under 80000 miles"). It says everything the deterministic parser can read back, and a rolling rule stays "next N days". Whether a text does read back exactly is decided by `textReproducesQuery` (U-024): the mixed-cabin rule and dynamic pricing have no words, and a lone airport that shares its city's code reads back as the city.
+
+## U-023 · Places are named from the seed's aliases; dates use the platform date picker
+
+The places seed (packages/core/data/places.json) has metro → airport lists and zh/en aliases but no airport dataset. An option or chip is named by the airport's own alias where one exists (Narita, 浦东), else by its metro (JFK → New York); a metro is offered with its airports spelled out ("All airports: NRT, HND") and adds all of them. A 3-letter code the seed does not know can be added as typed. Fixed dates use `<input type="date">` (the iOS wheel picker on a device): a value that is not a calendar date cannot be entered there, and core's `resolveDraft` checks the calendar anyway. Relative days are counted in UTC from today, including today, and the editor shows the exact range. The shared primitives gain a `Switch` (button, `role="switch"`, 48 × 28 track in a 44 pt target; on = thumb moved and accent fill).
+
+## U-024 · Run and Watch use the box text only when it reproduces the search on screen
+
+T06 review. Run re-reads the Search box, and a watch stores it as text (watches become structured in T14). For a search whose text cannot reproduce it — `textReproducesQuery(text, query, day it was made)` is false — reading the text again would silently run a different search. So when the box is unedited and does not reproduce the shown search, Run runs that search's structured query (`rerunShown`), and "Watch this search" is disabled with the reason stated. Reading "as of the day it was made" keeps typed rolling text ("next 30 days") faithful: re-running it later rolls, as the words say.

@@ -10,7 +10,8 @@
  * pass without testing anything (docs/02 D10, no silent fallback).
  */
 import availability from "@awardgrid/core/test-fixtures/uiux/availability-rows.json";
-import { fixtureSnapshot } from "@awardgrid/core/test-fixtures/uiux/factory";
+import { fixtureQuery, fixtureSnapshot } from "@awardgrid/core/test-fixtures/uiux/factory";
+import { describeQuery } from "@awardgrid/core/workspace/query-editor";
 import manifest from "@awardgrid/core/test-fixtures/uiux/scenarios.json";
 import { DEFAULT_PREFERENCES, WORKSPACE_NAMESPACE } from "../src/workspace/workspace-store";
 
@@ -156,12 +157,22 @@ function quotaAtSoftLimit(now: Date): string {
 
 /**
  * A workspace saved by an earlier launch, holding one snapshot of the synthetic query made two hours before the
- * scenario's clock, with the scenario's rows. Written in the device format: SlotFileStorage's first slot,
+ * scenario's clock, with the scenario's rows. Its text is the sentence the editor writes for that query, so the text
+ * on screen describes the saved search exactly (the synthetic "…October…" text would read as 18–31 October on the
+ * day the snapshot was made, not the 1–30 October it holds). Written in the device format: SlotFileStorage's first slot,
  * `{generation, value}`, value being the WorkspaceStore's saved shape. The workspace spec proves the app restores it.
  */
 function savedWorkspace(rows: readonly SyntheticRow[], now: Date): Record<string, string> {
   const wanted = new Set(rows.map((r) => `${r.program}|${r.source_id}|${r.date}|${r.cabin}`));
-  const base = fixtureSnapshot({ id: "fixture-previous-snapshot", revision: 1, createdAt: new Date(now.getTime() - 2 * 3_600_000).toISOString(), receipt: { sentCalls: 2, fromCache: false } });
+  const query = fixtureQuery();
+  const described = { ...query, raw_text: describeQuery(query) };
+  const base = fixtureSnapshot({
+    id: "fixture-previous-snapshot",
+    revision: 1,
+    query: described,
+    createdAt: new Date(now.getTime() - 2 * 3_600_000).toISOString(),
+    receipt: { sentCalls: 2, fromCache: false },
+  });
   const snapshot = { ...base, rows: base.rows.filter((r) => wanted.has(`${r.value.program}|${r.value.source_id}|${r.value.date}|${r.value.cabin}`)) };
   const value = { schemaVersion: 1, revision: 1, displayedId: snapshot.id, previousId: null, preferences: DEFAULT_PREFERENCES, snapshots: [snapshot] };
   return { [`${WORKSPACE_NAMESPACE}.a.json`]: JSON.stringify({ generation: 1, value }) };

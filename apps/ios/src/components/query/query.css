@@ -1,0 +1,231 @@
+/*
+ * The query editor (UI/UX v1 T06; docs/04 S02). Tokens only: a 52 pt header, 16 pt gutters, 48 pt fields and
+ * button, 56 pt place options (a 44 touch target plus 12), 44 pt rows.
+ *
+ * The page is exactly the viewport's height and only its body scrolls, between a header and a footer that never
+ * move: `position: sticky` cannot be used here, because the shell's `html, body { overflow-x: hidden }` makes <body>
+ * a scroll container that never scrolls, and sticky children of it never stick (T06 review).
+ */
+
+.query-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--ag-canvas);
+  color: var(--ag-text);
+}
+
+.query-editor-header {
+  flex: none;
+  z-index: var(--ag-z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: calc(var(--ag-header-height) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--ag-space-2) 0;
+  border-bottom: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+.query-editor-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.query-editor-title:focus {
+  outline: none;
+}
+
+.query-editor-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.query-editor-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-5);
+  padding: var(--ag-space-4) var(--ag-gutter) var(--ag-space-6);
+}
+
+.query-editor-intro {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.query-field-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ag-space-2);
+}
+
+/* ---- airports ---- */
+
+.query-airports {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  padding: var(--ag-space-1) var(--ag-space-3);
+  border: 1px solid var(--ag-control-border);
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-surface);
+}
+
+.query-airports-invalid {
+  border-color: var(--ag-danger);
+}
+
+/* The field's box carries the border; the input inside it is borderless but keeps the focus ring. */
+.query-airports .query-airport-input {
+  min-height: var(--ag-touch-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.query-airport-chip .ag-chip-face {
+  border-color: transparent;
+  background: var(--ag-accent-soft);
+  color: var(--ag-accent);
+}
+
+.query-options {
+  margin: 0;
+  padding: var(--ag-space-1) 0;
+  max-height: calc((var(--ag-touch-target) + var(--ag-space-3)) * 5);
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-surface);
+  box-shadow: var(--ag-shadow-popover);
+}
+
+.query-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-3);
+  min-height: calc(var(--ag-touch-target) + var(--ag-space-3));
+  padding: 0 var(--ag-space-3);
+  cursor: pointer;
+}
+
+/* The option Enter would pick: a 2 pt accent ring inside the row, and the tint as a second cue. */
+.query-option[aria-selected="true"] {
+  background: var(--ag-accent-soft);
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+.query-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.query-option-title {
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.query-option-detail,
+.query-option-empty {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.query-option-empty {
+  padding: var(--ag-space-3);
+}
+
+.query-option-code {
+  flex: none;
+  font-weight: var(--ag-weight-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- dates ---- */
+
+.query-date-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: var(--ag-space-3);
+}
+
+/* ---- rows: switches and openers ---- */
+
+.query-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-3);
+  min-height: var(--ag-touch-target);
+  padding: var(--ag-space-2) 0;
+  border-bottom: 1px solid var(--ag-divider);
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.query-row-button {
+  width: 100%;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  color: var(--ag-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.query-row-button:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.query-row-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  color: var(--ag-text-secondary);
+}
+
+/* ---- footer ---- */
+
+.query-more {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+.query-more > h2 {
+  margin: 0;
+}
+
+.query-editor-footer {
+  flex: none;
+  z-index: var(--ag-z-sticky);
+  padding: var(--ag-space-3) var(--ag-gutter) calc(var(--ag-space-3) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+.query-editor-note {
+  margin: var(--ag-space-2) 0 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  text-align: center;
+  color: var(--ag-text-secondary);
+}

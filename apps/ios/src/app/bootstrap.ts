@@ -57,6 +57,11 @@ export interface AppServices {
    * the shape the screen already renders. A parse failure, or no key, never starts a run.
    */
   searchText(text: string): Promise<ApiResult<FindValue>>;
+  /**
+   * Run the shown search again as its structured query, labelled with its text: for a search whose text cannot
+   * reproduce it (a mixed-cabin rule, dynamic pricing, a single airport that shares its city's code).
+   */
+  rerunShown(): Promise<ApiResult<FindValue>>;
   /** The last successful grid search: a view of the workspace's shown snapshot, for Ask's "Include my last search". */
   lastSearch: LastSearchStore;
   /** How the last workspace save went; null before the first. A failed save kept the previous file (docs/02 D04). */
@@ -271,8 +276,18 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   const searchText = async (text: string): Promise<ApiResult<FindValue>> => {
     const parsed = await engine.parseText(text, await readKey(keys));
     if (!parsed.ok) return parsed;
-    const typed: TypedSearch = { text, parsed: parsed.value };
-    const outcome = await workspace.run(parsed.value.query, typed);
+    return runTyped({ text, parsed: parsed.value });
+  };
+
+  const rerunShown = async (): Promise<ApiResult<FindValue>> => {
+    const shown = workspace.getState().displayedSnapshot;
+    if (!shown) return { ok: false, status: 400, error: "invalid_body", message: "There is no search on screen to run again." };
+    const text = lastSearch.get()?.text ?? shown.query.raw_text;
+    return runTyped({ text, parsed: { query: shown.query, warnings: [], notices: [] } });
+  };
+
+  const runTyped = async (typed: TypedSearch): Promise<ApiResult<FindValue>> => {
+    const outcome = await workspace.run(typed.parsed.query, typed);
     const answer = searchPort.takeResult(outcome.runId);
     if (outcome.kind === "published" && answer?.ok) {
       // The parser's own warnings and notices lead, as they did when the screen called engine.search.
@@ -280,8 +295,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
         ok: true,
         value: {
           ...answer.value,
-          warnings: [...parsed.value.warnings, ...answer.value.warnings],
-          notices: [...parsed.value.notices, ...answer.value.notices],
+          warnings: [...typed.parsed.warnings, ...answer.value.warnings],
+          notices: [...typed.parsed.notices, ...answer.value.notices],
         },
       };
     }
@@ -307,6 +322,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     ask,
     workspace,
     searchText,
+    rerunShown,
     lastSearch,
     lastWorkspaceSave: () => lastWorkspaceSave,
     now,

@@ -309,6 +309,27 @@ test("sheet: rendered into <body>, the page behind is inert, and Esc works after
   await expect(trigger).toBeFocused();
 });
 
+test("switch: a 44 target named by its label; on moves the thumb and fills the track, off does neither", async ({ page }) => {
+  await openScenario(page, "foundations");
+  const toggle = page.getByRole("switch", { name: "Nonstop only (sample)" });
+  const b = await box(toggle);
+  expect(b.width).toBeGreaterThanOrEqual(44);
+  expect(b.height).toBeGreaterThanOrEqual(44);
+  const track = toggle.locator(".ag-switch-track");
+  const thumb = toggle.locator(".ag-switch-thumb");
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  expect(await style(track, "background-color")).toBe(rgb(await token(page, "--ag-control-border")));
+  const offX = (await box(thumb)).x;
+  // The label names the switch and clicking it toggles it.
+  await page.getByText("Nonstop only (sample)").click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await expect.poll(async () => style(track, "background-color")).toBe(rgb(await token(page, "--ag-accent")));
+  await expect.poll(async () => (await box(thumb)).x - offX).toBeGreaterThan(15);
+  await toggle.focus();
+  await page.keyboard.press("Space");
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+});
+
 test("reduced motion: every duration is zero", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openScenario(page, "foundations");

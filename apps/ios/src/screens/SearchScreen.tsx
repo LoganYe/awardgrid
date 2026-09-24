@@ -26,13 +26,40 @@
  * and coming back mid-search shows the same thing. When the shown snapshot changes, the text box follows it unless
  * the person has edited the text since; results whose query differs from the text box say which query they answer.
  */
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Link, useOutletContext } from "react-router";
+import { textReproducesQuery } from "@awardgrid/core/workspace/query-editor";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Link, useLocation, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { ASK_ABOUT_SEARCH } from "../ask/labels";
 import type { ApiFailure, QuotaSnapshotView } from "../search/search";
 import { GridTable } from "../components/GridTable";
-import { Notice } from "../components/ui";
+import { EDITOR } from "../components/query/labels";
+import { Button, Notice } from "../components/ui";
+import { RETURN_FOCUS } from "./QueryEditorScreen";
+
+/**
+ * Why a run failed, from the workspace's run state, for a run this screen did not start itself (the query editor)
+ * or after the screen was left and opened again. A run this screen started shows the engine's own message instead.
+ */
+function runFailureText(code: string): string {
+  switch (code) {
+    case "no_key":
+      return "Add your seats.aero Pro API key in Settings.";
+    case "quota":
+      return "Not enough seats.aero calls are left today for this search. It was not sent.";
+    case "network":
+      return "seats.aero did not answer in time. The request may still have used a call.";
+    case "seatsaero":
+      return "seats.aero returned an error for this search.";
+    case "invalid_query":
+      return "This search's conditions are not valid, so it was not sent.";
+    default:
+      return "The search could not be completed.";
+  }
+}
+
+/** A watch keeps a search as text; this says why a search whose text cannot reproduce it cannot be watched yet. */
+const WATCH_NEEDS_TEXT = "A watch keeps a search as its text, and this search has conditions its text cannot hold, so it cannot be watched yet.";
 
 const EXAMPLES = [
   "HKG, SHA to SEA, next 30 days, business and first",
@@ -73,8 +100,17 @@ export function SearchScreen() {
   }
   // Local only while this screen's own request is being prepared or saved; the run itself is the workspace's.
   const [busy, setBusy] = useState(false);
-  // The last attempt's failure message, for the attempt made from this screen.
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  // The last attempt's failure message, for the attempt made from this screen, with the workspace revision it
+  // belongs to: a later run (from the editor, say) makes it stale.
+  const [attempt, setAttempt] = useState<{ error: ApiFailure; revision: number } | null>(null);
+  const failure = attempt && attempt.revision === workspace.revision ? attempt.error : null;
+  const location = useLocation();
+  // Whether the text box's words, read again, give the search on screen (as read on the day it was made).
+  const madeOn = workspace.displayedSnapshot?.createdAt.slice(0, 10) ?? null;
+  const reproduces = useMemo(
+    () => (shown && madeOn ? textReproducesQuery(shown.text, shown.value.query, madeOn) : false),
+    [shown, madeOn],
+  );
   const [quota, setQuota] = useState<QuotaSnapshotView | null>(null);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [watchMessage, setWatchMessage] = useState<string | null>(null);
@@ -84,6 +120,18 @@ export function SearchScreen() {
     void services.engine.quotaView().then(setQuota);
   }, [services]);
 
+  // A run that settles — from this screen or from the editor — may have spent calls: read the counter again.
+  const settled = workspace.run.kind === "finished" || workspace.run.kind === "failed" ? workspace.run.runId : null;
+  useEffect(() => {
+    if (settled) void services.engine.quotaView().then(setQuota);
+  }, [services, settled]);
+
+  // Back from the editor: focus returns to "Edit search".
+  const returnFocus = (location.state as { focus?: string } | null)?.focus;
+  useEffect(() => {
+    if (returnFocus === RETURN_FOCUS) document.getElementById(RETURN_FOCUS)?.focus();
+  }, [returnFocus]);
+
   const run = useCallback(async () => {
     setBusy(true);
     setWatchMessage(null);
@@ -91,15 +139,17 @@ export function SearchScreen() {
       // Only a search that answered becomes the last search (the workspace's shown snapshot): Ask describes it to
       // Claude, and this screen reopens on it.
       setEdited(false);
-      const res = await services.searchText(text);
-      setFailure(res.ok ? null : res);
+      // Unedited words that cannot reproduce the search on screen run that search itself, not a re-reading of them.
+      const again = shown !== null && text.trim() === shown.text.trim() && !reproduces;
+      const res = again ? await services.rerunShown() : await services.searchText(text);
+      setAttempt(res.ok ? null : { error: res, revision: services.workspace.getState().revision });
       setQuota(await services.engine.quotaView());
       // A search is the moment worth persisting: it is the only thing that spends quota.
       await services.persist();
     } finally {
       setBusy(false);
     }
-  }, [services, text]);
+  }, [services, text, shown, reproduces]);
 
   /**
    * Watch the search on screen, as it was typed. The TEXT is stored, not the parsed dates, so "next 30 days"
@@ -178,18 +228,20 @@ export function SearchScreen() {
           {searching ? "Searching…" : "Run"}
         </button>
         {/* No cancel button, on purpose — see the note at the top of this file. */}
+        {/* Change the conditions field by field, with no AI: the query editor (UI/UX v1 T06). */}
+        {running ? (
+          <Button disabled disabledReason={EDITOR.editWhileRunning}>
+            {EDITOR.editSearch}
+          </Button>
+        ) : (
+          <Link id={RETURN_FOCUS} to="/edit" className="ag-button">
+            {EDITOR.editSearch}
+          </Link>
+        )}
         {value ? (
-          <button
-            onClick={() => void watchThis()}
-            style={{
-              padding: "9px 14px",
-              borderRadius: "var(--radius-control)",
-              border: "1px solid var(--line)",
-              background: "transparent",
-            }}
-          >
+          <Button onClick={() => void watchThis()} disabled={!reproduces} disabledReason={reproduces ? null : WATCH_NEEDS_TEXT}>
             Watch this search
-          </button>
+          </Button>
         ) : null}
         {value ? (
           <Link to="/ask" className="ag-button">
@@ -235,7 +287,12 @@ export function SearchScreen() {
         </Callout>
       ) : null}
 
-      {failure ? <Callout tone="danger">{failure.message ?? failure.error}</Callout> : null}
+      {failure ? (
+        <Callout tone="danger">{failure.message ?? failure.error}</Callout>
+      ) : workspace.run.kind === "failed" ? (
+        // A run this screen did not start (the editor), or one from before the screen was opened again.
+        <Callout tone="danger">{runFailureText(workspace.run.code)}</Callout>
+      ) : null}
 
       {value && running ? (
         <Notice tone="info" live>

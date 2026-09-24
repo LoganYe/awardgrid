@@ -4,7 +4,7 @@
  * INSTEAD of the app, and the production bundle check fails on this file's markers.
  */
 import { useState } from "react";
-import { Button, Chip, IconButton, Notice, SegmentedControl, Sheet, TextField } from "../src/components/ui";
+import { Button, Chip, IconButton, Notice, SegmentedControl, Sheet, Switch, TextField } from "../src/components/ui";
 
 type View = "list" | "calendar" | "matrix";
 type Cabin = "economy" | "premium" | "business";
@@ -21,6 +21,7 @@ export function FoundationsGallery() {
   const [sort, setSort] = useState<Sort>("miles");
   const [vanishing, setVanishing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [nonstop, setNonstop] = useState(false);
   return (
     <main data-testid="foundations-page" className="fixture-foundations">
       <h1 className="fixture-foundations-title">Foundations (fixture, test only)</h1>
@@ -88,6 +89,15 @@ export function FoundationsGallery() {
             { value: "business", label: "Business and first" },
           ]}
         />
+      </section>
+
+      <section className="fixture-foundations-group" aria-label="Switch">
+        <div className="fixture-foundations-row">
+          <label id="switch-sample-label" htmlFor="switch-sample">
+            Nonstop only (sample)
+          </label>
+          <Switch id="switch-sample" aria-labelledby="switch-sample-label" checked={nonstop} onChange={setNonstop} />
+        </div>
       </section>
 
       <section className="fixture-foundations-group" aria-label="Fields">

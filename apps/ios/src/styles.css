@@ -12,6 +12,7 @@
 /* Quiet Precision (UI/UX v1): the --ag-* tokens and the base controls built on them. */
 @import "@awardgrid/tokens/precision.css";
 @import "./components/ui/ui.css";
+@import "./components/query/query.css";
 
 /*
  * One palette on screen while the shell moves to Quiet Precision (UI/UX v1 T04, DECISIONS U-012). The screens not yet

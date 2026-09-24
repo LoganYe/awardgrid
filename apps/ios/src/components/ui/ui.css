@@ -325,6 +325,60 @@
   font-weight: var(--ag-weight-strong);
 }
 
+/* ---- switch: a 48 × 28 track in a 44 target; on = thumb moved AND accent fill ---- */
+
+.ag-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ag-touch-target);
+  min-height: var(--ag-touch-target);
+  padding: 0;
+  border: 0;
+  border-radius: var(--ag-radius-control);
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ag-switch-track {
+  position: relative;
+  inline-size: var(--ag-space-12);
+  block-size: calc(var(--ag-space-6) + var(--ag-space-1));
+  border-radius: var(--ag-radius-pill);
+  background: var(--ag-control-border);
+  transition: background-color var(--ag-motion-feedback) var(--ag-ease);
+}
+
+.ag-switch-thumb {
+  position: absolute;
+  top: calc(var(--ag-space-1) / 2);
+  left: calc(var(--ag-space-1) / 2);
+  inline-size: var(--ag-space-6);
+  block-size: var(--ag-space-6);
+  border-radius: var(--ag-radius-pill);
+  background: var(--ag-surface);
+  transition: transform var(--ag-motion-feedback) var(--ag-ease);
+}
+
+.ag-switch[aria-checked="true"] .ag-switch-track {
+  background: var(--ag-accent);
+}
+
+.ag-switch[aria-checked="true"] .ag-switch-thumb {
+  transform: translateX(calc(var(--ag-space-12) - var(--ag-space-6) - var(--ag-space-1)));
+}
+
+.ag-switch:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.ag-switch:disabled .ag-switch-track {
+  background: var(--ag-divider);
+}
+
 /* ---- text fields ---- */
 
 .ag-field {
@@ -499,6 +553,7 @@ textarea.ag-input {
 
 .ag-button:focus-visible,
 .ag-icon-button:focus-visible,
+.ag-switch:focus-visible,
 .ag-segment:focus-visible,
 .ag-input:focus-visible,
 .ag-sheet-title:focus-visible {

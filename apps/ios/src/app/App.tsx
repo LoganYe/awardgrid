@@ -15,6 +15,7 @@ import { NavLink, Outlet, RouterProvider, createHashRouter } from "react-router"
 import { type AppServices, type BootstrapOptions, bootstrap } from "./bootstrap";
 import { askNavLabel } from "../ask/labels";
 import { AskScreen } from "../screens/AskScreen";
+import { QueryEditorScreen } from "../screens/QueryEditorScreen";
 import { SearchScreen } from "../screens/SearchScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { WatchesScreen } from "../screens/WatchesScreen";
@@ -54,6 +55,18 @@ function useAskRunning(services: AppServices): boolean {
 }
 
 /** The header with its nav, the screen, and the footer. Exported for app-chrome.test.ts. */
+/**
+ * A full-height page outside the tab chrome (UI/UX v1 T06: the query editor, docs/04 S02). It shows no award data,
+ * so it carries no data attribution; the screens it returns to do.
+ */
+export function FullPage({ services }: { services: AppServices }) {
+  return (
+    <main>
+      <Outlet context={services} />
+    </main>
+  );
+}
+
 export function Chrome({ services }: { services: AppServices }) {
   const unseen = useUnseenCount(services);
   const asking = useAskRunning(services);
@@ -178,6 +191,11 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
     () =>
       services
         ? createHashRouter([
+            {
+              path: "/edit",
+              element: <FullPage services={services} />,
+              children: [{ index: true, element: <QueryEditorScreen /> }],
+            },
             {
               path: "/",
               element: <Chrome services={services} />,

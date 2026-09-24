@@ -9,6 +9,8 @@ import { evidenceShot, openScenario, requestLog } from "./helpers";
 import { expect, test } from "./test";
 
 const SEARCH_TEXT = "Synthetic HKG to SEA October business and first";
+/** The saved snapshot's text in failed-old / inflight-old: the editor's sentence for the synthetic query. */
+const SAVED_TEXT = "HKG to SEA, 2026-10-01 to 2026-10-30, business and first, on Air Canada Aeroplan";
 
 async function run(page: import("@playwright/test").Page, text = SEARCH_TEXT) {
   await page.locator("#q").fill(text);
@@ -37,11 +39,11 @@ test("failed-old: a failed new search keeps the previous results, names their qu
   await expect(grid(page).getByText("75,000")).toBeVisible();
   await expect(page.getByText(/^Saved on this device/)).toBeVisible();
   // The text box holds the query that failed; the results say which query they answer.
-  await expect(page.getByText(`Results for “${SEARCH_TEXT}”`)).toBeVisible();
+  await expect(page.getByText(`Results for “${SAVED_TEXT}”`)).toBeVisible();
   // Watching watches the search on screen, not the one that failed.
   await page.getByRole("button", { name: "Watch this search" }).click();
   await expect(page.getByText("Watching this search.", { exact: false })).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem("uiux-fixture:files:watches.json") ?? "")).toContain(SEARCH_TEXT);
+  expect(await page.evaluate(() => localStorage.getItem("uiux-fixture:files:watches.json") ?? "")).toContain(SAVED_TEXT);
   const log = await requestLog(page);
   expect(log.seats).toBeGreaterThanOrEqual(1);
   expect(log.anthropic).toBe(0);

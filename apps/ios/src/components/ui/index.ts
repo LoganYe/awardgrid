@@ -6,5 +6,6 @@ export { IconButton, type IconButtonProps, type IconButtonVariant } from "./Icon
 export { Notice, type NoticeProps, type NoticeTone } from "./Notice";
 export { SegmentedControl, type SegmentedControlProps, type SegmentedOption } from "./SegmentedControl";
 export { Sheet, type SheetProps } from "./Sheet";
+export { Switch, type SwitchProps } from "./Switch";
 export { TextField, type TextFieldProps } from "./TextField";
 export { THEME_PREFERENCES, applyThemePreference, isThemePreference, type ThemePreference } from "./theme";
