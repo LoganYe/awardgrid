@@ -182,7 +182,8 @@ test("in Chinese, the parts still in English say so: the text search and the mat
   await expect(page.getByRole("navigation", { name: "主导航" })).toBeVisible();
   await openScenario(page, "missing-values", "ios", { lang: "zh" });
   await page.getByTestId("results-view").getByText("矩阵", { exact: true }).click();
-  await expect(page.locator(".ag-results-matrix")).toHaveAttribute("lang", "en");
+  // The grid is English until T09; the notes around it are the screen's own language.
+  await expect(page.locator(".ag-results-matrix table.ag-grid").locator("xpath=ancestor::*[@lang][1]")).toHaveAttribute("lang", "en");
   expect((await requestLog(page)).seats).toBe(0);
 });
 

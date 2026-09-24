@@ -16,8 +16,8 @@ The 38 requirements from the handoff pack (`packages/core/test/fixtures/uiux/acc
 | A10 | T06 | Query | Manual one-field change needs no LLM; typing/selecting months makes zero API requests | browser network | verified (iOS browser mock; "no LLM" also by code path) | [T06](evidence/T06-query-editor.md) |
 | A11 | T06 | Query | Strict dates, leap days, 92-span cap and explicit relative clock behave as fixtures specify | unit + browser | verified (unit + iOS browser mock) | [T06](evidence/T06-query-editor.md) |
 | A12 | T07 | UX | 390 default artboard uses 244 pre-result stack, ≥164 card, 16 gutter and safe area; no clipped core data | geometry + visual | verified in iOS browser mock (390 and 320, light/dark, en/zh); safe area on a notched device unverified | [T07](evidence/T07-mobile-results.md) |
-| A13 | T08 | Data | List/calendar/matrix use same snapshot and effective filter; every min maps to displayed support rows | unit + integration | pending | — |
-| A14 | T08 | Network | Views/sort/local filter change send zero requests and preserve selection | browser network | pending | — |
+| A13 | T08 | Data | List/calendar/matrix use same snapshot and effective filter; every min maps to displayed support rows | unit + integration | verified in unit + iOS browser mock (List, Calendar; Matrix from the same rows — the pro matrix is T09) | [T08](evidence/T08-projection-views.md) |
+| A14 | T08 | Network | Views/sort/local filter change send zero requests and preserve selection | browser network | verified in iOS browser mock (request log 0 for view, sort, calendar cabin, Show all; selection kept; filter seeded from a saved workspace, no iOS control) | [T08](evidence/T08-projection-views.md) |
 | A15 | T09 | Access | One grid tab stop; arrow/home/end/enter/escape; virtualized focus and total indices stay accurate | keyboard + screen-reader | pending | — |
 | A16 | T09 | Visual | Mobile matrix settles to full numeric columns; no cropped price suffixes | touch + browser geometry | pending | — |
 | A17 | T10 | Network | Only explicit trip-load spends; hover/back/cache-read do not; getTrips uses shared validated refs | integration | pending | — |

@@ -8,12 +8,11 @@
  * digits in both languages ("75,000"). Sentences with an approved key in the handoff copy (fixtures/copy.zh-en.json)
  * use its text.
  */
-import { compareRows } from "../grid/ranking";
 import { type Cabin, DEFAULT_MIN_CABIN_PCT, type QueryObject, type SortBy } from "../query/schema";
 import { SOURCE_NAMES } from "../seatsaero/types";
 import { cabinName } from "./query-editor";
 import { FUTURE_SKEW_MS, ageMs, feesState, knownSeats, parseInstant } from "./semantics";
-import type { CoverageEvidence, CoverageSlice, ISODate, ISOInstant, TimeEvidence, WorkspaceRow } from "./types";
+import type { CoverageEvidence, CoverageSlice, ISODate, ISOInstant, ProjectedDay, TimeEvidence, WorkspaceRow } from "./types";
 
 export type Locale = "en" | "zh";
 
@@ -24,6 +23,7 @@ export const COPY = {
   "result.partial": { en: "Results are incomplete.", zh: "结果不完整。" },
   "result.unknown": { en: "Coverage completeness is unknown.", zh: "完整性未知。" },
   "result.unmonitored": { en: "These routes are not monitored by the data source.", zh: "数据源未监测这些机场对。" },
+  "result.min_partial": { en: "Lowest among the results retrieved", zh: "已取得结果中的最低值" },
   "fees.unknown": { en: "Fees not yet confirmed", zh: "税费待确认" },
   "fees.currency_unknown": { en: "Currency not provided", zh: "币种未提供" },
   "seats.unknown": { en: "Seat count not provided", zh: "席位未提供" },
@@ -172,6 +172,17 @@ export function moreConditionsCount(query: QueryObject): number {
   return Number(query.max_miles !== undefined) + Number(query.min_cabin_pct !== DEFAULT_MIN_CABIN_PCT) + Number(query.include_filtered);
 }
 
+/** The sort as a short control label, direction in words ("Lowest miles"); `sortLabel` is the full phrase. */
+export function sortShortLabel(sortBy: SortBy, locale: Locale): string {
+  const labels: Record<SortBy, Record<Locale, string>> = {
+    miles_asc: { en: "Lowest miles", zh: "里程升序" },
+    fees_asc: { en: "Lowest fees", zh: "税费升序" },
+    seats_desc: { en: "Most seats", zh: "席位降序" },
+    date_asc: { en: "Earliest date", zh: "日期升序" },
+  };
+  return labels[sortBy][locale];
+}
+
 /** The label for the order the rows are shown in. */
 export function sortLabel(sortBy: SortBy, locale: Locale): string {
   const labels: Record<SortBy, Record<Locale, string>> = {
@@ -181,12 +192,6 @@ export function sortLabel(sortBy: SortBy, locale: Locale): string {
     date_asc: { en: "Date, earliest first", zh: "日期升序" },
   };
   return labels[sortBy][locale];
-}
-
-/** The rows in the query's order (core ranking: unknown fees after known ones), ties broken by row key. */
-export function sortedRows(rows: readonly WorkspaceRow[], sortBy: SortBy): WorkspaceRow[] {
-  const cmp = compareRows(sortBy);
-  return [...rows].sort((a, b) => cmp(a.value, b.value) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 }
 
 /**
@@ -247,3 +252,79 @@ export function coverageLabel(coverage: CoverageEvidence, rowCount: number, loca
   const [first] = coverageNotices(coverage, rowCount, locale);
   return first ? copy(first.kind === "none" ? "result.none" : `result.${first.kind}`, locale) : null;
 }
+
+// ---- the calendar (T08) ------------------------------------------------------------------------------------------
+
+/**
+ * Miles short enough for a 47.7 pt day cell, in both languages (U-031): the full number under 1,000; thousands with
+ * at most one decimal below 100K ("68.5K"), none from 100K ("111K"); millions with one ("1.3M"). Rounded UP at that
+ * precision, so a cell never shows a price lower than the real one, and `exact` says whether it had to round — the
+ * cell marks that, and the day's rows and the cell's name carry the exact number.
+ */
+export function compactMiles(miles: number): { text: string; exact: boolean } {
+  if (miles < 1000) return { text: formatMiles(miles), exact: true };
+  const [value, digits, unit] = miles < 100_000 ? [miles / 1000, 1, "K"] : miles < 1_000_000 ? [miles / 1000, 0, "K"] : [miles / 1_000_000, 1, "M"];
+  const factor = 10 ** digits;
+  // Rounded in integer units first, so float noise (68.5 * 10 = 684.9999…) never rounds a whole value up.
+  const scaled = Math.round(value * factor * 1e6) / 1e6;
+  const up = Math.ceil(scaled) / factor;
+  return { text: `${up.toFixed(digits).replace(/\.0$/, "")}${unit}`, exact: up === value };
+}
+
+/** "October 2026" / "2026年10月", for a "YYYY-MM" month. */
+export function monthLabel(month: string, locale: Locale): string {
+  const [year, m] = month.split("-").map(Number) as [number, number];
+  if (locale === "zh") return `${year}年${m}月`;
+  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year, m - 1, 1)));
+}
+
+const EN_DAYS = [
+  ["Sun", "Sunday"],
+  ["Mon", "Monday"],
+  ["Tue", "Tuesday"],
+  ["Wed", "Wednesday"],
+  ["Thu", "Thursday"],
+  ["Fri", "Friday"],
+  ["Sat", "Saturday"],
+] as const;
+const ZH_DAYS = ["日", "一", "二", "三", "四", "五", "六"] as const;
+
+/** The calendar's columns, as UTC weekday numbers (0 = Sunday) with their heads: Sunday first in English, Monday in Chinese. */
+export function weekdayHeads(locale: Locale): Array<{ day: number; short: string; long: string }> {
+  const order = locale === "zh" ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6];
+  return order.map((day) => (locale === "zh" ? { day, short: ZH_DAYS[day]!, long: `星期${ZH_DAYS[day]!}` } : { day, short: EN_DAYS[day]![0], long: EN_DAYS[day]![1] }));
+}
+
+/** What an empty calendar day is: hidden by the view filter, checked and empty, not monitored, not checked to the end, or unknown. */
+export type EmptyDayKind = "hidden" | ProjectedDay["coverage"];
+
+export function emptyDayKind(day: Pick<ProjectedDay, "coverage" | "hidden">): EmptyDayKind {
+  return day.hidden > 0 ? "hidden" : day.coverage;
+}
+
+export function emptyDayLabel(kind: EmptyDayKind, locale: Locale): string {
+  const labels: Record<EmptyDayKind, Record<Locale, string>> = {
+    hidden: { en: "hidden by your view filter", zh: "已被视图筛选隐藏" },
+    complete: { en: "no matches", zh: "无匹配" },
+    unmonitored: { en: "not monitored", zh: "未监测" },
+    partial: { en: "not checked to the end", zh: "未查完" },
+    unknown: { en: "coverage unknown", zh: "完整性未知" },
+  };
+  return labels[kind][locale];
+}
+
+/**
+ * A calendar day's full name: the day, then its minimum and how many options back it — "lowest shown" where the view
+ * filter hides some, "lowest retrieved" where the day was not proven complete — or, with no rows, why it is empty.
+ */
+export function calendarDayName(day: Pick<ProjectedDay, "date" | "rowKeys" | "minMiles" | "coverage" | "hidden">, locale: Locale): string {
+  const zh = locale === "zh";
+  const head = `${dayLabel(day.date, locale)}${zh ? "：" : ": "}`;
+  if (day.minMiles === null) return head + emptyDayLabel(emptyDayKind(day), locale);
+  // With rows the view filter hides, the minimum is only the lowest shown; where not proven, the lowest retrieved.
+  const lowest =
+    day.hidden > 0 ? (zh ? "当前显示最低" : "lowest shown") : day.coverage === "complete" ? (zh ? "最低" : "lowest") : zh ? "已取得最低" : "lowest retrieved";
+  const miles = zh ? `${formatMiles(day.minMiles)} 里程` : `${formatMiles(day.minMiles)} miles`;
+  return `${head}${lowest} ${miles}${zh ? "，" : ", "}${optionsCount(day.rowKeys.length, locale)}`;
+}
+

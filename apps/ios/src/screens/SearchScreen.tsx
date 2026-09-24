@@ -4,10 +4,13 @@
  *
  * With results, the page is the S01 stack at the 390 pt default — header 52 (title, AI assistance), query summary 64
  * (the SHOWN snapshot's query; it opens the editor), filters 44 (each opens the editor at its condition: changing a
- * query condition is always an explicit submit), result view 44 (List, or the older grid as Matrix until T09), status
- * 28 (how many options, how fresh, the data attribution), 12 gap — then the cards, and after them the actions (search
- * again, watch, ask) and today's quota. Header and summary stay on screen while the list scrolls. Without results it
- * is a text search and the way into the editor.
+ * query condition is always an explicit submit), result view 44 (List, Calendar, or the older grid as Matrix until
+ * T09, and the sort), status 28 (how many options, how fresh, the data attribution), 12 gap — then the view, and after
+ * it the actions (search again, watch, ask) and today's quota. Header and summary stay on screen while the list
+ * scrolls. Without results it is a text search and the way into the editor.
+ *
+ * All three views read one projection of the shown snapshot (T08, core projection.ts): the same rows, the same local
+ * filter and sort, one selection. Switching view, sort or calendar cabin is local — it never fetches.
  *
  * The honesty rules, which are not cosmetic:
  *
@@ -25,7 +28,10 @@
  * time it was saved, without running it. The screen marks itself with its language (the other screens are English
  * until T11).
  */
-import { type Locale, ageLabel, copy, coverageNotices, moreConditionsCount, optionsCount, sortLabel, sortedRows } from "@awardgrid/core/workspace/present";
+import { buildGrid } from "@awardgrid/core/grid/pivot";
+import { SortBy } from "@awardgrid/core/query/schema";
+import { projectResults } from "@awardgrid/core/workspace/projection";
+import { type Locale, ageLabel, copy, coverageNotices, moreConditionsCount, optionsCount, sortLabel, sortShortLabel } from "@awardgrid/core/workspace/present";
 import { textReproducesQuery } from "@awardgrid/core/workspace/query-editor";
 import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useOutletContext } from "react-router";
@@ -36,7 +42,8 @@ import type { ApiFailure, ApiResult, FindValue, QuotaSnapshotView } from "../sea
 import type { LastSearchEntry } from "../search/last-search";
 import { GridTable } from "../components/GridTable";
 import { TextSearch } from "../components/query/TextSearch";
-import { AvailabilityCard } from "../components/results/AvailabilityCard";
+import { AvailabilityCalendar } from "../components/results/AvailabilityCalendar";
+import { AvailabilityList } from "../components/results/AvailabilityList";
 import { RESULTS } from "../components/results/copy";
 import { QuerySummary } from "../components/results/QuerySummary";
 import { Button, Icon, Notice, SegmentedControl } from "../components/ui";
@@ -170,9 +177,36 @@ export function SearchScreen() {
 
   const searching = busy || running;
   const value = shown?.value ?? null;
-  // Shown in the query's own order (core ranking), which the view row names.
-  const rows = useMemo(() => (snapshot && value ? sortedRows(snapshot.rows, value.query.sort_by) : []), [snapshot, value]);
-  const coverage = snapshot && value ? coverageNotices(snapshot.coverage, rows.length, locale) : [];
+  const prefs = workspace.preferences;
+  // One projection for every view: the filtered rows in the view's sort, the calendar's days, the matrix's cells.
+  const projected = useMemo(() => (snapshot ? projectResults(snapshot, prefs) : null), [snapshot, prefs]);
+  const rows = projected?.rows ?? [];
+  // Coverage speaks for the search, so it counts the snapshot's rows, not the ones a view filter lets through.
+  const coverage = snapshot && value ? coverageNotices(snapshot.coverage, snapshot.rows.length, locale) : [];
+  // The Matrix (the older grid until T09) is rebuilt from the same rows; its empty cells keep the search's own
+  // reasons (not monitored, not checked). Its cells are picked by core ranking, which compares fees across
+  // currencies, so under the fee sort they are picked by miles and say so. It cannot tell a cell the view filter
+  // emptied from an empty one, so it is not drawn while a filter hides rows.
+  const matrixSort = prefs.sort === "fees_asc" ? "miles_asc" : prefs.sort;
+  const matrix = useMemo(
+    () =>
+      value && projected && prefs.kind === "matrix" && projected.hiddenByFilter === 0
+        ? buildGrid(
+            projected.rows.map((r) => r.value),
+            { ...value.query, sort_by: matrixSort },
+            { now: value.grid.meta.generated_at, unmonitored_pairs: value.grid.meta.unmonitored_pairs, not_fetched_pairs: value.grid.meta.not_fetched_pairs },
+          )
+        : null,
+    [value, projected, prefs.kind, matrixSort],
+  );
+  // "Show all" takes its own button away: focus goes to the status line, and the change is announced.
+  const [announcement, setAnnouncement] = useState("");
+  const showAll = () => {
+    services.workspace.setPreferences({ localFilter: {} });
+    const total = services.workspace.getState().displayedSnapshot?.rows.length ?? 0;
+    setAnnouncement(t.showingAll(total));
+    window.requestAnimationFrame(() => document.getElementById("results-status")?.focus());
+  };
   // The filter row scrolls sideways when its chips do not fit; it then shows that there is more.
   const filtersRef = useRef<HTMLDivElement>(null);
   const [filtersOverflow, setFiltersOverflow] = useState(false);
@@ -186,6 +220,13 @@ export function SearchScreen() {
     return () => observer?.disconnect();
   }, [snapshot?.id, locale]);
   const selected = new Set(workspace.selected.filter((r) => r.snapshotId === snapshot?.id).map((r) => r.rowKey));
+  const snapshotId = snapshot?.id ?? null;
+  const toggleRow = useCallback(
+    (rowKey: string, on: boolean) => {
+      if (snapshotId) services.workspace.setSelected({ snapshotId, rowKey }, on);
+    },
+    [services, snapshotId],
+  );
   const programs = value?.query.programs?.length ?? 0;
 
   // The engine's own messages and run warnings are English (core); they say so on a Chinese screen.
@@ -249,19 +290,33 @@ export function SearchScreen() {
             </Link>
           </div>
           <div className="ag-results-view" data-testid="results-view">
-            <SegmentedControl<"list" | "matrix">
+            <SegmentedControl<"list" | "calendar" | "matrix">
               label={t.view}
               className="ag-results-segmented"
-              value={workspace.preferences.kind === "matrix" ? "matrix" : "list"}
+              value={prefs.kind}
               onChange={(kind) => services.workspace.setPreferences({ kind })}
               options={[
                 { value: "list", label: t.list },
+                { value: "calendar", label: t.calendar },
                 { value: "matrix", label: t.matrix },
               ]}
             />
-            <span className="ag-results-sort">{sortLabel(value.query.sort_by, locale)}</span>
+            {/* A native picker under the visible label: the phone's own list, one control, named "Sort". */}
+            <label className="ag-results-sort">
+              <span className="ag-results-sort-text" aria-hidden="true">
+                {sortShortLabel(prefs.sort, locale)}
+                <Icon name="chevron-down" />
+              </span>
+              <select aria-label={t.sort} value={prefs.sort} onChange={(e) => services.workspace.setPreferences({ sort: SortBy.parse(e.target.value) })}>
+                {SortBy.options.map((option) => (
+                  <option key={option} value={option}>
+                    {sortLabel(option, locale)}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          <div className="ag-results-status" data-testid="results-status">
+          <div className="ag-results-status" data-testid="results-status" id="results-status" tabIndex={-1}>
             <span>
               {optionsCount(rows.length, locale)}
               {shown ? ` · ${freshness(shown, now, locale)}` : ""}
@@ -269,6 +324,9 @@ export function SearchScreen() {
             <span>{copy("data.source", locale)}</span>
           </div>
 
+          <p className="sr-only" role="status">
+            {announcement}
+          </p>
           <div className="ag-results-notes">
             {running ? (
               <Notice tone="info" live>
@@ -291,26 +349,45 @@ export function SearchScreen() {
                 {w}
               </Callout>
             ))}
+            {projected && projected.hiddenByFilter > 0 ? (
+              <Notice tone="info">
+                {t.hiddenByFilter(projected.hiddenByFilter)}{" "}
+                <button type="button" className="ag-link-button" onClick={showAll}>
+                  {t.showAll}
+                </button>
+              </Notice>
+            ) : null}
           </div>
 
-          {workspace.preferences.kind === "matrix" ? (
-            <div className="ag-results-matrix" lang={english}>
-              <GridTable grid={value.grid} now={now} saved={Boolean(shown?.savedAt)} />
+          {prefs.kind === "matrix" ? (
+            <div className="ag-results-matrix" data-testid="matrix-view">
+              {matrix ? (
+                <>
+                  {prefs.sort === "fees_asc" ? <p className="ag-results-meta">{t.matrixMilesOnly}</p> : null}
+                  <div lang={english}>
+                    <GridTable grid={matrix} now={now} saved={Boolean(shown?.savedAt)} />
+                  </div>
+                </>
+              ) : (
+                <p className="ag-results-meta">{t.matrixNoFilter}</p>
+              )}
             </div>
+          ) : prefs.kind === "calendar" && projected ? (
+            <AvailabilityCalendar
+              key={snapshot.id}
+              query={value.query}
+              days={projected.days}
+              rows={rows}
+              sort={prefs.sort}
+              onCabin={(calendarCabin) => services.workspace.setPreferences({ calendarCabin })}
+              snapshotId={snapshot.id}
+              selected={selected}
+              onToggle={toggleRow}
+              now={now.toISOString()}
+              locale={locale}
+            />
           ) : rows.length > 0 ? (
-            <div className="ag-result-list" data-testid="availability-list">
-              {rows.map((row) => (
-                <AvailabilityCard
-                  key={row.key}
-                  row={row}
-                  snapshotId={snapshot.id}
-                  selected={selected.has(row.key)}
-                  onToggle={(on) => services.workspace.setSelected({ snapshotId: snapshot.id, rowKey: row.key }, on)}
-                  now={now.toISOString()}
-                  locale={locale}
-                />
-              ))}
-            </div>
+            <AvailabilityList rows={rows} sort={prefs.sort} snapshotId={snapshot.id} selected={selected} onToggle={toggleRow} now={now.toISOString()} locale={locale} />
           ) : null}
 
           <div className="ag-results-actions">

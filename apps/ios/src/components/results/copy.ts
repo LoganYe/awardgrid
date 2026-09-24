@@ -23,7 +23,32 @@ export interface ResultsCopy {
   moreFilters: (n: number) => string;
   view: string;
   list: string;
+  calendar: string;
   matrix: string;
+  /** The sort control's name; the options are core's sortLabel. */
+  sort: string;
+  /** T08: rows the local view filter hides — said, never "no results". */
+  hiddenByFilter: (n: number) => string;
+  showAll: string;
+  showingAll: (n: number) => string;
+  /** The older grid picks each cell by miles: fees are never compared across currencies there. */
+  matrixMilesOnly: string;
+  /** The older grid cannot tell a filtered cell from an empty one, so it is not drawn under a view filter. */
+  matrixNoFilter: string;
+  /** Fee groups under the fee sort: fees never compare across currencies. */
+  feeGroup: (currency: string) => string;
+  calendarCabin: string;
+  /** "Lowest miles by date · Business J": what the numbers are, and for which cabin. */
+  calendarCaption: (cabin: string) => string;
+  previousMonth: string;
+  nextMonth: string;
+  /** Legend for a day whose compact number was rounded up. */
+  roundedUp: string;
+  pickDay: string;
+  /** The chosen day's heading over its options. */
+  dayHeading: (day: string, cabin: string, n: number) => string;
+  /** Days of the range with no options for this cabin, and what the search proved for them. */
+  otherDays: (n: number, kind: "hidden" | "complete" | "unmonitored" | "partial" | "unknown") => string;
 
   milesUnit: string;
   select: (what: string) => string;
@@ -65,7 +90,32 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     moreFilters: (n) => (n === 0 ? "More" : `More · ${n}`),
     view: "Result view",
     list: "List",
+    calendar: "Calendar",
     matrix: "Matrix",
+    sort: "Sort",
+    hiddenByFilter: (n) => `${n} ${n === 1 ? "option is" : "options are"} hidden by your view filter.`,
+    showAll: "Show all",
+    showingAll: (n) => `Showing all ${n} ${n === 1 ? "option" : "options"}.`,
+    matrixMilesOnly: "Matrix cells show the lowest miles; fees are sorted only in the list.",
+    matrixNoFilter: "The matrix cannot apply a view filter yet. Show all options to use it.",
+    feeGroup: (currency) => `Fees in ${currency}`,
+    calendarCabin: "Calendar cabin",
+    calendarCaption: (cabin) => `Lowest miles by date · ${cabin}`,
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    roundedUp: "rounded up; choose the day for exact miles",
+    pickDay: "Choose a day to see the options behind its number.",
+    dayHeading: (day, cabin, n) => `${day} · ${cabin} · ${n} ${n === 1 ? "option" : "options"}`,
+    otherDays: (n, kind) =>
+      `${n} other ${n === 1 ? "day" : "days"}: ${
+        {
+          hidden: "options hidden by your view filter",
+          complete: "no matches in the checked range",
+          unmonitored: "not monitored by the data source",
+          partial: "nothing retrieved, and not checked to the end",
+          unknown: "nothing retrieved; coverage unknown",
+        }[kind]
+      }.`,
 
     milesUnit: "miles",
     select: (what) => `Select ${what}`,
@@ -111,7 +161,32 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     moreFilters: (n) => (n === 0 ? "更多筛选" : `更多筛选 · ${n}`),
     view: "结果视图",
     list: "列表",
+    calendar: "日历",
     matrix: "矩阵",
+    sort: "排序",
+    hiddenByFilter: (n) => `${n} 个选项被视图筛选隐藏。`,
+    showAll: "显示全部",
+    showingAll: (n) => `正在显示全部 ${n} 个选项。`,
+    matrixMilesOnly: "矩阵格显示最低里程；税费排序只用于列表。",
+    matrixNoFilter: "矩阵暂不支持视图筛选。显示全部选项后可使用。",
+    feeGroup: (currency) => `税费（${currency}）`,
+    calendarCabin: "日历舱位",
+    calendarCaption: (cabin) => `各日期最低里程 · ${cabin}`,
+    previousMonth: "上个月",
+    nextMonth: "下个月",
+    roundedUp: "已向上取整，选择日期查看精确里程",
+    pickDay: "选择日期，查看该数字对应的选项。",
+    dayHeading: (day, cabin, n) => `${day} · ${cabin} · ${n} 个选项`,
+    otherDays: (n, kind) =>
+      `其余 ${n} 天：${
+        {
+          hidden: "选项已被视图筛选隐藏",
+          complete: "已查询的范围内没有匹配结果",
+          unmonitored: "数据源未监测",
+          partial: "未取得结果，且未查完",
+          unknown: "未取得结果，完整性未知",
+        }[kind]
+      }。`,
 
     milesUnit: "里程",
     select: (what) => `选择 ${what}`,

@@ -1,6 +1,6 @@
 # UI/UX v1 execution status
 
-State: **M2 in progress** — T01–T07 verified (unit, integration, iOS browser mock); Simulator, device and live-key checks not run. T08 next.
+State: **M2 in progress** — T01–T08 verified (unit, integration, iOS browser mock); Simulator, device and live-key checks not run. T09 next.
 Handoff pack: `/Users/yegaoyang/Desktop/workspace/awardgrid-claude-code-impl` (read in the order its `CLAUDE_CODE_PROMPT.md` sets).
 Repository: `/Users/yegaoyang/Desktop/workspace/awardgrid`. Work happens in the worktree **`/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`** on local branch `uiux/quiet-precision-v1` (from `main` at `9c69c6c`); the main checkout stays on `main` because production runs from it (DECISIONS U-009).
 Design baseline: `2a1f353` is an ancestor of `9c69c6c`; the 4 commits after it are seats.aero decoding fixes, an Ask token-count fix and a docs entry. Nothing was reset or checked out.
@@ -16,7 +16,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 | Milestone | State | Evidence |
 |---|---|---|
 | M1 truthful foundations (T01–T05) | verified (unit + integration + iOS browser mock); Simulator/device unverified | [baseline](evidence/T01-baseline.md), [T01](evidence/T01-fixture-harness.md), [T02](evidence/T02-truth-identity.md), [T03](evidence/T03-coverage-evidence.md), [T04](evidence/T04-tokens-primitives.md), [T05](evidence/T05-workspace.md) |
-| M2 iOS search flow (T06–T11) | in_progress | [T06](evidence/T06-query-editor.md), [T07](evidence/T07-mobile-results.md) |
+| M2 iOS search flow (T06–T11) | in_progress | [T06](evidence/T06-query-editor.md), [T07](evidence/T07-mobile-results.md), [T08](evidence/T08-projection-views.md) |
 | M3 context and persistence (T12–T17) | pending | — |
 | M4 Web and release validation (T18–T22) | pending | — |
 
@@ -31,7 +31,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 | T05 | Versioned workspace and shared structured query entry | verified (unit + integration + iOS browser mock) | [evidence](evidence/T05-workspace.md); A08, A09 verified in those scopes |
 | T06 | Query editor, date rules, explicit submit | verified (unit + iOS browser mock) | [evidence](evidence/T06-query-editor.md); A10, A11 verified in those scopes; Simulator/device (date picker, keyboard) unverified |
 | T07 | Mobile nav, query summary, readable result cards | verified (unit + iOS browser mock) | [evidence](evidence/T07-mobile-results.md); A12 verified in that scope, A02/A03 component half verified; Simulator/device (safe areas, Dynamic Type, VoiceOver) unverified |
-| T08 | Same-snapshot projection: list and calendar | pending | |
+| T08 | Same-snapshot projection: list and calendar | verified (unit + iOS browser mock) | [evidence](evidence/T08-projection-views.md); A13, A14 verified in those scopes; Simulator/device (native sort picker, VoiceOver on the calendar, system Dynamic Type) unverified; no iOS local-filter control (U-032) |
 | T09 | Pro matrix: column snapping, per-cabin, keyboard | pending | |
 | T10 | Plain itinerary details and return state | pending | |
 | T11 | Settings, onboarding, bilingual, keyboard | pending | |
@@ -60,9 +60,9 @@ Authorization: local implementation and per-task local commits only. No push, PR
 
 | Scope | State |
 |---|---|
-| Unit (vitest) | run per task; T01–T07 green (root 919/2 skipped, core 842, ios 659) |
+| Unit (vitest) | run per task; T01–T08 green (root 919/2 skipped, core 866, ios 670) |
 | Web mock — existing web e2e (`pnpm e2e`) | baseline 583 passed / 145 skipped / 0 failed; not re-run (no web change yet, and it must run in a worktree from now on) |
-| iOS browser mock (`playwright.uiux.config.ts`) | 72 passed (harness 10, foundations 26, workspace 4, query editor 18, mobile results 14) |
+| iOS browser mock (`playwright.uiux.config.ts`) | 87 passed (harness 10, foundations 26, workspace 4, query editor 18, mobile results 14, views 15) |
 | iOS Simulator | not run for the app yet. One T07 reviewer ran a scratch WKWebView probe on throwaway simulators to settle a locale question (DECISIONS U-026; evidence T07 Review): not an app verification |
 | Physical device | not available to this session — unverified |
 | Live seats.aero / Anthropic key | not authorized — not run |
@@ -71,10 +71,10 @@ Authorization: local implementation and per-task local commits only. No push, PR
 
 - Persistence failures surface only as unhandled promise rejections (`App.tsx` `void services.persist()`), nothing shown to the user → T13 (docs/02 D04). The workspace's own save no longer throws and records its result (`lastWorkspaceSave()`), still not shown.
 - "Clear cached results" leaves saved workspace snapshots in place, and the Settings copy does not say so → T11/T13.
-- iOS `GridTable` shows seat count 0 as nothing, never shows fees, colours freshness from the local fetch time → the List view replaced it in T07; it remains as the Matrix view until T09 replaces it.
+- iOS `GridTable` shows seat count 0 as nothing, never shows fees, colours freshness from the local fetch time → the List view replaced it in T07; it remains as the Matrix view until T09 replaces it. Until then it is rebuilt from the projection's rows, picks by miles under the fee sort, is not drawn under a view filter, and its cell pick can still compare fees across currencies when miles tie (T08 evidence "Known interim").
 - The Phase 5 Simulator driver reads the pre-T07 layout (DECISIONS U-028) → T21/T22.
 - Web `/api/parse` calls the LLM implicitly when deterministic parsing misses fields and a server key is set → T18/T20 (ordinary search must not call AI silently).
 
 ## Current next action
 
-T08 (plan 02): one projection of the shown snapshot for List and Calendar (docs/03 §2 `projectResults`, docs/04 S01/S03; reference `calendar-*.png`), local filters and sort as view state only. Read plan 02 T08 first; red test per its Step 1 (`pnpm --filter @awardgrid/core exec vitest run src/lib/workspace/projection.test.ts`).
+T09 (plan 02): the pro matrix — whole-column snapping, per-cabin slots, keyboard (docs/04 S03 Matrix; reference `desktop-matrix.png`; acceptance A15), built from the projection's `cells` (with their `hidden` counts) instead of the older GridTable. Read plan 02 T09 first; red test per its Step 1.

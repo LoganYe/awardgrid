@@ -8,19 +8,25 @@ import { fixtureSnapshot } from "../../../test/fixtures/uiux/factory";
 import { coverageFor } from "./coverage";
 import {
   COPY,
+  calendarDayName,
+  compactMiles,
+  copy,
   coverageLabel,
   coverageNotices,
   dayLabel,
   feesLabel,
   formatMiles,
+  monthLabel,
   moreConditionsCount,
   querySubline,
   rangeLabel,
   resultName,
   routeLabel,
   seatsLabel,
-  sortedRows,
+  sortLabel,
+  sortShortLabel,
   timeLabel,
+  weekdayHeads,
 } from "./present";
 
 describe("approved copy", () => {
@@ -146,14 +152,6 @@ describe("coverage", () => {
 });
 
 describe("order and names", () => {
-  it("rows are shown in the query's order, unknown fees after known ones, ties by row key", () => {
-    const snap = fixtureSnapshot();
-    const byMiles = sortedRows(snap.rows, "miles_asc").map((r) => r.value.miles);
-    expect(byMiles).toEqual([...byMiles].sort((a, b) => a - b));
-    const byFees = sortedRows(snap.rows, "fees_asc").map((r) => r.value.fees_cents);
-    expect(byFees.at(-1)).toBeNull();
-    expect(byFees[0]).toBe(0);
-  });
   it("two options on the same route, day and cabin get different names", () => {
     const [row] = fixtureSnapshot().rows;
     const other = { ...row!.value, program: "united", miles: 90000 };
@@ -162,3 +160,62 @@ describe("order and names", () => {
     expect(resultName(row!.value, "zh")).toContain("，");
   });
 });
+
+describe("the calendar's words", () => {
+  it("compact miles fit a day cell, the same in both languages: K with at most one decimal", () => {
+    expect(compactMiles(68000)).toEqual({ text: "68K", exact: true });
+    expect(compactMiles(68500)).toEqual({ text: "68.5K", exact: true });
+    expect(compactMiles(110000)).toEqual({ text: "110K", exact: true });
+    expect(compactMiles(7500)).toEqual({ text: "7.5K", exact: true });
+    expect(compactMiles(950)).toEqual({ text: "950", exact: true });
+    expect(compactMiles(1_250_000)).toEqual({ text: "1.3M", exact: false });
+  });
+
+  it("a value that has to round rounds up, never showing a lower price, and says it rounded", () => {
+    expect(compactMiles(68450)).toEqual({ text: "68.5K", exact: false });
+    expect(compactMiles(68410)).toEqual({ text: "68.5K", exact: false });
+    expect(compactMiles(110500)).toEqual({ text: "111K", exact: false });
+    expect(compactMiles(99_950)).toEqual({ text: "100K", exact: false });
+    expect(compactMiles(99_901)).toEqual({ text: "100K", exact: false });
+  });
+
+  it("month titles and weekday heads, Sunday first in English and Monday first in Chinese", () => {
+    expect(monthLabel("2026-10", "en")).toBe("October 2026");
+    expect(monthLabel("2026-10", "zh")).toBe("2026年10月");
+    expect(weekdayHeads("en").map((d) => d.short)).toEqual(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
+    expect(weekdayHeads("zh").map((d) => d.short)).toEqual(["一", "二", "三", "四", "五", "六", "日"]);
+    expect(weekdayHeads("zh")[0]).toEqual({ day: 1, short: "一", long: "星期一" });
+  });
+
+  it("a day is named with its minimum and how many options back it, and an empty day says what was proven", () => {
+    const day = { date: "2026-10-18", cabin: "J" as const, rowKeys: ["a", "b"], minMiles: 75000, coverage: "complete" as const, hidden: 0 };
+    expect(calendarDayName(day, "en")).toBe("Sun, Oct 18: lowest 75,000 miles, 2 options");
+    expect(calendarDayName(day, "zh")).toBe("10月18日 · 周日：最低 75,000 里程，2 个选项");
+    expect(calendarDayName({ ...day, coverage: "partial" }, "en")).toBe("Sun, Oct 18: lowest retrieved 75,000 miles, 2 options");
+    expect(calendarDayName({ ...day, coverage: "unknown" }, "zh")).toBe("10月18日 · 周日：已取得最低 75,000 里程，2 个选项");
+    const empty = { ...day, rowKeys: [], minMiles: null };
+    expect(calendarDayName(empty, "en")).toBe("Sun, Oct 18: no matches");
+    expect(calendarDayName({ ...empty, coverage: "partial" }, "en")).toBe("Sun, Oct 18: not checked to the end");
+    expect(calendarDayName({ ...empty, coverage: "unknown" }, "zh")).toBe("10月18日 · 周日：完整性未知");
+    expect(calendarDayName({ ...empty, coverage: "unmonitored" }, "en")).toBe("Sun, Oct 18: not monitored");
+    // Rows the view filter hides: never "no matches", and a minimum beside hidden rows is only the lowest shown.
+    expect(calendarDayName({ ...empty, hidden: 1 }, "en")).toBe("Sun, Oct 18: hidden by your view filter");
+    expect(calendarDayName({ ...empty, hidden: 1 }, "zh")).toBe("10月18日 · 周日：已被视图筛选隐藏");
+    expect(calendarDayName({ ...day, hidden: 2 }, "en")).toBe("Sun, Oct 18: lowest shown 75,000 miles, 2 options");
+  });
+
+  it("the partial minimum uses the approved words", () => {
+    expect(copy("result.min_partial", "en")).toBe("Lowest among the results retrieved");
+    expect(copy("result.min_partial", "zh")).toBe("已取得结果中的最低值");
+  });
+});
+
+describe("sort labels", () => {
+  it("a short control label with its direction in words, and the full phrase for the picker", () => {
+    expect(sortShortLabel("miles_asc", "en")).toBe("Lowest miles");
+    expect(sortShortLabel("seats_desc", "en")).toBe("Most seats");
+    expect(sortShortLabel("fees_asc", "zh")).toBe("税费升序");
+    expect(sortLabel("miles_asc", "en")).toBe("Miles, lowest first");
+  });
+});
+

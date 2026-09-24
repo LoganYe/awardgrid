@@ -292,7 +292,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     const shown = workspace.getState().displayedSnapshot;
     if (!shown) return { ok: false, status: 400, error: "invalid_body", message: "There is no search on screen to run again." };
     const text = lastSearch.get()?.text ?? shown.query.raw_text;
-    return runTyped({ text, parsed: { query: shown.query, warnings: [], notices: [] } });
+    // The order the results are read in is the view's (U-030): running the search again keeps it.
+    const query = { ...shown.query, sort_by: workspace.getState().preferences.sort };
+    return runTyped({ text, parsed: { query, warnings: [], notices: [] } });
   };
 
   const runTyped = async (typed: TypedSearch): Promise<ApiResult<FindValue>> => {

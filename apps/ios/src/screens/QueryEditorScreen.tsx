@@ -56,7 +56,7 @@ export const RETURN_FOCUS = "edit-search";
  * A draft for a first search: no airports yet, the next 30 days, core's default cabins and mixed-cabin rule. Not a
  * valid query until airports are added; resolveDraft runs the schema at submit.
  */
-function blankDraft(today: string): QueryDraft {
+function blankDraft(today: string, sortBy: QueryObject["sort_by"]): QueryDraft {
   const query: QueryObject = {
     origins: [],
     destinations: [],
@@ -66,7 +66,7 @@ function blankDraft(today: string): QueryDraft {
     direct_only: false,
     include_filtered: false,
     min_cabin_pct: DEFAULT_MIN_CABIN_PCT,
-    sort_by: "miles_asc",
+    sort_by: sortBy,
     raw_text: "",
     language: "en",
   };
@@ -82,8 +82,9 @@ export function QueryEditorScreen() {
   const returnTo = (useLocation().state as { from?: string } | null)?.from ?? RETURN_FOCUS;
   const today = services.now().toISOString().slice(0, 10);
   const [initial] = useState<QueryDraft>(() => {
-    const shown = services.workspace.getState().displayedSnapshot;
-    return shown ? draftFromQuery(shown.query) : blankDraft(today);
+    // The view's sort rides along, so a search from here keeps the order the results are read in (U-030).
+    const { displayedSnapshot: shown, preferences } = services.workspace.getState();
+    return shown ? draftFromQuery({ ...shown.query, sort_by: preferences.sort }) : blankDraft(today, preferences.sort);
   });
   const [draft, setDraft] = useState<QueryDraft>(initial);
   const [errors, setErrors] = useState<DraftFieldError[]>([]);

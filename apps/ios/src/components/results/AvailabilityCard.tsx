@@ -22,9 +22,12 @@ export interface AvailabilityCardProps {
   /** The app's clock, as an ISO instant, for the source time's age. */
   now: string;
   locale: Locale;
+  /** The route heading's level: 2 in the list, 3 under a calendar day's heading. */
+  headingLevel?: 2 | 3;
 }
 
-export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, locale }: AvailabilityCardProps) {
+export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, locale, headingLevel = 2 }: AvailabilityCardProps) {
+  const Heading = headingLevel === 3 ? "h3" : "h2";
   const t = RESULTS[locale];
   const v = row.value;
   const route = `${v.origin} → ${v.dest}`;
@@ -35,7 +38,7 @@ export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, loc
     <article className="ag-result-card" data-testid="availability-card" data-row-key={row.key} data-snapshot={snapshotId} aria-label={name}>
       <div className="ag-result-card-top">
         <div className="ag-result-card-head">
-          <h2 className="ag-result-route">{route}</h2>
+          <Heading className="ag-result-route">{route}</Heading>
           <p className="ag-result-when">
             <span>{day}</span>
             <span className="ag-result-cabin">{cabin}</span>

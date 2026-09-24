@@ -113,6 +113,15 @@ export interface ProjectedDay {
   cabin: Cabin;
   rowKeys: RowKey[];
   minMiles: number | null;
+  /**
+   * What the search proved for this day and cabin (additive, T08): "complete" when every monitored route was checked
+   * to the end for every program asked; "unmonitored" when no route is monitored; otherwise the weakest of "partial"
+   * and "unknown" — and never stronger than the snapshot's own coverage verdict. An empty day reads "no matches" only
+   * when complete, and a minimum is "the lowest retrieved" otherwise.
+   */
+  coverage: "complete" | "partial" | "unknown" | "unmonitored";
+  /** Rows for this day and cabin that the local filter hides (additive, T08): such a day is never "no matches". */
+  hidden: number;
 }
 
 export interface ProjectedCell {
@@ -121,6 +130,8 @@ export interface ProjectedCell {
   date: ISODate;
   cabin: Cabin;
   rowKeys: RowKey[];
+  /** Rows of this route, day and cabin the local filter hides (additive, T08); a cell may hold only hidden rows. */
+  hidden: number;
 }
 
 export interface ProjectedResults {
@@ -128,6 +139,8 @@ export interface ProjectedResults {
   days: ProjectedDay[];
   cells: ProjectedCell[];
   coverage: CoverageEvidence;
+  /** Rows of the snapshot the local filter hides (additive, T08): the views say so rather than "no results". */
+  hiddenByFilter: number;
 }
 
 // ---- run state and platform ports (T05) --------------------------------------------------------------------

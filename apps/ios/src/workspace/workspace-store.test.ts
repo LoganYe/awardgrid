@@ -209,6 +209,47 @@ describe("WorkspaceStore history and view state", () => {
     expect(calls).toHaveLength(2);
   });
 
+  it("a search that asks for a sort sets the view's sort; one that does not keeps the sort chosen (U-030)", async () => {
+    const { search, calls } = manualPort();
+    const store = new WorkspaceStore({ search, now: () => FIXTURE_NOW });
+    store.setPreferences({ sort: "seats_desc" });
+    const plain = store.run(fixtureQuery());
+    calls[0]!.resolve(answer(calls[0]!, "plain"));
+    await plain;
+    expect(store.getState().preferences.sort).toBe("seats_desc");
+    const byFees = store.run({ ...fixtureQuery(), sort_by: "fees_asc" });
+    calls[1]!.resolve(answer(calls[1]!, "fees"));
+    await byFees;
+    expect(store.getState().preferences.sort).toBe("fees_asc");
+    // A failed or superseded run changes nothing.
+    const failed = store.run({ ...fixtureQuery(), sort_by: "date_asc" });
+    calls[2]!.reject(new SearchRunError("quota"));
+    await failed;
+    expect(store.getState().preferences.sort).toBe("fees_asc");
+    const superseded = store.run({ ...fixtureQuery(), sort_by: "date_asc" });
+    const newer = store.run(fixtureQuery());
+    calls[4]!.resolve(answer(calls[4]!, "newer"));
+    calls[3]!.resolve(answer(calls[3]!, "late"));
+    expect(await superseded).toMatchObject({ kind: "superseded" });
+    await newer;
+    expect(store.getState().preferences.sort).toBe("fees_asc");
+  });
+
+  it("running the same search again keeps the sort the user chose after it (U-030)", async () => {
+    const { search, calls } = manualPort();
+    const store = new WorkspaceStore({ search, now: () => FIXTURE_NOW });
+    const typed = store.run({ ...fixtureQuery(), sort_by: "fees_asc" });
+    calls[0]!.resolve(answer(calls[0]!, "fees"));
+    await typed;
+    expect(store.getState().preferences.sort).toBe("fees_asc");
+    store.setPreferences({ sort: "seats_desc" });
+    // Search again re-reads the same words, which still ask for the fee order the search on screen asked for.
+    const again = store.run({ ...fixtureQuery(), sort_by: "fees_asc" });
+    calls[1]!.resolve(answer(calls[1]!, "again"));
+    await again;
+    expect(store.getState().preferences.sort).toBe("seats_desc");
+  });
+
   it("subscribers hear every change, and an unsubscribed listener hears nothing", async () => {
     const { search, calls } = manualPort();
     const store = new WorkspaceStore({ search, now: () => FIXTURE_NOW });

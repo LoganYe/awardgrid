@@ -77,7 +77,10 @@ export function SegmentedControl<T extends string>({ label, options, value, onCh
             onClick={() => onChange(option.value)}
             onKeyDown={onKeyDown}
           >
-            {option.label}
+            {/* The ghost copy reserves the bold width, so choosing a segment never changes the control's size. */}
+            <span className="ag-segment-label" data-text={option.label}>
+              {option.label}
+            </span>
           </button>
         );
       })}

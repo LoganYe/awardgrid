@@ -213,21 +213,335 @@
   text-decoration: none;
 }
 
+/*
+ * View and sort on one 44 row at 390. The segments stay equal (spec §10) and never narrower than their longest word;
+ * where the row cannot hold both (320 in English, larger text) the sort takes its own line, right-aligned, rather
+ * than breaking a word. Only a screen narrower than the segments themselves lets a word break.
+ */
 .ag-results-view {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ag-space-3);
+  column-gap: var(--ag-space-2);
   min-height: var(--ag-segmented-height);
   padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
 }
 
 .ag-results-segmented {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 
-.ag-results-sort,
+.ag-results-segmented .ag-segment {
+  /* 6 pt: three equal bold-width English labels plus "Lowest miles" fit 358 (measured 353). */
+  padding-inline: 6px;
+  overflow-wrap: break-word;
+}
+
+/* The sort: a visible label over a transparent native picker the same size (44 pt), so a tap opens the phone's own list. */
+.ag-results-sort {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: var(--ag-touch-target);
+  margin-inline-start: auto;
+}
+
+.ag-results-sort-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  white-space: nowrap;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-label);
+  color: var(--ag-text);
+}
+
+.ag-results-sort-text .ag-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.ag-results-sort select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: var(--ag-touch-target);
+  opacity: 0;
+  /* 16 px keeps iOS from zooming the page when the picker opens. */
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.ag-results-sort:has(select:focus-visible) {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+  border-radius: var(--ag-radius-small);
+}
+
+.ag-link-button {
+  min-height: var(--ag-touch-target);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ag-accent);
+  font: inherit;
+  font-weight: var(--ag-weight-strong);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ag-link-button:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+/* Fee groups under the fee sort (D07): each currency named, never compared with another. */
+.ag-result-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-card-gap);
+}
+
+.ag-result-group + .ag-result-group {
+  margin-top: var(--ag-space-4);
+}
+
+.ag-result-group-name {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text-secondary);
+}
+
+/*
+ * The calendar (T08; spec §14): month title 20/26 with 44 pt arrows, weekday heads 13/18, day cells at least 64 tall
+ * with 4 pt gaps — at 390 wide each column is (358 − 24) / 7 ≈ 47.7. The table's spacing is pulled out by one gap
+ * each side so the outer cells line up with the 16 pt gutters.
+ */
+.ag-cal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-cal-caption,
+.ag-cal-legend,
+.ag-cal-note {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-3);
+}
+
+.ag-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-touch-target);
+}
+
+.ag-cal-title,
+.ag-cal-day-title {
+  margin: 0;
+  font-size: var(--ag-type-section);
+  line-height: var(--ag-leading-section);
+  font-weight: var(--ag-weight-title);
+  color: var(--ag-text);
+}
+
+.ag-cal-title {
+  flex: 1 1 auto;
+  text-align: center;
+}
+
+.ag-cal-grid {
+  width: calc(100% + 8px);
+  margin: 0 -4px;
+  border-collapse: separate;
+  border-spacing: 4px;
+  table-layout: fixed;
+}
+
+.ag-cal-grid th {
+  padding: 0 0 var(--ag-space-1);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-label);
+  color: var(--ag-text-secondary);
+  text-align: center;
+}
+
+.ag-cal-grid td {
+  padding: 0;
+  vertical-align: top;
+}
+
+.ag-cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  padding: var(--ag-space-2) 0;
+  border: 1px solid transparent;
+  border-radius: var(--ag-radius-small);
+  font: inherit;
+  color: var(--ag-text);
+  background: none;
+}
+
+.ag-cal-num {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-cal-min {
+  font-size: calc(15px * var(--ag-text-scale));
+  line-height: calc(20px * var(--ag-text-scale));
+  font-weight: var(--ag-weight-strong);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.ag-cal-has {
+  position: relative;
+  border-color: var(--ag-control-border);
+  background: var(--ag-surface);
+  cursor: pointer;
+}
+
+.ag-cal-has[aria-pressed="true"] {
+  border-color: var(--ag-accent);
+  box-shadow: inset 0 0 0 1px var(--ag-accent);
+  background: var(--ag-accent-soft);
+}
+
+.ag-cal-has:focus-visible,
+.ag-cal-row:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+/* A rounded number's mark sits in the corner, so the number keeps the cell's full width. */
+.ag-cal-approx {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: calc(11px * var(--ag-text-scale));
+  line-height: calc(13px * var(--ag-text-scale));
+  color: var(--ag-text-secondary);
+}
+
+.ag-cal-empty {
+  background: var(--ag-surface-subtle);
+}
+
+.ag-cal-mark {
+  font-size: calc(15px * var(--ag-text-scale));
+  line-height: calc(20px * var(--ag-text-scale));
+  color: var(--ag-text-muted);
+}
+
+.ag-cal-out .ag-cal-num {
+  color: var(--ag-text-muted);
+}
+
+/* Narrow or large text: the days as a list, full numbers, one per line. */
+.ag-cal-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ag-cal-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ag-space-1) var(--ag-space-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--ag-touch-target);
+  padding: var(--ag-space-2) var(--ag-space-3);
+  border: 1px solid var(--ag-control-border);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-surface);
+  color: var(--ag-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ag-cal-row[aria-expanded="true"] {
+  border-color: var(--ag-accent);
+  box-shadow: inset 0 0 0 1px var(--ag-accent);
+  background: var(--ag-accent-soft);
+}
+
+.ag-cal-row-day {
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-cal-row-min {
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+}
+
+.ag-cal-row-count {
+  flex-basis: 100%;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-cal-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+/* In the list layout a chosen day's options open right under its row. */
+.ag-cal-list > li > .ag-cal-panel {
+  margin-top: var(--ag-space-3);
+}
+
+/* The cabin switch never breaks a word; four cabins sit two by two. */
+.ag-cal-cabins .ag-segment {
+  overflow-wrap: normal;
+}
+
+.ag-cal-cabins-2x2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: row;
+}
+
+.ag-cal-panel .ag-result-list {
+  padding: 0;
+}
+
 .ag-results-status,
 .ag-results-meta {
   font-size: var(--ag-type-meta);
@@ -265,6 +579,15 @@
 
 .ag-results-matrix {
   padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-matrix > .ag-results-meta {
+  margin: 0 0 var(--ag-space-2);
+}
+
+.ag-results-status:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
 }
 
 .ag-results-empty {

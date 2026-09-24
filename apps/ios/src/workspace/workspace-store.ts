@@ -175,10 +175,17 @@ export class WorkspaceStore {
     this.#history = [...this.#history.filter((s) => s.id !== snapshot.id), snapshot];
     this.#dirty = true;
     const previous = this.#state.displayedSnapshot;
+    // A search that asks for a new order (typed "lowest fees") sets the view's sort; the default, or the order the
+    // search on screen already asked for (Search again), leaves the sort the user chose (U-030). The editor and
+    // rerunShown carry the view's sort into their query, so they never undo that choice either.
+    const prefs = this.#state.preferences;
+    const asked = snapshot.query.sort_by;
+    const repeated = previous !== null && previous.query.sort_by === asked;
     this.#set({
       run: { kind: "finished", runId, revision, snapshotId: snapshot.id },
       displayedSnapshot: snapshot,
       previousSnapshot: previous && previous.id !== snapshot.id ? previous : this.#state.previousSnapshot,
+      preferences: asked !== DEFAULT_PREFERENCES.sort && asked !== prefs.sort && !repeated ? { ...prefs, sort: asked } : prefs,
     });
     this.#evict();
     return { kind: "published", runId, revision, snapshotId: snapshot.id };

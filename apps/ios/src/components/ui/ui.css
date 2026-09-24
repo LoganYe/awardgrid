@@ -189,7 +189,8 @@
   }
 }
 
-.ag-icon-button:disabled {
+.ag-icon-button:disabled,
+.ag-icon-button[aria-disabled="true"] {
   color: var(--ag-text-muted);
   opacity: 1;
   cursor: not-allowed;
@@ -309,6 +310,24 @@
   .ag-segment:hover:not(:disabled, [aria-checked="true"]) {
     color: var(--ag-text);
   }
+}
+
+/* The selected label is bold; a hidden bold copy under each label keeps every segment as wide as its bold form. */
+.ag-segment-label {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ag-segment-label::after {
+  /* Empty alternative text: the copy is never read out (a browser without the syntax drops only the ghost). */
+  content: attr(data-text) / "";
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: var(--ag-weight-strong);
+  user-select: none;
+  pointer-events: none;
 }
 
 .ag-segment:disabled {

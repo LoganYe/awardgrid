@@ -12,6 +12,10 @@ import { Button, Chip, IconButton, Notice, SegmentedControl, Sheet, Switch, Text
 
 const html = (node: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(node);
 
+/** SegmentedControl wraps each label in a span that reserves its bold width (T08, U-033); these assertions read the text. */
+const unwrapLabels = (markup: string) => markup.replace(/<span class="ag-segment-label" data-text="[^"]*">([^<]*)<\/span>/g, "$1");
+const uiCss = readFileSync(path.join(import.meta.dirname, "ui.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+
 describe("Button", () => {
   it("keeps the existing class names the shell's markup and the Simulator driver select on", () => {
     expect(html(h(Button, { variant: "primary", children: "Run" }))).toContain('class="ag-button ag-button-primary"');
@@ -90,32 +94,36 @@ describe("Chip", () => {
 
 describe("SegmentedControl", () => {
   it("is a labelled radio group with one tab stop on the checked option", () => {
-    const out = html(
-      h(SegmentedControl<"list" | "calendar">, {
-        label: "Result view",
-        value: "calendar",
-        onChange: () => {},
-        options: [
-          { value: "list", label: "List" },
-          { value: "calendar", label: "Calendar" },
-        ],
-      }),
+    const out = unwrapLabels(
+      html(
+        h(SegmentedControl<"list" | "calendar">, {
+          label: "Result view",
+          value: "calendar",
+          onChange: () => {},
+          options: [
+            { value: "list", label: "List" },
+            { value: "calendar", label: "Calendar" },
+          ],
+        }),
+      ),
     );
     expect(out).toContain('role="radiogroup" aria-label="Result view"');
     expect(out).toMatch(/role="radio" aria-checked="false" tabindex="-1"[^>]*>List</);
     expect(out).toMatch(/role="radio" aria-checked="true" tabindex="0"[^>]*>Calendar</);
   });
   it("a disabled option is rendered disabled", () => {
-    const out = html(
-      h(SegmentedControl<"a" | "b">, {
-        label: "Cabin",
-        value: "a",
-        onChange: () => {},
-        options: [
-          { value: "a", label: "Economy" },
-          { value: "b", label: "Premium", disabled: true },
-        ],
-      }),
+    const out = unwrapLabels(
+      html(
+        h(SegmentedControl<"a" | "b">, {
+          label: "Cabin",
+          value: "a",
+          onChange: () => {},
+          options: [
+            { value: "a", label: "Economy" },
+            { value: "b", label: "Premium", disabled: true },
+          ],
+        }),
+      ),
     );
     expect(out).toMatch(/tabindex="-1" disabled=""[^>]*>Premium</);
     expect(out).not.toMatch(/disabled=""[^>]*>Economy</);
@@ -126,12 +134,17 @@ describe("SegmentedControl", () => {
       { value: "b" as const, label: "Premium" },
       { value: "c" as const, label: "Business" },
     ];
-    const disabledChecked = html(h(SegmentedControl<"a" | "b" | "c">, { label: "Cabin", value: "a", onChange: () => {}, options }));
+    const disabledChecked = unwrapLabels(html(h(SegmentedControl<"a" | "b" | "c">, { label: "Cabin", value: "a", onChange: () => {}, options })));
     expect(disabledChecked.match(/tabindex="0"/g)).toHaveLength(1);
     expect(disabledChecked).toMatch(/aria-checked="false" tabindex="0"[^>]*>Premium</);
-    const missing = html(h(SegmentedControl<"a" | "b" | "c">, { label: "Cabin", value: "z" as "a", onChange: () => {}, options }));
+    const missing = unwrapLabels(html(h(SegmentedControl<"a" | "b" | "c">, { label: "Cabin", value: "z" as "a", onChange: () => {}, options })));
     expect(missing).not.toContain('aria-checked="true"');
     expect(missing.match(/tabindex="0"/g)).toHaveLength(1);
+  });
+  it("reserves each label's bold width with a copy that is never read out (T08, U-033)", () => {
+    const out = html(h(SegmentedControl<"a" | "b">, { label: "View", value: "a", onChange: () => {}, options: [{ value: "a", label: "List" }, { value: "b", label: "Calendar" }] }));
+    expect(out).toContain('<span class="ag-segment-label" data-text="Calendar">Calendar</span>');
+    expect(uiCss).toMatch(/\.ag-segment-label::after\s*\{[^}]*content: attr\(data-text\) \/ "";[^}]*font-weight: var\(--ag-weight-strong\)/);
   });
 });
 
