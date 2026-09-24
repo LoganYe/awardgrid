@@ -2,7 +2,8 @@
  * Typed browser-side calls to the grid API. Every failure becomes an `ApiFailure` value
  * (never a throw) so the page can render the matching empty state.
  */
-import type { Grid, Orientation } from "@awardgrid/core/grid/types";
+import type { AvailabilityRow, Grid, Orientation } from "@awardgrid/core/grid/types";
+import type { CoverageEvidence } from "@awardgrid/core/workspace/types";
 import { isNotice, type Notice } from "@awardgrid/core/notices";
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import type { Provenance } from "@awardgrid/core/query/deterministic";
@@ -52,6 +53,9 @@ export interface FindResponse {
   programs_by_pair?: Record<string, number> | null;
   /** Phase 6 additive: programs the run checked for these pairs (the empty-results sentence). */
   programs_checked?: number;
+  /** UI/UX v1 T18 additive: the rows and coverage a workspace snapshot is made of (the Web workspace reads them). */
+  rows?: AvailabilityRow[];
+  coverage?: CoverageEvidence | null;
 }
 
 /** A warning as the UI renders it: translated when structured, the server's English otherwise. */

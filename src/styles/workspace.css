@@ -1,0 +1,143 @@
+/*
+ * The UI/UX v1 Web workspace (T18). Colours from the shared tokens only (packages/tokens); the professional layout
+ * (72 rail, 936 main, 360/400 side panels) is T19's. Targets at least 44 tall.
+ */
+.ag-web-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1600px;
+}
+
+.ag-web-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.ag-web-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: var(--fg);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ag-web-nav-link[aria-current="page"] {
+  background: var(--bg-raised);
+  font-weight: 600;
+}
+
+.ag-web-nav-link:focus-visible,
+.ag-web-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ag-web-main {
+  min-width: 0;
+}
+
+.ag-web-workspace,
+.ag-web-saved {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ag-web-summary-route {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ag-web-summary-sub,
+.ag-web-status,
+.ag-web-option-meta,
+.ag-web-option-time {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.ag-web-notice {
+  margin: 0;
+  color: var(--error);
+}
+
+.ag-web-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ag-web-option {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.ag-web-option-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ag-web-option-route {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ag-web-option-miles {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.ag-web-option-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ag-web-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ag-web-button:disabled {
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+.ag-web-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}

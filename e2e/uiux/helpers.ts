@@ -15,6 +15,9 @@ import path from "node:path";
 import type { BrowserContext, Page } from "@playwright/test";
 import type { FixtureRequestLog } from "../../apps/ios/fixture-host/protocol";
 import scenarios from "../../packages/core/test/fixtures/uiux/scenarios.json" with { type: "json" };
+import availability from "../../packages/core/test/fixtures/uiux/availability-rows.json" with { type: "json" };
+import { UIUX_WEB_PASSWORD, WEB_SCENARIOS } from "../../scripts/uiux-web/accounts";
+import { WEB_MOCK_URL, WEB_URL, WITH_WEB } from "../../playwright.uiux.config";
 
 export type Surface = "ios" | "web";
 
@@ -117,12 +120,8 @@ export function takeExternalRequests(page: Page): string[] {
 export async function openScenario(page: Page, id: string, surface: Surface = "ios", options: ScenarioOptions = {}): Promise<void> {
   // This guard belongs in the test helper; the helper is excluded from production.
   if (!scenarioIds.has(id)) throw new Error(`Unknown synthetic scenario: ${id}`);
-  if (surface !== "ios") {
-    // The web surface needs its own isolated server and user namespaces (plan 04 T18). Refusing is better
-    // than quietly opening the iOS host under a web test's name.
-    throw new Error(`Surface "${surface}" is not wired yet; plan 04 T18 adds it.`);
-  }
   lockdownFor(page).sinceLaunch.length = 0;
+  if (surface === "web") return openWebScenario(page, id, options);
   await page.emulateMedia({ colorScheme: options.theme ?? "light" });
   const params = new URLSearchParams({ scenario: id });
   if (options.lang) params.set("lang", options.lang);
@@ -137,6 +136,61 @@ export async function openScenario(page: Page, id: string, surface: Surface = "i
     error: window.__uiuxFixture?.error ?? null,
   }));
   if (state.state !== "ready") throw new Error(`The fixture host did not start "${id}": ${state.error ?? state.state}`);
+}
+
+/**
+ * T18: the Web surface. The real Next app of this worktree (playwright.uiux.config.ts), signed in as the scenario's
+ * own account through the app's login route, on the fixture's clock, then on the workspace with the scenario's search.
+ * Without `preserveStorage` the browser's cookies and storage for the app are emptied first (a fresh device); with it,
+ * what the last account left in the browser stays, which is what an isolation test must survive, never clear.
+ */
+async function openWebScenario(page: Page, id: string, options: ScenarioOptions): Promise<void> {
+  if (!WITH_WEB) throw new Error("UIUX_WEB=0: the Web surface is not started in this run (playwright.uiux.config.ts).");
+  if (!(WEB_SCENARIOS as readonly string[]).includes(id)) throw new Error(`Scenario "${id}" has no Web account (scripts/uiux-web/accounts.ts).`);
+  const context = page.context();
+  if (!clocked.has(page)) {
+    // The server runs on the fixture's clock (e2e/uiux/web-clock.mjs); the browser starts from the same time.
+    await page.clock.install({ time: new Date(WEB_NOW) });
+    clocked.add(page);
+  }
+  if (!options.preserveStorage) {
+    // A fresh device: the stand-in's request log starts again too.
+    await page.request.post(`${WEB_MOCK_URL}/__reset`);
+    await context.clearCookies();
+    await page.goto(`${WEB_URL}/login`);
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+  }
+  await page.emulateMedia({ colorScheme: options.theme ?? "light" });
+  await context.addCookies([{ name: "ag_locale", value: options.lang ?? "en", url: WEB_URL }]);
+  const login = await page.request.post(`${WEB_URL}/api/auth/login`, { data: { username: id, password: UIUX_WEB_PASSWORD }, headers: { Origin: WEB_URL } });
+  if (!login.ok()) throw new Error(`The Web surface did not sign in "${id}": HTTP ${login.status()}`);
+  // The session cookie's Expires is set on the server's shifted clock, but the browser judges it on real time: a month
+  // after the fixture's "now" it would arrive already expired and be dropped. It is set again, from the response, as a
+  // cookie for this browser session; the server still checks the session's own expiry on its clock (T18 review FIX-2).
+  const session = login
+    .headersArray()
+    .filter((header) => header.name.toLowerCase() === "set-cookie")
+    .map((header) => /^ag_session=([^;]*)/.exec(header.value)?.[1])
+    .find((value) => value !== undefined);
+  if (!session) throw new Error(`The Web surface signed in "${id}" without a session cookie.`);
+  await context.addCookies([{ name: "ag_session", value: session, url: WEB_URL, httpOnly: true, sameSite: "Lax" }]);
+  // The synthetic search (availability-rows.json, as core's fixtureQuery reads it), as the Web's own ?q= codec.
+  const q = Buffer.from(JSON.stringify(availability.query), "utf8").toString("base64url");
+  await page.goto(`${WEB_URL}/workspace?q=${q}`);
+}
+
+const clocked = new WeakSet<Page>();
+/** The Web surface's clock: the fixture's "now", unless UIUX_WEB_NOW moves it (start-web.sh reads the same). */
+const WEB_NOW = process.env.UIUX_WEB_NOW || scenarios.now;
+
+/** T18: what the Web surface's seats.aero stand-in received, for one scenario's account (by its fake key). */
+export async function webRequestLog(page: Page, scenario: string): Promise<{ seats: number; trips: number; seatsPaths: string[] }> {
+  const response = await page.request.get(`${WEB_MOCK_URL}/__log`);
+  const all = (await response.json()) as Record<string, { seats: number; trips: number; seatsPaths: string[] }>;
+  return all[scenario] ?? { seats: 0, trips: 0, seatsPaths: [] };
 }
 
 /** T15: the context shape of each question the scripted Anthropic answered, in order (see FixtureRequestLog). */

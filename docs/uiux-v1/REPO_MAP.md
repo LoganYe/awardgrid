@@ -57,9 +57,9 @@ Mapped read-only on 2026-09-23 at `9c69c6c` (branch `uiux/quiet-precision-v1`). 
 |---|---|---|
 | `src/app/` | exists | Pages `/`, `/grid`, `/login`, `/register`, `/settings`, `/queries` (web "watches"), `/legal`. Ask is a drawer inside `/grid`. |
 | `src/components/grid/` | exists | Matrix only (no list/calendar), roving grid keyboard, virtualization, drawers (single slot: cell or ask). |
-| `src/components/workspace/` | **new** (T19) | |
+| `src/components/workspace/` | **new** (T18) | `workspace-app.tsx`, `saved-app.tsx`, `workspace-shell.tsx` (interim nav; S10 layout is T19), `option-card.tsx`, `services.ts` (core stores per account), `search-port.ts` (`/api/find` → `ResultSnapshot`), `storage.ts` (per-account localStorage keys, logout clearing, device epoch). Pages `src/app/workspace/` (`/workspace`, `/workspace/saved`). U-053 |
 | `src/lib/db/` | exists | Drizzle schema + SQLite stores. T02 adds migration `0003_availability_time_basis.sql` (nullable `availability_cache.time_evidence`). |
-| `src/lib/server/` | exists | `find.ts` (`findGridForUser`, `getTripsForUser`, `parseForUser` — the latter calls the LLM when deterministic parsing misses fields and a server key is set), `queries.ts`. |
+| `src/lib/server/` | exists | T18: `FindGridResult` gains `rows` and `coverage` (additive). `find.ts` (`findGridForUser`, `getTripsForUser`, `parseForUser` — the latter calls the LLM when deterministic parsing misses fields and a server key is set), `queries.ts`. |
 | Web scheduling | exists | `src/lib/scheduler/*`, `src/cli/worker*.ts`, `src/lib/notify/*` (Telegram). No capability module; env booleans only. |
 | Web AI | exists, different engine | Claude Agent SDK subprocess (`src/lib/ask/`), not `@awardgrid/core/ask`. |
 
@@ -68,6 +68,7 @@ Mapped read-only on 2026-09-23 at `9c69c6c` (branch `uiux/quiet-precision-v1`). 
 | Plan path | Status | Actual path / approach |
 |---|---|---|
 | `playwright.uiux.config.ts`, `e2e/uiux/*` | **new** | Separate config; fixture host on :4310 (does not collide with :3000 prod, :3400/:3999 web e2e, :4597/:4599 Simulator probes). |
+| Web fixture (T18) | **new** | `e2e/uiux/start-web.sh` (worktree-only; rebuilds on any newer build input; seeds; `next start` on :4330 on the fixture clock via `web-clock.mjs`), `scripts/uiux-web/` (`mock-seatsaero.ts` on :4331, `seed.ts`, `accounts.ts`). `openScenario(page, id, "web")`. `UIUX_WEB=0` leaves the Web servers and `web-*.spec.ts` out. |
 | `e2e/*` (web) | exists | 15 specs; `pnpm e2e` rewrites tracked `docs/screenshots/v0.2/**` and `axe-summary.json`. |
 | iOS unit tests | exist | vitest, node environment, no DOM library; screens are tested with `renderToStaticMarkup`. |
 | iOS Simulator | exists | `apps/ios/probes/run-probes.sh [--e2e]` with mock seats.aero :4597 and probe server :4599; the booted iPhone 17 Pro holds the owner's real keys, so only the `VITE_AG_PROBES=e2e` build (memory key stores) is used there. |

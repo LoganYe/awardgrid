@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { clearAskSession } from "@/components/ask/history";
+import { forgetWorkspacesOnDevice } from "@/components/workspace/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +63,7 @@ export function AuthForm({ mode, initialInviteCode = "" }: { mode: AuthMode; ini
         // Belt and braces with LogoutButton: whoever was in this tab before, their Ask history
         // does not follow the new session (sessionStorage survives a same-tab navigation).
         clearAskSession();
+        forgetWorkspacesOnDevice();
         router.push("/grid");
         router.refresh();
         return;

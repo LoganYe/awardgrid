@@ -10,13 +10,21 @@ export PATH="$HOME/.local/node-arm64/bin:$PATH"   # arm64 node + pnpm 12.3.4; th
 git status --short && git log --oneline -5
 ```
 
-Never in this checkout: `pnpm build`, `next build`, `scripts/check-no-secrets-in-bundle.sh --build`, or `pnpm e2e` when `.next/BUILD_ID` is missing — the production LaunchAgent on :3000 serves this `.next` (DECISIONS U-003). Web builds/e2e for M4 go in a separate git worktree. A full `pnpm e2e` also rewrites tracked `docs/screenshots/v0.2/**`; restore them after.
+Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `scripts/check-no-secrets-in-bundle.sh --build`, or `pnpm e2e` — the production LaunchAgent on :3000 serves its `.next` (DECISIONS U-003). In the worktree they are fine. A full `pnpm e2e` rewrites tracked `docs/screenshots/v0.2/**`: `git checkout -- docs/screenshots/v0.2` after. The UI/UX run and `pnpm e2e` share the worktree's `.next`: run them one after the other, never together.
 
 ## Where things stand
 
 - Branch `uiux/quiet-precision-v1` in the worktree above, one local commit per finished task (see `git log`). Nothing pushed.
-- T01–T17 verified (unit + integration + iOS browser mock): M1–M3 done in those scopes. T18 (M4, Web) is next: see STATUS "Current next action".
+- T01–T17 verified (unit + integration + iOS browser mock): M1–M3 done in those scopes. T18 verified (unit + Web mock). T19 is next: see STATUS "Current next action".
 - Carried forward:
+  - **The Web surface (T18, U-053).**
+    - `openScenario(page, id, "web")` signs an account in (`scripts/uiux-web/accounts.ts`) on this worktree's real Next app (:4330), and opens `/workspace?q=` with the synthetic search.
+    - The server runs on the fixture's clock, and seats.aero is a stand-in on :4331. `webRequestLog(page, scenario)` counts what each account's key sent.
+    - `start-web.sh` rebuilds `.next` when any build input is newer. The first run after a source change takes about 2 minutes longer.
+    - `UIUX_WEB=0` runs iOS only.
+  - **The Web's stores.** Core's `WorkspaceStore` and `FavoritesStore` run per account (`src/components/workspace/services.ts`) over `storage.ts`, under keys `JSON.stringify([store, userId, name])`.
+    - Any logout or login path must call `clearAskSession()` and `forgetWorkspacesOnDevice()`.
+    - Storage and search ports made before then refuse to write or publish (the device epoch).
   - Ask is fully translated (U-052); `ask/entry-labels.ts` holds a question's own lines per language, and `labels.ts` stays the English source.
   - Spending entries go through `AppServices.requests` (RequestCoordinator, U-052): the search port, watch runs, Ask tool calls, detail lookups. Never queue an operation from inside a queued one.
   - Ask's tools are gated to the included search, and anything else is a proposal the person applies (U-051). Scenarios `ai-pending` and `ai-stale` are seeded.
@@ -36,7 +44,7 @@ Never in this checkout: `pnpm build`, `next build`, `scripts/check-no-secrets-in
 ## Next commands
 
 ```sh
-# T18: read plan 04 T18 first; write its red test before any code (the Web surface is not wired in the fixture yet)
+# T19: read plan 04 T19 and docs/04 S10 first; write its red test (e2e/uiux/web-layout.spec.ts) before any code
 # Evidence screenshots: run only the task's own spec with UIUX_EVIDENCE=1 (the harness spec rewrites T01's screenshots)
 UIUX_EVIDENCE=1 pnpm exec playwright test --config=playwright.uiux.config.ts e2e/uiux/<task>.spec.ts
 # UI/UX browser suite (fixture host on 127.0.0.1:4310)
@@ -45,4 +53,4 @@ pnpm exec playwright test --config=playwright.uiux.config.ts
 pnpm typecheck && pnpm lint && pnpm test && pnpm --filter @awardgrid/ios build
 ```
 
-If port 4310 is taken, a stopped Playwright run left its fixture Vite behind: `lsof -nP -iTCP:4310 -sTCP:LISTEN`, and stop it only if it is this worktree's `vite.fixture.config.ts`.
+If port 4310, 4330 or 4331 is taken, a stopped Playwright run left a server behind: `lsof -nP -iTCP:4310 -sTCP:LISTEN` (and 4330, 4331). Stop it only if it is this worktree's fixture Vite, `next start` or `mock-seatsaero.ts`.

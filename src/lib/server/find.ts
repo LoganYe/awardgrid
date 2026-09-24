@@ -18,6 +18,7 @@ import type { Db } from "@/lib/db/client";
 import { createSqliteStores } from "@/lib/db/stores";
 import { buildGrid, enumeratePairs } from "@awardgrid/core/grid/pivot";
 import type { AvailabilityRow, Grid, NotFetchedPair, Orientation, RoutePair } from "@awardgrid/core/grid/types";
+import type { CoverageEvidence } from "@awardgrid/core/workspace/types";
 import { getDecryptedKey, getMasterKey, hasKey, NoKeyError } from "@/lib/keys";
 import { BodyError } from "@/lib/server/http";
 import { PARSER_MODEL_DEFAULT, ParseError, parseQuery, resolveParserModel, type ParseQueryResult, type ParserClient } from "@awardgrid/core/query";
@@ -96,6 +97,13 @@ export interface FindGridResult {
    * them all). The empty-results sentence's "Checked N programs".
    */
   programs_checked: number;
+  /**
+   * UI/UX v1 T18, additive: the rows the grid was built from (dynamic ones appended as above) and how much of the
+   * query's scope they cover, so the Web workspace builds the same ResultSnapshot iOS does (core
+   * workspace/snapshot-from-find.ts). Older clients ignore both.
+   */
+  rows: AvailabilityRow[];
+  coverage: CoverageEvidence | null;
 }
 
 type UserRef = Pick<User, "id">;
@@ -421,6 +429,8 @@ export async function findGridForUser(
     programs_failed: [...routes.failed],
     programs_by_pair: counts.by_pair,
     programs_checked: counts.checked,
+    rows,
+    coverage: result.coverage ?? null,
   };
 }
 

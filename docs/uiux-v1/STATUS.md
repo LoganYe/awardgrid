@@ -1,6 +1,6 @@
 # UI/UX v1 execution status
 
-State: **M4 next**. T01–T17 are verified (unit, integration, iOS browser mock); M1–M3 are complete in those scopes. A28's native half, and every Simulator, device and live-key check, have not been run. T18 is next.
+State: **M4 in progress**. T01–T17 are verified (unit, integration, iOS browser mock), and T18 is verified (unit and Web mock). M1–M3 are complete in those scopes. A28's native half, and every Simulator, device and live-key check, have not been run. T19 is next.
 Handoff pack: `/Users/yegaoyang/Desktop/workspace/awardgrid-claude-code-impl` (read in the order its `CLAUDE_CODE_PROMPT.md` sets).
 Repository: `/Users/yegaoyang/Desktop/workspace/awardgrid`. Work happens in the worktree **`/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`** on local branch `uiux/quiet-precision-v1` (from `main` at `9c69c6c`); the main checkout stays on `main` because production runs from it (DECISIONS U-009).
 Design baseline: `2a1f353` is an ancestor of `9c69c6c`; the 4 commits after it are seats.aero decoding fixes, an Ask token-count fix and a docs entry. Nothing was reset or checked out.
@@ -18,7 +18,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 | M1 truthful foundations (T01–T05) | verified (unit + integration + iOS browser mock); Simulator/device unverified | [baseline](evidence/T01-baseline.md), [T01](evidence/T01-fixture-harness.md), [T02](evidence/T02-truth-identity.md), [T03](evidence/T03-coverage-evidence.md), [T04](evidence/T04-tokens-primitives.md), [T05](evidence/T05-workspace.md) |
 | M2 iOS search flow (T06–T11) | verified (unit + iOS browser mock); Simulator/device unverified; A21 partial (Ask chrome English until T15–T17) | [T06](evidence/T06-query-editor.md), [T07](evidence/T07-mobile-results.md), [T08](evidence/T08-projection-views.md), [T09](evidence/T09-matrix.md), [T10](evidence/T10-details.md), [T11](evidence/T11-settings-onboarding.md) |
 | M3 context and persistence (T12–T17) | verified (unit + integration + iOS browser mock); Simulator/device unverified; A28 native half unverified | [T12](evidence/T12-selection-compare.md), [T13](evidence/T13-favorites.md), [T14](evidence/T14-watches.md), [T15](evidence/T15-ai-context.md), [T16](evidence/T16-proposals.md), [T17](evidence/T17-coordination.md) |
-| M4 Web and release validation (T18–T22) | pending | — |
+| M4 Web and release validation (T18–T22) | in progress: T18 verified (unit + Web mock) | [T18](evidence/T18-web-isolation.md) |
 
 ## Tasks
 
@@ -41,7 +41,7 @@ Authorization: local implementation and per-task local commits only. No push, PR
 | T15 | AI context and trusted result references | verified (unit + iOS browser mock) | [evidence](evidence/T15-ai-context.md). A26 is verified in those scopes with the fixture's scripted Anthropic. No live Anthropic request. The device keyboard, touch scrolling and VoiceOver are unverified. `/ask` is a full-height page (U-050) |
 | T16 | Structured change proposals, tool-layer approval | verified (unit + iOS browser mock) | [evidence](evidence/T16-proposals.md). A27 is verified in those scopes with the scripted Anthropic; refusals are counted at the fake seats.aero (0 requests). Ask without an included search now proposes instead of searching (U-051). No live Anthropic request |
 | T17 | Request coordination, stop, interruption recovery | verified (unit + integration + iOS browser mock) | [evidence](evidence/T17-coordination.md). A29 is verified; A28 is verified in mock integration, with the native half (a real kill, the native idle timeout) unverified. The Ask page's own lines are in Chinese too, so A21 is now met (U-052) |
-| T18 | Web ports and account isolation | pending | |
+| T18 | Web ports and account isolation | verified (unit + Web mock) | [evidence](evidence/T18-web-isolation.md). A30 is verified in those scopes: this worktree's real Next app, a stand-in seats.aero, two accounts on one browser. The core stores are shared with iOS; each signed-in account has its own namespace; logout empties every workspace, even for an answer that lands after it (U-053). A tab left open across a logout elsewhere is not covered (it never was on the Web). No live key |
 | T19 | Web workspace, exclusive side panels, keyboard | pending | |
 | T20 | Web scheduling, settings, shared-consumer regression | pending | |
 | T21 | Cross-size, accessibility, visual polish | pending | |
@@ -60,9 +60,10 @@ Authorization: local implementation and per-task local commits only. No push, PR
 
 | Scope | State |
 |---|---|
-| Unit (vitest) | run per task; T01–T17 green (root 919/2 skipped, core 958, ios 795) |
-| Web mock — existing web e2e (`pnpm e2e`) | baseline 583 passed / 145 skipped / 0 failed; not re-run (no web change yet, and it must run in a worktree from now on) |
-| iOS browser mock (`playwright.uiux.config.ts`) | 190 passed (harness 10, foundations 26, workspace 4, query editor 18, mobile results 14, views 15, matrix 16, details 19, onboarding 19, compare 11, saved 15, watches 10, ask 13, proposals 8, ask-stop 5) |
+| Unit (vitest) | run per task; T01–T18 green (root 930/2 skipped, core 960, ios 795) |
+| Web mock — UI/UX Web surface (`playwright.uiux.config.ts`, T18+) | web-isolation 8 passed: this worktree's Next app on :4330, stand-in seats.aero on :4331 |
+| Web mock — existing web e2e (`pnpm e2e`) | re-run in the worktree for T18 after the review fixes: 583 passed / 145 skipped / 0 failed (same as the baseline) |
+| iOS browser mock (`playwright.uiux.config.ts`) | whole run 211 passed (T18 added web-isolation 8), the Web surface's tests included |
 | iOS Simulator | not run for the app yet. One T07 reviewer ran a scratch WKWebView probe on throwaway simulators to settle a locale question (DECISIONS U-026; evidence T07 Review): not an app verification |
 | Physical device | not available to this session — unverified |
 | Live seats.aero / Anthropic key | not authorized — not run |
@@ -79,12 +80,15 @@ Authorization: local implementation and per-task local commits only. No push, PR
 - iOS `GridTable` (seat count 0 as nothing, no fees, freshness from the local fetch time) is no longer used by the Search screen since T09; it stays for the Phase 5 driver (U-028) and its unit test — remove with the driver update in T21/T22.
 - Before T09 the List and Calendar showed options above a search's own mileage cap (nothing on the snapshot path applied `max_miles`); fixed in the projection (U-035). The Web path still builds its grid with `buildGrid`, which applies it (T18–T20 to re-check when the Web reads the projection).
 - The Phase 5 Simulator driver reads the pre-T07 layout (DECISIONS U-028) → T21/T22. Since T16 it also asks without an included search, whose searches the gate now refuses (U-051).
-- Web `/api/parse` calls the LLM implicitly when deterministic parsing misses fields and a server key is set → T18/T20 (ordinary search must not call AI silently).
+- Web `/api/parse` calls the LLM implicitly when deterministic parsing misses fields and a server key is set → T20 (ordinary search must not call AI silently). The T18 workspace does not use it: it takes a structured `?q=`.
+- Web workspace (T18, interim): the empty state points to the grid (the workspace's own query bar is S10, T19); the nav repeats the header's links (T19); the headings step h1 → h3 (T21's axe audit, best-practice only). A tab left open across a logout in another tab keeps its page, as the Web always has (U-053).
+- The UI/UX run and `pnpm e2e` share the worktree's `.next`: run them one after the other.
 
 ## Current next action
 
-T18 (plan 04): Web ports and account isolation (A30 and the web rows; S10 is T19). Read plan 04 T18 first and write the red test from its Step 1 (`e2e/uiux/web-isolation.spec.ts`: `openScenario(page, "web-user-a", "web")`, favourite, log out, `web-user-b` sees none). Notes:
-- `openScenario` refuses the `web` surface today (e2e/uiux/helpers.ts: "Surface web is not wired yet; plan 04 T18 adds it"), and `web-user-a`/`web-user-b` are unseeded (fixture-host SEEDED_BY). T18 wires a Web fixture surface. It must run a separate server in its own worktree, never the main checkout's `.next` (U-003), and use a mock server-side seats.aero, never the real one (D10).
-- First read the Web auth, find, trips and page paths (`src/app`, `src/lib/server`, `src/components/grid`) and fill REPO_MAP. The Web builds its grid with `buildGrid` (STATUS: the List/Calendar projection applies `max_miles` since U-035; re-check when the Web reads the projection).
-- Web `/api/parse` calls the LLM implicitly when deterministic parsing misses fields and a server key is set. Ordinary search must not call AI silently (T18/T20).
-- Namespaces: `JSON.stringify(["awardgrid-workspace-v1", authenticatedUserId])` from the server session, never a query string. Logout clears selection, conversation and local sensitive state before another session mounts.
+T19 (plan 04): the Web professional workspace, exclusive side panels and keyboard (S10; A31, A32). Read plan 04 T19 and docs/04 S10 first, and write the red test from its Step 1 (`e2e/uiux/web-layout.spec.ts`: 1440 × 900, `openScenario(page, 'complete', 'web', { lang: 'zh' })`, `AI辅助` opens `assistant-panel`, then `查看选项` opens `detail-panel` and closes it). Notes:
+- **Build on T18's pages.** `/workspace` (`src/components/workspace/workspace-app.tsx`) already lists the account's snapshot through core's `projectResults`; `workspace-shell.tsx` is the interim nav that T19's 72-wide rail replaces. The `complete` Web account exists (scripts/uiux-web/accounts.ts).
+- **Web AI.** The Web's Ask engine is the Claude Agent SDK route (`src/lib/ask/`, `/api/ask`), not core's. In the fixture there is no Anthropic key, so the assistant panel must say so rather than call anything. Never call AI from ordinary search.
+- **Details.** Web Get Trips is `/api/trips` (the existing route, `getTripsForUser`). The stand-in seats.aero answers Get Trips for each account's key (check `mock-seatsaero.ts` before relying on it).
+- **Keyboard.** A command palette of in-app actions only; a single key is never captured while typing or composing (IME); shortcuts can be turned off, and each has a visible alternative.
+- **Widths.** Check 1440, 1280, 1024, 768 and 390. Below 1280 the panels overlay; below 768 the page is one column. Coarse pointers on desktop keep 44 targets.

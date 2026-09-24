@@ -556,3 +556,65 @@ T17, plan 03 T17, docs/02 D09, docs/04 S09, A28, A29, A21 (U-039, U-050).
 - `fixture-harness.spec.ts`: the unseeded example is `long-labels` (T21).
 
 **Fixture.** `ai-stopped`: saved partial results, and a saved conversation whose one question was stopped while its request was out. Its counts are lower bounds and Anthropic reported nothing.
+
+## U-053 · The Web workspace reads core's stores, one namespace per signed-in account; logout empties every workspace; a real-Next fixture
+
+T18, plan 04 T18, docs/02 D07 and D10, docs/04 S06 and S10 (laid out in T19), A30.
+
+**Shared code moved into core, not copied.**
+- `workspace-store.ts` and `favorites-store.ts` moved from `apps/ios/src` to `packages/core/src/lib/workspace/` with `git mv`. Re-export stubs stay at the old paths, so iOS imports and iOS tests are unchanged.
+- `snapshot-from-find.ts` (a find answer to a `ResultSnapshot`) is now core's. iOS `search-port.ts` imports it and re-exports it.
+- `favoriteFromOption` and `optionOrigin` are additive. The Web saves one option, and its origin names the snapshot and the row, so the same option is saved once.
+
+**The Web surface (interim; T19 lays it out per S10).**
+- `/workspace` and `/workspace/saved`, behind `requireUser`.
+- A search given as `?q=` (the grid's own codec) runs once, after the account's stored workspace has been read. A restored workspace runs nothing.
+- Results come through core's `projectResults`, the same projection iOS uses.
+- The search port is the existing authenticated `/api/find`. The server resolves the account's own key, cache and quota, and the browser never sees a key.
+
+**Per-account namespaces** (`src/components/workspace/storage.ts`).
+- The localStorage key is `JSON.stringify([store, userId, name])` for the stores `awardgrid-workspace-v1` and `awardgrid-favorites-v1`.
+- `userId` comes from the server session, as the page's prop, never from the address.
+- An unreadable value is refused and never written over, as on the device (U-047).
+
+**Logout and login in this tab.**
+- Each of these calls `clearAskSession()` and `forgetWorkspacesOnDevice()`: the header's Log out, the workspace's Log out, Settings' Log out everywhere, and a successful login.
+- That removes every account's workspace from the browser. Saved options stay, each under its own account.
+- Log out everywhere did not clear the Ask conversation before T18. It now does.
+
+**The device epoch (review REG-1 / ISO-2).**
+- `forgetWorkspacesOnDevice()` also moves a module-level epoch.
+- Storage made before the move refuses every write (`SignedOutWebStorageError`).
+- The search port drops an answer that lands after it moved (`signed_out`), so the rows are neither shown nor kept.
+- A search in flight at logout used to put that account's workspace back on the browser. It now leaves nothing: a browser test holds `/api/find` across both Log out and Log out everywhere, and a unit test covers the same case.
+- **Not adopted:** the verifier's other suggestion, aborting the search when the page unmounts. Navigating within the signed-in account (Search → Saved) should keep the answer for that account, as iOS keeps its services app-wide. A request already sent is not recalled either way. The account boundary is the defect, and the epoch closes it.
+
+**The header's quota count.** When a workspace search settles, answered or not, it calls the existing `notifyUsageChanged()`, and the header re-reads `/api/usage` at once. Before this it waited for focus or its 60-second poll, and read 0/950 after a call was spent (found in the screen check; browser test).
+
+**The find answer: additive only.**
+- `FindGridResult` gains `rows` and `coverage`, and `FindResponse` gains `rows?` and `coverage?`.
+- Every legacy field is unchanged, and a browser test checks the key list.
+- The CLI and server never import `components/workspace` (`boundaries.test.ts`).
+
+**The fixture (TEST-ONLY).**
+- **Startup** (`e2e/uiux/start-web.sh`):
+  - It refuses to run outside a linked git worktree (U-003).
+  - It rebuilds `.next` when any build input is newer: `src`, all of `packages/core` (its data and exports map), the tokens, `package.json`, the lockfile, `tsconfig.json`, and the Next and PostCSS configs. Directories count, so a deleted or renamed file also rebuilds (review FIX-4).
+  - It seeds a throwaway SQLite file and runs `next start` on the fixture's clock (`web-clock.mjs`).
+- **Stand-in seats.aero** (`scripts/uiux-web/mock-seatsaero.ts`, on :4331): it answers each account's fake key with that scenario's synthetic rows.
+- **Accounts and seeding** (`scripts/uiux-web/accounts.ts`, `seed.ts`): `complete`, `complete-empty`, `multi-program`, `no-seats-key`, `quota-low`, `web-user-a` and `web-user-b`.
+- **Signing in** (`openWebScenario`): it signs in through the app's own login route, then sets the session cookie again as a browser-session cookie.
+  - The cookie's `Expires` comes from the server's shifted clock, but the browser judges it on real time. So from 2026-11-17 it would have arrived already expired (review FIX-2).
+  - The server still checks the session's expiry on its own clock.
+  - `UIUX_WEB_NOW` moves the server and browser clocks together, and was used to prove this, 85 days behind real time.
+- **`UIUX_WEB=0`** leaves out the Web servers and `e2e/uiux/web-*.spec.ts`, and says so. This is the iOS-only run for the main checkout (review FIX-3).
+
+**Tests changed.** No existing test was changed. `apps/ios/fixture-host/scenarios.ts` lists `web-user-a` and `web-user-b` as seeded.
+
+**Known, not changed (review, refuted as outside T18).**
+- **Another tab** left open across a logout elsewhere keeps its page (ISO-1). The Web never passed a logout between tabs; the Ask conversation is per tab too. A30 and the plan describe a hand-over within one tab.
+- **T19** (the workspace's own query bar):
+  - The empty state points to the grid and to shared `/grid?q=` links, and neither fills the workspace (REG-3).
+  - The interim nav repeats the header's links and shares the name "Menu" (REG-4).
+- **T21's audit:** the headings step from h1 to h3 on the workspace. That is an axe best-practice rule, not WCAG A/AA (REG-2).
+- **Don't run them together:** the UI/UX run and `pnpm e2e` both use the worktree's `.next`. Run them one after the other, never at the same time (FIX-5, REG-5).

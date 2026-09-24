@@ -108,6 +108,9 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
   "ai-stale",
   // T17: a question stopped while its request was out: it may still have completed, and no next step ran.
   "ai-stopped",
+  // T18: the Web surface's two isolation accounts (their rows answer the Web's seats.aero stand-in).
+  "web-user-a",
+  "web-user-b",
   "foundations",
   "inflight-old",
   "failed-old",
@@ -120,8 +123,6 @@ export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
 /** Where an unseeded scenario's state comes from. Informational, for the refusal message. */
 const SEEDED_BY: Record<string, string> = {
   "long-labels": "T21 (text scaling)",
-  "web-user-a": "T18 (web surface)",
-  "web-user-b": "T18 (web surface)",
 };
 
 export class UnknownScenarioError extends Error {

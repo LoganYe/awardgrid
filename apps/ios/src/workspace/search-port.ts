@@ -12,9 +12,8 @@
  * before the workspace can publish it — and is also kept for the run that asked, until that caller takes it: the
  * Search screen renders from it until the result cards read the snapshot directly (T07).
  */
-import { rowKey, scopeKey } from "@awardgrid/core/workspace/identity";
-import { rowTimeEvidence } from "@awardgrid/core/workspace/semantics";
-import type { ResultSnapshot, SearchPort, SearchRun, WorkspaceRow } from "@awardgrid/core/workspace/types";
+import { snapshotFromFind } from "@awardgrid/core/workspace/snapshot-from-find";
+import type { ResultSnapshot, SearchPort, SearchRun } from "@awardgrid/core/workspace/types";
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import type { KeyStore } from "../native/keychain";
 import type { ApiResult, FindValue, SearchEngine } from "../search/search";
@@ -85,33 +84,5 @@ export function createSearchPort(opts: SearchPortOptions): EngineSearchPort {
   };
 }
 
-/**
- * A ResultSnapshot from one engine answer. Row keys are derived from the query's scope; a row that repeats an
- * identity is the same row and is kept once. Coverage that is missing, describes another scope, or comes without its
- * rows is unknown.
- */
-export function snapshotFromFind(value: FindValue, run: { id: string; revision: number }, createdAt: string): ResultSnapshot {
-  const scope = scopeKey(value.query);
-  const seen = new Set<string>();
-  const rows: WorkspaceRow[] = [];
-  for (const row of value.rows ?? []) {
-    const key = rowKey(row, scope);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    rows.push({ key, value: row, time: rowTimeEvidence(row, createdAt) });
-  }
-  // An answer that did not carry its rows (built outside the engine) proves nothing about coverage.
-  const coverage =
-    value.rows !== undefined && value.coverage && value.coverage.scopeKey === scope ? value.coverage : { state: "unknown" as const, scopeKey: scope, slices: [] };
-  return {
-    schemaVersion: 1,
-    id: `${run.id}@${createdAt}`,
-    revision: run.revision,
-    query: value.query,
-    scopeKey: scope,
-    createdAt,
-    rows,
-    coverage,
-    receipt: { sentCalls: value.api_calls_used, fromCache: value.served_from_cache },
-  };
-}
+/** A ResultSnapshot from one engine answer: core's (T18), shared with the Web. */
+export { snapshotFromFind };
