@@ -618,3 +618,99 @@ T18, plan 04 T18, docs/02 D07 and D10, docs/04 S06 and S10 (laid out in T19), A3
   - The interim nav repeats the header's links and shares the name "Menu" (REG-4).
 - **T21's audit:** the headings step from h1 to h3 on the workspace. That is an axe best-practice rule, not WCAG A/AA (REG-2).
 - **Don't run them together:** the UI/UX run and `pnpm e2e` both use the worktree's `.next`. Run them one after the other, never at the same time (FIX-5, REG-5).
+
+## U-054 · The Web professional workspace: one panel slot docked beside the results, views from the projection, a keyboard that can be switched off
+
+T19, plan 04 T19, docs/04 S10, spec §17, A31, A32.
+
+**Layout** (`src/components/workspace/workspace-shell.tsx`, `workspace-app.tsx`, `src/styles/workspace.css`).
+- **Rail.** A 72-wide rail named "Workspace" (Search, Queries, Saved, and Settings and Log out at its foot), then the page with 24 padding.
+  - The rail runs the full height, and its links stay in view.
+  - Below 768 it is a fixed bottom bar with 44-plus targets, and the page is one column.
+  - The site header stays above it: the quota count, language, theme and account menu. Its links are the Web's other pages.
+- **Geometry.** Measured in the browser at 1440:
+  - The assistant: main 936, gap 24, panel 360, right padding 24.
+  - A detail: main 896 and panel 400.
+  - No panel: main 1320.
+  - The content stops at 1600, and at 1280 the panel still docks.
+- **One panel slot** (`panel-state.ts`: none, assistant, or detail).
+  - Opening either replaces the other.
+  - The option last opened stays "selected" for the assistant's context.
+  - A new snapshot closes a detail from another snapshot and says so.
+- **Where the panel sits.** At 1280 and up, `DrawerShell` gains an additive `container` (the `docked` mode) and the panel is drawn inside the workspace's own column. Below 1280 it is the shell's existing overlay: modal, focus trapped, the results never squeezed. Below 768 it is a full-height sheet.
+  - The grid's drawers pass no container, so they are unchanged (push).
+  - A docked panel has no slide, so none of it lingers during an exit.
+- **Colours.** The workspace reads Quiet Precision (`precision.css`, `--ag-*`), as U-004 planned for M4.
+  - The Web's own token names are aliased to it inside `.ag-ws` and `.ag-ws-tokens` (the panels and palette drawn over the page). No pinned value in `tokens.css` changes.
+  - Moving the rest of the Web (grid, settings, header) is left to T21's polish or later, with its own evidence.
+- **Input heights.** Workspace inputs take a `height` from the token. The Web's global touch rule sets `min-height: 40` on every input with a selector that outranks a class. The token is already 48 wherever the pointer is coarse.
+
+**Query and conditions** (`query-bar.tsx`, `results-toolbar.tsx`, `query-draft.ts`).
+- **One draft.** The top query (airports as codes, the dates, the cabins, Find) and the toolbar's conditions (programs, stops, cabin mix, mileage cap) edit the same draft.
+  - A changed draft says so, with the approved "Discard changes".
+  - Nothing runs until Find, or Cmd/Ctrl+Enter from inside the query (D08): no hard condition changes by itself.
+- **Validation.** It is core's `validateDraft`. A typed code that is not three letters is named as unknown. The first broken field takes focus.
+- **After Find.**
+  - The address is replaced with `?q=`, the grid's codec, for reloads and sharing.
+  - The query's text is `describeQuery`, as on iOS.
+  - The header count re-reads.
+- **No AI.** Ordinary search never calls `/api/parse` or `/api/ask` (browser test).
+
+**Views** (`list-view.tsx`, `calendar-view.tsx`, `matrix-view.tsx`). All three draw core's `projectResults` of the one snapshot on screen. View and sort are local and send nothing (browser test: the same row keys and snapshot id in all three).
+- **List.** Header 44, rows 64. The sorted column states its direction in words and carries `aria-sort`. Below 768 the rows are the T18 cards.
+- **Matrix.** Built from `matrixModel`, with a fixed 112 date column.
+  - One tab stop: arrows, Home/End and Ctrl/Cmd+Home/End move.
+  - Enter opens one option's details, or lists several below. Esc returns to the cell.
+  - Empty slots say why, in core's words.
+- **Calendar.** One cabin at a time, with roving focus (arrows by day and week).
+- **Default view.** The matrix for a search of more than one route. A view chosen by hand is kept per account on this browser (`prefs.ts`, `awardgrid-prefs-v1`), and is not cleared at logout because it is a convenience, not data.
+
+**Details** (`detail-panel.tsx`). The snapshot's own values open with no request: program (with `help.program`), cabin, fees, seats, source time, `details.external`, Save, Copy search details, and an https-only booking link.
+- "View flight itineraries" (`details.load`) is a separate action. Its cost is said first.
+- It uses the existing `/api/trips` and `FlightsList`, one Get Trips per press, and the header re-reads.
+
+**The assistant.** The Web's existing Ask (the Claude Agent SDK route) in the panel, titled with the approved `ai.entry` "AI assistance".
+- Its context is the snapshot's query and the selected option (`cellContextFromRow`). Opening it posts nothing.
+- The server prompt now says a selected cell's `seats_left` 0 and null `fees_cents` are unreported, never "0 seats" or "no fees" (`src/lib/ask/options.ts`, with a unit test). The grid's cell already sent them that way.
+
+**Keyboard** (`keyboard.ts`, `commands.ts`, `command-palette.tsx`).
+- **The shortcuts:**
+  - `/` focuses the query, only when nothing is being typed and never during an IME composition (`isComposing`, or keyCode 229).
+  - Cmd/Ctrl+K opens the palette.
+  - Cmd/Ctrl+Enter is Find, and only inside the query.
+  - Esc closes the top-most layer: the palette, then a cell's option list, then the panel.
+- **The palette:**
+  - A modal dialog, 560 wide (at most 90vw), with a 48-high search and 44-high options.
+  - It holds only this page's actions, matched in either language.
+  - Focus returns to what opened it.
+- **Turning shortcuts off.** It is per account, from the palette, and the page says so.
+- **Visible alternatives.** Each shortcut has one: the fields themselves, the Commands button, Find, Close, and clicking a cell. Hints are shown only while shortcuts are on, and not below 768.
+
+**Tests.**
+- **UI/UX config.** Adds a `web-desktop` project (1440×900, fine pointer, no touch) that runs `web-layout*.spec.ts`. The `ios` project ignores those. The coarse pointer at desktop width is its own block (`hasTouch`).
+- **No existing test changed.** `options.test.ts` gains a case.
+
+**Not done here.**
+- **The grid (`/grid`) is unchanged.** The workspace is reached from its rail and `/workspace?q=`. Whether the header links to it, and where `/` and login land, are for T20, with the landing and the regression (A34).
+- **Compare** (the 2–4 tray) is not on the Web. S10 does not ask for it.
+- **The site header.** It keeps the Web's old tokens. It sits above the rail, so the workspace's page height is the viewport minus the 48 header.
+
+**After the adversarial review** (26 confirmed, all fixed; evidence T19).
+- **City codes and names.** They expand through core's places as the grid reads them (TYO → NRT, HND; SHA → PVG, SHA), and the bar says so. Any other three-letter code is an airport, as core takes it. The seed's short list is not used to refuse airports.
+- **Coverage.** Every coverage notice is shown, naming its routes, over the snapshot's rows. So is a notice for dynamic-priced options the query leaves out, and the toolbar gains the "Include dynamic-priced results" condition it points to.
+- **Draft tracking.** The draft keeps its base (what it was made from or last ran) and the running draft. Edits made during a search survive its answer, and a search's own conditions are not "changed" while it runs. Find carries the view's sort (U-030). A new search starts from core's cabins, over 30 days.
+- **DrawerShell** (shared, additive):
+  - An explicit `opener`.
+  - Focus handed back only when it is still in the closing panel or on the page.
+  - A panel drawn anew across 1280 is refocused.
+  - The trap skips disabled and inert controls. That fixes a Tab escape from the grid's Ask overlay too.
+- **Shortcuts.** They use the platform's modifier only: Cmd on a Mac (where Control+K is a text-editing key), Ctrl elsewhere.
+- **Esc** closes the top-most layer in this order: palette, popover, a cell's options, the panel. An IME's Esc (keyCode 229) is left alone.
+- **The palette** stacks above every drawer.
+- **Below 768:**
+  - The bar's height is kept under the footer, so Legal stays reachable.
+  - The calendar becomes a list of dates in a narrow month.
+- **The docked panel** fits from where its column starts on screen to the viewport's bottom.
+- **Coarse pointer.** Controls in the workspace's panels are 44; a fine pointer's Close is at least 36.
+- **Fixture.** The Web fixture gains the `partial` and `unmonitored` accounts. The Web server reports `partial` as complete, because its own coverage comes from its fetch, so the notice test uses `unmonitored`.
+- **Refuted and kept:** a reload of an address with `?q=` runs that search (U-053; the grid's convention).

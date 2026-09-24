@@ -6,7 +6,7 @@
  */
 import type { Locale } from "@awardgrid/core/i18n";
 import { useT } from "@awardgrid/core/i18n/client";
-import { dayLabel, feesLabel, formatMiles, programLabel, seatsLabel, timeLabel } from "@awardgrid/core/workspace/present";
+import { dayLabel, feesLabel, formatMiles, programLabel, resultName, seatsLabel, timeLabel } from "@awardgrid/core/workspace/present";
 import { cabinName } from "@awardgrid/core/workspace/query-editor";
 import type { WorkspaceRow } from "@awardgrid/core/workspace/types";
 
@@ -18,9 +18,11 @@ export interface OptionCardProps {
   saved: boolean;
   busy: boolean;
   onSave: () => void;
+  /** T19: open the option's details (local; nothing is fetched). */
+  onOpen?: (opener: HTMLElement) => void;
 }
 
-export function OptionCard({ row, snapshotId, locale, now, saved, busy, onSave }: OptionCardProps) {
+export function OptionCard({ row, snapshotId, locale, now, saved, busy, onSave, onOpen }: OptionCardProps) {
   const t = useT();
   const v = row.value;
   const miles = locale === "zh" ? `${formatMiles(v.miles)} 里程` : `${formatMiles(v.miles)} miles`;
@@ -40,6 +42,11 @@ export function OptionCard({ row, snapshotId, locale, now, saved, busy, onSave }
         <p className="ag-web-option-time">{timeLabel(row.time, now, locale)}</p>
       </div>
       <div className="ag-web-option-actions">
+        {onOpen ? (
+          <button type="button" className="ag-web-button" onClick={(e) => onOpen(e.currentTarget)} aria-label={t("workspace.view_option_named", { name: resultName(v, locale) })}>
+            {t("workspace.view_option")}
+          </button>
+        ) : null}
         <button type="button" className="ag-web-button" aria-pressed={saved} disabled={busy || saved} onClick={onSave}>
           {saved ? t("workspace.option_saved") : t("workspace.save_option")}
         </button>

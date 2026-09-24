@@ -15,13 +15,17 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
 ## Where things stand
 
 - Branch `uiux/quiet-precision-v1` in the worktree above, one local commit per finished task (see `git log`). Nothing pushed.
-- T01–T17 verified (unit + integration + iOS browser mock): M1–M3 done in those scopes. T18 verified (unit + Web mock). T19 is next: see STATUS "Current next action".
+- T01–T17 verified (unit + integration + iOS browser mock): M1–M3 done in those scopes. T18 and T19 verified (unit + Web mock). T20 is next: see STATUS "Current next action".
 - Carried forward:
   - **The Web surface (T18, U-053).**
     - `openScenario(page, id, "web")` signs an account in (`scripts/uiux-web/accounts.ts`) on this worktree's real Next app (:4330), and opens `/workspace?q=` with the synthetic search.
     - The server runs on the fixture's clock, and seats.aero is a stand-in on :4331. `webRequestLog(page, scenario)` counts what each account's key sent.
     - `start-web.sh` rebuilds `.next` when any build input is newer. The first run after a source change takes about 2 minutes longer.
     - `UIUX_WEB=0` runs iOS only.
+  - **The Web workspace (T19, U-054):**
+    - `src/components/workspace/`: one panel slot (`panel-state.ts`); `DrawerShell` docked into the page's column at 1280 and up (its `container` and `opener` props); views over core's projection; the palette; the keyboard rules (`keyboard.ts`, with the platform's modifier).
+    - Web layout specs run in the `web-desktop` project (`e2e/uiux/web-layout*.spec.ts`). Use `test.use({ hasTouch: true })` for a coarse pointer at desktop width.
+    - Overlays slide for 200 ms: wait before measuring. A client-side navigation resets the scroll.
   - **The Web's stores.** Core's `WorkspaceStore` and `FavoritesStore` run per account (`src/components/workspace/services.ts`) over `storage.ts`, under keys `JSON.stringify([store, userId, name])`.
     - Any logout or login path must call `clearAskSession()` and `forgetWorkspacesOnDevice()`.
     - Storage and search ports made before then refuse to write or publish (the device epoch).
@@ -44,7 +48,7 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
 ## Next commands
 
 ```sh
-# T19: read plan 04 T19 and docs/04 S10 first; write its red test (e2e/uiux/web-layout.spec.ts) before any code
+# T20: read plan 04 T20 first; write its red test (packages/core/src/lib/workspace/watch-capabilities.test.ts) before any code
 # Evidence screenshots: run only the task's own spec with UIUX_EVIDENCE=1 (the harness spec rewrites T01's screenshots)
 UIUX_EVIDENCE=1 pnpm exec playwright test --config=playwright.uiux.config.ts e2e/uiux/<task>.spec.ts
 # UI/UX browser suite (fixture host on 127.0.0.1:4310)

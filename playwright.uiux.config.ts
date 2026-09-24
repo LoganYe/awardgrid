@@ -35,6 +35,8 @@ if (!WITH_WEB && !process.env.UIUX_WEB_NOTED) {
 
 /** 390×844 at 2×, the reference artboard (docs/reference-geometry.json). */
 const IOS = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
+/** T19: the Web workspace's reference artboard, 1440×900 (docs/04 S10). */
+const DESKTOP = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, isMobile: false, hasTouch: false } as const;
 
 export default defineConfig({
   testDir: "e2e/uiux",
@@ -58,7 +60,13 @@ export default defineConfig({
     // Backstop under e2e/uiux/test.ts's routing: anything routing cannot see goes to a dead proxy, not the internet.
     proxy: { server: "http://127.0.0.1:9", bypass: "127.0.0.1,localhost" },
   },
-  projects: [{ name: "ios", use: { ...IOS } }],
+  projects: [
+    // A project's testIgnore replaces the config's: the UIUX_WEB=0 exclusion is repeated here (T19 review REG-1).
+    { name: "ios", use: { ...IOS }, testIgnore: WITH_WEB ? ["**/web-layout*.spec.ts"] : ["**/web-*.spec.ts"] },
+    // T19: the Web professional workspace at desktop sizes with a fine pointer, no touch (spec §17: hit areas follow
+    // the pointer, not the width; the coarse-pointer desktop is checked inside the specs with its own context).
+    ...(WITH_WEB ? [{ name: "web-desktop", use: { ...DESKTOP }, testMatch: ["**/web-layout*.spec.ts"] }] : []),
+  ],
   webServer: [
     {
       command: `pnpm --filter @awardgrid/ios exec vite --config vite.fixture.config.ts --host 127.0.0.1 --port ${FIXTURE_PORT} --strictPort`,

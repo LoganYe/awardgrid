@@ -162,3 +162,19 @@ main {
     transition: none;
   }
 }
+
+/* ---- docked (UI/UX v1 T19): inside the workspace's side column at ≥ 1280, beside the results ---- */
+
+.ag-drawer[data-mode="docked"][data-side][data-state] {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  transform: none;
+  transition: none;
+  overflow: hidden;
+}

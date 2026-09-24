@@ -61,6 +61,8 @@ export function buildSystemPrompt(context: AskContext = {}, now: Date = new Date
     "Context from the user's screen (JSON; may be null):",
     `- current grid QueryObject: ${contextJson(context.query ?? null)}`,
     `- selected cell: ${contextJson(context.cell ?? null)}`,
+    // UI/UX v1 T19: the grid row's 0 seats and null fees are "not reported", never "none" (docs/02 D02).
+    "In the selected cell, seats_left 0 means the program did not report a seat count, and fees_cents null means the fees are not yet confirmed: say so, and never call them 0 seats or no fees.",
   ];
   return lines.join("\n");
 }

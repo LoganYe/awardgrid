@@ -1,52 +1,1130 @@
 /*
- * The UI/UX v1 Web workspace (T18). Colours from the shared tokens only (packages/tokens); the professional layout
- * (72 rail, 936 main, 360/400 side panels) is T19's. Targets at least 44 tall.
+ * The UI/UX v1 Web workspace (T18 ports, T19 layout; docs/04 S10; spec §17). Colours are the Quiet Precision tokens
+ * (packages/tokens/precision.css, `--ag-*`) and nothing else. Inside the workspace (and its panels and palette, which
+ * carry .ag-ws-tokens when drawn over the page) the Web's own token names are aliased to them, so the shared drawer,
+ * Ask and flight-list components take the same palette without a pinned value in tokens.css changing (U-004).
+ *
+ * Geometry at 1440: rail 72, padding 24, main 936, gap 24, assistant 360, padding 24 (detail: main 896, panel 400);
+ * the main content stops at 1600. Below 1280 a panel overlays the results (DrawerShell overlay); below 768 the page is
+ * one column with a bottom bar, and a panel is a full-height page. Targets are 44 wherever the pointer is coarse.
  */
-.ag-web-shell {
+@import "../../packages/tokens/precision.css";
+
+.ag-ws,
+.ag-ws-tokens {
+  --bg: var(--ag-surface);
+  --bg-raised: var(--ag-surface-subtle);
+  --line: var(--ag-divider);
+  --line-strong: var(--ag-control-border);
+  --fg: var(--ag-text);
+  --fg-muted: var(--ag-text-muted);
+  --accent: var(--ag-accent);
+  --error: var(--ag-danger);
+  --scrim: var(--ag-scrim);
+}
+
+/* ---- frame: rail + page ---- */
+
+.ag-ws {
+  display: grid;
+  grid-template-columns: var(--ag-nav-rail) minmax(0, 1fr);
+  /* The root <main> pads the page; the workspace runs edge to edge under the header. */
+  margin: -16px calc(-1 * var(--gutter)) -16px;
+  min-height: calc(100dvh - var(--topbar-height) - var(--footer-height));
+  background: var(--ag-canvas);
+  color: var(--ag-text);
+}
+
+.ag-ws-rail {
+  border-right: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+  z-index: var(--ag-z-nav);
+}
+
+/* The rail runs the page's full height; its links stay in view while the results scroll. */
+.ag-ws-rail-inner {
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 1600px;
+  justify-content: space-between;
+  gap: var(--ag-space-2);
+  height: calc(100dvh - var(--topbar-height));
+  padding: var(--ag-space-3) var(--ag-space-1);
 }
 
-.ag-web-nav {
+.ag-ws-rail-top,
+.ag-ws-rail-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+}
+
+.ag-ws-rail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  width: 100%;
+  padding: var(--ag-space-1) 0;
+  border: 0;
+  border-radius: var(--ag-radius-control);
+  background: transparent;
+  color: var(--ag-text-secondary);
+  font: inherit;
+  font-size: var(--ag-type-label);
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ag-ws-rail-item:hover {
+  color: var(--ag-text);
+  background: var(--ag-surface-subtle);
+}
+
+.ag-ws-rail-item[aria-current="page"] {
+  color: var(--ag-accent);
+  background: var(--ag-accent-soft);
+  font-weight: var(--ag-weight-label);
+}
+
+.ag-ws-rail-icon {
+  width: var(--ag-icon);
+  height: var(--ag-icon);
+}
+
+.ag-ws-body {
+  min-width: 0;
+  padding: var(--ag-gutter-desktop);
+}
+
+.ag-ws-body > * {
+  max-width: var(--ag-content-max);
+}
+
+/* ---- page head, query, toolbar, status ---- */
+
+.ag-ws-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-4);
+  min-width: 0;
+}
+
+.ag-ws-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-3);
 }
 
-.ag-web-nav-link {
+.ag-ws-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-ws-head-actions {
+  display: flex;
+  gap: var(--ag-space-2);
+}
+
+.ag-ws-query {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  min-height: 72px;
+  padding: var(--ag-space-3) var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-card-desktop);
+  background: var(--ag-surface);
+}
+
+.ag-ws-query-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ag-space-3) var(--ag-space-4);
+}
+
+.ag-ws-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ag-ws-field[data-field="origins"],
+.ag-ws-field[data-field="destinations"] {
+  flex: 1 1 160px;
+}
+
+.ag-ws-field-arrow {
+  position: absolute;
+  left: calc(-1 * var(--ag-space-4) + 2px);
+  bottom: 12px;
+  color: var(--ag-text-muted);
+}
+
+.ag-ws-field-label {
+  padding: 0;
+  font-size: var(--ag-type-label);
+  line-height: var(--ag-leading-label);
+  color: var(--ag-text-secondary);
+}
+
+.ag-ws-input,
+.ag-ws-select {
+  /* A height, not a min-height: the Web's global touch rule sets min-height 40 on every input with a stronger
+     selector (globals.css); the token is already 48 wherever the pointer is coarse (precision.css). */
+  height: var(--ag-input-height);
+  min-width: 0;
+  padding: 0 var(--ag-space-3);
+  border: 1px solid var(--ag-control-border);
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-surface);
+  color: var(--ag-text);
+  font: inherit;
+  font-size: var(--ag-type-control);
+}
+
+.ag-ws-input-codes {
+  text-transform: uppercase;
+  font-weight: var(--ag-weight-label);
+}
+
+.ag-ws-input[aria-invalid="true"] {
+  border-color: var(--ag-danger);
+}
+
+.ag-ws-dates {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-2);
+}
+
+.ag-ws-cabins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-1);
+}
+
+.ag-ws-toggle,
+.ag-ws-check {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 8px;
-  color: var(--fg);
-  background: transparent;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-chip-height);
+  padding: 0 var(--ag-space-3);
+  border: 1px solid var(--ag-control-border);
+  border-radius: var(--ag-radius-pill);
+  cursor: pointer;
+  font-size: var(--ag-type-control);
+}
+
+.ag-ws-toggle:has(input:checked) {
+  border-color: var(--ag-accent);
+  background: var(--ag-accent-soft);
+  color: var(--ag-text);
+}
+
+.ag-ws-check {
   border: 0;
+  border-radius: var(--ag-radius-small);
+  padding: 0 var(--ag-space-2);
+  width: 100%;
+}
+
+/* The dynamic-pricing condition sits in the toolbar's row, as wide as its words. */
+.ag-ws-check-inline {
+  width: auto;
+}
+
+.ag-ws-field-error {
+  margin: 0;
+  color: var(--ag-danger);
+  font-size: var(--ag-type-meta);
+}
+
+.ag-ws-query-submit {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-2);
+  margin-left: auto;
+}
+
+.ag-ws-hint,
+.ag-ws-note,
+.ag-ws-sub {
+  margin: 0;
+  color: var(--ag-text-muted);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ag-ws-sub {
+  display: block;
+}
+
+.ag-ws-modified {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-2) var(--ag-space-3);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-info-soft);
+  color: var(--ag-text);
+}
+
+.ag-ws-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-button-height);
+  padding: 0 var(--ag-space-4);
+  border: 1px solid var(--ag-control-border);
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-surface);
+  color: var(--ag-text);
+  font: inherit;
+  font-size: var(--ag-type-control);
+  font-weight: var(--ag-weight-label);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ag-ws-button:hover:not(:disabled) {
+  background: var(--ag-surface-subtle);
+}
+
+.ag-ws-button-primary {
+  border-color: var(--ag-accent);
+  background: var(--ag-accent);
+  color: var(--ag-on-accent);
+}
+
+.ag-ws-button-primary:hover:not(:disabled) {
+  background: var(--ag-accent-hover);
+}
+
+.ag-ws-button-primary[aria-pressed="true"] {
+  background: var(--ag-accent-hover);
+}
+
+.ag-ws-button-quiet {
+  border-color: var(--ag-divider);
+}
+
+.ag-ws-button[aria-pressed="true"]:not(.ag-ws-button-primary) {
+  border-color: var(--ag-accent);
+  background: var(--ag-accent-soft);
+}
+
+.ag-ws-button:disabled {
+  border-color: var(--ag-divider);
+  background: var(--ag-surface-subtle);
+  color: var(--ag-text-muted);
+  cursor: default;
+}
+
+.ag-ws-kbd {
+  padding: 0 var(--ag-space-1);
+  border: 1px solid currentColor;
+  border-radius: var(--ag-radius-small);
+  font: inherit;
+  font-size: var(--ag-type-label);
+  opacity: 0.8;
+}
+
+:where(.ag-ws, .ag-ws-tokens) :is(a, button, input, select, summary, [tabindex]):focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+/* ---- columns: main + the one side panel ---- */
+
+.ag-ws-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ag-space-6);
+  align-items: start;
+}
+
+.ag-ws-panel-slot {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .ag-ws-columns[data-panel="assistant"] {
+    grid-template-columns: minmax(0, 1fr) var(--ag-panel-assistant);
+  }
+  .ag-ws-columns[data-panel="detail"] {
+    grid-template-columns: minmax(0, 1fr) var(--ag-panel-detail);
+  }
+  .ag-ws-columns:not([data-panel="none"]) .ag-ws-panel-slot {
+    display: block;
+    position: sticky;
+    top: var(--ag-space-4);
+    /* From where the column starts on screen (workspace-app.tsx publishes it) to 16 above the bottom, so the panel's
+       composer is in view when it opens, at the top of the page or scrolled (T19 review LAY-11). */
+    height: calc(100dvh - var(--ag-ws-slot-top, var(--ag-space-4)) - var(--ag-space-4));
+    min-height: 320px;
+  }
+}
+
+.ag-ws-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  min-width: 0;
+}
+
+.ag-ws-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-2) var(--ag-space-3);
+  min-height: 48px;
+}
+
+.ag-ws-conditions,
+.ag-ws-view-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ag-space-2);
+  /* Flex items default to their content's width; these may shrink to the column instead. */
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ag-ws-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* A long option ("At least 75% of the distance in the chosen cabin") never widens the page. */
+.ag-ws-select {
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.ag-ws-inline-label {
+  font-size: var(--ag-type-meta);
+  color: var(--ag-text-secondary);
+  white-space: nowrap;
+}
+
+.ag-ws-input-miles {
+  width: 9em;
+}
+
+.ag-ws-programs {
+  position: relative;
+}
+
+.ag-ws-select-like {
+  display: inline-flex;
+  align-items: center;
+  height: var(--ag-input-height);
+  padding: 0 var(--ag-space-3);
+  border: 1px solid var(--ag-control-border);
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-surface);
+  font-size: var(--ag-type-control);
+  cursor: pointer;
+}
+
+.ag-ws-programs-list {
+  position: absolute;
+  z-index: var(--ag-z-overlay);
+  top: calc(100% + 4px);
+  left: 0;
+  width: 280px;
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+  padding: var(--ag-space-2);
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-surface);
+  box-shadow: var(--ag-shadow-popover);
+}
+
+.ag-ws-segmented {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-surface-subtle);
+}
+
+.ag-ws-segment {
+  min-height: calc(var(--ag-segmented-height) - 4px);
+  padding: 0 var(--ag-space-4);
+  border: 0;
+  border-radius: calc(var(--ag-radius-control) - 2px);
+  background: transparent;
+  color: var(--ag-text-secondary);
+  font: inherit;
+  font-size: var(--ag-type-control);
+  cursor: pointer;
+}
+
+.ag-ws-segment[aria-pressed="true"] {
+  background: var(--ag-surface);
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-ws-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-1) var(--ag-space-4);
+  min-height: 32px;
+  font-size: var(--ag-type-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-ws-status p {
+  margin: 0;
+}
+
+.ag-ws-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ag-ws-notice {
+  padding: var(--ag-space-2) var(--ag-space-3);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-info-soft);
+  color: var(--ag-text);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ag-ws-notice[data-kind="partial"],
+.ag-ws-notice[data-kind="unknown"] {
+  background: var(--ag-warning-soft);
+}
+
+.ag-ws-notice[data-kind="none"] {
+  background: var(--ag-surface-subtle);
+}
+
+.ag-ws-status-coverage {
+  margin-left: var(--ag-space-2);
+  padding: 2px var(--ag-space-2);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-warning-soft);
+  color: var(--ag-warning);
+}
+
+.ag-ws-section-title {
+  margin: 0;
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-title);
+}
+
+/* ---- list ---- */
+
+.ag-ws-table-wrap {
+  /* Positioned, so an absolutely placed screen-reader label inside is clipped here, never widening the page (LAY-5). */
+  position: relative;
+  overflow-x: auto;
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-card-desktop);
+  background: var(--ag-surface);
+}
+
+.ag-ws-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ag-type-body);
+}
+
+.ag-ws-th {
+  height: 44px;
+  padding: 0 var(--ag-space-3);
+  border-bottom: 1px solid var(--ag-divider);
+  background: var(--ag-surface-subtle);
+  color: var(--ag-text-secondary);
+  font-size: var(--ag-type-meta);
+  font-weight: var(--ag-weight-label);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ag-ws-sort {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--ag-space-2);
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   font: inherit;
   cursor: pointer;
 }
 
-.ag-web-nav-link[aria-current="page"] {
-  background: var(--bg-raised);
-  font-weight: 600;
+.ag-ws-sort-dir {
+  color: var(--ag-accent);
 }
 
-.ag-web-nav-link:focus-visible,
-.ag-web-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.ag-ws-row {
+  height: var(--ag-desktop-row);
 }
 
-.ag-web-main {
+.ag-ws-row + .ag-ws-row .ag-ws-td {
+  border-top: 1px solid var(--ag-divider);
+}
+
+.ag-ws-td {
+  padding: var(--ag-space-2) var(--ag-space-3);
+  vertical-align: middle;
+  text-align: left;
+  font-weight: var(--ag-weight-body);
+  /* Short values stay whole ("商务舱", "税费待确认"); the program and the source time may wrap. */
+  white-space: nowrap;
+}
+
+.ag-ws-td-wrap {
+  white-space: normal;
+  min-width: 7em;
+}
+
+.ag-ws-route {
+  display: block;
+  font-weight: var(--ag-weight-strong);
+  white-space: nowrap;
+}
+
+.ag-ws-td-miles {
+  font-size: var(--ag-type-route);
+  font-weight: var(--ag-weight-strong);
+  white-space: nowrap;
+}
+
+.ag-ws-td-actions {
+  white-space: nowrap;
+}
+
+.ag-ws-td-actions .ag-ws-button + .ag-ws-button {
+  margin-left: var(--ag-space-2);
+}
+
+/* ---- matrix ---- */
+
+.ag-ws-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+.ag-ws-matrix-scroll {
+  position: relative;
+  overflow-x: auto;
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-card-desktop);
+  background: var(--ag-surface);
+}
+
+.ag-ws-matrix-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+}
+
+.ag-ws-mx-head {
+  height: 44px;
+  padding: 0 var(--ag-space-3);
+  border-bottom: 1px solid var(--ag-divider);
+  background: var(--ag-surface-subtle);
+  font-size: var(--ag-type-meta);
+  font-weight: var(--ag-weight-label);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ag-ws-mx-date {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 112px;
+  min-width: 112px;
+  padding: var(--ag-space-2) var(--ag-space-3);
+  border-right: 1px solid var(--ag-divider);
+  background: var(--ag-surface-subtle);
+  text-align: left;
+  font-weight: var(--ag-weight-body);
+}
+
+.ag-ws-mx-day {
+  display: block;
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-ws-mx-cell {
+  min-width: 160px;
+  height: var(--ag-desktop-row);
+  padding: var(--ag-space-2) var(--ag-space-3);
+  border-top: 1px solid var(--ag-divider);
+  border-left: 1px solid var(--ag-divider);
+  vertical-align: top;
+  cursor: default;
+}
+
+.ag-ws-mx-cell[data-has-results] {
+  cursor: pointer;
+}
+
+.ag-ws-mx-cell[data-state="partial"],
+.ag-ws-mx-cell[data-state="unknown"] {
+  background: var(--ag-warning-soft);
+}
+
+.ag-ws-mx-cell[aria-selected="true"] {
+  box-shadow: inset 0 0 0 2px var(--ag-accent);
+}
+
+.ag-ws-mx-cell:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+.ag-ws-mx-slot {
+  display: block;
+}
+
+.ag-ws-mx-slot + .ag-ws-mx-slot {
+  margin-top: var(--ag-space-1);
+}
+
+.ag-ws-mx-miles {
+  display: block;
+  font-size: var(--ag-type-route);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-ws-mx-cabin {
+  font-size: var(--ag-type-label);
+  font-weight: var(--ag-weight-label);
+  color: var(--ag-accent);
+}
+
+.ag-ws-mx-empty {
+  color: var(--ag-text-muted);
+  font-size: var(--ag-type-meta);
+}
+
+.ag-ws-mx-slot[data-state="partial"] .ag-ws-mx-empty,
+.ag-ws-mx-slot[data-state="unknown"] .ag-ws-mx-empty {
+  color: var(--ag-warning);
+  font-weight: var(--ag-weight-label);
+}
+
+.ag-ws-cell-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+/* ---- calendar ---- */
+
+.ag-ws-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-4);
+}
+
+.ag-ws-month {
+  container-type: inline-size;
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-card-desktop);
+  background: var(--ag-surface);
+}
+
+.ag-ws-month-title {
+  margin: 0 0 var(--ag-space-3);
+  font-size: var(--ag-type-route);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-ws-weekdays,
+.ag-ws-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--ag-space-1);
+}
+
+.ag-ws-weekdays span {
+  font-size: var(--ag-type-label);
+  color: var(--ag-text-muted);
+  text-align: center;
+}
+
+.ag-ws-day {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: var(--ag-space-2);
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-surface);
+  color: var(--ag-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ag-ws-day[data-state="partial"],
+.ag-ws-day[data-state="unknown"] {
+  background: var(--ag-warning-soft);
+}
+
+.ag-ws-day[aria-pressed="true"] {
+  border-color: var(--ag-accent);
+  box-shadow: inset 0 0 0 1px var(--ag-accent);
+}
+
+.ag-ws-day-number {
+  font-size: var(--ag-type-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-ws-day-value {
+  font-size: var(--ag-type-meta);
+  font-weight: var(--ag-weight-label);
+}
+
+.ag-ws-day[data-state="results"] .ag-ws-day-value {
+  font-size: var(--ag-type-body);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-ws-day {
+  /* Never wider than its column (the Web's touch rule gives every button a 40 min-width). */
   min-width: 0;
 }
 
-.ag-web-workspace,
+.ag-ws-day-date {
+  display: none;
+}
+
+/* Too narrow for seven readable columns (a phone, or large text): an accessible list of dates, each a full row (LAY-12). */
+@container (max-width: 480px) {
+  .ag-ws-weekdays,
+  .ag-ws-day-blank,
+  .ag-ws-day-number {
+    display: none;
+  }
+  .ag-ws-days {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ag-ws-day {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--ag-space-3);
+    min-height: var(--ag-touch-target);
+  }
+  .ag-ws-day-date {
+    display: inline;
+    font-size: var(--ag-type-body);
+  }
+}
+
+/* ---- detail panel ---- */
+
+.ag-ws-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+.ag-ws-detail-miles {
+  margin: 0;
+  font-size: var(--ag-type-miles);
+  line-height: var(--ag-leading-miles);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-ws-detail-facts {
+  display: grid;
+  gap: var(--ag-space-2);
+  margin: 0;
+}
+
+.ag-ws-detail-facts div {
+  display: grid;
+  grid-template-columns: 7em minmax(0, 1fr);
+  gap: var(--ag-space-2);
+}
+
+.ag-ws-detail-facts dt {
+  color: var(--ag-text-secondary);
+  font-size: var(--ag-type-meta);
+}
+
+.ag-ws-detail-facts dd {
+  margin: 0;
+}
+
+.ag-ws-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-2);
+}
+
+.ag-ws-detail-trips {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ag-space-2);
+  padding-top: var(--ag-space-3);
+  border-top: 1px solid var(--ag-divider);
+}
+
+/* ---- command palette ---- */
+
+.ag-ws-palette-scrim {
+  position: fixed;
+  inset: 0;
+  /* Above every drawer (the shell's are 50): the palette is the top-most layer while it is open (LAY-2). */
+  z-index: calc(var(--ag-z-modal) + 5);
+  background: var(--ag-scrim);
+}
+
+.ag-ws-palette {
+  position: fixed;
+  z-index: calc(var(--ag-z-modal) + 6);
+  top: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 90vw);
+  max-height: 70vh;
+  overflow: hidden;
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-dialog);
+  background: var(--ag-surface);
+  color: var(--ag-text);
+  box-shadow: var(--ag-shadow-sheet);
+}
+
+.ag-ws-palette-input {
+  height: 48px;
+  padding: 0 var(--ag-space-4);
+  border: 0;
+  border-bottom: 1px solid var(--ag-divider);
+  background: transparent;
+  color: var(--ag-text);
+  font: inherit;
+  font-size: var(--ag-type-control);
+}
+
+.ag-ws-palette-input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -2px 0 var(--ag-accent);
+}
+
+.ag-ws-palette-list {
+  margin: 0;
+  padding: var(--ag-space-1);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ag-ws-palette-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-3);
+  min-height: 44px;
+  padding: 0 var(--ag-space-3);
+  border-radius: var(--ag-radius-small);
+  cursor: pointer;
+}
+
+.ag-ws-palette-option[aria-selected="true"] {
+  background: var(--ag-accent-soft);
+}
+
+.ag-ws-palette-option[aria-disabled="true"] {
+  color: var(--ag-text-muted);
+  cursor: default;
+}
+
+.ag-ws-palette-empty,
+.ag-ws-palette-note {
+  margin: 0;
+  padding: var(--ag-space-2) var(--ag-space-4);
+  color: var(--ag-text-muted);
+  font-size: var(--ag-type-meta);
+}
+
+.ag-ws-palette-note {
+  border-top: 1px solid var(--ag-divider);
+}
+
+/* ---- tablet: panels overlay the results (DrawerShell), nothing is squeezed ---- */
+
+@media (max-width: 1279px) {
+  .ag-ws-body {
+    padding: var(--ag-space-5);
+  }
+}
+
+/* ---- phone: one column, the rail becomes a bottom bar ---- */
+
+@media (max-width: 767px) {
+  .ag-ws {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The bar is fixed over the page's end: its height is kept below the site footer (the legal link), not inside the
+     workspace, so nothing under it is out of reach (LAY-6). Focus scrolls clear of it too. */
+  body:has(.ag-ws) {
+    padding-bottom: calc(var(--ag-tabbar-height) + env(safe-area-inset-bottom));
+  }
+  html:has(.ag-ws) {
+    scroll-padding-bottom: calc(var(--ag-tabbar-height) + env(safe-area-inset-bottom));
+  }
+  .ag-ws-rail {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Exactly the space kept below the footer: the line is a shadow, not a border that would add a pixel. */
+    height: calc(var(--ag-tabbar-height) + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    border-right: 0;
+    box-shadow: inset 0 1px 0 var(--ag-divider);
+  }
+  .ag-ws-rail-inner {
+    position: static;
+    flex-direction: row;
+    height: auto;
+    padding: var(--ag-space-1) var(--ag-space-1) calc(var(--ag-space-1) + env(safe-area-inset-bottom));
+  }
+  .ag-ws-rail-top,
+  .ag-ws-rail-foot {
+    flex-direction: row;
+    flex: 1 1 auto;
+  }
+  .ag-ws-rail-top {
+    flex-grow: 3;
+  }
+  .ag-ws-rail-foot {
+    flex-grow: 2;
+  }
+  .ag-ws-rail-item {
+    min-height: var(--ag-touch-target);
+  }
+  .ag-ws-body {
+    padding: var(--ag-space-4);
+  }
+  .ag-ws-query-fields {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ag-ws-field,
+  .ag-ws-field[data-field="origins"],
+  .ag-ws-field[data-field="destinations"] {
+    flex: 0 0 auto;
+  }
+  .ag-ws-input {
+    width: 100%;
+  }
+  /* Two native date fields do not fit side by side at 390: one under the other. */
+  .ag-ws-dates {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ag-ws-dates > span {
+    display: none;
+  }
+  /* Keyboard hints belong to a keyboard; below 768 the controls speak for themselves. */
+  .ag-ws-kbd {
+    display: none;
+  }
+  .ag-ws-field-arrow {
+    display: none;
+  }
+  .ag-ws-query-submit {
+    margin-left: 0;
+  }
+  .ag-ws-query-submit .ag-ws-button {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---- coarse pointers: 44 targets whatever the width (spec §17) ---- */
+
+@media (pointer: coarse) {
+  .ag-ws-button,
+  .ag-ws-input,
+  .ag-ws-select,
+  .ag-ws-select-like,
+  .ag-ws-segment,
+  .ag-ws-toggle,
+  .ag-ws-check,
+  .ag-ws-sort {
+    min-height: var(--ag-touch-target);
+  }
+  .ag-ws-palette-option {
+    min-height: 48px;
+  }
+  .ag-ws-sort {
+    min-width: var(--ag-touch-target);
+  }
+  /* The panels' own controls (the shared drawer's Close, Ask's pills, suggestions, question and Send): 44 as well,
+     only inside the workspace's panels, so the grid's drawers keep theirs (LAY-10). */
+  .ag-ws-tokens :is(button, [data-slot="button"], [role="button"], textarea, select, input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"])) {
+    min-height: var(--ag-touch-target);
+  }
+  .ag-ws-tokens :is(button, [data-slot="button"], [role="button"]) {
+    min-width: var(--ag-touch-target);
+  }
+}
+
+/* A fine pointer on the Web: the panel's Close is at least 36 (docs/04: icon hit area 44, the Web with a fine pointer 36). */
+@media (pointer: fine) {
+  .ag-ws-tokens[data-slot="drawer"] > div:first-of-type [data-slot="button"] {
+    min-width: 36px;
+    min-height: 36px;
+  }
+}
+
+/* ---- T18: saved options and the phone's option cards ---- */
+
 .ag-web-saved {
   display: flex;
   flex-direction: column;
