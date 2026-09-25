@@ -18,6 +18,7 @@ import {
   routeSummary,
   runResultText,
   scheduleText,
+  timeSince,
   toDiffRow,
   type QueryFormState,
 } from "./format";
@@ -197,6 +198,48 @@ describe("relativeTime", () => {
   it("returns nothing for a missing or unparseable timestamp", () => {
     expect(relativeTime(null, now, "en")).toBe("");
     expect(relativeTime("not a date", now, "en")).toBe("");
+  });
+
+  it("reads within half a second either side as now, the one zero it can print", () => {
+    for (const offset of [0, 499, -499, -500]) {
+      const iso = new Date(now + offset).toISOString();
+      expect(relativeTime(iso, now, "en"), `${offset} ms`).toBe("now");
+      expect(relativeTime(iso, now, "zh"), `${offset} ms`).toBe("现在");
+    }
+    expect(relativeTime(new Date(now + 500).toISOString(), now, "en")).toBe("in 1 second");
+    // A unit switches on at a whole one of itself, so only seconds can round to zero. CLDR's zh
+    // words for zero minutes, hours and days are 此刻, "这一时间 / 此时" and 今天 (in Chromium and
+    // Node alike), and none of them can reach the page.
+    const edges = [59_999, 60_000, 89_999, 90_000, 3_599_999, 3_600_000, 86_399_999, 86_400_000];
+    for (const edge of edges.flatMap((ms) => [ms, -ms])) {
+      const zhText = relativeTime(new Date(now + edge).toISOString(), now, "zh");
+      expect(zhText, `${edge} ms`).not.toMatch(/此刻|此时|今天/);
+      expect(relativeTime(new Date(now + edge).toISOString(), now, "en"), `${edge} ms`).not.toMatch(/^(now|this|today)/);
+    }
+  });
+});
+
+describe("timeSince", () => {
+  const now = Date.parse("2026-10-15T12:00:00.000Z");
+
+  it("reads like relativeTime for a time in the past", () => {
+    expect(timeSince("2026-10-15T11:58:00.000Z", now, "en")).toBe("2 minutes ago");
+    expect(timeSince("2026-10-15T11:59:05.000Z", now, "en")).toBe("55 seconds ago");
+    expect(timeSince("2026-10-13T12:00:00.000Z", now, "en")).toBe("2 days ago");
+  });
+
+  it("reads a run stamped after now as now, never as a future time", () => {
+    // "Run now" writes a ran_at from the server's clock; the page's now can be up to a minute
+    // older. That run happened just now, not "in 37 seconds".
+    expect(timeSince("2026-10-15T12:00:37.000Z", now, "en")).toBe("now");
+    expect(timeSince("2026-10-15T12:00:37.000Z", now, "zh")).toBe("现在");
+    expect(timeSince("2026-10-15T14:00:00.000Z", now, "en")).toBe("now");
+  });
+
+  it("returns nothing for a missing or unparseable timestamp", () => {
+    expect(timeSince(null, now, "en")).toBe("");
+    expect(timeSince(undefined, now, "en")).toBe("");
+    expect(timeSince("not a date", now, "en")).toBe("");
   });
 });
 

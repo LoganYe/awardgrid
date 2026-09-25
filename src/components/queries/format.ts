@@ -296,7 +296,7 @@ const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
 /**
- * "2 hours ago" / "in 58 minutes" / "刚刚" through `Intl.RelativeTimeFormat` in the viewer's
+ * "2 hours ago" / "in 58 minutes" / "现在" through `Intl.RelativeTimeFormat` in the viewer's
  * locale (spec §8: numbers and dates go through Intl). An unparseable timestamp returns "".
  */
 export function relativeTime(iso: string | null | undefined, now: number, locale: FormatLocale): string {
@@ -325,6 +325,17 @@ export function relativeTime(iso: string | null | undefined, now: number, locale
   } catch {
     return iso;
   }
+}
+
+/**
+ * `relativeTime` for something that has already happened, such as a run's `ran_at`. That
+ * timestamp comes from the server's clock and `now` from the browser's, which the Queries page
+ * moves only once a minute, so a run that has just happened can look up to a minute ahead of
+ * `now`. It reads "now", never "in 37 seconds".
+ */
+export function timeSince(iso: string | null | undefined, now: number, locale: FormatLocale): string {
+  const ms = iso ? Date.parse(iso) : NaN;
+  return relativeTime(iso, Number.isNaN(ms) ? now : Math.max(now, ms), locale);
 }
 
 /** Absolute timestamp for the `title` of a relative time (the run history's second reading). */

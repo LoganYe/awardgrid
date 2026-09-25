@@ -65,10 +65,11 @@ export function QueriesTable({ initial, details, telegramLinked }: QueriesTableP
 
   // Relative times age while the page is open. The server's clock and the browser's are a few
   // milliseconds apart, so every element that prints one carries suppressHydrationWarning.
+  const refreshNow = useCallback(() => setNow(Date.now()), []);
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    const id = window.setInterval(refreshNow, 60_000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [refreshNow]);
 
   useEffect(() => {
     if (toast === null) return;
@@ -150,6 +151,10 @@ export function QueriesTable({ initial, details, telegramLinked }: QueriesTableP
       return;
     }
     const run = res.data.run;
+    // `ran_at` is when this run started, and `now` only moves once a minute. Move it now too, or
+    // Last run measures a run that just happened against a `now` up to a minute older than it,
+    // and reads "in 37 seconds".
+    refreshNow();
     // The server derives the next run from the last one, so a row that just ran is no longer
     // due: recompute it here the way replaceRow does for a PATCH, or an overdue query keeps
     // saying "due now" until the page is reloaded.

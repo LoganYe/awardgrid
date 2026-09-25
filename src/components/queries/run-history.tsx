@@ -13,7 +13,7 @@
  * en dash rather than a made-up zero.
  */
 import { DiffCells } from "@/components/queries/diff-cells";
-import { absoluteTime, relativeTime, runResultText } from "@/components/queries/format";
+import { absoluteTime, runResultText, timeSince } from "@/components/queries/format";
 import type { QueryDetails } from "@/components/queries/api";
 import { useLocale, useT } from "@awardgrid/core/i18n/client";
 
@@ -96,7 +96,7 @@ export function RunHistory({ id, details, loading, error, now }: RunHistoryProps
               {runs.map((run) => (
                 <tr key={run.id}>
                   <td title={absoluteTime(run.ran_at, locale)} suppressHydrationWarning>
-                    {relativeTime(run.ran_at, now, locale)}
+                    {timeSince(run.ran_at, now, locale)}
                   </td>
                   <td title={typeof run.calls_used === "number" ? undefined : t("saved.runs.not_recorded")}>
                     {typeof run.calls_used === "number" ? run.calls_used.toLocaleString(locale === "zh" ? "zh-CN" : "en-US") : NO_VALUE}

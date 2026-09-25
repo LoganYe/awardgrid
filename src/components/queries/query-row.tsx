@@ -14,7 +14,7 @@
  */
 import { InlineConfirm } from "@/components/queries/inline-confirm";
 import { RunHistory } from "@/components/queries/run-history";
-import { nextRunFromCron, relativeTime, runResultText, scheduleText, absoluteTime } from "@/components/queries/format";
+import { nextRunFromCron, relativeTime, runResultText, scheduleText, absoluteTime, timeSince } from "@/components/queries/format";
 import type { QueryDetails, QueryRowSummary } from "@/components/queries/api";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -55,11 +55,15 @@ export interface QueryRowProps {
   onCancelDelete: () => void;
 }
 
-/** "2 hours ago" plus what the run found, or "Never" for a query that has not run. */
+/**
+ * "2 hours ago" plus what the run found, or "Never" for a query that has not run. A run is in
+ * the past by definition, so a `ran_at` ahead of `now` (the server's clock, or a `now` up to a
+ * minute old) reads "now" rather than "in 37 seconds". nextRunText has the mirror-image guard.
+ */
 function lastRunText(row: QueryRowSummary, now: number, locale: Locale, t: Translate): { when: string; result: string; title?: string } {
   const run = row.last_run;
   if (!run) return { when: t("saved.never_run"), result: "" };
-  return { when: relativeTime(run.ran_at, now, locale), result: runResultText(run, t), title: absoluteTime(run.ran_at, locale) };
+  return { when: timeSince(run.ran_at, now, locale), result: runResultText(run, t), title: absoluteTime(run.ran_at, locale) };
 }
 
 /**

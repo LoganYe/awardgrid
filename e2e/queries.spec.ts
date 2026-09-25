@@ -16,6 +16,7 @@
  */
 import type { Locator, Page } from "@playwright/test";
 import { en } from "@awardgrid/core/i18n/dictionaries/en";
+import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
 import { applyTheme, expect, projectSuffix, test } from "./fixtures";
 import { E2E_SAVED_QUERY_NAME } from "./users";
 
@@ -28,6 +29,19 @@ const editButton = (page: Page) => firstRow(page).getByRole("button", { name: en
 const deleteButton = (page: Page) => firstRow(page).getByRole("button", { name: en["saved.delete"], exact: true }).first();
 const enabledSwitch = (page: Page) => firstRow(page).getByRole("switch").first();
 const drawer = (page: Page) => page.getByTestId("edit-query-drawer");
+
+/** Answer the next "Run now" with a finished run stamped `ranAt`, at no cost to the mock. */
+async function fulfillRun(page: Page, ranAt: number): Promise<void> {
+  await page.route("**/api/queries/*/run", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        run: { id: "run-e2e-now", ran_at: new Date(ranAt).toISOString(), new_cells: 0, dropped_cells: 0, notified: false, skipped_reason: null, calls_used: 9 },
+      }),
+    }),
+  );
+}
 
 /** Open /queries as the demo user and wait for the seeded row. */
 async function openQueries(page: Page, asUser: (u: "demo" | "empty") => Promise<void>, user: "demo" | "empty" = "demo"): Promise<void> {
@@ -332,6 +346,40 @@ test.describe("queries page", () => {
     );
     await runButton(page).click();
     await expect(notice).toContainText(en["error.run_in_progress"]);
+    await page.unroute("**/api/queries/*/run");
+  });
+
+  test("a run that just landed is measured from when it landed, never read as a time to come", async ({ page, asUser }) => {
+    // The page's `now` moves once a minute, and a run's ran_at comes from the server's clock.
+    // Pin the page's clock, load, then let 40 s pass without the minute tick: the run lands
+    // stamped 37 s after the page last looked, which used to read "in 37 seconds".
+    const loadedAt = Date.now();
+    await page.clock.setFixedTime(loadedAt);
+    await openQueries(page, asUser);
+    await page.clock.setFixedTime(loadedAt + 40_000);
+    await fulfillRun(page, loadedAt + 37_000);
+    await runButton(page).click();
+    await expect(page.getByTestId("row-notice")).toBeVisible();
+    await expect(firstRow(page)).toContainText("3 seconds ago");
+    await expect(firstRow(page)).not.toContainText(/in \d+ seconds?/);
+    await page.unroute("**/api/queries/*/run");
+  });
+
+  test("in zh, a run this instant reads 现在 in the browser too", async ({ page, asUser }) => {
+    // Zero seconds is the only zero relativeTime can print, and Chromium's ICU words it "现在",
+    // as Node's does. "这一时间 / 此时" is CLDR's zh for zero HOURS, which it never formats.
+    const loadedAt = Date.now();
+    await page.clock.setFixedTime(loadedAt);
+    await asUser("demo");
+    const baseURL = new URL(test.info().project.use.baseURL ?? "http://127.0.0.1:3400");
+    await page.context().addCookies([{ name: "ag_locale", value: "zh", domain: baseURL.hostname, path: "/" }]);
+    await page.goto("/queries");
+    await expect(page.getByRole("heading", { name: zh["saved.title"] })).toBeVisible();
+    await fulfillRun(page, loadedAt);
+    await firstRow(page).getByRole("button", { name: zh["saved.run_now"], exact: true }).click();
+    await expect(page.getByTestId("row-notice")).toBeVisible();
+    await expect(firstRow(page)).toContainText("现在");
+    await expect(firstRow(page)).not.toContainText("此时");
     await page.unroute("**/api/queries/*/run");
   });
 
