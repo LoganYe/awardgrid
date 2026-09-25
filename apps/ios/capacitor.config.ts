@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.dowhiz.awardgrid",
-  appName: "awardgrid",
+  appName: "AwardGrid",
   webDir: "dist",
   plugins: {
     CapacitorHttp: {
