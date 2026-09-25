@@ -32,9 +32,9 @@ function supportEmail(): Plugin {
  * than a copy that drifts, and to build the pages (release decision D7): the iPhone app's page at /ios/, the privacy
  * policy at /privacy/, the support page at /support/, and a root page for the Pages project's own address.
  *
- * On awardgrid.dowhiz.com the web app keeps "/" and everything else; a Worker sends only /ios/, /privacy/, /support/
- * and /_site/ to this site (DEPLOY.md). So the built CSS goes under _site/, not Vite's default assets/, and every
- * page links it relatively.
+ * On awardgrid.dowhiz.com the web app keeps "/" and everything else; the Worker `awardgrid-site` serves only /ios/,
+ * /privacy/, /support/ and /_site/ from this build (DEPLOY.md, wrangler.jsonc). So the built CSS goes under _site/,
+ * not Vite's default assets/, and every page links it relatively.
  */
 export default defineConfig({
   base: "./",

@@ -15,12 +15,12 @@ run on a physical iPhone. What stands between the branch and an internal TestFli
 
 | # | Blocking step | Who | State |
 |---|---|---|---|
-| B1 | Accept the updated Program License Agreement, **before 2026-10-01** | Account Holder | Not confirmed this session (read-only browser check not possible, §6) |
-| B2 | Fix the membership renewal, **before 2026-10-10** | Account Holder | Not confirmed this session |
+| B1 | Accept the updated Program License Agreement, **before 2026-10-01** | Account Holder | **Open** (read 2026-09-25: the account page and App Store Connect both still ask for it) |
+| B2 | Fix the membership renewal, **before 2026-10-10** | Account Holder | **Open** (read 2026-09-25: "wasn't renewed successfully") |
 | B3 | Register the App ID `com.dowhiz.awardgrid` | Owner (Admin), or the agent with a per-action OK | Not done |
 | B4 | Create the App Store Connect record | Owner, or the agent with a per-action OK | Not done |
 | B5 | Sign in to Xcode › Settings › Accounts; confirm the team's certificates | Owner | Not done |
-| B6 | Choose the support e-mail, then deploy the privacy and support pages | Owner (address), agent with an OK (deploy) | Pages built, not deployed |
+| B6 | Choose the support e-mail, then deploy the privacy and support pages | Owner (address), agent (deploy) | **Done 2026-09-25:** Restful's public contact address; live at `/ios/`, `/privacy/`, `/support/` (`sites/landing/DEPLOY.md`) |
 | B7 | Upload build 1.0 (1) | Owner | After B1-B5 |
 
 ---
@@ -35,7 +35,7 @@ run on a physical iPhone. What stands between the branch and an internal TestFli
 | D4 | iPhone only | `TARGETED_DEVICE_FAMILY = 1` | — |
 | D5 | Minimum iOS 18.0 | `IPHONEOS_DEPLOYMENT_TARGET = 18.0` (all four places) | — |
 | D6 | Original icon | `AppIcon-1024.png` from `apps/ios/scripts/app-icon.py`; the Capacitor splash replaced by the app's canvas colour, light and dark | — |
-| D7 | Landing, privacy and support pages for `https://awardgrid.dowhiz.com` | `sites/landing` builds `/`, `/privacy/`, `/support/`; the app links both pages from Settings › About | B6 |
+| D7 | Landing, privacy and support pages for `https://awardgrid.dowhiz.com` | `sites/landing` builds `/ios/`, `/privacy/`, `/support/`, served on that host by the Worker `awardgrid-site` beside the web app; the app links privacy and support from Settings › About | — |
 | D8 | App Privacy: Search History and Other User Content, linked, app functionality, no tracking | `PrivacyInfo.xcprivacy` says exactly that; the privacy policy says the same | Enter it in App Store Connect (§7.3) |
 | D9 | Internal TestFlight only; no review credentials | No review notes or demo mode prepared | — |
 | D10 | EN/ZH consent before the first Ask | Consent sheet, service-level refusal, withdraw on the Anthropic key page | — |
@@ -107,18 +107,12 @@ answers export compliance, content rights, DSA or age questions, or presses Crea
 an OK for that one action.
 
 1. **Account Holder (B1, B2).** Accept the updated Program License Agreement before 2026-10-01; fix the renewal
-   before 2026-10-10. This session could not read the account's current state: the Claude in Chrome extension was
-   not connected, and the other Chrome tools could not reach the window holding the Apple tabs.
-2. **Support e-mail and the site (B6).** Choose the address the privacy and support pages give (it is not in git),
-   then build: `AWARDGRID_SUPPORT_EMAIL=<address> pnpm build:landing` → `sites/landing/dist/`. The web app on
-   `awardgrid.dowhiz.com` serves neither `/privacy/` nor `/support/` today, so they can be added without replacing it:
-   - **A (recommended):** a Cloudflare Pages project from `sites/landing/dist` (dashboard upload, or `wrangler
-     pages deploy`), plus a Worker route on `awardgrid.dowhiz.com/privacy*` and `awardgrid.dowhiz.com/support*`
-     that serves those paths from Pages. The pages stay up while the Mac sleeps; the tunnel keeps everything else.
-   - **B:** a `cloudflared` ingress rule for those paths to a static server on the Mac. Simpler, but down whenever
-     the Mac sleeps, which is what App Review would find.
-   - **C:** use the Pages URL (`*.pages.dev/privacy/`) in App Store Connect, and leave the app's links as they are
-     until A. The app's two links point at `awardgrid.dowhiz.com` and show the web app's 404 until A or B is live.
+   before 2026-10-10. Read on 2026-09-25 in the owner's browser: both are still open, and App Store Connect says that
+   until the agreement is accepted, existing apps cannot be updated and new apps cannot be submitted.
+2. **Support e-mail and the site (B6), done.** The pages give the same public contact address as Restful's site, and
+   name Curastone CORP. as publisher, as Restful's do. Live on 2026-09-25 at `https://awardgrid.dowhiz.com/ios/`,
+   `/privacy/` and `/support/`, served by the static-assets Worker `awardgrid-site` on four routes beside the web app
+   (no DNS change; the web app's paths are unchanged). Build, redeploy, checks and roll-back: `sites/landing/DEPLOY.md`.
 3. **App ID (B3).** Certificates, IDs & Profiles › Identifiers › + › App IDs › App: explicit Bundle ID
    `com.dowhiz.awardgrid`, description "AwardGrid", no extra capabilities (the Keychain group the app uses is its
    own default group).
@@ -148,6 +142,8 @@ an OK for that one action.
 - **Name:** AwardGrid
 - **Subtitle** (optional, 24 of 30): Award seats in one table
 - **Primary category:** Travel. Secondary: none.
+- **Support URL:** `https://awardgrid.dowhiz.com/support/`. **Marketing URL** (optional):
+  `https://awardgrid.dowhiz.com/ios/`. Both live.
 - **Content rights:** the owner's answer. The facts: results are seats.aero data, fetched with the user's own
   subscription and key; the app shows no airline or program logos.
 - **Age rating:** the owner answers the questionnaire as it appears. The facts it asks about: no user-to-user
@@ -163,7 +159,7 @@ an OK for that one action.
 
 ### 7.3 App Privacy (D8)
 
-- **Privacy Policy URL:** `https://awardgrid.dowhiz.com/privacy/` (after B6; or the Pages URL, option C).
+- **Privacy Policy URL:** `https://awardgrid.dowhiz.com/privacy/` (live).
 - **Do you or your third-party partners collect data from this app?** Yes.
 - **Data types:** Search History; Other User Content. Nothing else.
 - For each: **used for** App Functionality only; **linked to the user's identity:** Yes; **used for tracking:** No.
@@ -174,7 +170,7 @@ an OK for that one action.
 
 - **Beta App Description:** AwardGrid finds award seats across programs with your own seats.aero key and shows them
   in one table. Ask, which is optional, answers questions about your results on your own Anthropic key.
-- **Feedback e-mail:** the address chosen in step 2.
+- **Feedback e-mail:** the same address as the support page.
 - **What to Test (build 1):** First build, internal testing only. Check first launch with no key (the welcome screen;
   nothing is sent), adding your seats.aero key (one call to check it) and a first search; the list, calendar,
   matrix, details and compare; that watches check when you open or return to the app; Settings › About (privacy,
@@ -243,7 +239,7 @@ subtitle or keywords; the description names them only to say what the app works 
 |---|---|---|
 | V1 | First launch | The AwardGrid icon and name on the home screen; the launch screen is the app's canvas, not white, in Dark Mode |
 | V4a | Consent (D10) | With both keys on file: tap Ask; the sheet lists what is sent and links Anthropic's privacy policy. Not now: nothing sent, the words stay. Allow: the question goes. Settings › Anthropic key: "You allowed…", Withdraw permission; the next Ask shows the sheet again |
-| V14 | About | Settings › About: the non-affiliation sentence; Privacy policy and Support open Safari (the site's pages once deployed, the web app's 404 before); Licenses lists 19 entries, each opens to its text |
+| V14 | About | Settings › About: the non-affiliation sentence; Privacy policy and Support open the live pages in Safari; Licenses lists 19 entries, each opens to its text |
 | V15 | #89 on live data | Only with the owner's consent and quota: a search over several programs; if a route list fails, the results stay and a warning names the program |
 | V16 | Build number | Settings › General › About on the phone, or TestFlight: 1.0 (1) |
 
