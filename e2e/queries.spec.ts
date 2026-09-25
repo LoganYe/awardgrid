@@ -84,15 +84,31 @@ test.describe("queries page", () => {
     // "in 22 minutes". Without a width floor the columns breathe as the clock moves, everything
     // to their left shifts, and a long name wraps — which is how the `queries-expanded` visual
     // baseline came to fail on a schedule nobody controls (#33). Replacing the reading must not
-    // move the Name column.
+    // move the Name column. The seconds forms are the widest and show only in the minute either
+    // side of a run, so they are listed here rather than left to the wall clock: this test once
+    // failed at 02:59 UTC, a minute before the seeded query's slot.
+    const row = firstRow(page);
+    // Last run stacks the time over what the run found. The seeded "+3 new, −1 dropped" is wider
+    // than any time and would hold the column open by itself; "no change" is not.
+    await row.locator("td:nth-child(4) .aq-meta").evaluate((el, text) => {
+      el.textContent = text;
+    }, en["saved.status.no_change"]);
     const nameWidth = () => table.getByRole("columnheader", { name: en["saved.name"], exact: true }).evaluate((el) => el.getBoundingClientRect().width);
     const before = await nameWidth();
     expect(before).toBeGreaterThan(0);
-    for (const reading of ["due now", "in 22 minutes", "in 3 hours"]) {
-      await table.locator("tbody tr td:nth-child(5)").first().evaluate((el, text) => {
-        el.textContent = text;
-      }, reading);
-      expect(await nameWidth(), `Name moved when Next run read "${reading}"`).toBe(before);
+    // The zh readings include each column's widest in Chinese: "这一时间 / 此时" is how Chromium
+    // words zh "now", a run less than half a second away on either side.
+    const columns = [
+      { header: en["saved.last_run"], cell: row.locator("td:nth-child(4) span").first(), readings: ["now", "55 seconds ago", "1 minute ago", "22 minutes ago", "3 hours ago", "12 days ago", "55秒钟前", "这一时间 / 此时"] },
+      { header: en["saved.next_run"], cell: row.locator("td:nth-child(5)"), readings: ["due now", "in 55 seconds", "in 1 minute", "in 22 minutes", "in 3 hours", "已到运行时间", "这一时间 / 此时"] },
+    ];
+    for (const { header, cell, readings } of columns) {
+      for (const reading of readings) {
+        await cell.evaluate((el, text) => {
+          el.textContent = text;
+        }, reading);
+        expect(await nameWidth(), `Name moved when ${header} read "${reading}"`).toBe(before);
+      }
     }
   });
 
