@@ -8,6 +8,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
+        // Behind the web view while Capacitor keeps it transparent for its first load: the launch screen's colour.
+        window?.backgroundColor = UIColor(named: "LaunchBackground")
         // The app's own bridge controller, so the appearance chosen in Settings reaches the native side (T22, U-042).
         window?.rootViewController = AppViewController()
         window?.makeKeyAndVisible()
