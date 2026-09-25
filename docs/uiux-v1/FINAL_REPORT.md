@@ -162,7 +162,7 @@ See U-058; T22's evidence has the runs against the old code.
   - `cache.json`, `quota.json` and `ask.json` stay version 1, with additive fields.
   - Keychain items are never written or cleared. Starting or migrating does not read them; opening the app reads the seats.aero key to check due watches, as the old build did.
   - An unreadable or newer file is held, never written over. A damaged one is copied aside.
-- **The Web.** Two additive nullable columns (`0003`, `0004`). The previous server runs unchanged against them. A value it rewrites reads back as unknown, never as stale evidence.
+- **The Web.** Two additive nullable columns (`0003`, `0004`). The previous server runs unchanged against them. A value it rewrites with the newer fetch reads back as unknown (tested in T22). One order was not covered, and the pre-merge check found it: if the previous server's fetch started before one of this build's and finished after it, the newer "complete" evidence stays on the older rows. That needs the two builds writing at once. There is one server process, and the rollback stops the new build first, so it cannot arise in the steps given here.
 - **Rollback order:**
   1. Stop the new build.
   2. Keep a copy of the new files.
@@ -208,7 +208,7 @@ See U-058; T22's evidence has the runs against the old code.
   - To reproduce: open `/queries` in the minute before a query's next run, or set the first Next run cell's text to "in 55 seconds": the Name column narrows from 251.25 to 248.41 px at 1440.
 
 **For the owner:**
-- **The live site.** Restart `com.awardgrid.app` to fix the live stylesheet 404, caused by a baseline build in the main checkout (U-003). That is a deploy, not done here.
+- **The live site.** The stylesheet 404 caused by a baseline build in the main checkout (U-003) is gone: the server was restarted at 16:33 on 2026-09-24, not by this work, and `/`, `/login` and their stylesheets returned 200 at 20:56 (read-only check).
 - **CI.** Regenerate the `/queries` Linux visual baselines.
 - **Entry points.** Decide where `/`, the header and login lead (the workspace or `/grid`).
 - **The branch.** Review and merge or push `uiux/quiet-precision-v1`. It is local only.

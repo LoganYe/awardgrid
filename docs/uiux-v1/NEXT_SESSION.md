@@ -30,7 +30,6 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
   4. **A live key, only with the owner's consent and on their machine.** One seats.aero search and one Anthropic question.
   5. **The Web's `/queries` table in the last minute before a run** (existing Web code; STATUS, Known issues): "in 55 seconds" is wider than the 96 px floor of the Last run and Next run columns. Widen the floor, and add the seconds readings to `e2e/queries.spec.ts:78` so it no longer depends on the clock.
 - **Owner decisions** (STATUS "Known issues"):
-  - restart `com.awardgrid.app` for the live stylesheet 404 (a deploy);
   - regenerate the `/queries` Linux visual baselines in CI;
   - where `/`, the header and login lead;
   - the CLI prints unknown seats as 0;
@@ -74,7 +73,7 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
   - `SlotFileStorage` throws on what it cannot read, and refuses to write over it (U-047). Callers must treat a read error as "unreadable", not "empty".
   - Watches are structured since T14 (U-048). A watch runs `resolveDraft(draft, today)`; one under review reads its text. The runner re-reads each watch after its request, so an edit wins. `watches.json` is v2; a newer or unreadable file is held, and a damaged one is copied aside (U-049).
 - If the worktree's `node_modules` is missing: `for d in node_modules apps/ios/node_modules packages/core/node_modules sites/landing/node_modules; do cp -Rc ../awardgrid/$d $d; done`; vendor: `rsync -a --exclude=.git ../awardgrid/vendor/travel-hacking-toolkit/ vendor/travel-hacking-toolkit/`; then `pnpm build:plugin`.
-- Open owner decision: restart `com.awardgrid.app` to fix the live stylesheet 404 (STATUS.md).
+- The live stylesheet 404 (U-003) is resolved: the server was restarted at 16:33 on 2026-09-24, and the stylesheets returned 200 at 20:56 (STATUS.md).
 
 ## Next commands
 
