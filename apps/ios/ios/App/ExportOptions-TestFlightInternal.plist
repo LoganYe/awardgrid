@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  Export options for `xcodebuild -exportArchive` (apps/ios/README.md, "Release"). Release mode INTERNAL_PRIVATE
+  (handoff D1, D9): a build exported with this file can go to internal TestFlight testers only, never to external
+  testers or App Review. Going public later needs a new build, exported without testFlightInternalTestingOnly.
+
+  - destination export: it writes an .ipa for the owner to upload (Transporter or Organizer); it never uploads.
+  - manageAppVersionAndBuildNumber false (D14): the build number is CURRENT_PROJECT_VERSION in project.pbxproj,
+    raised by hand in a commit before each archive, and Xcode must not rewrite it on the way out. In Organizer, the
+    same choice is the "Manage Version and Build Number" box: leave it unticked.
+  - No teamID: the export uses the team the archive was signed with, which keeps it out of git.
+-->
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>export</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+	<key>testFlightInternalTestingOnly</key>
+	<true/>
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>
