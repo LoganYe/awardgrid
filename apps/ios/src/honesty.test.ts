@@ -37,9 +37,13 @@ const CORE_WATCH = path.join(import.meta.dirname, "..", "..", "..", "packages", 
 // Ask's system prompt, tool descriptions and failure copy are string literals in core, not in the shell. A
 // person reads the copy, and the model repeats what the prompt and the tools tell it, so both are scanned.
 const CORE_ASK = path.join(import.meta.dirname, "..", "..", "..", "packages", "core", "src", "lib", "ask");
-const LANDING = path.join(import.meta.dirname, "..", "..", "..", "sites", "landing", "index.html");
-/** Every page of the static site (release D7): the landing page, the privacy policy and the support page. */
-const SITE_PAGES = ["index.html", "privacy/index.html", "support/index.html"].map((page) => path.join(path.dirname(LANDING), page));
+const SITE = path.join(import.meta.dirname, "..", "..", "..", "sites", "landing");
+/** The app's landing page: /ios/ on awardgrid.dowhiz.com (release D7), where the web app keeps "/". */
+const LANDING = path.join(SITE, "ios", "index.html");
+/** The static site's pages with something to say: the landing page, the privacy policy and the support page. */
+const CONTENT_PAGES = ["ios/index.html", "privacy/index.html", "support/index.html"].map((page) => path.join(SITE, page));
+/** Every page of the static site, its root included. */
+const SITE_PAGES = [path.join(SITE, "index.html"), ...CONTENT_PAGES];
 
 /**
  * Phrases that promise a cadence or a next run. Each names the string it was derived from. `{x}` is how
@@ -306,8 +310,7 @@ function extract(file: string, code = readFileSync(file, "utf8")): Extracted {
 const landingHtml = () => readFileSync(LANDING, "utf8");
 
 /** What a reader sees on each page of the static site, with the page it is on. */
-const siteTexts = () =>
-  SITE_PAGES.flatMap((file) => landingTexts(readFileSync(file, "utf8")).map((text) => ({ page: path.relative(path.dirname(LANDING), file), text })));
+const siteTexts = () => SITE_PAGES.flatMap((file) => landingTexts(readFileSync(file, "utf8")).map((text) => ({ page: path.relative(SITE, file), text })));
 
 /** What a reader of the landing page sees, block by block, plus the attributes a browser or a search result shows. */
 function landingTexts(html = landingHtml()): string[] {
@@ -337,7 +340,7 @@ describe("no cadence is ever promised", () => {
   it("scans a real amount of source, so an empty glob cannot pass vacuously", () => {
     expect(files.length).toBeGreaterThan(10);
     expect(landingTexts().length).toBeGreaterThan(10);
-    for (const file of SITE_PAGES) expect(landingTexts(readFileSync(file, "utf8")).length, file).toBeGreaterThan(10);
+    for (const file of CONTENT_PAGES) expect(landingTexts(readFileSync(file, "utf8")).length, file).toBeGreaterThan(10);
   });
 
   it("no user-visible string in the shell, the watch module or the Ask module promises a cadence", () => {

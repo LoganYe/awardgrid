@@ -29,8 +29,12 @@ function supportEmail(): Plugin {
 /**
  * Static output only. PIVOT §2: "sites/landing — static, on Cloudflare Pages, makes no API calls at all." Vite is
  * here to resolve the `@awardgrid/tokens` workspace import and inline the result, so the palette has one source rather
- * than a copy that drifts, and to build the three pages: the landing page, the privacy policy and the support page
- * (release decision D7), each at its own path (/, /privacy/, /support/).
+ * than a copy that drifts, and to build the pages (release decision D7): the iPhone app's page at /ios/, the privacy
+ * policy at /privacy/, the support page at /support/, and a root page for the Pages project's own address.
+ *
+ * On awardgrid.dowhiz.com the web app keeps "/" and everything else; a Worker sends only /ios/, /privacy/, /support/
+ * and /_site/ to this site (DEPLOY.md). So the built CSS goes under _site/, not Vite's default assets/, and every
+ * page links it relatively.
  */
 export default defineConfig({
   base: "./",
@@ -38,9 +42,11 @@ export default defineConfig({
   build: {
     outDir: "dist",
     cssMinify: true,
+    assetsDir: "_site",
     rolldownOptions: {
       input: {
         index: path.join(here, "index.html"),
+        ios: path.join(here, "ios", "index.html"),
         privacy: path.join(here, "privacy", "index.html"),
         support: path.join(here, "support", "index.html"),
       },
