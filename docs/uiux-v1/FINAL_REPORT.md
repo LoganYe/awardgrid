@@ -5,7 +5,7 @@ This report records what was built and how it was checked. Each verification sco
 ## Scope and environment
 
 - **Plan.** The UI/UX v1 plan from the handoff pack `/Users/yegaoyang/Desktop/workspace/awardgrid-claude-code-impl`: 22 tasks in four milestones, with acceptance items A01–A38.
-- **Where.** Worktree `/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`, local branch `uiux/quiet-precision-v1`, from `main` at `9c69c6c`. One local commit per task (T22's evidence has the ledger). Nothing was pushed, opened as a PR, or deployed. The main checkout stayed on `main`, because production runs from it (U-009, U-003).
+- **Where.** Worktree `/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`, local branch `uiux/quiet-precision-v1`, from `main` at `9c69c6c`. Merged locally into `main` as `164afe7` at the end (see "Merge into main"). One local commit per task (T22's evidence has the ledger). Nothing was pushed, opened as a PR, or deployed. The main checkout stayed on `main`, because production runs from it (U-009, U-003).
 - **Surfaces.**
   - The iOS shell: Capacitor 8, React 19, Vite, in `apps/ios`.
   - The Web: Next 16, in `src`.
@@ -51,6 +51,26 @@ Each task's state, scope and evidence are in [STATUS.md](STATUS.md). The A01–A
 | T21 | Cross-size, accessibility, visual polish | verified (iOS browser mock + Web mock); native parts implemented_unverified (A35: WebKit past the first screen, a device; A36: VoiceOver) | A35 partial, A36 partial |
 | T22 | Full regression, migration rollback, resumable handoff | verified (unit + iOS browser mock + Web mock + regression + old code + iOS Simulator); A37 partial; A28's native half still unverified (the Phase 5 harness stopped at stale steps) | A37 partial, A38 verified |
 
+## Merge into main
+
+- **The merge.** `164afe7`, made with `--no-ff` on 2026-09-24, so `main`'s first-parent line skips the task commits (T02's first half is a labelled WIP commit, `7c093f5`, U-009) and one `git revert -m 1 164afe7` undoes it. Its first parent is `3323d73`: `main` had gained three `/queries` commits that day (`06e8506`, `57a0c07`, `3323d73`), which fix the column shift T22 had found. Git merged `src/components/queries/queries.css`, the only file both sides changed, without conflict. The merge was built and tested in the worktree; the records were then brought up to date in one docs commit on top of it, and `main` in the main checkout was fast-forwarded to that commit.
+- **Checked before it** (read-only workflows):
+  - the whole branch (411 files, every commit): no real key, env file, user data or stray build or scratch file; no git hooks, dependency changes or path collisions. Two stale records it found were fixed first (`347bdd6`);
+  - how `main`'s commits and this work interact: no code conflict (at 768 px the wider `/queries` columns leave about 51 px spare, and below 768 the table is a card list). 8 records the merge made stale (the `/queries` issue listed as open, its old line, "local only") are fixed in the commit after the merge.
+- **Gates on the merged tree** (`evidence/raw/merge-gates.log`, 21:48–22:07, run in the worktree, never the main checkout):
+
+| Gate | Exit | Result |
+|---|---|---|
+| `pnpm typecheck` | 0 | root, core, iOS |
+| `pnpm lint` | 0 | 0 errors; the one existing warning |
+| `pnpm test` | 0 | root 964 passed / 2 skipped (main's fix adds 4); core 966; iOS 811 |
+| `pnpm --filter @awardgrid/ios build` | 0 | fixture-free |
+| `pnpm build:landing`, `pnpm build` | 0 | built; 22 pages |
+| `pnpm exec playwright test --config=playwright.uiux.config.ts` | 0 | 317 passed |
+| `pnpm e2e` | 0 | 591 passed / 145 skipped / 0 failed (main's fix adds 8) |
+
+- **Not done:** no push, no build in the main checkout, no restart. The live site keeps serving its current build.
+
 ## The design (§01–23) and where it lives
 
 | § | Design section | Where it is implemented (main files) | Tasks |
@@ -89,7 +109,7 @@ Run in the worktree at 19:50–20:22 on 2026-09-24, one after another, on the tr
 | `pnpm build:landing` | 0 | built |
 | `pnpm build` (worktree) | 0 | compiled; 22 pages |
 | `pnpm exec playwright test --config=playwright.uiux.config.ts` | 0 | 317 passed (`raw/t22-full-run.log`); `UIUX_WEB=0` lists 257 (`raw/t22-ios-only-list.log`) |
-| `pnpm e2e` (existing Web e2e) | 1 | 582 passed / 145 skipped / **1 failed** (`raw/t22-web-e2e.log`): `e2e/queries.spec.ts:78`, desktop-light, "the table's columns do not move when the clock does". Existing Web code and test, unchanged by T22. It ran at 02:59 UTC, in the minute before the seeded query's 3-hourly run, when Next run reads "in NN seconds": 98.84 px, over the column's 96 px floor (measured with a scratch test, since deleted). That test alone then passed 3 times in each desktop project (`raw/t22-web-e2e-queries-rerun.log`). An open issue in STATUS and FINAL_REPORT |
+| `pnpm e2e` (existing Web e2e) | 1 | 582 passed / 145 skipped / **1 failed** (`raw/t22-web-e2e.log`): `e2e/queries.spec.ts:78`, desktop-light, "the table's columns do not move when the clock does". Existing Web code and test, unchanged by T22. It ran at 02:59 UTC, in the minute before the seeded query's 3-hourly run, when Next run reads "in NN seconds": 98.84 px, over the column's 96 px floor (measured with a scratch test, since deleted). That test alone then passed 3 times in each desktop project (`raw/t22-web-e2e-queries-rerun.log`). Recorded as open at T22; fixed since on `main` by `06e8506` (floors of 116 px for Last run and 104 px for Next run; the test, now `e2e/queries.spec.ts:92`, writes the seconds readings itself), with `57a0c07` and `3323d73`, all in the merge `164afe7` |
 | `pnpm e2e`, re-run | 0 | 583 passed / 145 skipped / 0 failed, the same as the baseline (`raw/t22-web-e2e-rerun.log`); the tracked `docs/screenshots/v0.2` it rewrites were restored after each run |
 
 **New tests in T22** (the existing ones are counted separately):
@@ -108,7 +128,7 @@ Run in the worktree at 19:50–20:22 on 2026-09-24, one after another, on the tr
 | Unit and integration (vitest) | root, `packages/core`, `apps/ios`; synthetic fixtures and a fixed clock; fake transports, KeyStore and storage | run at every task; all pass at T22 (Commands and results) |
 | iOS browser mock | the real iOS shell in Chromium through the fixture host (`playwright.uiux.config.ts`, `ios` project): synthetic seats.aero and Anthropic stand-ins, every request counted, real hosts blocked | verified per task; the whole suite passes at T22 |
 | Web mock | this worktree's real Next app with a stand-in seats.aero (`:4330`/`:4331`), two accounts on one browser; the `web-desktop` project at 1440 | verified for T18–T22 |
-| Existing Web e2e (`pnpm e2e`) | the repository's own suite, unchanged | 583 passed / 145 skipped / 0 failed at the baseline and after every Web task. T22's first run had 1 clock-dependent failure in the existing `/queries` test (open issues); its re-run passed |
+| Existing Web e2e (`pnpm e2e`) | the repository's own suite, unchanged | 583 passed / 145 skipped / 0 failed at the baseline and after every Web task. T22's first run had 1 clock-dependent failure in the existing `/queries` test; its re-run passed. The cause was fixed since on `main` by `06e8506` (floors of 116 px for Last run and 104 px for Next run; the test, now `e2e/queries.spec.ts:92`, writes the seconds readings itself), with `57a0c07` and `3323d73`, all in the merge `164afe7` |
 | Old code against new data | the app at `9c69c6c` run in a throwaway worktree: it wrote the pre-UI/UX fixture, and read the new build's files and a migrated database | T22 (U-058) |
 | iOS Simulator | T22: the production build on fresh iPhone 17 Pro (iOS 26.5) and iPhone 16 Pro (iOS 18.3) Simulators, driven with `xcrun simctl` (launch, settings file, appearance, text size, screenshots), no taps; the Phase 5 harness stopped at stale steps | first screen, appearance (U-042) and Dynamic Type verified; everything past the first screen, and A28's native half, unverified |
 | Physical device | not available to this session | unverified: VoiceOver, touch, the real keyboard, Keychain, clipboard, safe areas on the results screen, WebKit rendering past the first screen |
@@ -204,12 +224,10 @@ See U-058; T22's evidence has the runs against the old code.
 - **"Clear cached results" leaves saved results and snapshots in place**, as the Settings copy says (T11). Saved items are deleted one by one; there is no "clear everything saved" (not in the spec).
 - **Ask's failure details from core stay English**, marked `lang="en"`, on a Chinese screen (U-052).
 - **`GridTable` is dead code** kept with its own unit test until the Phase 5 harness is finished (STATUS).
-- **The Web's `/queries` table moves about 3 px in the last minute before a query runs** (existing Web code, not changed here). "in 55 seconds" is wider than the Next run column's 96 px floor. Its own e2e test failed once in T22 for that reason, and passed on re-run.
-  - To reproduce: open `/queries` in the minute before a query's next run, or set the first Next run cell's text to "in 55 seconds": the Name column narrows from 251.25 to 248.41 px at 1440.
 
 **For the owner:**
 - **The live site.** The stylesheet 404 caused by a baseline build in the main checkout (U-003) is gone: the server was restarted at 16:33 on 2026-09-24, not by this work, and `/`, `/login` and their stylesheets returned 200 at 20:56 (read-only check).
 - **CI.** Regenerate the `/queries` Linux visual baselines.
 - **Entry points.** Decide where `/`, the header and login lead (the workspace or `/grid`).
-- **The branch.** Review and merge or push `uiux/quiet-precision-v1`. It is local only.
+- **The branch.** Merged locally into `main` as `164afe7` (see "Merge into main"). Not pushed and not deployed: pushing `main`, and a deploy (`pnpm build`, then restarting `com.awardgrid.app` at once), are the owner's. A deploy applies migrations `0003` and `0004` when the server or worker first opens the database; back up `data/runtime/awardgrid.db*` first if wanted.
 - **Simulators.** The owner's test Simulator (`A480530B…`) got the T22 build once (U-059). The previous build was installed back, and it re-saved `cache.json` and `ask.json` in version 1.
