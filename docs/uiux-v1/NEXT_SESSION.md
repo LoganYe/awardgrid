@@ -14,7 +14,7 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
 
 ## Where things stand
 
-- Branch `uiux/quiet-precision-v1`, one local commit per finished task, **merged locally into `main` as `164afe7`** (FINAL_REPORT, "Merge into main"). Nothing pushed or deployed. The worktree above is left detached at `main`'s tip; start new work there on a new branch from `main` (`git switch -c <name> main`), never in the main checkout.
+- Branch `uiux/quiet-precision-v1`, one local commit per finished task, **merged into `main` as `164afe7`, pushed and deployed** (FINAL_REPORT, "Merge into main"). The worktree above is left detached at `main`'s tip; start new work there on a new branch from `main` (`git switch -c <name> main`), never in the main checkout.
 - **All 22 tasks are done and committed.** T01–T22 are verified in their browser, unit and integration scopes, and T22 in its Simulator scope. Every native, device, screen-reader and live-key part is listed in `FINAL_REPORT.md` under "Unverified" and in ACCEPTANCE as partial. There is no further plan task; what is left is verification the plan could not run here, plus owner decisions.
 - **What is left, in order:**
   1. **The Phase 5 Simulator harness** (U-028, for A28's native half: a real kill, the native idle timeout).
@@ -33,7 +33,7 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
   - where `/`, the header and login lead;
   - the CLI prints unknown seats as 0;
   - `/queries` and `/settings` stay on the older type tokens;
-  - push `main` (merged locally, not pushed), then deploy when wanted: `pnpm build` and an immediate restart of `com.awardgrid.app`, which applies migrations `0003`/`0004`.
+  - done: `main` pushed and deployed on 2026-09-24 (STATUS, "Deploy"); the Docker fix on `fix/docker-context-uiux` still needs merging and pushing so CI's docker smoke passes again.
 - Carried forward:
   - **The Web surface (T18, U-053).**
     - `openScenario(page, id, "web")` signs an account in (`scripts/uiux-web/accounts.ts`) on this worktree's real Next app (:4330), and opens `/workspace?q=` with the synthetic search.

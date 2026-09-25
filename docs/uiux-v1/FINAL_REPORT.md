@@ -69,7 +69,7 @@ Each task's state, scope and evidence are in [STATUS.md](STATUS.md). The A01–A
 | `pnpm exec playwright test --config=playwright.uiux.config.ts` | 0 | 317 passed |
 | `pnpm e2e` | 0 | 591 passed / 145 skipped / 0 failed (main's fix adds 8) |
 
-- **Not done:** no push, no build in the main checkout, no restart. The live site keeps serving its current build.
+- **Pushed and deployed** (after the owner asked): Pushed to `origin/main` and deployed on 2026-09-24. Before the build, the live `.next` and the database were backed up to `/Users/yegaoyang/Desktop/workspace/awardgrid-deploy-backup-20260924/` (the copy passes `PRAGMA integrity_check`). `pnpm build` in the main checkout ran 22:18:18–22:18:37 and `com.awardgrid.app` was restarted at once. The first request that opened the database (`GET /api/auth/me`, 401) applied `0003` and `0004`: 5 migrations recorded, both columns present, `quick_check` ok. `/`, `/login`, `/queries` and `/api/health` return 200, `/workspace` and `/grid` redirect to sign-in, all 27 CSS/JS assets on `/` and `/login` return 200, and the error log has nothing new. CI on the push: typecheck/lint/test and gitleaks passed; visual failed, as it already did on `9c69c6c` (the `/queries` Linux baselines); docker smoke failed, a regression from the merge, fixed on `fix/docker-context-uiux` (the Docker context leaves out `apps/`, and `next build` type-checks `e2e/uiux` and `scripts/uiux-web`, which import from it; they are now left out too).
 
 ## The design (§01–23) and where it lives
 
@@ -229,5 +229,5 @@ See U-058; T22's evidence has the runs against the old code.
 - **The live site.** The stylesheet 404 caused by a baseline build in the main checkout (U-003) is gone: the server was restarted at 16:33 on 2026-09-24, not by this work, and `/`, `/login` and their stylesheets returned 200 at 20:56 (read-only check).
 - **CI.** Regenerate the `/queries` Linux visual baselines.
 - **Entry points.** Decide where `/`, the header and login lead (the workspace or `/grid`).
-- **The branch.** Merged locally into `main` as `164afe7` (see "Merge into main"). Not pushed and not deployed: pushing `main`, and a deploy (`pnpm build`, then restarting `com.awardgrid.app` at once), are the owner's. A deploy applies migrations `0003` and `0004` when the server or worker first opens the database; back up `data/runtime/awardgrid.db*` first if wanted.
+- **The branch.** Merged into `main` as `164afe7`, pushed and deployed (see "Merge into main"). To roll back: stop the app, put the backed-up `.next` back (`awardgrid-deploy-backup-20260924/next`), and restart. The old code runs on the migrated database (U-058).
 - **Simulators.** The owner's test Simulator (`A480530B…`) got the T22 build once (U-059). The previous build was installed back, and it re-saved `cache.json` and `ask.json` in version 1.

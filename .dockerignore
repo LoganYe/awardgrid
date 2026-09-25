@@ -25,6 +25,12 @@ data/runtime
 # Phase-0 throwaway spike: never part of the server image.
 spikes
 apps
+# The UI/UX v1 browser harness (test-only). It imports the iOS fixture host under apps/, which is not
+# in the image, and `next build` type-checks the root tsconfig's e2e/** and scripts/**: without these
+# lines the image build fails with "Cannot find module '../../apps/ios/fixture-host/...'".
+e2e/uiux
+scripts/uiux-web
+playwright.uiux.config.ts
 sites
 coverage
 .vitest-cache
