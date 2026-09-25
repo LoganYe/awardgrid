@@ -36,7 +36,9 @@ function render(opts: { snapshot?: ResultSnapshot | null; entry?: LastSearchEntr
   const workspace = { subscribe: () => () => {}, getState: () => state };
   const lastSearch: LastSearchStore = { get: () => opts.entry ?? null, set: () => {} };
   const ask = { subscribe: () => () => {}, isRunning: () => false };
-  const services = { lastSearch, workspace, ask, now: () => NOW, locale: opts.locale ?? "en" } as unknown as AppServices;
+  // T22: the screen reads which options are saved on their own (U-057); none here.
+  const favorites = { subscribe: () => () => {}, all: () => [] };
+  const services = { lastSearch, workspace, ask, favorites, now: () => NOW, locale: opts.locale ?? "en" } as unknown as AppServices;
   return renderToStaticMarkup(
     createElement(
       MemoryRouter,

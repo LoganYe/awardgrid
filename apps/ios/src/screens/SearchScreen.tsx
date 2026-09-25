@@ -46,7 +46,8 @@ import { AvailabilityMatrix } from "../components/results/AvailabilityMatrix";
 import { TraySlot } from "../app/tray-slot";
 import { CompareTray } from "../components/CompareTray";
 import { WithTail } from "../app/WithTail";
-import { favoriteFromSnapshot } from "../store/favorites-store";
+import { favoriteFromOption, favoriteFromSnapshot, optionOrigin } from "../store/favorites-store";
+import type { RowKey } from "@awardgrid/core/workspace/types";
 import { FAVORITES } from "./favorites-copy";
 import { SAVED_TITLE } from "./FavoritesScreen";
 import { RESULTS } from "../components/results/copy";
@@ -185,6 +186,32 @@ export function SearchScreen() {
     else if (result.reason === "capacity") setSaveMessage({ snapshotId: about, text: copy("favorite.limit", locale), ok: false });
     else setSaveMessage({ snapshotId: about, text: f.readOnly, ok: false });
   };
+
+  // T22: one option saved on its own, from its card (core favoriteFromOption, as on the Web): the snapshot's query and
+  // coverage with that one row. It fetches nothing; the card then says "Saved", and the status line says where it is.
+  const savedItems = useSyncExternalStore(services.favorites.subscribe, services.favorites.all, services.favorites.all);
+  const shownId = workspace.displayedSnapshot?.id ?? null;
+  const savedOptions = useMemo(() => {
+    if (!shownId) return new Set<RowKey>();
+    const prefix = optionOrigin(shownId, "");
+    return new Set(savedItems.filter((f) => f.originalSnapshotId.startsWith(prefix)).map((f) => f.originalSnapshotId.slice(prefix.length) as RowKey));
+  }, [savedItems, shownId]);
+  const saveOption = useCallback(
+    async (rowKey: RowKey) => {
+      const shown = services.workspace.getState().displayedSnapshot;
+      const item = shown ? favoriteFromOption(shown, rowKey, services.now().toISOString(), `fav-${optionOrigin(shown.id, rowKey)}`) : null;
+      if (!shown || !item) return;
+      const f = FAVORITES[locale];
+      setSaveMessage(null);
+      const result = await services.favorites.save(item);
+      if (result.ok) setSaveMessage({ snapshotId: shown.id, text: f.optionSaved, ok: true });
+      else if (result.reason === "write_failed") setSaveMessage({ snapshotId: shown.id, text: f.writeFailed(result.message), ok: false, tail: result.message });
+      else if (result.reason === "capacity") setSaveMessage({ snapshotId: shown.id, text: copy("favorite.limit", locale), ok: false });
+      else setSaveMessage({ snapshotId: shown.id, text: f.readOnly, ok: false });
+    },
+    [services, locale],
+  );
+  const optionSaving = useMemo(() => ({ saved: savedOptions, onSave: (rowKey: RowKey) => void saveOption(rowKey) }), [savedOptions, saveOption]);
 
   // A watch keeps the search on screen as its structured query and date rule (T14, core draftForWatch): what a check
   // runs, whatever text the search was typed as.
@@ -424,7 +451,7 @@ export function SearchScreen() {
             ) : null}
             {failureCallout}
             {coverage.map((notice) => (
-              <Notice key={notice.kind} tone={notice.kind === "none" ? "info" : "warning"}>
+              <Notice key={notice.kind} tone={notice.kind === "none" ? "info" : "warning"} data-testid="coverage-notice">
                 {notice.text}
               </Notice>
             ))}
@@ -454,6 +481,7 @@ export function SearchScreen() {
               now={now.toISOString()}
               locale={locale}
               onOpen={openDetail}
+              saving={optionSaving}
             />
           ) : prefs.kind === "calendar" && projected ? (
             <AvailabilityCalendar
@@ -469,9 +497,10 @@ export function SearchScreen() {
               now={now.toISOString()}
               locale={locale}
               onOpen={openDetail}
+              saving={optionSaving}
             />
           ) : rows.length > 0 ? (
-            <AvailabilityList rows={rows} sort={prefs.sort} snapshotId={snapshot.id} selected={selected} onToggle={toggleRow} now={now.toISOString()} locale={locale} onOpen={openDetail} />
+            <AvailabilityList rows={rows} sort={prefs.sort} snapshotId={snapshot.id} selected={selected} onToggle={toggleRow} now={now.toISOString()} locale={locale} onOpen={openDetail} saving={optionSaving} />
           ) : null}
 
           <div className="ag-results-actions">

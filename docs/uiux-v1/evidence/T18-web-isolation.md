@@ -121,3 +121,8 @@ At 390 in Chinese, light and dark:
 - A live seats.aero key and a real account's quota.
 - WebKit and Firefox; a real phone's browser.
 - The S10 layout, keyboard and panels (T19). Web scheduling, Telegram and settings regression (T20).
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- The red logs (`raw/t18-red.log`, `raw/t18-review-clock-red.log`) show only the 60-second wait for 收藏选项. The sign-in as `web-user-a`, and the sign-out at `/login`, are this doc's reading of the state, not lines in those logs.

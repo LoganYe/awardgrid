@@ -81,3 +81,8 @@ Final run, after the review fixes, in the worktree (`export PATH="$HOME/.local/n
 
 - Simulator / device: the native picker for the sort, VoiceOver reading the calendar table and its day buttons, Dynamic Type through the system setting (the browser test sets `--ag-text-scale` directly).
 - A calendar over more than one month in the browser (the fixture range is October only); the arrows and week alignment are covered by the render test.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- A14's "survive a relaunch" is a browser page reopened with its storage kept (`openScenario(…, { preserveStorage: true })`), not a native kill and relaunch, which is unverified.

@@ -16,8 +16,10 @@
  * have all passed are said, with a way to change them instead; without a key it says so, with the way to add one.
  */
 import { projectResults } from "@awardgrid/core/workspace/projection";
-import { copy, coverageNotices, querySubline, routeLabel } from "@awardgrid/core/workspace/present";
+import { copy, coverageNotices, dayLabel, feesLabel, formatMiles, programLabel, querySubline, routeLabel, seatsLabel } from "@awardgrid/core/workspace/present";
+import { cabinName } from "@awardgrid/core/workspace/query-editor";
 import type { FavoriteV1 } from "@awardgrid/core/workspace/types";
+import type { Locale } from "../app/locale";
 import { useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useOutletContext, useParams } from "react-router";
@@ -34,6 +36,18 @@ import { favoriteSnapshot } from "../store/favorites-store";
 import { DEFAULT_PREFERENCES } from "../workspace/workspace-store";
 import { FAVORITES } from "./favorites-copy";
 import "./favorites.css";
+
+/**
+ * An option saved on its own (T22, U-057: core favoriteFromOption) holds one row, and its origin names the snapshot and
+ * that row. Its card, its title and its Open and Delete names say which option it is (day, cabin, program, miles, fees,
+ * seats, unknowns said as unknown), as the Web's Saved does; saved results keep their query's words (T22 review PROD-2).
+ */
+function savedOptionLine(item: FavoriteV1, locale: Locale): string | null {
+  const row = item.rows.length === 1 && item.originalSnapshotId.includes("#") ? item.rows[0]! : null;
+  if (!row) return null;
+  const v = row.value;
+  return [dayLabel(v.date, locale), cabinName(v.cabin, locale), programLabel(v.program), `${formatMiles(v.miles)} ${RESULTS[locale].milesUnit}`, feesLabel(v.fees_cents, v.currency, locale), seatsLabel(v.seats_left, locale)].join(" · ");
+}
 
 const UNDO_MS = 5000;
 const NO_SELECTION: ReadonlySet<string> = new Set();
@@ -99,7 +113,7 @@ export function FavoritesScreen() {
     [services],
   );
 
-  const name = (item: FavoriteV1) => `${routeLabel(item.query, locale)}, ${querySubline(item.query, locale)}`;
+  const name = (item: FavoriteV1) => `${routeLabel(item.query, locale)}, ${savedOptionLine(item, locale) ?? querySubline(item.query, locale)}`;
 
   const remove = async (item: FavoriteV1) => {
     if (busy) return;
@@ -197,11 +211,12 @@ export function FavoritesScreen() {
         <ul className="ag-saved-list">
           {items.map((item) => (
             <li key={item.id}>
-              <article className="ag-saved-card" aria-labelledby={`saved-title-${item.id}`} data-testid="saved-card">
+              <article className="ag-saved-card" aria-labelledby={`saved-title-${item.id}`} data-testid="favorite-card">
                 <h2 id={`saved-title-${item.id}`} className="ag-saved-card-title">
                   {routeLabel(item.query, locale)}
                 </h2>
                 <p className="ag-saved-card-sub">{querySubline(item.query, locale)}</p>
+                {savedOptionLine(item, locale) ? <p className="ag-saved-card-option tabular">{savedOptionLine(item, locale)}</p> : null}
                 <p className="ag-saved-card-meta tabular">
                   {f.savedAt(shortDateTime(item.savedAt, locale))} · {f.options(shown(item).rows.length)}
                 </p>
@@ -289,6 +304,7 @@ export function SavedScreen() {
         {routeLabel(item.query, locale)}
       </h1>
       <p className="ag-saved-card-sub">{querySubline(item.query, locale)}</p>
+      {savedOptionLine(item, locale) ? <p className="ag-saved-card-option tabular">{savedOptionLine(item, locale)}</p> : null}
       <p className="ag-saved-card-meta tabular">
         {f.savedAt(shortDateTime(item.savedAt, locale))} · {f.options(projected.rows.length)}
       </p>

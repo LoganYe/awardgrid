@@ -44,3 +44,9 @@ Scope verified: **unit** (vitest, core + root). Component-level rendering of the
 - CSV export, Ask tool payloads (positional), web grid state: read fields by name; unaffected. The CLI `--json` grid output now carries the two additive keys.
 - iOS `cache.json`: restore spreads rows, so the keys survive; older snapshots read back with no provenance (`unknown`). `CACHE_SNAPSHOT_VERSION` stays 1 (additive).
 - Old code on a migrated database: its migrator is a no-op and its explicit column lists ignore the new column; after a roll-forward, a row it rewrote reads back with no provenance rather than a stale one (test "ignores provenance written for a different fetch").
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- The red and first green runs (`raw/T02/red.log`, `green-1.log`, `green-2.log`) ran in the main checkout's `packages/core` (vitest only), not in the worktree as this doc says. The later gates ran in the worktree. The commits are `7c093f5` (work in progress) and `a553b5d`.
+- No log is kept for the failing full-suite run or for the "84 passed" directory run, and the `drizzle-kit generate` drift check has no exit code recorded.

@@ -112,3 +112,9 @@ At 390 in Chinese, light and dark:
 
 - The Simulator or a device: a real kill during a native request, the native idle timeout, and VoiceOver on the waiting and Stop lines.
 - Live seats.aero and Anthropic.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- A28 is partial, not verified: its native half (a real kill, the native idle timeout) was not run (ACCEPTANCE), and T22's Simulator harness did not get that far (evidence T22). "Nothing more goes to Anthropic" is shown by the unit test (`ask-coordinated.test.ts`). The browser check could not fail, since there is no next step (REG-3).
+- The evidence screenshots and `raw/t17-evidence-run.log` (09:47) predate the final full run (10:09) and the review fixes to the step lines and endings (COORD-2, L10N-5/6).

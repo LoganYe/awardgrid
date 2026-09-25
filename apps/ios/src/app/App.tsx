@@ -18,6 +18,8 @@ import { Button, Icon, type IconName, applyThemePreference } from "../components
 import { FAVORITES } from "../screens/favorites-copy";
 import { WithTail } from "./WithTail";
 import { installKeyboardInset } from "./keyboard";
+import { installAppearanceBridge, postAppearance } from "../native/appearance";
+import { installSystemTextSize } from "../native/text-size";
 import { type Locale, langTag, useLocale } from "./locale";
 import { TraySlot } from "./tray-slot";
 import { AskScreen } from "../screens/AskScreen";
@@ -154,11 +156,18 @@ export function Chrome({ services }: { services: AppServices }) {
 export function ShellEffects({ services }: { services: Pick<AppServices, "settings" | "locale"> }) {
   const locale = useLocale(services);
   const theme = useSyncExternalStore(services.settings.subscribe, services.settings.theme, services.settings.theme);
-  useLayoutEffect(() => applyThemePreference(theme), [theme]);
+  useLayoutEffect(() => {
+    applyThemePreference(theme);
+    // The native side paints what shows around the page with the same appearance (T22, U-042).
+    postAppearance(theme);
+  }, [theme]);
+  useEffect(() => installAppearanceBridge(() => services.settings.theme()), [services]);
   useLayoutEffect(() => {
     document.documentElement.lang = langTag(locale);
   }, [locale]);
   useEffect(() => installKeyboardInset(), []);
+  // Dynamic Type drives the page's text scale, 100–200% (T22; A35's native half).
+  useEffect(() => installSystemTextSize(), []);
   return null;
 }
 

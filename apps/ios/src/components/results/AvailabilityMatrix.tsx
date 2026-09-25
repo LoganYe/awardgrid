@@ -19,7 +19,7 @@ import { copy, dayLabel, dayParts, emptyDayLabel, formatMiles, matrixCellName, p
 import type { MatrixSlot, ProjectedResults, ResultSnapshot, RowKey, ViewPreferences } from "@awardgrid/core/workspace/types";
 import { type CSSProperties, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Locale } from "../../app/locale";
-import { AvailabilityList } from "./AvailabilityList";
+import { AvailabilityList, type OptionSaving } from "./AvailabilityList";
 import { RESULTS } from "./copy";
 import { type MatrixPoint, useMatrixFocus } from "./useMatrixFocus";
 
@@ -33,6 +33,8 @@ export interface AvailabilityMatrixProps {
   locale: Locale;
   /** Open an option's details (T10): a one-option cell opens it directly, focus to come back to the cell. */
   onOpen?: (rowKey: RowKey, returnFocusId: string) => void;
+  /** T22: save one option from its card (passed to the options listed under a day or a cell). */
+  saving?: OptionSaving;
 }
 
 /** A cell's element id: stable across renders and new snapshots, so focus can come back to it. */
@@ -40,7 +42,7 @@ const cellId = (date: string, origin: string, dest: string) => `mx-${date}-${ori
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-export function AvailabilityMatrix({ snapshot, projected, sort, selected, onToggle, now, locale, onOpen }: AvailabilityMatrixProps) {
+export function AvailabilityMatrix({ snapshot, projected, sort, selected, onToggle, now, locale, onOpen, saving }: AvailabilityMatrixProps) {
   const t = RESULTS[locale];
   const id = useId();
   const model = useMemo(() => matrixModel(snapshot, projected), [snapshot, projected]);
@@ -254,6 +256,7 @@ export function AvailabilityMatrix({ snapshot, projected, sort, selected, onTogg
             headingLevel={3}
             testId="matrix-cell-list"
             onOpen={onOpen}
+            saving={saving}
           />
         </section>
       ) : null}

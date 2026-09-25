@@ -122,6 +122,11 @@ The reference's filter row holds query conditions (programs, stops, more). Chang
 
 `apps/ios/src/probes/e2e-driver.ts` (e2e builds only, results in docs/PHASE5.md) reads `#q`, the Run button and `table.ag-grid` on `#/` after a search. After T07 a search's results are cards (the grid is the Matrix view) and a second search goes through the editor. The driver cannot be run in this session (no Simulator pass yet); it is updated with the Simulator pass (T21/T22) rather than changed blind now. Until then its search steps read elements that are no longer there (not verified by running it).
 
+**Update (T22).**
+- The driver's search step now runs a text search through the current Search screen and reads the grid from the Matrix view.
+- A run on a fresh Simulator (evidence T22) stopped at the next stale steps: Settings (`.settings-section`) and the quota line. Its Ask and layout steps and their verdicts in `probe-log.mjs` still read the pre-T07 screens.
+- So the harness still does not run through, and A28's native half stays unverified (NEXT_SESSION).
+
 ## U-029 · Cards follow the query's sort, coverage is said per route pair, and focus goes back to what opened the editor
 
 T07 review. The view row names the query's sort, so the cards are drawn in that order (core `sortedRows`: the grid's own `compareRows`, then the row key so equal rows keep one order); the T01 harness spec now looks for its synthetic row anywhere in the list rather than in the first card. Coverage notices read the slices, not only the overall state, so a search that is complete on one pair and unmonitored on another says which pair is not monitored (`coverageNotices`; `coverageLabel` stays as its first line). Leaving the editor returns focus to the control that opened it — a filter chip, the query summary, or "Build a search" — and mid-search the summary, no longer a link, keeps that target (`tabIndex=-1`, described by its wait note). The Chinese screen marks the parts that are still English (engine messages, the text search, the Matrix) `lang="en"` and translates its own labels instead of marking them.
@@ -145,7 +150,7 @@ T08 review. The selected segment is bold (spec §10), which made "Calendar" wide
 
 ## U-034 · The iOS matrix is a table grid of per-cabin slots, fully rendered, inside its own bounded scroller
 
-T09, docs/04 S03, spec §14. The matrix replaces the older `GridTable` on the Search screen (the component stays, unused by the app, for the Phase 5 driver, U-028, and its own unit test). It is built from the T08 projection by core `matrixModel`: the query's dates by its routes, each cell a slot per cabin asked in cabin order (D07), each slot its lowest miles (ties by fees within one currency) or why it is empty, in words. Choices:
+T09, docs/04 S03, spec §14. The matrix replaces the older `GridTable` on the Search screen (the component stays, unused by the app, for the Phase 5 driver, U-028, and its own unit test). Update (T22): the driver's search step now reads the Matrix, so nothing uses `GridTable`; it stays until the Phase 5 harness is finished, then goes with its test (STATUS). It is built from the T08 projection by core `matrixModel`: the query's dates by its routes, each cell a slot per cabin asked in cabin order (D07), each slot its lowest miles (ties by fees within one currency) or why it is empty, in words. Choices:
 
 - **Markup.** A `<table role="grid">` with `aria-rowcount`/`aria-colcount` and each row's and cell's true index. Cells are named in full (`matrixCellName`); the table is focusable only to hand focus to its active cell, so the grid is one tab stop. The active cell is a (date, route) coordinate (`useMatrixFocus`), not a DOM index.
 - **No virtualization.** A search spans at most 92 days, so the grid is at most 92 rows × the query's routes; every row is rendered and the indices are the real ones. Tested at 92 × 3.
@@ -230,6 +235,11 @@ The shell's `SearchEngine.checkKey` runs it with the engine's own quota and nati
 ## U-042 · Choosing Light or Dark does not yet set the iOS status bar
 
 T11 review (L/F4). The appearance chosen in Settings is applied to the page (`data-theme` on <html>). The native status bar follows the system appearance: Info.plist has `UIViewControllerBasedStatusBarAppearance`, and Capacitor's bridge view controller returns the default style. No status-bar plugin is installed, and none is added (no new dependencies). So with Dark chosen on a device in Light mode, the clock and battery may be drawn dark on the dark header, and the reverse. Fixing it needs a few lines of native code in the app target: set `overrideUserInterfaceStyle`, or the status-bar style, from a message the page sends. Such code can only be checked on the Simulator or a device, where nothing has been run yet. It is carried to T21 (cross-size, accessibility, visual polish) as a known native gap. Until then, "System" is the default and matches the status bar.
+
+**Update (T22, U-059).**
+- On the Simulator (iOS 26.5 and 18.3) the status bar was readable under a theme chosen against the device's own. What did not follow the choice was the web view's own background under the tab bar.
+- That is now fixed: `AppViewController.swift` takes the chosen appearance from the page and sets the window's interface style and the web view's background.
+- Verified on the Simulator, not on a device.
 
 ## U-043 · The honesty scan also reads the approved rows the shell renders through copy()
 
@@ -760,7 +770,7 @@ T20, plan 04 T20, docs/02 D05, docs/05, A33, A34.
 - **The CLI** prints an unknown seat count as 0 in its grid text (pre-existing, `find-main.ts` formatting). An operator's tool, outside the UI/UX surfaces; noted for the owner.
 - **Visual baselines.** The `/queries` page gains the capability block, so its Linux visual baselines need regenerating in CI (owner). Settings' unlinked state is unchanged.
 
-## U-056 · Cross-size and accessibility, measured on every screen; the fixes are layout, not the reference
+## U-056 · Cross-size and accessibility, measured screen by screen; the fixes are layout, not the reference
 
 T21, plan 04 T21, A35, A36.
 
@@ -800,7 +810,7 @@ The first version of the audit passed over several of these. The second review s
 - **Short screens with options chosen:** 320 × 568 and 375 × 667 at 200%, in both languages. A real tap chooses each option, and the results keep at least a third of the scroll area. An ordinary search at 100% leaves the document exactly the screen.
 - **The stand-in keyboard:** at 200% Chinese, at 320 × 568 (also panned up to a lower field) and at 390 × 844. Find and the field being typed in stay above it, and a tap on Find lands on it. The plan lists this as a risk ("200% Chinese, the soft keyboard and 320 wide hide the main action"); T11's handling holds at large text.
 
-**What it found, and the fixes.** The first full run on the pre-T21 layout reported 128 problem states. The layout fixes brought that to 0, and the review's 12 confirmed findings were fixed after it (evidence T21).
+**What it found, and the fixes.** The first full run on the pre-T21 layout reported 128 problem states, in a scratch run of this session that was not saved as a raw log (evidence T21 says which were the audit's own mistakes). The layout fixes brought that to 0, and the review's 12 confirmed findings were fixed after it (evidence T21).
 - **The Web rail's labels at large text** ran past a 72-wide rail. The rail is now `minmax(72px, max-content)`, still exactly 72 at 100% (T19's geometry holds).
 - **The phone bar:**
   - Its five slots now share the width (a five-column grid).
@@ -851,8 +861,8 @@ The first version of the audit passed over several of these. The second review s
 - No reference picture shows large text or 320 wide. There, completeness wins, as the plan says.
 
 **Accessibility** (`accessibility.spec.ts`):
-- **axe** (WCAG 2.0/2.1 A and AA) found no violations at any impact in 80 scans (`evidence/raw/t21-rerun.log`), covering:
-  - every main iOS screen (including the partial and no-key states, and a detail);
+- **axe** (WCAG 2.0/2.1 A and AA) found no violations at any impact in 80 scans on the committed tree (`evidence/raw/t21-full-run.log`; an earlier run before the reviews, `t21-rerun.log`, showed the same). They cover:
+  - 11 iOS states: Search in list, calendar and matrix; the editor; Ask; Settings; Watches; Saved; the no-key state; the partial state; a detail. Not scanned: compare, the seats.aero and Anthropic key pages, the example;
   - the Web workspace's views, a detail panel, the assistant, the palette, Saved and Queries at 1440, and the workspace at 390;
   - both themes and both languages.
 - **Reduced motion:** nothing moves in an iOS sheet, a Web overlay panel or the palette.
@@ -880,3 +890,106 @@ The first version of the audit passed over several of these. The second review s
 - **U-042** (the status bar under a chosen theme) needs native code checkable only on the Simulator or a device. Carried to T22's Simulator attempt.
 - **T15 REG-06** (the save-failure bar is not shown on full-height pages such as Ask): kept. It shows on return, and those pages only save through the search they return to.
 - **Not verified:** VoiceOver, the system's Dynamic Type, real touch, the real software keyboard, real IMEs and WebKit's overscroll, on any device. `setTextScale` tests the layout's answer to larger type; it is not Dynamic Type.
+
+## U-057 · iOS saves one option too, as the Web does; the full path is one test per surface
+
+T22, plan 04 T22 (Step 1 and Interfaces), docs/02 D04, docs/04 S06.
+
+**The gap the plan's test found.**
+- The Step 1 test saves an option with "收藏选项" on the iOS results. iOS saved only whole results ("收藏结果", T13 U-045), while the Web has saved single options since T18.
+- D04 has favourites copy "the needed snapshot fragment", and asks for the Web's data meaning and task paths to be equivalent.
+- So iOS now has **Save option** / **收藏选项** on each card, in the list and under a calendar day or a matrix cell. It saves through core's `favoriteFromOption`, the same as the Web: a `FavoriteV1` with the snapshot's query and coverage and that one row, deduplicated on its origin.
+- Once saved, the button is named **Saved** / **已收藏**, pressed. It stays focusable, so focus is never dropped, and a second tap does nothing.
+- Its name is the short one the plan's own test and the Web use. It is described by its card (`aria-describedby`), whose name is the option's full name, so no two cards' buttons read alike (review PROD-4). The Web's Save is described by its row's name the same way. `aria-description` was tried first; it is still a draft attribute (ARIA 1.3), and the lint rules flagged it. A test checks that each button's accessible description, as Chromium computes it, is its card's name. Whether VoiceOver reads it was not checked: VoiceOver was not run (A36).
+- An option saved from a later search of the same flight is a new item, dated, as on the Web: its origin names that search's snapshot.
+- **In Saved,** an option saved on its own says which option it is: day, cabin, program, miles, fees and seats, with unknowns said as unknown. That appears on its card, under the opened page's title, and in its Open and Delete names. Two options from one search are never alike (review PROD-2).
+- "Selected" moved from the card's corner to the day line, beside the cabin, so the corner holds only the bookmark and the compare box, side by side. At 320 and 200% in English, the old corner (bookmark, badge, box) was wider than the card and scrolled the results sideways. The list's column no longer grows with a card (review PROD-1, PROD-3). The status line says "Option saved on this device." / "已在本机收藏此选项。", with the way to Saved, as saving results already did.
+- A failed write is the same alert as saving results, and nothing changes. The cards of an opened snapshot are read only, so they have no Save.
+- **Placement.** The reference card has no save control.
+  - It is the Saved tab's bookmark, as an icon button (a 44-pt target over a 20-pt mark) in the card's top corner beside the compare box.
+  - The mark fills once saved, and the name and `aria-pressed` say so too, so colour and fill are never the only cue.
+  - A text button on the card's last line was tried first. It did not fit beside "View option" in English, and pushed the card past its 164 pt. The bookmark keeps 164 in both languages.
+  - At 320 and 200% the heading is narrower beside the two controls. So the day line breaks only at its spaces, never inside "周一", while a word wider than the line still breaks.
+  - The details page keeps its two bottom buttons (docs/04 S04).
+- **"Save results" stays.** It keeps a whole snapshot.
+
+**The Step 1 test, with two marked changes.**
+- Its `test` and `expect` come from the harness's `./test`, not `@playwright/test`, because `openScenario` needs the harness's network lockdown (T01). That is the same change as in every earlier task's Step 1 test.
+- It runs one `searchByText` before its first click. The fixture's `complete` opens before its first search, as the app does after install (T01). About 100 openings across 16 specs rely on that, so the fixture is not changed.
+
+Both changes are marked in the file; the rest is as the plan wrote it.
+
+**A stable test id.** The iOS Saved card now uses docs/04's `favorite-card`, as the Web's does. It was `saved-card`; `favorites.spec.ts` changed with it.
+
+**The full path** (`e2e/uiux/full-flow.spec.ts`):
+- **iOS, on the fixture's `ai-pending`:** a query through the editor; its three views over one revision; details and back to the opener; compare two and back; an AI proposal shown as a change, applied once, and the results showing the new dates; a watch; a saved option opened in Saved.
+- **What each step spends:** opening sends nothing, views and details send nothing, the proposal sends nothing until applied, and opening Saved fetches nothing.
+- **The Web:** its equivalent in the workspace (three views, details, a saved option in this account's Saved, nothing fetched to show it).
+
+## U-058 · Upgrade and rollback, checked against the old code itself
+
+T22, plan 04 T22 Step 3 ("record migration versions and failure recovery; old versions stay readable, keys and quota untouched"); docs/07 safe rollback.
+
+**What is on a device, by version.** The old app wrote the files marked "old". The new build writes the rest, each in its own namespace; nothing new is written into an old file's shape.
+
+| File | Written by | Version | New build's read of an old or damaged file |
+|---|---|---|---|
+| `cache.json` | old and new | 1 (new rows add fields; coverage evidence is additive, T03) | legacy rows read; their completeness is unknown, never complete (A05) |
+| `quota.json` | old and new | 1, unchanged | read as is; not rewritten by starting or migrating; spent and saved as before when the app checks a due watch or searches |
+| `ask.json` | old and new | 1 (entries gained optional fields, T15/T17) | the old conversation reads |
+| `watches.json` | old v1, new v2 | 2 | v1 is copied to `watches.v1.json` byte for byte before the first write, then migrated. Newer or unreadable is held; damaged is copied aside (T14, U-048/U-049) |
+| `workspace-v1.{a,b}.json` | new | slot generation | a torn slot falls back to the other; unreadable is held (T05, U-047) |
+| `favorites-v1.{a,b}.json` | new | 1 per item | an unreadable item is carried and never shown; a newer or unreadable file makes the store read only (T13) |
+| `settings-v1.{a,b}.json` | new | slot generation | defaults on anything unreadable |
+| Keychain (seats.aero, Anthropic) | old and new | — | never written or cleared by starting or migrating; read on open to check watches and to search, as before |
+| Web SQLite | old and new | migrations `0003`, `0004`: one nullable column each | older code runs unchanged; a row or cell it rewrites reads back with no evidence (unknown), never stale (T02/T03) |
+| Web browser storage | new | keys per account (T18) | ignored by the old build |
+
+**How it was checked** (evidence T22):
+- **Upgrade.** The fixture `apps/ios/src/app/__fixtures__/pre-uiux-device.json` holds the files the app at `9c69c6c` wrote after ordinary use: a question that searched, two watches, 600 calls. That commit's own code produced them, in a throwaway worktree. `upgrade-from-pre-uiux.test.ts` starts the new build on them, then uses it (a search, a saved snapshot).
+  - Starting the new build (`bootstrap`: restoring and migrating) reads everything, sends nothing and never reads, writes or clears a key.
+  - The cache, quota and conversation files are left byte for byte.
+  - Opening the app then checks due watches with the stored key, as the old build did (`App.tsx`). That reads the key, spends calls, and saves the cache, quota and watches in the shapes above (review MIGR-01; tested).
+  - Both watches are kept: one structured, one waiting for review. The v1 file is copied first.
+  - Using the build adds `workspace-v1` and `favorites-v1` and deletes nothing. The quota and cache keep the old shape.
+- **Rollback.** The old code (`9c69c6c`) was run on what the new build left.
+  - It reads the quota (601), the conversation and the cache. Its own save changes and deletes nothing, and it leaves the new namespaces alone.
+  - It reads no watches from the version-2 file. It does not write over it either, until a watch is added.
+- **The Web.** The current build wrote a row and a coverage record with evidence into a database migrated to `0004`. The old server's store opened it (its own migrations are a no-op there), read the row (70,000) and its coverage, and wrote a newer row. Read back by the current build, that row's time and coverage are unknown, not stale.
+
+**Rollback order** (nothing is deleted, keys and quota are never reset):
+1. Stop the new build (no new writes).
+2. Keep a copy of the new files with their versions: `watches.json` (v2), `workspace-v1.*`, `favorites-v1.*`, `settings-v1.*`.
+3. Put `watches.v1.json` back as `watches.json`. That is the watches as they were at the upgrade; changes made since are in the v2 copy.
+4. Install the previous build. The Web: redeploy the previous commit. The database needs no down-migration.
+
+**Known limit:** watches added or edited in the new build do not survive a rollback into the old build's file. They are in the kept v2 copy and come back with a roll forward.
+
+## U-059 · The Simulator pass: the chosen appearance reaches the native side (U-042 closed), and Dynamic Type drives the text scale
+
+T22, with U-042 (T11) and A35's native half (T21). Checked on the iOS Simulator (evidence T22). The Simulators were fresh devices with no keys, so nothing was sent to a paid service.
+
+**U-042, as found.**
+- **The status bar is readable** under a theme chosen against the device's own: light text over the dark header, dark over the light one. That holds before any change on iOS 26.5 both ways, and on 18.3 for Dark chosen on a Light device (the only 18.3 case captured). The native gap U-042 feared is not there.
+- **The web view's own background was wrong.** Capacitor makes the web view the root controller's view and paints it `systemBackground`, which follows the device. So the strip under the tab bar, around the home indicator, was white under a dark app and black under a light one.
+- **The fix, a few lines of native code as U-042 planned:**
+  - `ios/App/App/AppViewController.swift`, a `CAPBridgeViewController` subclass, is now the scene's root controller (`SceneDelegate`).
+  - It receives `agAppearance` from the page (`apps/ios/src/native/appearance.ts`): the chosen scheme and the page's bottom surface colour, posted whenever the theme applies and whenever the device's appearance changes.
+  - It sets the window's interface style, so native parts such as the keyboard follow the choice, and paints the web view's background that colour.
+  - No plugin, no dependency. In a browser there is no handler, and nothing is posted.
+- **Checked:** Dark on a Light device, Light on a Dark device and System on a Dark device (iOS 26.5), and Dark on a Light device (iOS 18.3). The strip now matches the tab bar pixel for pixel. System on a Light device, and Light on a Dark device on 18.3, were not captured (corrected after the T22 honesty audit).
+
+**Dynamic Type, as found.** Nothing on the device set `--ag-text-scale`, so the app ignored the system's text size entirely. At the largest accessibility size the text was unchanged (Simulator). The browser tests could not see this: they set the scale themselves.
+
+**The fix** (`apps/ios/src/native/text-size.ts`):
+- WebKit on iOS resolves `-apple-system-body` to the body size the person chose (17 at the default). Its ratio to 17 is the scale, held between 1 and 2, the range T21 verified. A person who chooses smaller text keeps 100%, and the largest sizes stop at 200%.
+- A hidden probe in that font is watched, and read again when the app returns to the front.
+- It runs only in the app on iOS. Elsewhere the font is unknown and a test's own scale stands.
+- **Checked on the Simulator:** Large (100%), xxxLarge (≈135%), AX Large (≈194%) and AX xxxLarge (200%, the cap) on the first screen.
+
+**Not checked on the Simulator:** screens past the first. Their layout at 100–200% was verified in Chromium (T21); a real WebKit pass over them, VoiceOver and a device remain.
+
+**The owner's test Simulator** (the device `run-probes.sh` uses) already held app data and a seats.aero key. The T22 build was launched on it once, before this was seen.
+- Nothing was tapped and nothing was sent (its `quota.json` is unchanged).
+- On leaving, the app re-saved `cache.json` and `ask.json` in their version-1 formats, which the old build reads (U-058).
+- The previous build (the main checkout's Simulator build of 23 September) was installed back, and every later Simulator step used fresh devices.

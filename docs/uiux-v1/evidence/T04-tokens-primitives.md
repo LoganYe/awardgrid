@@ -68,3 +68,10 @@ Raw log: `evidence/raw/t04-isolation.log` (git-ignored). The worktree was remove
 - iOS Simulator / WKWebView rendering of the same pages, Dynamic Type, VoiceOver: not run in T04 (first Simulator pass is planned with the rebuilt screens).
 - Physical device: not available to this session.
 - Web and landing visuals: nothing they load changed (`tokens.css`/`surfaces.css` untouched; the web never imports `precision.css`); `tokens.test.ts` passes and the landing build passes. The web e2e and its Linux visual baselines were not re-run for T04.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- `raw/t04-gates.log` records a failing first gate run, `exit=1 :: pnpm lint` (react-hooks/refs at `Sheet.tsx:31`), and `raw/T04/typecheck.log` records TS2769 in `primitives.test.ts`. Both were fixed before the final gates (`raw/t04-gates-final.log`, all exit 0), which ran on the uncommitted tree just before `b000c03`.
+- The "`.next/BUILD_ID` unchanged" check has no command or output recorded. `raw/T04/tokens.log` is 2 files, 90 passed.
+- `raw/T04/typecheck.log` ends in exit code 2 (15 × TS2769), where the gate table shows `pnpm typecheck | 0`. That 0 is the later run in `raw/t04-gates.log`.

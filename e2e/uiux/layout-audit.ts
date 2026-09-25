@@ -2,7 +2,8 @@
  * T21: what a screen looks like to a person at one width and text scale, as facts a test can hold (plan 04 T21 Step 3:
  * "inspect every long-label/action bounding box"; A35). Read from the rendered page, never from the design:
  *
- *   - overflowX   the page is wider than the screen (measured against clientWidth: see below);
+ *   - overflowX   the page, or a screen's own full-width scroll area, is wider than the screen (measured against
+ *                 clientWidth: see below);
  *   - clipped     text cut by its own box (overflow hidden or clip, no ellipsis on purpose), spilling out of a box that
  *                 lets it show, running out of the control it belongs to (a label in a span hanging out of its button, a
  *                 value wrapping past its row, a day's words running into the next day), past the viewport's side outside
@@ -268,7 +269,14 @@ export async function auditLayout(page: Page): Promise<LayoutAudit> {
       }
     }
     for (const [el, top, left] of saved) el.scrollTo({ top, left, behavior: "instant" });
-    return { overflowX: Math.max(0, document.documentElement.scrollWidth - vw), clipped: clipped.slice(0, 20), overlaps: [...[...overlaps].slice(0, 20), ...overText] };
+    // Wider than the screen: the document, or a screen's own full-width scroll area (the iOS results, editor, details or
+    // compare scroller), which a person would have to drag sideways (T22 review PROD-1). A narrower or shorter scroller
+    // (the matrix, a table, the filter chips) scrolls sideways by design and is left out.
+    const screenWide = all
+      .filter((el) => shown(el) && scroller(getComputedStyle(el)) && el.clientWidth >= vw - 1 && el.clientHeight >= window.innerHeight * 0.4)
+      .reduce((most, el) => Math.max(most, el.scrollWidth - el.clientWidth), 0);
+    const overflowX = Math.max(0, document.documentElement.scrollWidth - vw, screenWide > 1 ? screenWide : 0);
+    return { overflowX, clipped: clipped.slice(0, 20), overlaps: [...[...overlaps].slice(0, 20), ...overText] };
   });
 }
 

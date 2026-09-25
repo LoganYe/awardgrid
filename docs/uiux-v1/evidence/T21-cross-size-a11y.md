@@ -187,3 +187,12 @@ Final runs, in the worktree, on the tree being committed:
 - VoiceOver, Dynamic Type, real touch, the software keyboard and WebKit's overscroll on the Simulator or a device (T22 attempts the Simulator).
 - WebKit and Firefox.
 - U-042 (the status bar under a chosen theme): native, carried to T22.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- A35 and A36 are partial: their native halves were not run in T21. T22 added Dynamic Type and checked it on the Simulator on the first screen only (U-059).
+- The iOS audit covers 10 screens plus a detail, not every screen: compare, the Anthropic key page, the example and an opened saved snapshot are not in it.
+- The 80 axe scans on the committed tree are in `raw/t21-full-run.log`. `raw/t21-rerun.log` is an earlier run, before reviews 2 and 3, and it ran a proof spec since renamed.
+- Two more review-2 red runs are not named above: `raw/t21-audit2-first.log` (3 failed, 24 passed) and `raw/t21-audit2-ios.log` (2 failed, 1 passed), the stronger audit's first findings (CLOSE-1, CLOSE-2).
+- The red row's "every iOS screen and Web page" means the screens and pages later held in `responsive.spec.ts`, at their widths and scales, not every screen.

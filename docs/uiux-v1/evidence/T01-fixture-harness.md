@@ -45,3 +45,10 @@ Scope verified: **browser mock** (Playwright Chromium against the test-only fixt
 
 - `storage-failure`: the current app lets file-store failures surface only as unhandled promise rejections (`void services.persist()` in `App.tsx`), with nothing shown to the user. docs/02 D04 requires recoverable, actionable write failures → T05/T13.
 - `quota-low`: the refusal is shown as a generic alert; the spec asks for known remaining/limit and reset basis without a countdown → T07/T11 copy.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- The runs in `raw/T01/` ran in the main checkout, `/Users/yegaoyang/Desktop/workspace/awardgrid`. These were the fixture host and vitest, before the worktree existed (U-009). No `next build` ran there after the baseline (U-003). The work is commit `0c94f59`.
+- "Green 1" failed on `table.ag-grid tbody td .miles` not found (1 failed, 4 passed, `raw/T01/green-1.log`). The `process is not defined` cause the table gives is not in that log.
+- A config-error red row has no exit code, and the R1 dist scan and the "728 tests in 15 files" listing have no recorded command. The screenshots were captured with `UIUX_EVIDENCE=1` (`raw/T01/uiux-evidence.log`).

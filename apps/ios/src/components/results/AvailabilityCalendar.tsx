@@ -35,7 +35,7 @@ import type { ProjectedDay, RowKey, SnapshotId, ViewPreferences, WorkspaceRow } 
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Locale } from "../../app/locale";
 import { IconButton, SegmentedControl } from "../ui";
-import { AvailabilityList } from "./AvailabilityList";
+import { AvailabilityList, type OptionSaving } from "./AvailabilityList";
 import { RESULTS } from "./copy";
 
 export interface AvailabilityCalendarProps {
@@ -53,6 +53,8 @@ export interface AvailabilityCalendarProps {
   locale: Locale;
   /** Open an option's details (T10). */
   onOpen?: (rowKey: RowKey, returnFocusId: string) => void;
+  /** T22: save one option from its card (passed to the options listed under a day or a cell). */
+  saving?: OptionSaving;
 }
 
 /** Every "YYYY-MM" from the first date's month to the last's. */
@@ -89,7 +91,7 @@ const weakest = (days: readonly ProjectedDay[]): ProjectedDay["coverage"] =>
 const MARK: Record<EmptyDayKind, string> = { hidden: "∗", complete: "–", unmonitored: "⊘", partial: "…", unknown: "?" };
 const KIND_ORDER: EmptyDayKind[] = ["hidden", "complete", "unmonitored", "partial", "unknown"];
 
-export function AvailabilityCalendar({ query, days, rows, sort, onCabin, snapshotId, selected, onToggle, now, locale, onOpen }: AvailabilityCalendarProps) {
+export function AvailabilityCalendar({ query, days, rows, sort, onCabin, snapshotId, selected, onToggle, now, locale, onOpen, saving }: AvailabilityCalendarProps) {
   const t = RESULTS[locale];
   const id = useId();
   const cabin = days[0]?.cabin ?? query.cabins[0]!;
@@ -154,6 +156,7 @@ export function AvailabilityCalendar({ query, days, rows, sort, onCabin, snapsho
         headingLevel={3}
         testId="calendar-day-list"
         onOpen={onOpen}
+        saving={saving}
       />
     </section>
   );

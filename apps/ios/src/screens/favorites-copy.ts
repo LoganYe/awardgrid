@@ -41,6 +41,8 @@ export interface FavoritesCopy {
   save: string;
   saving: string;
   saved: string;
+  /** T22: one option saved from its card. */
+  optionSaved: string;
   alreadySaved: string;
   viewSaved: string;
   readOnly: string;
@@ -89,6 +91,7 @@ export const FAVORITES: Record<Locale, FavoritesCopy> = {
     save: "Save results",
     saving: "Saving",
     saved: "Saved on this device.",
+    optionSaved: "Option saved on this device.",
     alreadySaved: "These results are already saved.",
     viewSaved: "View in Saved",
     readOnly: "Saved results from a newer version of the app, or ones that could not be read, are left as they are. Nothing can be saved until the app can read them.",
@@ -139,6 +142,7 @@ export const FAVORITES: Record<Locale, FavoritesCopy> = {
     save: "收藏结果",
     saving: "正在收藏",
     saved: "已收藏到本机。",
+    optionSaved: "已在本机收藏此选项。",
     alreadySaved: "这些结果已经收藏。",
     viewSaved: "在收藏中查看",
     readOnly: "来自较新版本应用或无法读取的收藏会保持原样。在应用能读取它们之前，无法再收藏。",

@@ -681,6 +681,9 @@
 
 .ag-result-list {
   display: grid;
+  /* One column that never grows with a card's content: a card too wide for the screen shows as such, never widening
+     every card and the screen's own scroll (T22 review PROD-1). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ag-card-gap);
   padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
 }
@@ -704,6 +707,7 @@
 }
 
 .ag-result-card-head {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -726,6 +730,13 @@
   color: var(--ag-text-secondary);
 }
 
+/* The day breaks at its spaces, never inside "周一" or "10月19日"; a word wider than the line still breaks (T22: the
+   card's corner holds two controls, so at 320 and 200% the heading is narrow). */
+.ag-result-when > span {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .ag-result-cabin {
   padding: 0 var(--ag-space-2);
   border-radius: var(--ag-radius-small);
@@ -734,16 +745,47 @@
   font-weight: var(--ag-weight-strong);
 }
 
-.ag-result-select-wrap {
+/* T22: Save option, the Saved tab's bookmark, beside the compare box; a 44-pt target over a 20-pt mark, filled once
+   saved. Its name says which (Save option / Saved) and aria-pressed says it too, so the fill is never the only cue. */
+.ag-result-save {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ag-touch-target);
+  min-height: var(--ag-touch-target);
+  margin: calc(-1 * var(--ag-space-2)) 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ag-radius-small);
+  background: none;
+  color: var(--ag-accent);
+  cursor: pointer;
+}
+
+.ag-result-save svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ag-result-save[aria-pressed="true"] svg {
+  fill: currentColor;
+}
+
+.ag-result-save:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+/* The bookmark and the compare box, side by side in the card's corner (T22). */
+.ag-result-controls {
   flex: none;
   display: flex;
   align-items: flex-start;
-  gap: var(--ag-space-1);
 }
 
-/* Selected says so in words too, not only with the ticked box. */
+/* Selected says so in words too, not only with the ticked box; on the day line beside the cabin (T22). */
 .ag-result-selected {
-  margin-top: calc(var(--ag-space-1) / 2);
   padding: 0 var(--ag-space-2);
   border-radius: var(--ag-radius-small);
   background: var(--ag-accent-soft);

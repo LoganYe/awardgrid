@@ -120,3 +120,8 @@ All at 390, in Chinese, light and dark:
 - **Not built in T13:**
   - AI assistance from a saved snapshot (T15).
   - A favourite button on the details page (U-045).
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- F2's "tested over the real storage" means the real slot-storage module over a stand-in Filesystem, in unit tests. The device's rejection code (OS-PLUG-FILE-0008) was read from the plugin's Swift source, not run.

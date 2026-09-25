@@ -46,6 +46,9 @@ export interface ResultsCopy {
   /** T10: the card's way into the option's details; named in full. */
   viewOption: string;
   viewOptionName: (name: string) => string;
+  /** T22: keep this one option in Saved (the Web's "Save option"); "Saved" once it is. */
+  saveOption: string;
+  optionSaved: string;
   detail: {
     title: string;
     back: string;
@@ -144,6 +147,8 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     othersSelected: (n) => `${n} other selected`,
     viewOption: "View option",
     viewOptionName: (name) => `View option: ${name}`,
+    saveOption: "Save option",
+    optionSaved: "Saved",
     detail: {
       title: "Option details",
       back: "Return to results",
@@ -249,6 +254,8 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     othersSelected: (n) => `另有 ${n} 个已选`,
     viewOption: "查看选项",
     viewOptionName: (name) => `查看选项：${name}`,
+    saveOption: "收藏选项",
+    optionSaved: "已收藏",
     detail: {
       title: "兑换详情",
       back: "返回结果",

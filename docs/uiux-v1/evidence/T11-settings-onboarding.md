@@ -128,3 +128,8 @@ All at 390, in Chinese, light and dark:
   - VoiceOver on the radio groups, sheets and English tails.
   - The status bar under a chosen theme (U-042).
 - **A live seats.aero key check:** not authorised, because it spends a call. seats.aero's real response to the smallest Cached Search is assumed from the documented API and the web's `validateSeatsAeroKey`.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- A20 is partial. Its keyboard evidence is a stand-in `visualViewport`, and the real keyboard, Keychain and clipboard were not run. ACCEPTANCE now says so, as it does for A21.

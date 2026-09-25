@@ -37,7 +37,7 @@ test("saving copies the results on screen; Saved lists it with the fixed note; o
   // "View in Saved" lands on the Saved title (the link that opened it is gone).
   await page.getByRole("link", { name: "View in Saved" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Saved" })).toBeFocused();
-  const cards = page.getByTestId("saved-card");
+  const cards = page.getByTestId("favorite-card");
   await expect(cards).toHaveCount(1);
   await expect(cards.first()).toContainText("HKG → SEA");
   await expect(cards.first()).toContainText("4 options when saved");
@@ -74,7 +74,7 @@ test("the save line belongs to the results it was said of: after a new search it
 test("a saved snapshot from an earlier launch opens offline, with its partial coverage said, nothing fetched, the quota untouched", async ({ page }) => {
   await openScenario(page, "favorite-snapshot", "ios", { lang: "en" });
   await tab(page, "Saved").click();
-  await expect(page.getByTestId("saved-card")).toHaveCount(1);
+  await expect(page.getByTestId("favorite-card")).toHaveCount(1);
   await page.getByRole("link", { name: /^Open saved results: / }).click();
   const saved = page.getByTestId("saved-snapshot");
   await expect(saved).toContainText(NOTE);
@@ -106,13 +106,13 @@ test("search again from a saved snapshot shows the conditions first and runs onl
   expect((await requestLog(page)).seats).toBeGreaterThanOrEqual(1);
   // The saved copy is as it was.
   await tab(page, "Saved").click();
-  await expect(page.getByTestId("saved-card")).toContainText("2 options when saved");
+  await expect(page.getByTestId("favorite-card")).toContainText("2 options when saved");
 });
 
 test("deleting is said with the way back: focus on Undo, which puts it back in its place", async ({ page }) => {
   await openScenario(page, "favorite-snapshot", "ios", { lang: "en" });
   await tab(page, "Saved").click();
-  const card = page.getByTestId("saved-card");
+  const card = page.getByTestId("favorite-card");
   await card.getByRole("button", { name: /^Delete saved results: / }).click();
   await expect(card).toHaveCount(0);
   const bar = page.getByTestId("undo-bar");
@@ -130,7 +130,7 @@ test("the undo lasts 5 seconds, held while focus is on it; after that it is gone
   await page.clock.install();
   await openScenario(page, "favorite-snapshot", "ios", { lang: "en" });
   await tab(page, "Saved").click();
-  await page.getByTestId("saved-card").getByRole("button", { name: /^Delete saved results: / }).click();
+  await page.getByTestId("favorite-card").getByRole("button", { name: /^Delete saved results: / }).click();
   const bar = page.getByTestId("undo-bar");
   await expect(bar.getByRole("button", { name: "Undo" })).toBeFocused();
   // Held while focus is on it.
@@ -200,7 +200,7 @@ test("saved items this version cannot read are kept and said; a newer version's 
   });
   await openScenario(page, "complete", "ios", { lang: "en", preserveStorage: true });
   await tab(page, "Saved").click();
-  await expect(page.getByTestId("saved-card")).toHaveCount(1);
+  await expect(page.getByTestId("favorite-card")).toHaveCount(1);
   await expect(page.getByText("1 saved item could not be read by this version of the app; it is kept as it is.")).toBeVisible();
 
   await page.evaluate(() => {
@@ -230,7 +230,7 @@ test("a full store refuses a new save with the approved sentence, and keeps ever
   await expect(page.getByRole("alert").filter({ hasText: "Saved storage is full. Remove an item before saving." })).toBeVisible();
   await tab(page, "Saved").click();
   await expect(page.getByText("100 of 100 saved")).toBeVisible();
-  await expect(page.getByTestId("saved-card")).toHaveCount(100);
+  await expect(page.getByTestId("favorite-card")).toHaveCount(100);
 });
 
 test("a store that cannot be written: saving says so and changes nothing; the app says a save failed and offers to try again", async ({ page }) => {
@@ -259,8 +259,8 @@ test("in Chinese: the tab, the note and the list speak Chinese", async ({ page }
   await openScenario(page, "favorite-snapshot", "ios", { lang: "zh" });
   await tab(page, "收藏").click();
   await expect(page.getByRole("heading", { level: 1, name: "收藏" })).toBeVisible();
-  await expect(page.getByTestId("saved-card")).toContainText("收藏快照，库存可能变化。");
-  await expect(page.getByTestId("saved-card")).toContainText("收藏时 2 个选项");
+  await expect(page.getByTestId("favorite-card")).toContainText("收藏快照，库存可能变化。");
+  await expect(page.getByTestId("favorite-card")).toContainText("收藏时 2 个选项");
   await expect(page.getByText("已收藏 1/100")).toBeVisible();
 });
 
@@ -268,7 +268,7 @@ for (const theme of ["light", "dark"] as const) {
   test(`${theme}: Saved at 390`, async ({ page }) => {
     await openScenario(page, "favorite-snapshot", "ios", { theme, lang: "zh" });
     await tab(page, "收藏").click();
-    await expect(page.getByTestId("saved-card")).toBeVisible();
+    await expect(page.getByTestId("favorite-card")).toBeVisible();
     await evidenceShot(page, `t13-saved-${theme}`);
     await page.getByRole("link", { name: /^打开收藏的结果：/ }).click();
     await expect(page.getByTestId("saved-snapshot")).toBeVisible();

@@ -76,6 +76,7 @@
 }
 
 .ag-saved-card-sub,
+.ag-saved-card-option,
 .ag-saved-card-meta,
 .ag-saved-card-note {
   margin: 0;
@@ -153,4 +154,9 @@
   margin: 0;
   font-size: var(--ag-type-body);
   line-height: var(--ag-leading-body);
+}
+
+/* An option saved on its own: which option, in the reading colour (T22). */
+.ag-saved-card-option {
+  color: var(--ag-text);
 }

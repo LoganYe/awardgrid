@@ -102,3 +102,10 @@ At 390, in Chinese, light and dark (`complete`, with a heartbeat a minute old on
 
 - A worker and the web server in Docker sharing `/data` (the heartbeat path and permissions), a real Telegram bot, and a live Anthropic parse.
 - The Linux visual baselines (CI).
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- "Nothing running alongside" is not supported by the logs: `raw/t20-full-run.log` was last written at 14:16:46 and `raw/t20-web-e2e.log` at 14:16:56, so the two runs may have overlapped on the shared `.next`.
+- `raw/t20-unit.log` started at 13:56, before the last edit to `grid-app.tsx` (14:00). No unit test imports it, and no typecheck or lint log shows a run after that edit; the T21 gates later ran them on that code (exit 0).
+- The CLI-with-fixture and worker runs are `raw/t20-cli-fixture.log` and `raw/t20-cli-worker.log` (34 passed). "Old links untouched" rests on the existing Web e2e passing unchanged, not on a test of its own.

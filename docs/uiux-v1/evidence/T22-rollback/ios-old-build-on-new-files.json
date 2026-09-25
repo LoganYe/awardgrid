@@ -1,0 +1,50 @@
+{
+  "commit": "9c69c6c",
+  "asLeft": {
+    "restoreV1": false,
+    "read": {
+      "quotaUsed": 601,
+      "watches": [],
+      "askEntries": 1,
+      "askFirstStatus": "answered"
+    },
+    "cacheRowsAfterSave": 3,
+    "changedBySave": [],
+    "removedBySave": [],
+    "keptNewFiles": [
+      "workspace-v1.a.json",
+      "favorites-v1.a.json"
+    ],
+    "watchesVersionAfterSave": 2,
+    "watchesAfterSave": [
+      "w-old-1",
+      "w-old-2"
+    ],
+    "fetchCalls": 0
+  },
+  "afterRestoringV1Watches": {
+    "restoreV1": true,
+    "read": {
+      "quotaUsed": 601,
+      "watches": [
+        "w-old-1",
+        "w-old-2"
+      ],
+      "askEntries": 1,
+      "askFirstStatus": "answered"
+    },
+    "cacheRowsAfterSave": 3,
+    "changedBySave": [],
+    "removedBySave": [],
+    "keptNewFiles": [
+      "workspace-v1.a.json",
+      "favorites-v1.a.json"
+    ],
+    "watchesVersionAfterSave": 1,
+    "watchesAfterSave": [
+      "w-old-1",
+      "w-old-2"
+    ],
+    "fetchCalls": 0
+  }
+}

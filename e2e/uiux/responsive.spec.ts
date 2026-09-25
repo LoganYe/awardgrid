@@ -214,6 +214,8 @@ for (const lang of ['en', 'zh'] as const) {
         expect(room.free).toBeGreaterThanOrEqual(room.main / 3);
       }
       expect(await documentScrolls(page)).toBe(0);
+      // With options chosen, nothing on the screen is wider than it, the card's corner included (T22 review PROD-1).
+      expect(await auditLayout(page)).toEqual({ overflowX: 0, clipped: [], overlaps: [] });
     });
   }
 }

@@ -15,7 +15,27 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
 ## Where things stand
 
 - Branch `uiux/quiet-precision-v1` in the worktree above, one local commit per finished task (see `git log`). Nothing pushed.
-- T01–T17 verified (unit + integration + iOS browser mock): M1–M3 done in those scopes. T18–T20 verified (unit + Web mock + regression). T21 verified in the iOS browser mock and the Web mock; A35's and A36's native halves (Dynamic Type, VoiceOver on a device) are unverified. T22 is next: see STATUS "Current next action".
+- **All 22 tasks are done and committed.** T01–T22 are verified in their browser, unit and integration scopes, and T22 in its Simulator scope. Every native, device, screen-reader and live-key part is listed in `FINAL_REPORT.md` under "Unverified" and in ACCEPTANCE as partial. There is no further plan task; what is left is verification the plan could not run here, plus owner decisions.
+- **What is left, in order:**
+  1. **The Phase 5 Simulator harness** (U-028, for A28's native half: a real kill, the native idle timeout).
+     - Bring `apps/ios/src/probes/e2e-driver.ts` up to date past its search step: Settings (the five S08 groups, not `.settings-section`), the quota line, Ask (`.ask-send`, `.ask-suggestion`, entries since T15–T17), and the layout (A4) step.
+     - Then the verdicts in `apps/ios/probes/probe-log.mjs`.
+     - Run it on a fresh Simulator, never the owner's device `A480530B…`, which holds app data and a key.
+     - The Pods must already be in `apps/ios/ios/App/Pods`, with `Podfile.lock` (copied from the main checkout). The harness's `npx cap sync` then gets a `pod` that does nothing, so it cannot reach the network:
+       `mkdir -p <scratch>/shim && printf '#!/bin/sh\n[ "$1" = --version ] && echo 1.16.2\nexit 0\n' > <scratch>/shim/pod && chmod +x <scratch>/shim/pod`
+       `PATH="<scratch>/shim:$PATH" SIM_UDID=<fresh device> SE_NAME="<a new name>" apps/ios/probes/run-probes.sh --e2e <scratch>/phase5-e2e`
+     - Then remove `GridTable.tsx` and its test `grid-message.test.ts` together (STATUS).
+  2. **WebKit past the first screen** (A35's native half): the results, editor, details, compare and Ask screens on the Simulator at Dynamic Type Large to AX xxxLarge. This needs taps, so the Simulator panel's access for a fresh device must be granted in the app, or use the owner's own tools.
+  3. **A device.** VoiceOver (A15, A36), touch (A16), the real keyboard, Keychain and clipboard (A20), and the results screen's safe area (A12).
+  4. **A live key, only with the owner's consent and on their machine.** One seats.aero search and one Anthropic question.
+  5. **The Web's `/queries` table in the last minute before a run** (existing Web code; STATUS, Known issues): "in 55 seconds" is wider than the 96 px floor of the Last run and Next run columns. Widen the floor, and add the seconds readings to `e2e/queries.spec.ts:78` so it no longer depends on the clock.
+- **Owner decisions** (STATUS "Known issues"):
+  - restart `com.awardgrid.app` for the live stylesheet 404 (a deploy);
+  - regenerate the `/queries` Linux visual baselines in CI;
+  - where `/`, the header and login lead;
+  - the CLI prints unknown seats as 0;
+  - `/queries` and `/settings` stay on the older type tokens;
+  - merge or push this branch (never done here).
 - Carried forward:
   - **The Web surface (T18, U-053).**
     - `openScenario(page, id, "web")` signs an account in (`scripts/uiux-web/accounts.ts`) on this worktree's real Next app (:4330), and opens `/workspace?q=` with the synthetic search.
@@ -44,7 +64,7 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
     - Measure after two frames (`settle`) when a resize or a scale change switches a layout (the `/queries` table and cards).
     - A spec that opens the Web must skip under `UIUX_WEB=0`, as the T21 specs do (`WITH_WEB`); a test over both surfaces keeps its iOS half.
     - Look at every evidence image after the LAST capture: T21's review found overdraw in an image that had not been looked at again.
-  - The status bar under a chosen theme (U-042): native code, checkable only on the Simulator or a device. T22's Simulator attempt.
+  - The appearance chosen in Settings reaches the native side since T22 (`AppViewController.swift`, `native/appearance.ts`; U-059, closing U-042). Dynamic Type drives `--ag-text-scale` (`native/text-size.ts`). Both are verified on the Simulator only.
   - Every new `Sheet` needs a translated `closeLabel`.
   - New shell copy goes into a per-language table that `apps/ios/src/locale-parity.test.ts` checks.
   - Approved sentences come through `copy("key", locale)`, which `honesty.test.ts` now scans.
@@ -59,17 +79,18 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
 ## Next commands
 
 ```sh
-# T22: read plan 04 T22 first (full regression, migration rollback, resumable handoff; A37, A38)
-# Simulator (a device is booted: `xcrun simctl list devices booted`; Xcode at /Applications/Xcode.app). The worktree has no Pods:
-#   cp -Rc ../awardgrid/apps/ios/ios/App/Pods apps/ios/ios/App/Pods   (and Podfile.lock), then `pnpm --filter @awardgrid/ios sync`
-#   (not yet tried: check first whether `cap sync` / `pod install` would reach the network)
-# A production build has no fixture: on the Simulator it starts at onboarding with no key, and must send nothing paid.
-# Evidence screenshots: run only the task's own spec with UIUX_EVIDENCE=1 (the harness spec rewrites T01's screenshots)
-UIUX_EVIDENCE=1 pnpm exec playwright test --config=playwright.uiux.config.ts e2e/uiux/<task>.spec.ts
-# UI/UX browser suite (fixture host on 127.0.0.1:4310)
-pnpm exec playwright test --config=playwright.uiux.config.ts
-# Gates
-pnpm typecheck && pnpm lint && pnpm test && pnpm --filter @awardgrid/ios build
+# The whole regression, as T22 ran it (evidence T22 has the counts):
+pnpm typecheck && pnpm lint && pnpm test && pnpm --filter @awardgrid/ios build && pnpm build:landing && pnpm build
+pnpm exec playwright test --config=playwright.uiux.config.ts          # the iOS fixture host, and the Web surface on :4330/:4331
+pnpm e2e && git checkout -- docs/screenshots/v0.2                      # the existing Web e2e; never at the same time as the line above
+# The upgrade from the app before UI/UX v1 (U-058):
+pnpm --filter @awardgrid/ios exec vitest run src/app/upgrade-from-pre-uiux.test.ts
+# The Simulator, offline (U-059): Pods copied from the main checkout, then
+(cd apps/ios && npm run build && npx cap copy ios)
+(cd apps/ios && xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug -sdk iphonesimulator -destination "id=<fresh device>" -derivedDataPath <scratch>/DerivedData CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES build)
+xcrun simctl install <fresh device> <scratch>/DerivedData/Build/Products/Debug-iphonesimulator/App.app
 ```
+
+The worktree's `apps/ios/ios/App/Pods` and `Podfile.lock` were copied from the main checkout (gitignored). The throwaway worktree at `9c69c6c` used for the rollback check has been removed (`git worktree list`). The Simulators "awardgrid T22 smoke" (iOS 26.5) and "awardgrid T22 smoke iOS18" were made for T22 and hold no keys; delete them with `xcrun simctl delete <udid>` when no longer needed.
 
 If port 4310, 4330 or 4331 is taken, a stopped Playwright run left a server behind: `lsof -nP -iTCP:4310 -sTCP:LISTEN` (and 4330, 4331). Stop it only if it is this worktree's fixture Vite, `next start` or `mock-seatsaero.ts`.

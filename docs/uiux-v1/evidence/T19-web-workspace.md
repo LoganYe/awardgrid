@@ -162,3 +162,8 @@ At 1440 unless stated, in Chinese, light and dark, with the `multi-program` acco
 - WebKit, Firefox and real touch devices; real IMEs; screen readers.
 - `/grid` is unchanged. Whether the header links to the workspace, and where `/` and login land, are T20 (U-054).
 - A live seats.aero key; the assistant answering (no Anthropic request is authorised).
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- The Step 1 red ran in the `ios` project (`raw/t19-red.log`: `[ios] › e2e/uiux/web-layout.spec.ts:7:1`), before the `web-desktop` project existed.

@@ -70,3 +70,9 @@ Raw logs: `evidence/raw/t05-red.log`, `t05-gates.log`, `t05-evidence-run.log` (g
 
 - iOS Simulator / device: restore at launch through Capacitor Filesystem, and the slot files on a real disk.
 - Live seats.aero: not authorised.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- Two existing iOS tests changed with the new contract, not one: `apps/ios/src/app/bootstrap-ask.test.ts`, and `apps/ios/src/screens/search-screen.test.ts`, whose `render()` helper injects a WorkspaceStore (`git show --name-status ce4d206`).
+- Only `raw/t05-red.log`, `t05-gates.log` and `t05-evidence-run.log` are kept. The intermediate runs (Green 19 → 23, Engine, Bootstrap, the harness failure, after the fixes) have no log or exit code, and the "`.next/BUILD_ID` unchanged" check has no recorded output.

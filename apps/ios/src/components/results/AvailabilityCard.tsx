@@ -9,7 +9,13 @@
  * "View option" (T10) opens the option's details over the results; it is a button of its own, named in full, never
  * the whole card, so the checkbox and the details are two separate targets. It fetches nothing: the details show the
  * aggregate first, and only their own "View flight itineraries" spends a call.
+ * "Save option" (T22) keeps this one option in Saved, as the Web's card does (a FavoriteV1 with this row; nothing is
+ * fetched). It is the Saved tab's bookmark, in the card's top corner right beside the compare box, so the card keeps
+ * its 164 pt in both languages; named "Save option", then "Saved" (the plan's own test and the Web name it so), pressed, with
+ * the bookmark filled, and described by the card, whose name is the option's full name, so no two read alike (T22 review PROD-4; the Web's
+ * Save is described by its row's name the same way). It stays focusable, so focus is never dropped. "Selected" is said on the day line.
  */
+import { useId } from "react";
 import { cabinName } from "@awardgrid/core/workspace/query-editor";
 import { dayLabel, feesLabel, formatMiles, programLabel, resultName, seatsLabel, timeLabel } from "@awardgrid/core/workspace/present";
 import type { SnapshotId, WorkspaceRow } from "@awardgrid/core/workspace/types";
@@ -30,9 +36,12 @@ export interface AvailabilityCardProps {
   headingLevel?: 2 | 3;
   /** Open the option's details; `returnFocusId` is this card's button, where focus comes back to. */
   onOpen?: (returnFocusId: string) => void;
+  /** T22: save this option on its own; without it (a saved snapshot's read-only rows) the card has no Save. */
+  onSave?: () => void;
+  saved?: boolean;
 }
 
-export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, locale, headingLevel = 2, onOpen }: AvailabilityCardProps) {
+export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, locale, headingLevel = 2, onOpen, onSave, saved = false }: AvailabilityCardProps) {
   const Heading = headingLevel === 3 ? "h3" : "h2";
   const t = RESULTS[locale];
   const v = row.value;
@@ -40,22 +49,41 @@ export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, loc
   const day = dayLabel(v.date, locale);
   const cabin = cabinName(v.cabin, locale);
   const name = resultName(v, locale);
+  const cardId = useId();
   return (
-    <article className="ag-result-card" data-testid="availability-card" data-row-key={row.key} data-snapshot={snapshotId} aria-label={name}>
+    <article id={cardId} className="ag-result-card" data-testid="availability-card" data-row-key={row.key} data-snapshot={snapshotId} aria-label={name}>
       <div className="ag-result-card-top">
         <div className="ag-result-card-head">
           <Heading className="ag-result-route">{route}</Heading>
           <p className="ag-result-when">
             <span>{day}</span>
             <span className="ag-result-cabin">{cabin}</span>
+            {/* On the day line, so it never widens the corner that holds the bookmark and the box (T22). */}
+            {selected ? <span className="ag-result-selected">{t.selected}</span> : null}
           </p>
         </div>
-        {onToggle ? (
-          <div className="ag-result-select-wrap">
-            {selected ? <span className="ag-result-selected">{t.selected}</span> : null}
-            <label className="ag-result-select">
-              <input type="checkbox" checked={selected} aria-label={t.select(name)} onChange={(e) => onToggle(e.target.checked)} />
-            </label>
+        {onSave || onToggle ? (
+          <div className="ag-result-controls">
+            {onSave ? (
+              <button
+                type="button"
+                className="ag-result-save"
+                aria-label={saved ? t.optionSaved : t.saveOption}
+                aria-describedby={cardId}
+                aria-pressed={saved}
+                aria-disabled={saved || undefined}
+                onClick={() => {
+                  if (!saved) onSave();
+                }}
+              >
+                <Icon name="bookmark" />
+              </button>
+            ) : null}
+            {onToggle ? (
+              <label className="ag-result-select">
+                <input type="checkbox" checked={selected} aria-label={t.select(name)} onChange={(e) => onToggle(e.target.checked)} />
+              </label>
+            ) : null}
           </div>
         ) : null}
       </div>

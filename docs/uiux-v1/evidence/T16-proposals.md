@@ -113,3 +113,8 @@ At 390 in Chinese, light and dark:
 - The Simulator or a device: VoiceOver on the card and its status, and a native double tap.
 - Live Anthropic: whether a real model uses `propose_query_change` as its description asks.
 - Stop and interruption, and the step lines in Chinese, are T17.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- "A true double tap" means two synchronous synthetic clicks in Chromium. No touch input was run; a native double tap is unverified, as the doc's Not-run list says.

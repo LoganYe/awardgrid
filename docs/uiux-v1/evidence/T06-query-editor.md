@@ -59,3 +59,9 @@ Raw logs: `evidence/raw/t06-red.log`, `t06-gates.log`, `t06-evidence-run.log` (g
 
 - Simulator / device: the iOS wheel date picker, the software keyboard with the fixed footer (docs/04 S02 "软键盘出现时button在可见viewport内"), VoiceOver reading the combobox.
 - Chinese: the editor's words are English until T11 (U-021).
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- A10 is partial: typing a date a month at a time was not exercised (this doc's own refuted-finding note), and ACCEPTANCE now says so.
+- The "`.next/BUILD_ID` unchanged" check has no output in `raw/t06-gates.log`. The gates (all exit 0) ran at 23:10 on the uncommitted tree just before `c8958cf` (23:11).

@@ -43,6 +43,9 @@ test('iOS: the audit names each defect it is for, and is clean without it', asyn
   const doc = await withStyle(page, '.app-main { position: static !important; }');
   expect(doc.scrolls).toBeGreaterThan(0);
   expect(await auditLayout(page)).toEqual(CLEAN);
+  // A card wider than the screen scrolls the screen's own area sideways, not the document (T22 review PROD-1).
+  const wide = await withStyle(page, '.ag-result-card:first-of-type .ag-result-card-top { min-width: 520px; }');
+  expect(wide.overflowX).toBeGreaterThan(0);
   // Words cut by a box that declares an ellipsis it cannot draw (an inline-flex label; a wrapped line cut in height):
   // nothing says they were cut (review 3 SHUT-3).
   const flexEllipsis = await withStyle(page, '.ag-segment-label { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; min-width: 0 !important; }');

@@ -146,3 +146,8 @@ At 390 in Chinese, light and dark:
   - The Filesystem's rejection for an unreadable `watches.json` (U-049, as in U-047).
   - VoiceOver on the switch names, the Stop sheet and the "Watch saved" announcement.
 - **Web watches** (scheduling, Telegram) are unchanged and belong to T20.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- The evidence screenshots (`t14-watches-*.png`, 07:35) came from a run before the last spec edit: `raw/t14-evidence-run.log` ran `watches.spec.ts:192`, while the final full run (07:41) and the committed spec have that test at `:214`. The screenshots show the screen before that edit, not the final run.

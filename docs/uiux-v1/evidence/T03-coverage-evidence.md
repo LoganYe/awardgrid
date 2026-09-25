@@ -36,3 +36,9 @@ Scope verified: **unit + store integration** (vitest: core in-memory store, root
 | `drizzle-kit generate` against a copy | — | "No schema changes" (0003 + 0004 match the schema) |
 
 Scenarios covered by tests: complete fetch and its cache hit; page cap on fetch and on hit; complete-empty vs unmonitored; legacy records → unknown; broader record reuse (complete and capped); S1–S4 overlapping later capped fetches (wider dates, more origins, all-programs vs one program, direct-only) on both stores; a later complete fetch superseding a partial; the race; a later evidence-less writer → unknown; 429 and 500 fail before any write; quota-bound stop; empty page with `hasMore`; save failure rolled back by the SQLite transaction; damaged snapshot entries and junk dates dropped.
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- "A pinned Ask test failed once" understates it. `raw/T03/test-2.log` shows 6 failed / 793 passed in core, all six in `src/lib/ask/coverage.test.ts` ("askCacheScope is the scope runFind hands the cache"). They were fixed before the commit (`24e5ab6`).
+- `raw/T03/web-store.log` is 6 files, 47 passed. The "32 passed" green and the `drizzle-kit generate` check have no kept log or exit code.

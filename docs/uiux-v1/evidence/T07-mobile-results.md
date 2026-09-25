@@ -86,3 +86,10 @@ Final run, after the review fixes, in the worktree (`export PATH="$HOME/.local/n
 
 - Simulator / device: notch and home-indicator safe areas around the sticky header and the tab bar; Dynamic Type; VoiceOver reading the cards and the language switch.
 - The Phase 5 Simulator driver still reads the pre-T07 layout (U-028).
+
+## Corrections (T22 evidence audit, 2026-09-24)
+
+An audit of this record against its raw logs and git (evidence T22) found the following. The text above is left as written.
+- The red run's 10 failures were "scenario not seeded", nine `missing-values` and one `partial` (the coverage test).
+- DL-04 was refuted with a reviewer's scratch WKWebView probe on throwaway Simulators (iOS 26.5 and 18.3). That is Simulator-layer evidence with no kept command, log or device record, and it is not an app verification (STATUS: scopes).
+- A11Y-07 (the safe area under the sticky header) is unverified, not refuted: the fixture page has no inset. On the Simulator in T22, the first screen and tab bar clear the Dynamic Island and home indicator; the results screen on a notched device is still unverified (A12 partial).

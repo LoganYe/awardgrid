@@ -25,6 +25,14 @@ export interface AvailabilityListProps {
   testId?: string;
   /** Open a row's details (T10), focus to come back to `returnFocusId`. */
   onOpen?: (rowKey: RowKey, returnFocusId: string) => void;
+  /** T22: save one option; without it (a saved snapshot) the cards have no Save. */
+  saving?: OptionSaving;
+}
+
+/** T22: which rows are saved as options of their own, and how to save one. */
+export interface OptionSaving {
+  saved: ReadonlySet<RowKey>;
+  onSave: (rowKey: RowKey) => void;
 }
 
 function groupName(group: string, locale: Locale): string {
@@ -33,7 +41,7 @@ function groupName(group: string, locale: Locale): string {
   return RESULTS[locale].feeGroup(group);
 }
 
-export function AvailabilityList({ rows, sort, snapshotId, selected, onToggle, now, locale, headingLevel = 2, testId = "availability-list", onOpen }: AvailabilityListProps) {
+export function AvailabilityList({ rows, sort, snapshotId, selected, onToggle, now, locale, headingLevel = 2, testId = "availability-list", onOpen, saving }: AvailabilityListProps) {
   const id = useId();
   const card = (row: WorkspaceRow) => (
     <AvailabilityCard
@@ -46,6 +54,8 @@ export function AvailabilityList({ rows, sort, snapshotId, selected, onToggle, n
       locale={locale}
       headingLevel={headingLevel}
       onOpen={onOpen ? (returnFocusId) => onOpen(row.key, returnFocusId) : undefined}
+      onSave={saving ? () => saving.onSave(row.key) : undefined}
+      saved={saving?.saved.has(row.key) ?? false}
     />
   );
   // Rows arrive sorted, so under the fee sort each group is one run of consecutive rows.
