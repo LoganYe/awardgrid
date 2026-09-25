@@ -2,6 +2,8 @@
 
 Written 2026-09-25 at the end of the UI/UX v1 session, for the session that ships the iOS app. The start prompt for that session is at the end of this file.
 
+**Status after the release session (2026-09-25):** `docs/release/IOS_1.0_RELEASE.md`, on branch `release/ios-1.0`: the decisions as taken, what was built and verified where, and the owner's remaining steps.
+
 **Where things stand:**
 - `main` is at `d998cf5` and pushed; CI is fully green (run `36117314251`: checks, e2e, visual, docker smoke, gitleaks).
 - The web app is deployed from this commit.
@@ -164,7 +166,7 @@ Full context for each A-number is in `docs/uiux-v1/ACCEPTANCE.md` and `docs/uiux
   - every earlier question and answer in the same conversation.
 
   Requests also carry the SDK's headers and Accept-Language. Saving or checking the key sends `GET /v1/models/claude-opus-5`, with no question. The seats.aero key is never sent to Anthropic (LEGAL.md:33-44, `apps/ios/src/ask/labels.ts:547`, `ANTHROPIC_DATA_SENT`).
-- **Nothing else:** no AwardGrid server (`awardgrid.dowhiz.com` is not in the iOS bundle), no Telegram, no analytics, crash reporting, ads, tracking, accounts or login. The only native pods are Capacitor, CapacitorCordova, AparajitaCapacitorSecureStorage (KeychainSwift) and CapacitorFilesystem (IONFilesystemLib).
+- **Nothing else:** no AwardGrid server (since `release/ios-1.0`, `awardgrid.dowhiz.com` is in the bundle only as Settings › About's links to the privacy and support pages, opened in Safari; the app sends it no request), no Telegram, no analytics, crash reporting, ads, tracking, accounts or login. The only native pods are Capacitor, CapacitorCordova, AparajitaCapacitorSecureStorage (KeychainSwift) and CapacitorFilesystem (IONFilesystemLib).
 
 **What stays on the device:**
 - **Keychain:** two items, `seats_aero_api_key` (afterFirstUnlockThisDeviceOnly) and `anthropic_api_key` (whenUnlockedThisDeviceOnly). Both have iCloud sync off, and only the last four characters are ever shown.

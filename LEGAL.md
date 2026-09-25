@@ -1,8 +1,9 @@
 # LEGAL
 
 awardgrid is a **personal, non-commercial** tool for its author and fewer than ten friends.
-It is deployed privately (behind Tailscale / Cloudflare Access) with invite-only registration.
-There is no paywall, cost-sharing, subscription, advertising, telemetry or analytics.
+The web app runs on its author's own machine, with invite-only registration. The iOS app (AwardGrid) is
+tested privately through Apple's TestFlight and is not on the App Store. There is no paywall,
+cost-sharing, subscription, advertising, telemetry or analytics.
 
 ## Data sources and terms
 
@@ -39,10 +40,15 @@ There is no paywall, cost-sharing, subscription, advertising, telemetry or analy
   question sent and received. Each request also carries headers that name Anthropic's SDK and
   its version, and the Accept-Language header the app's native networking adds to every request
   it makes, which gives the app locale's language and region. The seats.aero key is never
-  sent to Anthropic; the app makes every seats.aero call itself. The conversation is stored on
+  sent to Anthropic; the app makes every seats.aero call itself. Before the first question the
+  app asks the user's permission to send this to Anthropic, and the user can withdraw it on the
+  Anthropic key page in Settings. The conversation is stored on
   the device, in the app's Documents directory, until the user starts a new one; iOS device backups
   include that directory. Anthropic bills
   the user's own account.
+
+  The iOS app's privacy policy says all of this for its users: `sites/landing/privacy/index.html`,
+  built for <https://awardgrid.dowhiz.com/privacy/>.
 
 ## Trademarks and logos
 
