@@ -103,6 +103,7 @@ async function service(start: { snapshot: ResultSnapshot | null; selected: Resul
     throw new Error("no seats.aero call is expected here");
   }) as unknown as typeof fetch;
   const ask = createAskService({
+    consent: () => true,
     anthropicKeys,
     seatsKeys,
     anthropicFetch: seatsFetch,

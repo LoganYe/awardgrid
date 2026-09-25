@@ -26,6 +26,8 @@ export interface AskCopy {
   openSettings: string;
   noSeatsKey: string;
   busy: string;
+  /** Release D10: the service refused because Ask has no permission to send data to Anthropic. */
+  noConsent: string;
   cleared: string;
   keysChanged: string;
   retryUnavailable: string;
@@ -97,6 +99,7 @@ export const ASK_COPY: Record<Locale, AskCopy> = {
     openSettings: "Open Settings",
     noSeatsKey: "Ask searches seats.aero with your own Pro key. Add it in Settings first.",
     busy: "A question is already running. Stop it or wait for the answer.",
+    noConsent: "Nothing was sent: Ask needs your permission before it sends anything to Anthropic.",
     cleared: "Conversation cleared.",
     keysChanged: "A key in Settings changed after this question failed, so its request was not resent. Ask again to use the keys on file now.",
     retryUnavailable: "This request can no longer be resent. Ask again.",
@@ -154,6 +157,7 @@ export const ASK_COPY: Record<Locale, AskCopy> = {
     openSettings: "打开设置",
     noSeatsKey: "AI 辅助用你自己的 seats.aero Pro 密钥查询。请先在设置中添加。",
     busy: "已有问题在进行中。请停止它，或等待回答。",
+    noConsent: "没有发送任何内容：AI 辅助需要先获得你的许可，才会向 Anthropic 发送数据。",
     cleared: "对话已清除。",
     keysChanged: "这个问题失败后，设置中的密钥已更改，所以没有重新发送。请重新提问，以使用现在保存的密钥。",
     retryUnavailable: "这个请求已无法重新发送。请重新提问。",

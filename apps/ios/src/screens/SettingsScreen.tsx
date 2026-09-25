@@ -6,7 +6,8 @@
  *     asked (the clipboard is never read otherwise), and "Check and save", with the approved sentence saying the check
  *     sends a request before it does (core seatsaero/key-check.ts: one call). Nothing checks a key to draw a screen. A
  *     saved key shows its last four characters only; removing it asks first and says what it affects.
- *   - **Anthropic is optional** and on its own page; nothing in search needs it.
+ *   - **Anthropic is optional** and on its own page; nothing in search needs it. The page also says whether Ask may
+ *     send data to Anthropic (release D10, given on the Ask screen's consent sheet) and withdraws that permission.
  *   - **Appearance and language** apply at once, keep whatever task is on screen, and are saved on this device
  *     (app/settings-store.ts).
  *   - **Local data**: clearing cached results touches nothing else.
@@ -23,6 +24,7 @@ import { WithTail } from "../app/WithTail";
 import { useFocusOnArrival } from "../app/focus";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import type { KeyCheckResult } from "../ask/ask-service";
+import { CONSENT } from "../ask/consent-copy";
 import { PRICING_URL } from "../ask/labels";
 import { Button, Icon, Sheet, type ThemePreference } from "../components/ui";
 import { type KeyStore, last4, maskedKey } from "../native/keychain";
@@ -46,7 +48,7 @@ export interface KeyStatus {
   tail?: string;
 }
 
-type AnthropicKeyServices = Pick<AppServices, "anthropicKeys" | "ask">;
+type AnthropicKeyServices = Pick<AppServices, "anthropicKeys" | "ask"> & Partial<Pick<AppServices, "settings">>;
 
 /** What a key check says, in its tone. */
 export function checkStatus(result: KeyCheckResult): KeyStatus {
@@ -625,7 +627,36 @@ export function AnthropicKeySection({
           {result.requestIdLine !== null ? <p className="tabular">{result.requestIdLine}</p> : null}
         </div>
       ) : null}
+      {services.settings ? <AskPermission settings={services.settings} locale={locale} /> : null}
       <ConfirmRemove open={confirming} title={a.confirmTitle} body={a.confirmBody} confirm={r.seats.confirmRemove} keep={r.seats.confirmKeep} close={r.close} onConfirm={() => void remove()} onClose={() => setConfirming(false)} />
     </section>
+  );
+}
+
+/**
+ * Whether Ask may send data to Anthropic (release D10), and the way to withdraw it. It is given only on the Ask
+ * screen's consent sheet, where what is sent is listed; withdrawing stops every later question and Try again until it
+ * is given again, and says it cannot recall what was already sent.
+ */
+export function AskPermission({ settings, locale }: { settings: AppServices["settings"]; locale: Locale }) {
+  const k = CONSENT[locale].settings;
+  const consent = useSyncExternalStore(settings.subscribe, settings.aiConsent, settings.aiConsent);
+  const [status, setStatus] = useState<string | null>(null);
+  const withdraw = async () => {
+    const saved = await settings.withdrawAi();
+    setStatus(saved ? k.withdrawn : k.withdrawNotSaved);
+  };
+  return (
+    <div className="settings-consent" data-testid="ask-permission">
+      <p className="settings-copy">{consent ? k.allowed : k.notAllowed}</p>
+      {consent ? (
+        <button type="button" className="ag-button" onClick={() => void withdraw()}>
+          {k.withdraw}
+        </button>
+      ) : null}
+      <p role="status" className="settings-note">
+        {status ?? ""}
+      </p>
+    </div>
   );
 }

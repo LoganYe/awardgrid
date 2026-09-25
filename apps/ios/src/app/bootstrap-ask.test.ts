@@ -217,9 +217,36 @@ describe("a question through AppServices", () => {
     const anthropicKeys = new MemoryKeyStore();
     await anthropicKeys.set(ANTHROPIC_KEY);
     const svc = await bootstrap({ keys, anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: seats, anthropicFetch: api.fetchImpl });
+    // Release D10: the permission the consent sheet gives, saved in the settings file.
+    await svc.settings.allowAi(NOW);
     const state = await svc.ask.ask(QUESTION, true);
     return { files, seats, api, keys, anthropicKeys, svc, state };
   }
+
+  it("sends nothing, reads no Anthropic key and builds no client until the person allows it (release D10)", async () => {
+    const files = new MemoryFileStore();
+    includedSearch(files);
+    const seats = fakeFetch(seatsAero());
+    const api = anthropic(["tool_use_search", "text"]);
+    const anthropicKeys = watchedKeys(ANTHROPIC_KEY);
+    const svc = await bootstrap({ keys: await seatsKeys(), anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: seats, anthropicFetch: api.fetchImpl });
+
+    const refused = await svc.ask.ask(QUESTION, true);
+    expect(refused.notice?.kind).toBe("no_consent");
+    expect(refused.entries).toEqual([]);
+    expect(anthropicKeys.get).not.toHaveBeenCalled();
+    expect(createAskClient).not.toHaveBeenCalled();
+    expect(api.calls).toEqual([]);
+    expect(seats.calls).toEqual([]);
+
+    // Given, the same question goes; withdrawn, the next one does not.
+    await svc.settings.allowAi(NOW);
+    expect((await svc.ask.ask(QUESTION, true)).entries[0]?.end?.status).toBe("answered");
+    const sent = api.calls.length;
+    await svc.settings.withdrawAi();
+    expect((await svc.ask.ask(QUESTION, true)).notice?.kind).toBe("no_consent");
+    expect(api.calls).toHaveLength(sent);
+  });
 
   it("sends its requests over the Anthropic transport and its search over the observed seats.aero one", async () => {
     const { seats, api, svc, state } = await asked();

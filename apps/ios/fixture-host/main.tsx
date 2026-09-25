@@ -10,11 +10,20 @@
  * services exist, or "error" with a reason. A missing, unknown or not-yet-seeded scenario is an error; the
  * app is not mounted and nothing falls back.
  *
+ * Ask's permission (release D10): a launch that has an Anthropic key starts with it already given, as if on an earlier
+ * launch, so the Ask specs test Ask; `consent=0` leaves it out, for the consent sheet's own spec. It is written in the
+ * settings file's real format, by the real storage, into the seed, so it is not counted as the app's write. A relaunch
+ * (`preserve=1`) seeds nothing: what the last launch left, a withdrawal included, is what it finds.
+ *
  * No <StrictMode>: this page runs React's development build, where StrictMode runs effects twice (two boots,
  * two watch checks). A production build never does that, so leaving it out keeps request counts true.
  */
 import { createRoot } from "react-dom/client";
 import { App } from "../src/app/App";
+import { SETTINGS_NAMESPACE } from "../src/app/settings-store";
+import { ANTHROPIC_CONSENT_VERSION } from "../src/ask/consent-copy";
+import type { FileStore } from "../src/store/persistence";
+import { SlotFileStorage } from "../src/workspace/slot-storage";
 import { MemoryKeyStore } from "../src/native/keychain";
 import { installWebViewFetchGuard } from "../src/native/webview-fetch-guard";
 import { SnapshotStore } from "../src/store/persistence";
@@ -53,6 +62,26 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
 }) as typeof fetch;
 
+/** The settings files a permission given on an earlier launch would have left, in the real two-slot format. */
+async function consentGivenEarlier(at: Date): Promise<Record<string, string>> {
+  const captured: Record<string, string> = {};
+  const capture: FileStore = {
+    read: async (path) => captured[path] ?? null,
+    write: async (path, data) => {
+      captured[path] = data;
+    },
+    remove: async (path) => {
+      delete captured[path];
+    },
+  };
+  await new SlotFileStorage(capture).writeAtomically(SETTINGS_NAMESPACE, {
+    locale: null,
+    theme: "system",
+    aiConsent: { version: ANTHROPIC_CONSENT_VERSION, at: at.toISOString() },
+  });
+  return captured;
+}
+
 function report(state: FixtureHostState, error: string | null = null): void {
   handle.state = state;
   handle.error = error;
@@ -81,9 +110,11 @@ async function start(): Promise<void> {
   // AI scenarios (T16) have both of their own.
   const scriptedAi = params.get("ai") === "1" || env.scenario.id.startsWith("ai-");
   if (env.anthropicKey || scriptedAi) await anthropicKeys.set(env.anthropicKey ?? FIXTURE_ANTHROPIC_KEY);
+  const preserve = params.get("preserve") === "1";
+  const consentSeed = (env.anthropicKey || scriptedAi) && !preserve && params.get("consent") !== "0" ? await consentGivenEarlier(env.now) : {};
   const files = new LocalFixtureFiles(handle.log, {
-    preserve: params.get("preserve") === "1",
-    seed: env.files,
+    preserve,
+    seed: { ...env.files, ...consentSeed },
     failWrites: env.failWrites,
   });
 

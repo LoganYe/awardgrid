@@ -39,6 +39,11 @@ export interface ScenarioOptions {
    * each question's context shape (`anthropicContexts`). Without it, every Anthropic request is refused and counted.
    */
   ai?: boolean;
+  /**
+   * Release D10: with an Anthropic key the host starts with Ask's permission already given, so Ask specs test Ask.
+   * `false` leaves it out, and the consent sheet comes first.
+   */
+  consent?: false;
 }
 
 export interface RequestCounts {
@@ -127,6 +132,7 @@ export async function openScenario(page: Page, id: string, surface: Surface = "i
   if (options.lang) params.set("lang", options.lang);
   if (options.preserveStorage) params.set("preserve", "1");
   if (options.ai) params.set("ai", "1");
+  if (options.consent === false) params.set("consent", "0");
   await page.goto(`/?${params.toString()}`);
   await page.waitForFunction(() => document.getElementById("fixture-status")?.dataset.state !== "booting", null, {
     timeout: 15_000,

@@ -318,3 +318,30 @@
   margin-top: var(--ag-space-2);
   min-height: var(--ag-touch-target);
 }
+
+/*
+ * The consent sheet (release D10). It renders into <body> through Sheet, outside .ask-screen, so its spacing is its
+ * own: the reading type, one gap between blocks, the list indented as a list.
+ */
+.ask-consent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+.ask-consent p,
+.ask-consent ul {
+  margin: 0;
+}
+
+.ask-consent ul {
+  padding-left: 1.25em;
+}
+
+.ask-consent li + li {
+  margin-top: var(--ag-space-1);
+}
+
+.ask-consent .ask-consent-note {
+  color: var(--ag-text-secondary);
+}

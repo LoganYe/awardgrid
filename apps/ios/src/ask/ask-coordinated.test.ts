@@ -39,6 +39,7 @@ describe("Stop and the queue", () => {
     const model: AskModel = { send: vi.fn(async () => replies.shift() ?? text), checkKey: vi.fn(async () => {}) };
     const requests = new RequestCoordinator();
     const ask = createAskService({
+      consent: () => true,
       anthropicKeys,
       seatsKeys,
       anthropicFetch: seatsFetch,

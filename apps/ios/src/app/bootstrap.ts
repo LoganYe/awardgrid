@@ -384,6 +384,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
 
   const lastSearch = createWorkspaceLastSearch(workspace, searchViewFromSnapshot);
   const ask = createAskService({
+    // Release D10: read at every question, so a permission withdrawn in Settings stops the next one.
+    consent: () => settings.aiConsent() !== null,
     anthropicKeys,
     seatsKeys: keys,
     anthropicFetch,

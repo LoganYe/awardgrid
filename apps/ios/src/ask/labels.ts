@@ -486,6 +486,8 @@ export function showsFollowUpNote(entry: Pick<AskEntry, "texts">): boolean {
 
 export const NO_ANTHROPIC_KEY = "Ask needs your own Anthropic API key. Add one in Settings. Search and watches work without it.";
 export const NO_SEATS_KEY = "Ask searches seats.aero with your own Pro key. Add it in Settings first.";
+/** Release D10: the service's refusal when no permission was given. The Ask screen asks for it before this can show. */
+export const NO_CONSENT = "Nothing was sent: Ask needs your permission before it sends anything to Anthropic.";
 /** The same words core gives a wiring failure (errors.ts), for the state found before any request. */
 export const WIRING = "Ask cannot reach Anthropic from this build: native HTTP is not available. This is a wiring bug, not an outage.";
 export const BUSY = "A question is already running. Stop it or wait for the answer.";
