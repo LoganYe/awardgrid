@@ -19,6 +19,7 @@
  * counters, the grid's date row headers (the demo dataset is shifted so day one is today),
  * relative run times. The box is still compared — only the reading inside it is exempt.
  */
+import type { Page } from "@playwright/test";
 import { applyTheme, expect, test } from "./fixtures";
 import {
   askDrawer,
@@ -34,6 +35,37 @@ import {
   openSettings,
   timeMasks,
 } from "./states";
+
+/**
+ * The demo dataset starts today, so the Dates chip and the Ask drawer's "Current grid" pill name
+ * today's range. The chip's text is masked, but its WIDTH is not: at 390 px "Sep 6 – Oct 5"
+ * fits beside Destinations and "Sep 25 – Oct 24" wraps to another row, which moved everything
+ * under it by 48 px on some days of each month and failed the mobile /grid baselines by the
+ * calendar alone. Before a /grid screenshot the range is written as this one fixed reading (the
+ * app's own separators are kept), so the layout is the same on every day.
+ */
+const HELD_RANGE = { start: "Sep 25", end: "Oct 24" };
+const RANGE = /([A-Z][a-z]{2} \d{1,2})(\s*–\s*)((?:[A-Z][a-z]{2} )?\d{1,2})/;
+
+async function holdTheCalendar(page: Page): Promise<void> {
+  const held = await page.evaluate(
+    ({ source, start, end }) => {
+      const range = new RegExp(source);
+      const hold = (el: Element | null) => {
+        if (!el || !range.test(el.textContent ?? "")) return false;
+        el.textContent = (el.textContent ?? "").replace(range, (_m, _a, sep: string) => `${start}${sep}${end}`);
+        return true;
+      };
+      const chip = hold(document.querySelector('[data-chip="dates"] > span:last-child'));
+      const pill = document.querySelector('[data-testid="ask-pill-grid"]');
+      return { chip, pill: pill ? hold(pill) : null };
+    },
+    { source: RANGE.source, ...HELD_RANGE },
+  );
+  // Never a silent no-op: if the markup moves, this fails instead of letting the calendar back in.
+  expect(held.chip, "the Dates chip's range was found and held").toBe(true);
+  if (held.pill !== null) expect(held.pill, "the Ask pill's range was found and held").toBe(true);
+}
 
 /** Mobile dark adds a fourth copy of every baseline and has never caught anything the other three missed. */
 const CURATED_PROJECTS = ["desktop-light", "desktop-dark", "mobile-light"];
@@ -54,6 +86,7 @@ test.describe("visual", () => {
 
   test("visual: grid results", async ({ page }) => {
     await openGridWithCells(page);
+    await holdTheCalendar(page);
     await expect(page).toHaveScreenshot("grid-results.png", { mask: timeMasks(page) });
   });
 
@@ -61,6 +94,7 @@ test.describe("visual", () => {
     await openGridWithCells(page);
     await openCellDrawer(page);
     await expect(cellDrawer(page)).toBeVisible();
+    await holdTheCalendar(page);
     await expect(page).toHaveScreenshot("grid-cell-drawer.png", { mask: timeMasks(page) });
   });
 
@@ -69,12 +103,14 @@ test.describe("visual", () => {
     const ask = await openAsk(page);
     await expect(ask.getByTestId("ask-suggestions")).toBeVisible();
     await expect(askDrawer(page)).toBeVisible();
+    await holdTheCalendar(page);
     await expect(page).toHaveScreenshot("grid-ask-drawer.png", { mask: timeMasks(page) });
   });
 
   test("visual: the Origins chip editor", async ({ page }) => {
     await openGridWithCells(page);
     await openChipEditor(page, "origins");
+    await holdTheCalendar(page);
     await expect(page).toHaveScreenshot("grid-origins-editor.png", { mask: timeMasks(page) });
     await closePopover(page);
   });
