@@ -9,6 +9,8 @@
  */
 import { expect, test } from "./test";
 import { evidenceShot, openScenario, realHostPattern, requestLog, searchByText, takeExternalRequests } from "./helpers";
+import scenarios from "../../packages/core/test/fixtures/uiux/scenarios.json" with { type: "json" };
+import { SEEDED_SCENARIOS } from "../../apps/ios/fixture-host/seeded";
 
 const SEARCH_TEXT = "Synthetic HKG to SEA October business and first";
 
@@ -43,12 +45,13 @@ test("an unknown scenario id is refused before any page is opened", async ({ pag
   expect(page.url()).toBe("about:blank");
 });
 
-test("the host refuses a missing, unknown or unseeded scenario and never mounts the app", async ({ page }) => {
+test("the host refuses a missing or unknown scenario and never mounts the app; every scenario is seeded (T21)", async ({ page }) => {
+  // Since T21 every id in scenarios.json is seeded, so none is left to show the "not seeded" refusal with; the guard
+  // stays for future ids (UnseededScenarioError), and this checks that no scenario is silently the base environment.
+  expect(scenarios.scenarios.map((s) => s.id).filter((id) => !SEEDED_SCENARIOS.has(id))).toEqual([]);
   const cases: Array<[string, RegExp]> = [
     ["", /No scenario given/],
     ["?scenario=not-a-scenario", /Unknown synthetic scenario/],
-    // A real id whose state is not built yet is refused, not booted as the base environment.
-    ["?scenario=long-labels", /not seeded by the fixture host yet \(T21/],
   ];
   for (const [query, reason] of cases) {
     await page.goto(`/${query}`);
@@ -60,7 +63,7 @@ test("the host refuses a missing, unknown or unseeded scenario and never mounts 
     expect(await page.evaluate(() => document.getElementById("root")!.dataset.mounted ?? null)).toBeNull();
     expect(await page.evaluate(() => window.__uiuxFixture?.scenario ?? null)).toBeNull();
   }
-  await expect(openScenario(page, "long-labels")).rejects.toThrow(/not seeded/);
+  await expect(openScenario(page, "not-a-scenario")).rejects.toThrow(/Unknown synthetic scenario/);
 });
 
 test("no-seats-key boots the real app without a key and sends nothing", async ({ page }) => {

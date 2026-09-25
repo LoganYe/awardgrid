@@ -78,6 +78,8 @@
   line-height: var(--leading-body);
   font-weight: 500;
   color: var(--fg);
+  /* A name with no spaces (up to 60 characters) wraps rather than widening the page (UI/UX v1 T21 review SIZE-6). */
+  overflow-wrap: anywhere;
 }
 .aq-meta {
   color: var(--fg-muted);
@@ -195,6 +197,9 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+.aq-card-head > :first-child {
+  min-width: 0;
 }
 .aq-card .aq-actions {
   flex-wrap: wrap;

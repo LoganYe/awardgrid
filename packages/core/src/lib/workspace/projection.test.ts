@@ -284,6 +284,15 @@ describe("the matrix model (T09)", () => {
     expect(mobileColumns(358, 3, 2)).toEqual({ date: 176, count: 1, width: 182 });
   });
 
+  it("at 320 and 200% text the one data column still holds a seven-figure miles value; the date column gives way (T21 review 2)", () => {
+    // 288 inside the gutters: 176 for the dates would leave 112, and "110,000" at 32 is about 131 before the cell's 24 of padding.
+    expect(mobileColumns(288, 1, 2)).toEqual({ date: 129, count: 1, width: 159 });
+    expect(mobileColumns(288, 1, 1.6)).toEqual({ date: 141, count: 1, width: 147 });
+    // Where both fit, nothing changes; at 100% text docs/04's 88 stands whatever the width.
+    expect(mobileColumns(358, 1, 2)).toEqual({ date: 176, count: 1, width: 182 });
+    expect(mobileColumns(150)).toEqual({ date: 88, count: 1, width: 62 });
+  });
+
   it("rows are the query's dates, columns its routes, each cell a slot per cabin asked, in cabin order", () => {
     const snapshot = fixtureSnapshot({ query: { ...fixtureQuery(), cabins: ["F", "J"] } });
     const m = matrixModel(snapshot, projectResults(snapshot, fixturePrefs()));

@@ -759,3 +759,124 @@ T20, plan 04 T20, docs/02 D05, docs/05, A33, A34.
 - **Web standing queries** keep their absolute-date `QueryObject`s, and nothing rewrites their dates. The Web workspace creates no watches.
 - **The CLI** prints an unknown seat count as 0 in its grid text (pre-existing, `find-main.ts` formatting). An operator's tool, outside the UI/UX surfaces; noted for the owner.
 - **Visual baselines.** The `/queries` page gains the capability block, so its Linux visual baselines need regenerating in CI (owner). Settings' unlinked state is unchanged.
+
+## U-056 · Cross-size and accessibility, measured on every screen; the fixes are layout, not the reference
+
+T21, plan 04 T21, A35, A36.
+
+**What is measured** (`e2e/uiux/layout-audit.ts`, used by `responsive.spec.ts` and `visual.spec.ts`). For each screen, width and text scale, the audit reports:
+- the page being wider than the screen;
+- text cut by its own box (overflow hidden or clip, with no ellipsis intended);
+- text spilling out of a box that lets it show;
+- words running out of the control or cell they belong to (a button, a radio, a gridcell, a label, a link), even from a child span that grows to fit them: a segment's label hanging out of its button, a row's value wrapping past its row, a day's words running into the next day;
+- a box that clips cutting off content, whether its own text, a child's, or a control with no words. A declared ellipsis excuses a cut only where one can be drawn: one unwrapped line of a block box cut sideways, or a line clamp. A flex box, or wrapped lines cut in height, cut the words with nothing to say so;
+- a select's or a field's value wider than the field, unless it ends in an ellipsis on purpose (measured with the field's own font);
+- text past the screen's side outside a sideways scroller;
+- controls that cover each other;
+- glyphs drawn over other glyphs: each text's line boxes (`Range.getClientRects`) must not cover another's, or another line of the same text, by more than a quarter of the smaller line's height (a glyph box is taller than its font size, and a CJK font's more so).
+
+The last two are about what is on screen. So the audit first measures with every screen-level scroller at its top, wherever the page was left: the page, an app screen's own scroll area, the matrix's. Then it steps each scroller through its whole height, a little less than its visible part at a time. A scroller inside another is first brought into view. Every scroll position is then put back. On iOS, `documentScrolls` also checks that the shell's document never scrolls.
+
+It is measured against the layout viewport (`clientWidth`). A mobile browser zooms out to fit a page that is too wide, and widens `innerWidth` with it. The plan's own check (`scrollWidth > innerWidth + 1`) therefore misses exactly that overflow. It is kept verbatim, beside the stronger checks.
+
+What counts as seen:
+- a box as cut by its scroll areas;
+- text under `aria-hidden`, like anything drawn: the attribute hides it from assistive tech only (much of the calendar's and matrix's text is `aria-hidden`, since their cells are named whole);
+- no hidden or inert content (`checkVisibility`: a closed `<details>`; 1-px screen-reader text);
+- fixed layers (a bar, a sheet) compared only among themselves. Sticky parts count with the page at rest; once scrolled, each is a layer of its own, since content passes under them by design;
+- with a modal dialog open, only the dialog's controls and text.
+
+**The audit is checked.** `audit-proof.spec.ts` puts each defect it is for on the page, expects the audit to name it, then takes it away and expects the audit clean again:
+- **iOS:** a segment's label in its span running out of its button; the editor's Programs row squeezed so its value wraps past it; text over text on a card below the first screen; the document scrolling.
+- **Web:** the fixed 20-px line under 200% text; a label that cannot wrap; a control, and controls with no words, cut by a short hidden box; a select's value cut; a page wider than the screen; the calendar's words running into the next day.
+
+The first version of the audit passed over several of these. The second review showed each one, and the audit was widened until it names them all.
+
+**Coverage** (both languages):
+- **iOS:** 10 screens plus a detail, at 320, 390 and 430, at 100, 130, 160 and 200% text.
+- **Web workspace and Saved:** the workspace's three views and Saved, from 320 to 1440, at 100, 130, 160 and 200% text. A saved option is seeded first, so Saved is audited with content.
+- **Web `/queries` and `/settings`:** every width, at 100% only. Two standing queries are seeded, one named with 60 characters and no spaces. These pages keep the Web's older type tokens, which do not follow `--ag-text-scale`, so a scaled pass would only repeat the 100% render (review SIZE-5). Moving them onto the Quiet Precision type scale would restyle pages outside the workspace, whose Linux visual baselines are CI's (U-055). Recorded, not done.
+- **Web phone panels:** a detail, the assistant and the palette at 320 and 390, at 200%.
+- **Short screens with options chosen:** 320 × 568 and 375 × 667 at 200%, in both languages. A real tap chooses each option, and the results keep at least a third of the scroll area. An ordinary search at 100% leaves the document exactly the screen.
+- **The stand-in keyboard:** at 200% Chinese, at 320 × 568 (also panned up to a lower field) and at 390 × 844. Find and the field being typed in stay above it, and a tap on Find lands on it. The plan lists this as a risk ("200% Chinese, the soft keyboard and 320 wide hide the main action"); T11's handling holds at large text.
+
+**What it found, and the fixes.** The first full run on the pre-T21 layout reported 128 problem states. The layout fixes brought that to 0, and the review's 12 confirmed findings were fixed after it (evidence T21).
+- **The Web rail's labels at large text** ran past a 72-wide rail. The rail is now `minmax(72px, max-content)`, still exactly 72 at 100% (T19's geometry holds).
+- **The phone bar:**
+  - Its five slots now share the width (a five-column grid).
+  - Its labels stop at 13 px and stay one line, as the iOS shell's tab labels stop growing. "Settings" fits whole in 320 / 5 (review SIZE-7).
+  - Its height stays 56 at every text size. Letting it grow only took screen space, since its labels no longer do.
+- **Line heights** (review SIZE-1, SIZE-2, REG-2, REG-3): the Web cards and controls had moved onto the scaled type sizes while keeping the page's fixed 20-px line, so lines drew over each other from 130% up, "75,000 miles" included.
+  - The workspace's scope now has a unitless line height (1.4).
+  - Each type token is paired with its leading token. On a control this comes after `font: inherit`, which resets it.
+- **Wrapping controls:**
+  - The page head's buttons, Find and the view switcher could not wrap below 768 and widened the page. They now wrap.
+  - An option card's two buttons each keep their words whole and move to their own line when both do not fit. Before, a mid-word break read "查看选/项", seen in this task's own evidence.
+- **A native date field cannot shrink below its own text** (314 px at 200% in a 254-px column). On phones its type is capped at 7.5vw, so the whole date stays visible.
+- **The phone option cards** (T18) used fixed pixel sizes. They now use the Quiet Precision type tokens.
+- **The Web calendar at 768 with 160–200% text** kept seven 83-px columns, and "no matches" ran under the next day (review A11Y-1). The month's switch to a date list is now an `em` container query (34em on the month's scaled type). It still shows seven columns at 1024 and up at 100%.
+- **The iOS view switcher at 320 and 200%** drew "Calendar" into "Matrix" (review SIZE-3). A segment's label now shrinks to its third and breaks there. The same fix applies to a matrix cell's seats line.
+- **`/queries`:** a valid 60-character name with no spaces widened the page and pushed Delete off-screen (review SIZE-6). The name now wraps anywhere.
+- **The command palette** (review A11Y-2):
+  - The active option has a ring as well as its tint (the tint alone measured 1.14:1).
+  - A disabled command says "Not available now" / "当前不可用".
+- **Heading order** (T18 review REG-2):
+  - The cards' level follows their context: h2 in the main list, h3 under a cell's or a day's h2.
+  - Calendar months are h2.
+  - An axe `heading-order` case holds it.
+- **The iOS shell's document scrolled** (review 2 REACH-1).
+  - The cause: visually hidden status text (the save status, an airport field's live region) is positioned absolutely, and the screen's scroll area was not positioned. That text escaped the scroll area and made the document taller than the screen. It happened after an ordinary search at 100% with four rows, and on every results screen and the editor at large text.
+  - The effect: a drag slid the header and tab bar off and left the screen half blank.
+  - The fix: each screen's scroll area (results, editor, detail, compare, Ask) is now `position: relative`. `documentScrolls` is 0 on every iOS state the audit visits and after a real search.
+- **The editor's rows** were squeezed to 44 in its scrolling column, so "1 selected" hung over the row's divider at 320 and 200% (review 2 REACH-2). They now keep their height, and the column scrolls.
+- **A short screen at large text with options chosen** (review 2 REACH-3; docs/04 S01: "大字时按实际高度测量或取消sticky，不能覆盖正文").
+  - The problem: the 225-tall sticky header and the compare bar left the results 50 px at 320 × 568 and 200%. With one option chosen they left none, so the next option could not be tapped.
+  - The fix: the header is measured, and where it would take more than 40% of the scroll area it scrolls away with the results. It stays sticky at 390 × 844 and 200% without the bar, and at every size at 100%.
+  - Review 3 (REGR-1) found a regression in this fix. The bar is taller with one option chosen than with two, so a bare 40% test flipped the header static, then sticky again on the second pick, pinning it over the box just chosen. So once static, the header returns to sticky only below 30%. If it does return, whatever has focus in the results is scrolled out from under it.
+  - The compare bar is unchanged. U-044's reason line stays, and it no longer costs the results their room.
+- **The iOS matrix at 320 and 160–200%** left one 112-wide data column beside a 176-wide date column, so "75,000" ran out of its cell and under the scroller's edge (review 2 CLOSE-1). `mobileColumns` now lets the date column give way, down to 88, until one column holds a seven-figure value. At 100% text docs/04's 88 stands, and wider screens are unchanged (core unit cases).
+- **Overscroll** (plan Step 3): a layer over the page and a sideways scroller keep their scrolling to themselves.
+  - `contain` on the iOS sheet, the detail body, the airport list and Ask's context box, and on the Web palette list, the programs popover and the panel body.
+  - Sideways `contain` on the iOS chip row and matrix, and on the Web table and matrix, so a swipe at their edge never becomes the browser's back gesture.
+  - Checked from the computed style. The rubber band itself is WebKit's, on a device.
+
+**Accepted differences** (plan Step 4):
+- The phone bar's labels stop at 13 px (above).
+- `/queries` and `/settings` are measured at 100% only (above).
+- At 768 and 200%, the list's table scrolls sideways inside its own frame and the page does not. A data table keeps its columns, and WCAG 1.4.10 exempts content that needs two dimensions.
+- The iOS filter chips scroll sideways and are cut at the screen's edge, by design.
+- A closed select's value ends in an ellipsis where it is longer than the field, as on the Web since T19. iOS now does the same (review 2 CLOSE-2). An example is "Every segment in the chosen cabin" at 130–200% on 320–430. The picker shows every option whole, and the visible start tells them apart.
+- At 320 and 200% in Chinese, the narrower date column wraps "10月18日" after "18".
+- A full-page screenshot draws a fixed bar where the first screen ends. That is how the capture works, not the layout.
+- No reference picture shows large text or 320 wide. There, completeness wins, as the plan says.
+
+**Accessibility** (`accessibility.spec.ts`):
+- **axe** (WCAG 2.0/2.1 A and AA) found no violations at any impact in 80 scans (`evidence/raw/t21-rerun.log`), covering:
+  - every main iOS screen (including the partial and no-key states, and a detail);
+  - the Web workspace's views, a detail panel, the assistant, the palette, Saved and Queries at 1440, and the workspace at 390;
+  - both themes and both languages.
+- **Reduced motion:** nothing moves in an iOS sheet, a Web overlay panel or the palette.
+- **An iOS modal sheet** keeps Tab inside and gives focus back to its opener. The Web's panels and palette are covered in T19 (`web-layout.spec.ts`).
+- **Colour is never the only cue** on the partial matrix, the sorted column, the pressed view, a saved option, or the palette's active and disabled options.
+
+**Fixture:**
+- `long-labels` is seeded on both surfaces, with saved results so it opens on them. It uses the base rows: the long labels are the UI's own translated words at large text.
+- Every scenario in `scenarios.json` is now seeded, so the harness test checks exactly that instead of refusing an unseeded id (test changed, with reason).
+- The list lives in `apps/ios/fixture-host/seeded.ts`, which imports no JSON. Playwright's Node loader cannot load `scenarios.ts` (JSON without import attributes), and importing it had stopped the whole suite from loading (review REG-1).
+
+**Refuted in review:** A11Y-3, that `/grid` has no heading. True, but it predates T21, and `/grid` is not one of the new surfaces. Where signed-in people land is the owner's decision (U-055).
+
+**Review 3** (checking review 2's fixes) confirmed 4 minor findings, all fixed and each held by a test:
+- the audit measured from wherever the page had been scrolled;
+- a nested scroller was stepped while mostly off screen;
+- any declared ellipsis was trusted;
+- the header's state followed the selection (REGR-1).
+
+**Refuted in review 2:** DELTA-2, that the 390 full-page evidence hides the toolbar under the bar. That is the capture's fixed bar (above), not the layout.
+
+**The plan's Step 1 test** (verbatim, seven widths at 200%) passed on the pre-T21 code once `long-labels` was seeded, so it is not red evidence. The audit supplied the red.
+
+**Kept open, recorded:**
+- **U-042** (the status bar under a chosen theme) needs native code checkable only on the Simulator or a device. Carried to T22's Simulator attempt.
+- **T15 REG-06** (the save-failure bar is not shown on full-height pages such as Ask): kept. It shows on return, and those pages only save through the search they return to.
+- **Not verified:** VoiceOver, the system's Dynamic Type, real touch, the real software keyboard, real IMEs and WebKit's overscroll, on any device. `setTextScale` tests the layout's answer to larger type; it is not Dynamic Type.

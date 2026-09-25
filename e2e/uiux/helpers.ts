@@ -205,6 +205,14 @@ export async function webRequestLog(page: Page, scenario: string): Promise<{ sea
   return all[scenario] ?? { seats: 0, trips: 0, seatsPaths: [] };
 }
 
+/**
+ * T21: scale the Quiet Precision type and the containers that follow it (`--ag-text-scale`), on either surface. A test
+ * of how the layout answers larger text; it is not the system's Dynamic Type, which only a device shows.
+ */
+export async function setTextScale(page: Page, scale: number): Promise<void> {
+  await page.evaluate((value) => document.documentElement.style.setProperty("--ag-text-scale", String(value)), scale);
+}
+
 /** T15: the context shape of each question the scripted Anthropic answered, in order (see FixtureRequestLog). */
 export async function anthropicContexts(page: Page): Promise<FixtureRequestLog["anthropicContext"]> {
   return page.evaluate(() => window.__uiuxFixture?.log.anthropicContext ?? []);

@@ -33,6 +33,9 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* The containing block of the screen's visually hidden status text, so it stays inside this scroll area and never
+     makes the document taller than the screen: the shell's document never scrolls (T21 review 2 REACH-1). */
+  position: relative;
   overscroll-behavior: contain;
 }
 
@@ -228,6 +231,8 @@
   min-height: var(--ag-chip-slot);
   padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
   overflow-x: auto;
+  /* T21: a sideways swipe at its edge stays here, never the page's (or the browser's back gesture). */
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
@@ -637,6 +642,11 @@
   .ag-results-sticky {
     position: static;
   }
+}
+
+/* Taller than 40% of the scroll area (measured in SearchScreen): it scrolls away with the results (T21 review 2 REACH-3). */
+.ag-results-sticky[data-static] {
+  position: static;
 }
 
 .ag-results-empty > .ag-results-meta {
@@ -1084,9 +1094,11 @@
   content: " ·" / "";
 }
 
-/* Words, so they wrap: "Seat count not provided" is wider than a 135 column. */
+/* Words, so they wrap: "Seat count not provided" is wider than a 135 column; at 200% text on 320 one word is wider
+   than the column, and breaks inside itself rather than spilling into the next (UI/UX v1 T21). */
 .ag-mx-seats {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .ag-mx-others {
@@ -1193,6 +1205,11 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* The containing block of the screen's visually hidden status text, so it stays inside this scroll area and never
+     makes the document taller than the screen: the shell's document never scrolls (T21 review 2 REACH-1). */
+  position: relative;
+  /* T21: reaching its end never scrolls what is behind it. */
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: var(--ag-space-6);

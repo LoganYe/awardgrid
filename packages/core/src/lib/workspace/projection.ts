@@ -215,11 +215,15 @@ export function projectResults(snapshot: ResultSnapshot, prefs: ViewPreferences)
  * The phone matrix's columns (docs/04 S03): an 88 pt date column, then as many whole data columns of at least 124 as
  * fit — at least one, and no more than there are routes — sharing the rest equally. `contentWidth` is the width
  * inside the page gutters (358 at 390). Larger text (`scale`, --ag-text-scale) widens both minimums, so the columns
- * get fewer and wider rather than their text spilling into the next one.
+ * get fewer and wider rather than their text spilling into the next one. Where even one data column would be too
+ * narrow for a seven-figure miles value ("110,000": about 4.2 em of the slot's 16 × scale figures, plus the cell's 24 of
+ * padding) — 320 at 160–200% — the date column gives way to it, down to 88, so no figure runs out of its cell (docs/04:
+ * never cut a mileage; T21 review 2). At 100% text docs/04's 88 stands.
  */
 export function mobileColumns(contentWidth: number, routes = Number.POSITIVE_INFINITY, scale = 1): { date: number; count: number; width: number } {
   const s = Math.max(1, scale);
-  const date = Math.round(88 * s);
+  const figure = Math.ceil(4.2 * 16 * s) + 24;
+  const date = s > 1 ? Math.min(Math.round(88 * s), Math.max(88, Math.floor(contentWidth - figure))) : 88;
   const fit = Math.max(1, Math.floor((contentWidth - date) / (124 * s)));
   const count = Math.max(1, Math.min(fit, routes));
   return { date, count, width: Math.round(((contentWidth - date) / count) * 100) / 100 };

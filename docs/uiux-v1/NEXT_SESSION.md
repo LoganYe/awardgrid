@@ -15,7 +15,7 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
 ## Where things stand
 
 - Branch `uiux/quiet-precision-v1` in the worktree above, one local commit per finished task (see `git log`). Nothing pushed.
-- T01–T17 verified (unit + integration + iOS browser mock): M1–M3 done in those scopes. T18–T20 verified (unit + Web mock + regression). T21 is next: see STATUS "Current next action".
+- T01–T17 verified (unit + integration + iOS browser mock): M1–M3 done in those scopes. T18–T20 verified (unit + Web mock + regression). T21 verified in the iOS browser mock and the Web mock; A35's and A36's native halves (Dynamic Type, VoiceOver on a device) are unverified. T22 is next: see STATUS "Current next action".
 - Carried forward:
   - **The Web surface (T18, U-053).**
     - `openScenario(page, id, "web")` signs an account in (`scripts/uiux-web/accounts.ts`) on this worktree's real Next app (:4330), and opens `/workspace?q=` with the synthetic search.
@@ -37,7 +37,14 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
   - Spending entries go through `AppServices.requests` (RequestCoordinator, U-052): the search port, watch runs, Ask tool calls, detail lookups. Never queue an operation from inside a queued one.
   - Ask's tools are gated to the included search, and anything else is a proposal the person applies (U-051). Scenarios `ai-pending` and `ai-stale` are seeded.
   - `/ask` is a full-height page (U-050). What a question sends is built once (`ask/context.ts`, `AskService.preview`), and each entry records it (`AskEntry.context`). Browser tests use `openScenario(..., { ai: true })` for the scripted Anthropic and `anthropicContexts(page)` for what it received. The stand-in keyboard is in `e2e/uiux/helpers.ts`.
-  - The status bar under a chosen theme is for T21 (U-042).
+  - **Cross-size and accessibility (T21, U-056):**
+    - `e2e/uiux/layout-audit.ts` `auditLayout(page)` returns `{ overflowX, clipped, overlaps }`. It covers sideways overflow; cut, spilling or overdrawn text; words running out of their control; cut field values; and covered controls, stepping each screen-level scroller through its height. `documentScrolls(page)` must be 0 on iOS.
+    - Hold a new screen to the audit at 320–1440 and 100–200% (`setTextScale`).
+    - `audit-proof.spec.ts` shows the audit fails on each defect. Keep it passing when the audit changes, and add a case for any new blind spot.
+    - Measure after two frames (`settle`) when a resize or a scale change switches a layout (the `/queries` table and cards).
+    - A spec that opens the Web must skip under `UIUX_WEB=0`, as the T21 specs do (`WITH_WEB`); a test over both surfaces keeps its iOS half.
+    - Look at every evidence image after the LAST capture: T21's review found overdraw in an image that had not been looked at again.
+  - The status bar under a chosen theme (U-042): native code, checkable only on the Simulator or a device. T22's Simulator attempt.
   - Every new `Sheet` needs a translated `closeLabel`.
   - New shell copy goes into a per-language table that `apps/ios/src/locale-parity.test.ts` checks.
   - Approved sentences come through `copy("key", locale)`, which `honesty.test.ts` now scans.
@@ -52,7 +59,11 @@ Never in the main checkout (`../awardgrid`): `pnpm build`, `next build`, `script
 ## Next commands
 
 ```sh
-# T21: read plan 04 T21 first; write its red test (e2e/uiux/responsive.spec.ts, with a setTextScale helper) before any code
+# T22: read plan 04 T22 first (full regression, migration rollback, resumable handoff; A37, A38)
+# Simulator (a device is booted: `xcrun simctl list devices booted`; Xcode at /Applications/Xcode.app). The worktree has no Pods:
+#   cp -Rc ../awardgrid/apps/ios/ios/App/Pods apps/ios/ios/App/Pods   (and Podfile.lock), then `pnpm --filter @awardgrid/ios sync`
+#   (not yet tried: check first whether `cap sync` / `pod install` would reach the network)
+# A production build has no fixture: on the Simulator it starts at onboarding with no key, and must send nothing paid.
 # Evidence screenshots: run only the task's own spec with UIUX_EVIDENCE=1 (the harness spec rewrites T01's screenshots)
 UIUX_EVIDENCE=1 pnpm exec playwright test --config=playwright.uiux.config.ts e2e/uiux/<task>.spec.ts
 # UI/UX browser suite (fixture host on 127.0.0.1:4310)

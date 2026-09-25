@@ -17,6 +17,7 @@ import type { AvailabilityRow } from "@awardgrid/core/grid/types";
 import manifest from "@awardgrid/core/test-fixtures/uiux/scenarios.json";
 import { FAVORITES_NAMESPACE } from "../src/store/favorites-store";
 import { DEFAULT_PREFERENCES, WORKSPACE_NAMESPACE } from "../src/workspace/workspace-store";
+import { SEEDED_SCENARIOS } from "./seeded";
 
 /** The row shape in availability-rows.json: core's AvailabilityRow fields, as plain JSON. */
 export interface SyntheticRow {
@@ -86,44 +87,10 @@ export interface FixtureEnvironment {
 export const FIXTURE_SEATS_KEY = "fixture-not-a-real-key";
 export const FIXTURE_ANTHROPIC_KEY = "fixture-not-a-real-anthropic-key";
 
-/**
- * Scenarios whose defining state this host produces today. Every other id in scenarios.json is refused with the
- * task that adds it, so a test cannot run against a state that is not there. Widen this as tasks land.
- */
-export const SEEDED_SCENARIOS: ReadonlySet<string> = new Set([
-  "complete",
-  "complete-empty",
-  "unmonitored",
-  "no-seats-key",
-  "no-ai-key",
-  "quota-low",
-  "multi-program",
-  "storage-failure",
-  "favorite-snapshot",
-  "watch-baseline",
-  "watch-changes",
-  "watch-failure",
-  // T16: a question whose answer proposes a wider search, and a proposal left over from before the query changed.
-  "ai-pending",
-  "ai-stale",
-  // T17: a question stopped while its request was out: it may still have completed, and no next step ran.
-  "ai-stopped",
-  // T18: the Web surface's two isolation accounts (their rows answer the Web's seats.aero stand-in).
-  "web-user-a",
-  "web-user-b",
-  "foundations",
-  "inflight-old",
-  "failed-old",
-  "missing-values",
-  "partial",
-  "coverage-unknown",
-  "legacy-cache",
-]);
+export { SEEDED_SCENARIOS };
 
 /** Where an unseeded scenario's state comes from. Informational, for the refusal message. */
-const SEEDED_BY: Record<string, string> = {
-  "long-labels": "T21 (text scaling)",
-};
+const SEEDED_BY: Record<string, string> = {};
 
 export class UnknownScenarioError extends Error {
   constructor(id: string | null) {
@@ -275,7 +242,7 @@ function savedWatches(id: string, rows: readonly SyntheticRow[], now: Date): Rec
 const scenarios: readonly FixtureScenario[] = manifest.scenarios;
 
 /** Scenarios that open on results a previous launch saved: nothing is fetched to show them. */
-const SAVED_RESULTS: ReadonlySet<string> = new Set(["inflight-old", "failed-old", "missing-values", "partial", "coverage-unknown", "legacy-cache", "ai-pending", "ai-stale", "ai-stopped"]);
+const SAVED_RESULTS: ReadonlySet<string> = new Set(["inflight-old", "failed-old", "missing-values", "partial", "coverage-unknown", "legacy-cache", "ai-pending", "ai-stale", "ai-stopped", "long-labels"]);
 
 /**
  * `ai-stopped`: a conversation saved by an earlier launch whose one question was stopped while its request to

@@ -104,7 +104,7 @@ export function CalendarView({ snapshot, projected, sort, cabin: chosen, now, on
       ) : null}
       {months.map(([month, monthDays]) => (
         <section key={month} className="ag-ws-month" aria-label={monthLabel(month, locale)}>
-          <h3 className="ag-ws-month-title">{monthLabel(month, locale)}</h3>
+          <h2 className="ag-ws-month-title">{monthLabel(month, locale)}</h2>
           <div className="ag-ws-weekdays" aria-hidden>
             {heads.map((h) => (
               <span key={h.day}>{h.short}</span>

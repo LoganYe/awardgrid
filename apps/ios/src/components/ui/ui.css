@@ -319,11 +319,17 @@
   display: inline-flex;
   flex-direction: column;
   align-items: center;
+  /* Shrinks to its third and wraps inside it at large text, rather than drawing into the next label (T21 review SIZE-3). */
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .ag-segment-label::after {
   /* Empty alternative text: the copy is never read out (a browser without the syntax drops only the ghost). */
   content: attr(data-text) / "";
+  max-width: 100%;
+  overflow-wrap: anywhere;
   height: 0;
   overflow: hidden;
   visibility: hidden;
@@ -430,6 +436,12 @@
   line-height: max(var(--ag-leading-body), calc(24px * var(--ag-text-scale)));
 }
 
+/* A closed select cannot be scrolled: a value longer than the field (a long cabin rule at large text on a narrow screen)
+   ends in an ellipsis, as the Web's does (T19), and the picker shows every option whole (T21 review 2 CLOSE-2; U-056). */
+select.ag-input {
+  text-overflow: ellipsis;
+}
+
 textarea.ag-input {
   padding: var(--ag-space-3);
   resize: vertical;
@@ -522,6 +534,8 @@ textarea.ag-input {
   width: 100%;
   max-height: calc(100dvh - env(safe-area-inset-top) - var(--ag-space-6));
   overflow-y: auto;
+  /* T21: reaching its end never scrolls what is behind it. */
+  overscroll-behavior: contain;
   padding: var(--ag-space-2) var(--ag-gutter) calc(var(--ag-space-6) + env(safe-area-inset-bottom));
   border-radius: var(--ag-radius-sheet) var(--ag-radius-sheet) 0 0;
   background: var(--ag-surface);

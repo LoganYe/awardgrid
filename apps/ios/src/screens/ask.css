@@ -77,6 +77,8 @@
   min-height: 64px;
   max-height: calc((100dvh - var(--ag-keyboard-inset, 0px)) * 0.3);
   overflow-y: auto;
+  /* T21: reaching its end never scrolls what is behind it. */
+  overscroll-behavior: contain;
   padding: var(--ag-space-3) var(--ag-gutter);
   border-bottom: 1px solid var(--ag-divider);
   background: var(--ag-surface-subtle);
@@ -125,6 +127,9 @@
   /* Some of the conversation always shows, whatever else the column holds. */
   min-height: 96px;
   overflow-y: auto;
+  /* The containing block of the screen's visually hidden status text, so it stays inside this scroll area and never
+     makes the document taller than the screen: the shell's document never scrolls (T21 review 2 REACH-1). */
+  position: relative;
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;

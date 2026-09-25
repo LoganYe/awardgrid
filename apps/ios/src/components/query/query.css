@@ -48,11 +48,20 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* The containing block of the screen's visually hidden status text, so it stays inside this scroll area and never
+     makes the document taller than the screen: the shell's document never scrolls (T21 review 2 REACH-1). */
+  position: relative;
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: var(--ag-space-5);
   padding: var(--ag-space-4) var(--ag-gutter) var(--ag-space-6);
+}
+
+/* The editor's rows keep their height and grow with their words: the body scrolls instead of squeezing a row to 44 and
+   letting a wrapped value hang over its divider (T21 review 2 REACH-2). */
+.query-editor-body > * {
+  flex-shrink: 0;
 }
 
 .query-editor-intro {
@@ -105,6 +114,8 @@
   padding: var(--ag-space-1) 0;
   max-height: calc((var(--ag-touch-target) + var(--ag-space-3)) * 5);
   overflow-y: auto;
+  /* T21: reaching its end never scrolls what is behind it. */
+  overscroll-behavior: contain;
   list-style: none;
   border: 1px solid var(--ag-divider);
   border-radius: var(--ag-radius-control);

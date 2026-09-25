@@ -735,6 +735,7 @@ export const en = {
   "workspace.commands": "Commands",
   "workspace.palette_search": "Type a command",
   "workspace.palette_empty": "No matching command.",
+  "workspace.palette_unavailable": "Not available now",
   "workspace.palette_note": "Only this page's own actions. A search runs only through Find.",
   "workspace.cmd.focus_query": "Focus the query",
   "workspace.cmd.view_list": "Show as a list",

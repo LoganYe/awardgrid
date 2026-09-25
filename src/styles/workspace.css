@@ -12,6 +12,9 @@
 
 .ag-ws,
 .ag-ws-tokens {
+  /* Unitless, so every element's lines follow its own (scaled) type; the body's fixed 20px would let larger text
+     draw over the next line (T21 review SIZE-1, REG-2). Rules below pair each type token with its leading token. */
+  line-height: 1.4;
   --bg: var(--ag-surface);
   --bg-raised: var(--ag-surface-subtle);
   --line: var(--ag-divider);
@@ -27,7 +30,8 @@
 
 .ag-ws {
   display: grid;
-  grid-template-columns: var(--ag-nav-rail) minmax(0, 1fr);
+  /* 72 at the default text size; with larger text the rail grows to its labels rather than cutting them (T21, A35). */
+  grid-template-columns: minmax(var(--ag-nav-rail), max-content) minmax(0, 1fr);
   /* The root <main> pads the page; the workspace runs edge to edge under the header. */
   margin: -16px calc(-1 * var(--gutter)) -16px;
   min-height: calc(100dvh - var(--topbar-height) - var(--footer-height));
@@ -68,7 +72,9 @@
   gap: 2px;
   min-height: 56px;
   width: 100%;
-  padding: var(--ag-space-1) 0;
+  min-width: 0;
+  padding: var(--ag-space-1) var(--ag-space-1);
+  overflow-wrap: anywhere;
   border: 0;
   border-radius: var(--ag-radius-control);
   background: transparent;
@@ -125,6 +131,7 @@
 
 .ag-ws-title {
   margin: 0;
+  line-height: var(--ag-leading-compact-title);
   font-size: var(--ag-type-compact-title);
   line-height: var(--ag-leading-compact-title);
   font-weight: var(--ag-weight-title);
@@ -132,7 +139,9 @@
 
 .ag-ws-head-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--ag-space-2);
+  max-width: 100%;
 }
 
 .ag-ws-query {
@@ -299,6 +308,7 @@
   background: var(--ag-surface);
   color: var(--ag-text);
   font: inherit;
+  line-height: var(--ag-leading-control);
   font-size: var(--ag-type-control);
   font-weight: var(--ag-weight-label);
   white-space: nowrap;
@@ -460,6 +470,8 @@
   width: 280px;
   max-height: 360px;
   overflow: auto;
+  /* T21: reaching its end never scrolls what is behind it. */
+  overscroll-behavior: contain;
   margin: 0;
   padding: var(--ag-space-2);
   border: 1px solid var(--ag-divider);
@@ -470,6 +482,8 @@
 
 .ag-ws-segmented {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   padding: 2px;
   border-radius: var(--ag-radius-control);
   background: var(--ag-surface-subtle);
@@ -483,6 +497,7 @@
   background: transparent;
   color: var(--ag-text-secondary);
   font: inherit;
+  line-height: var(--ag-leading-control);
   font-size: var(--ag-type-control);
   cursor: pointer;
 }
@@ -556,6 +571,8 @@
   /* Positioned, so an absolutely placed screen-reader label inside is clipped here, never widening the page (LAY-5). */
   position: relative;
   overflow-x: auto;
+  /* T21: a sideways swipe at its edge stays here, never the page's (or the browser's back gesture). */
+  overscroll-behavior-x: contain;
   border: 1px solid var(--ag-divider);
   border-radius: var(--ag-radius-card-desktop);
   background: var(--ag-surface);
@@ -649,6 +666,8 @@
 .ag-ws-matrix-scroll {
   position: relative;
   overflow-x: auto;
+  /* T21: a sideways swipe at its edge stays here, never the page's (or the browser's back gesture). */
+  overscroll-behavior-x: contain;
   border: 1px solid var(--ag-divider);
   border-radius: var(--ag-radius-card-desktop);
   background: var(--ag-surface);
@@ -764,6 +783,8 @@
 
 .ag-ws-month {
   container-type: inline-size;
+  /* The month's own type sets the em its query below is measured in, so the switch to a list follows the text. */
+  font-size: var(--ag-type-body);
   padding: var(--ag-space-4);
   border: 1px solid var(--ag-divider);
   border-radius: var(--ag-radius-card-desktop);
@@ -840,7 +861,9 @@
 }
 
 /* Too narrow for seven readable columns (a phone, or large text): an accessible list of dates, each a full row (LAY-12). */
-@container (max-width: 480px) {
+/* 34em of the month's (scaled) body type: 476 at 100% text; at 160% and 200% even a 768 page gets the list, where seven
+   columns would push "no matches" into the next day (T21 review A11Y-1). */
+@container (max-width: 34em) {
   .ag-ws-weekdays,
   .ag-ws-day-blank,
   .ag-ws-day-number {
@@ -960,6 +983,8 @@
   margin: 0;
   padding: var(--ag-space-1);
   overflow-y: auto;
+  /* T21: reaching its end never scrolls what is behind it. */
+  overscroll-behavior: contain;
   list-style: none;
 }
 
@@ -976,11 +1001,20 @@
 
 .ag-ws-palette-option[aria-selected="true"] {
   background: var(--ag-accent-soft);
+  /* A ring as well as the tint: the tint alone is 1.1–1.3:1 against the palette (T21 review A11Y-2, WCAG 1.4.11). */
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
 }
 
 .ag-ws-palette-option[aria-disabled="true"] {
   color: var(--ag-text-muted);
   cursor: default;
+}
+
+.ag-ws-palette-unavailable {
+  margin-left: auto;
+  font-size: var(--ag-type-meta);
+  color: var(--ag-text-muted);
 }
 
 .ag-ws-palette-empty,
@@ -1022,7 +1056,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    /* Exactly the space kept below the footer: the line is a shadow, not a border that would add a pixel. */
+    /* Exactly the space kept below the footer: the line is a shadow, not a border that would add a pixel. Its labels
+       stop at 13 (below), so it keeps its height at any text size and never takes more of the screen. */
     height: calc(var(--ag-tabbar-height) + env(safe-area-inset-bottom));
     box-sizing: border-box;
     border-right: 0;
@@ -1030,23 +1065,44 @@
   }
   .ag-ws-rail-inner {
     position: static;
-    flex-direction: row;
+    /* Five equal slots whatever the labels' length; a long one wraps inside its own (T21, A35). */
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     height: auto;
     padding: var(--ag-space-1) var(--ag-space-1) calc(var(--ag-space-1) + env(safe-area-inset-bottom));
   }
   .ag-ws-rail-top,
   .ag-ws-rail-foot {
-    flex-direction: row;
-    flex: 1 1 auto;
+    display: contents;
   }
-  .ag-ws-rail-top {
-    flex-grow: 3;
+  .ag-ws-rail-item span {
+    max-width: 100%;
+    text-align: center;
+    /* A tab label stops growing at 13, as the iOS shell's does: five slots share 320, and "Settings" fits whole
+       (T21 review SIZE-7). The page's own text still scales; the bar's words stay one line. */
+    font-size: min(var(--ag-type-label), 13px);
+    line-height: 1.25;
+    overflow-wrap: normal;
   }
-  .ag-ws-rail-foot {
-    flex-grow: 2;
+  /* Controls' own words wrap rather than widen the page at large text (T21, A35). */
+  .ag-ws-button,
+  .ag-ws-segment,
+  .ag-ws-toggle {
+    white-space: normal;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  .ag-ws-segmented {
+    display: flex;
+    width: 100%;
+  }
+  .ag-ws-segment {
+    flex: 1 1 0;
   }
   .ag-ws-rail-item {
     min-height: var(--ag-touch-target);
+    padding: 2px;
   }
   .ag-ws-body {
     padding: var(--ag-space-4);
@@ -1070,6 +1126,11 @@
   }
   .ag-ws-dates > span {
     display: none;
+  }
+  /* A native date field cannot shrink below its own text: at large text on a phone its type is capped by the screen's
+     width, so the whole date stays visible rather than widening the page or being cut (T21, A35). */
+  .ag-ws-dates .ag-ws-input {
+    font-size: min(var(--ag-type-control), 7.5vw);
   }
   /* Keyboard hints belong to a keyboard; below 768 the controls speak for themselves. */
   .ag-ws-kbd {
@@ -1142,6 +1203,8 @@
 .ag-web-option-time {
   margin: 0;
   color: var(--fg-muted);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
 }
 
 .ag-web-notice {
@@ -1178,33 +1241,43 @@
 
 .ag-web-option-route {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
   font-weight: 600;
 }
 
 .ag-web-option-miles {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--ag-type-miles);
+  line-height: var(--ag-leading-miles);
   font-weight: 600;
 }
 
 .ag-web-option-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
 }
 
 .ag-web-button {
   display: inline-flex;
+  /* A button keeps its words whole and moves to the next line when two do not fit; only a label wider than the whole
+     line wraps inside it (T21: "查看选/项" at 200%). */
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   min-height: 44px;
+  max-width: 100%;
   padding: 0 16px;
+  overflow-wrap: anywhere;
   border-radius: 8px;
   border: 1px solid var(--line-strong);
   background: var(--bg);
   color: var(--fg);
   font: inherit;
+  font-size: var(--ag-type-control);
+  line-height: var(--ag-leading-control);
   cursor: pointer;
 }
 

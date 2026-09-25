@@ -57,6 +57,8 @@ export function ListView({ snapshot, rows, sort, now, onSort, label, testId = "a
               busy={actions.savingKey === row.key || actions.readOnly}
               onSave={() => actions.onSave(row.key)}
               onOpen={(opener) => actions.onOpen(row.key, opener)}
+              // Under the page's title in the main list; under a cell's or day's heading in a subset.
+              headingLevel={label ? 3 : 2}
             />
           </li>
         ))}

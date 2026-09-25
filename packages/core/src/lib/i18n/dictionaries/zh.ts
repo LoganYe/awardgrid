@@ -697,6 +697,7 @@ export const zh: Record<keyof typeof en, string> = {
   "workspace.commands": "命令",
   "workspace.palette_search": "输入命令",
   "workspace.palette_empty": "没有匹配的命令。",
+  "workspace.palette_unavailable": "当前不可用",
   "workspace.palette_note": "只包含本页操作。查询只能通过“查找”运行。",
   "workspace.cmd.focus_query": "聚焦查询条件",
   "workspace.cmd.view_list": "以列表显示",

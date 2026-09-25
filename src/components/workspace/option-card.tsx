@@ -20,18 +20,21 @@ export interface OptionCardProps {
   onSave: () => void;
   /** T19: open the option's details (local; nothing is fetched). */
   onOpen?: (opener: HTMLElement) => void;
+  /** T21: the card's heading level, one below the heading it sits under (the page's h1, or a cell's or day's h2). */
+  headingLevel?: 2 | 3;
 }
 
-export function OptionCard({ row, snapshotId, locale, now, saved, busy, onSave, onOpen }: OptionCardProps) {
+export function OptionCard({ row, snapshotId, locale, now, saved, busy, onSave, onOpen, headingLevel = 3 }: OptionCardProps) {
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   const t = useT();
   const v = row.value;
   const miles = locale === "zh" ? `${formatMiles(v.miles)} 里程` : `${formatMiles(v.miles)} miles`;
   return (
     <article className="ag-web-option" data-row-key={row.key} data-snapshot-id={snapshotId}>
       <div className="ag-web-option-main">
-        <h3 className="ag-web-option-route">
+        <Heading className="ag-web-option-route">
           {v.origin} → {v.dest}
-        </h3>
+        </Heading>
         <p className="ag-web-option-meta">
           {dayLabel(v.date, locale)} · {cabinName(v.cabin, locale)} · {programLabel(v.program)}
         </p>

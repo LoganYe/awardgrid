@@ -122,6 +122,7 @@ function Palette({ commands, onRun, onClose }: Omit<CommandPaletteProps, "open">
               onClick={() => run(command)}
             >
               <span>{command.label}</span>
+              {command.disabled ? <span className="ag-ws-palette-unavailable">{t("workspace.palette_unavailable")}</span> : null}
               {command.hint ? (
                 <kbd className="ag-ws-kbd" aria-hidden>
                   {command.hint}

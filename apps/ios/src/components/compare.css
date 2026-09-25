@@ -103,6 +103,9 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* The containing block of the screen's visually hidden status text, so it stays inside this scroll area and never
+     makes the document taller than the screen: the shell's document never scrolls (T21 review 2 REACH-1). */
+  position: relative;
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;

@@ -234,15 +234,30 @@ export function SearchScreen() {
   const filtersRef = useRef<HTMLDivElement>(null);
   // The sticky header and summary's real height (it grows with a long route or larger text; 0 when landscape makes
   // it static), for the page's scroll padding and the matrix's height (results.css --results-sticky-h).
+  // docs/04 S01: at large text the header is measured, and stops being sticky rather than cover the results. Where it
+  // would take more than 40% of the screen's scroll area (a short screen, large text, the compare bar up), it scrolls
+  // away with them (T21 review 2 REACH-3). The scroll area is watched too: the compare bar appearing shrinks it.
+  // The bar is taller with one option chosen than with two (it says why it cannot compare yet), so once static the
+  // header returns to sticky only below 30%: a second pick never pins it back over the box just chosen (review 3
+  // REGR-1). If it does return, whatever has focus in the results is brought out from under it.
   const stickyRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = stickyRef.current;
     const main = el?.closest<HTMLElement>(".app-main");
     if (!el || !main) return;
-    const measure = () => main.style.setProperty("--results-sticky-h", `${getComputedStyle(el).position === "sticky" ? el.offsetHeight : 0}px`);
+    const measure = () => {
+      const share = el.offsetHeight / Math.max(1, main.clientHeight);
+      const wasStatic = el.hasAttribute("data-static");
+      const isStatic = wasStatic ? share > 0.3 : share > 0.4;
+      el.toggleAttribute("data-static", isStatic);
+      main.style.setProperty("--results-sticky-h", `${getComputedStyle(el).position === "sticky" ? el.offsetHeight : 0}px`);
+      const focused = document.activeElement;
+      if (wasStatic && !isStatic && focused instanceof HTMLElement && main.contains(focused) && !el.contains(focused)) focused.scrollIntoView({ block: "nearest" });
+    };
     measure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     observer?.observe(el);
+    observer?.observe(main);
     window.addEventListener("resize", measure);
     return () => {
       observer?.disconnect();
