@@ -110,11 +110,11 @@ test.describe("queries page", () => {
     const nameWidth = () => table.getByRole("columnheader", { name: en["saved.name"], exact: true }).evaluate((el) => el.getBoundingClientRect().width);
     const before = await nameWidth();
     expect(before).toBeGreaterThan(0);
-    // The zh readings include each column's widest in Chinese: "这一时间 / 此时" is how Chromium
-    // words zh "now", a run less than half a second away on either side.
+    // The zh readings are each column's widest in Chinese, plus zh "now", which Chromium words
+    // "现在" as Node does.
     const columns = [
-      { header: en["saved.last_run"], cell: row.locator("td:nth-child(4) span").first(), readings: ["now", "55 seconds ago", "1 minute ago", "22 minutes ago", "3 hours ago", "12 days ago", "55秒钟前", "这一时间 / 此时"] },
-      { header: en["saved.next_run"], cell: row.locator("td:nth-child(5)"), readings: ["due now", "in 55 seconds", "in 1 minute", "in 22 minutes", "in 3 hours", "已到运行时间", "这一时间 / 此时"] },
+      { header: en["saved.last_run"], cell: row.locator("td:nth-child(4) span").first(), readings: ["now", "55 seconds ago", "1 minute ago", "22 minutes ago", "3 hours ago", "12 days ago", "55秒钟前", "现在"] },
+      { header: en["saved.next_run"], cell: row.locator("td:nth-child(5)"), readings: ["due now", "in 55 seconds", "in 1 minute", "in 22 minutes", "in 3 hours", "已到运行时间", "现在"] },
     ];
     for (const { header, cell, readings } of columns) {
       for (const reading of readings) {

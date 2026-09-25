@@ -62,7 +62,7 @@
    a floor that ignores them (96 px did) moves the columns in the minute before a run and the
    minute after one. Last run: "55 seconds ago" is 99.1 px (the result line under it can be wider,
    but that changes when a run does, not with the clock). Next run only looks forward: "in 55
-   seconds" is 86.8 px, and Chromium words zh "now" as "这一时间 / 此时", 89.7 px. */
+   seconds" is 86.8 px. */
 .aq-table > thead > tr > th:nth-child(4),
 .aq-table > tbody > tr > td:nth-child(4) {
   min-width: 116px;
