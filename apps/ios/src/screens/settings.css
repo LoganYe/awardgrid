@@ -303,3 +303,48 @@
 .ag-settings .settings-fail {
   color: var(--ag-danger);
 }
+
+/* Rows under a block of text in the same card (About, release D7): a divider between the two. */
+.ag-settings-block + .ag-settings-row {
+  border-top: 1px solid var(--ag-divider);
+}
+
+/*
+ * Acknowledgements: one card per package, its license folded until opened. License texts are preformatted English;
+ * they wrap rather than scroll sideways.
+ */
+.ag-ack-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ag-ack summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--ag-space-2);
+  min-height: var(--ag-touch-target);
+  padding: var(--ag-space-3) var(--ag-space-4);
+  cursor: pointer;
+}
+
+.ag-ack-name {
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.ag-ack-text {
+  margin: 0;
+  padding: 0 var(--ag-space-4) var(--ag-space-4);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ag-text-secondary);
+}

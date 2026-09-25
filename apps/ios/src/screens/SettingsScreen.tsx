@@ -11,6 +11,8 @@
  *   - **Appearance and language** apply at once, keep whatever task is on screen, and are saved on this device
  *     (app/settings-store.ts).
  *   - **Local data**: clearing cached results touches nothing else.
+ *   - **About**: what goes where, "Data: seats.aero", the non-affiliation sentence, and the privacy policy and support
+ *     pages (opened in Safari) and the open-source licenses (release D7, handoff §3.5).
  *
  * The keys' discipline is unchanged (LEGAL.md "Credentials"): a key is never rendered, logged, or shown beyond its last
  * four characters, and a Keychain failure is a failure, never painted like a success.
@@ -24,6 +26,7 @@ import { WithTail } from "../app/WithTail";
 import { useFocusOnArrival } from "../app/focus";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import type { KeyCheckResult } from "../ask/ask-service";
+import { PRIVACY_POLICY_URL, SUPPORT_URL } from "../app/links";
 import { CONSENT } from "../ask/consent-copy";
 import { PRICING_URL } from "../ask/labels";
 import { Button, Icon, Sheet, type ThemePreference } from "../components/ui";
@@ -209,7 +212,7 @@ function useLast4(store: KeyStore): [string | null | undefined, (value: string |
 }
 
 /** Back to Settings, where focus returns to the row this page was opened from. */
-function BackToSettings({ label, from }: { label: string; from: "seats" | "anthropic" }) {
+export function BackToSettings({ label, from }: { label: string; from: "seats" | "anthropic" | "acknowledgements" }) {
   return (
     <Link to="/settings" state={{ focus: `settings-row-${from}` }} className="ag-settings-back">
       <Icon name="chevron-left" />
@@ -298,7 +301,29 @@ export function SettingsScreen() {
         <div className="ag-settings-block">
           <p className="ag-settings-copy">{t.aboutSent}</p>
           <p className="ag-settings-copy ag-settings-muted">{t.aboutData}</p>
+          <p className="ag-settings-copy ag-settings-muted">{t.notAffiliated}</p>
         </div>
+        {/* The site's pages open in Safari; nothing is sent to that site from the app. */}
+        <a id="settings-row-privacy" className="ag-settings-row" href={PRIVACY_POLICY_URL} target="_blank" rel="noreferrer noopener">
+          <span className="ag-settings-row-main">
+            <span className="ag-settings-row-label">{t.privacy}</span>
+          </span>
+          <span className="sr-only">{t.opensInSafari}</span>
+          <Icon name="external" />
+        </a>
+        <a id="settings-row-support" className="ag-settings-row" href={SUPPORT_URL} target="_blank" rel="noreferrer noopener">
+          <span className="ag-settings-row-main">
+            <span className="ag-settings-row-label">{t.support}</span>
+          </span>
+          <span className="sr-only">{t.opensInSafari}</span>
+          <Icon name="external" />
+        </a>
+        <Link id="settings-row-acknowledgements" to="/settings/acknowledgements" className="ag-settings-row">
+          <span className="ag-settings-row-main">
+            <span className="ag-settings-row-label">{t.acknowledgements.title}</span>
+          </span>
+          <Icon name="chevron-right" />
+        </Link>
       </Group>
     </div>
   );
