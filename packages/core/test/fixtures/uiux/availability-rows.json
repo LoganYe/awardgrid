@@ -1,0 +1,127 @@
+{
+  "synthetic": true,
+  "now": "2026-10-18T08:30:00Z",
+  "query": {
+    "origins": [
+      "HKG"
+    ],
+    "destinations": [
+      "SEA"
+    ],
+    "date_from": "2026-10-01",
+    "date_to": "2026-10-30",
+    "cabins": [
+      "J",
+      "F"
+    ],
+    "programs": [
+      "aeroplan"
+    ],
+    "direct_only": false,
+    "include_filtered": false,
+    "min_cabin_pct": 100,
+    "sort_by": "miles_asc",
+    "raw_text": "Synthetic HKG to SEA October business and first",
+    "language": "en"
+  },
+  "rows": [
+    {
+      "program": "aeroplan",
+      "origin": "HKG",
+      "dest": "SEA",
+      "date": "2026-10-18",
+      "cabin": "J",
+      "miles": 75000,
+      "fees_cents": null,
+      "currency": null,
+      "seats_left": 0,
+      "direct": true,
+      "airlines": [
+        "ZZ"
+      ],
+      "computed_last_seen": "2026-10-17T06:00:00Z",
+      "source_id": "synthetic-hkg-sea-option",
+      "booking_url": null,
+      "fetched_at": "2026-10-18T08:00:00Z",
+      "include_filtered": false,
+      "min_cabin_pct": 100
+    },
+    {
+      "program": "aeroplan",
+      "origin": "HKG",
+      "dest": "SEA",
+      "date": "2026-10-18",
+      "cabin": "F",
+      "miles": 110000,
+      "fees_cents": null,
+      "currency": null,
+      "seats_left": 0,
+      "direct": true,
+      "airlines": [
+        "ZZ"
+      ],
+      "computed_last_seen": "2026-10-17T06:00:00Z",
+      "source_id": "synthetic-hkg-sea-option",
+      "booking_url": null,
+      "fetched_at": "2026-10-18T08:00:00Z",
+      "include_filtered": false,
+      "min_cabin_pct": 100
+    },
+    {
+      "program": "aeroplan",
+      "origin": "HKG",
+      "dest": "SEA",
+      "date": "2026-10-19",
+      "cabin": "J",
+      "miles": 68000,
+      "fees_cents": 8620,
+      "currency": "USD",
+      "seats_left": 2,
+      "direct": true,
+      "airlines": [
+        "ZZ"
+      ],
+      "computed_last_seen": "2026-10-17T06:00:00Z",
+      "source_id": "synthetic-hkg-sea-second",
+      "booking_url": null,
+      "fetched_at": "2026-10-18T08:00:00Z",
+      "include_filtered": false,
+      "min_cabin_pct": 100
+    },
+    {
+      "program": "aeroplan",
+      "origin": "HKG",
+      "dest": "SEA",
+      "date": "2026-10-20",
+      "cabin": "J",
+      "miles": 82000,
+      "fees_cents": 0,
+      "currency": "USD",
+      "seats_left": 1,
+      "direct": true,
+      "airlines": [
+        "ZZ"
+      ],
+      "computed_last_seen": "2026-10-17T06:00:00Z",
+      "source_id": "synthetic-hkg-sea-zero-fees",
+      "booking_url": null,
+      "fetched_at": "2026-10-18T08:00:00Z",
+      "include_filtered": false,
+      "min_cabin_pct": 100
+    }
+  ],
+  "timeEvidence": [
+    {
+      "providerLastSeen": "2026-10-17T06:00:00Z",
+      "providerUpdatedAt": null,
+      "fetchedAt": "2026-10-18T08:00:00Z",
+      "expectedBasis": "provider_last_seen"
+    },
+    {
+      "providerLastSeen": null,
+      "providerUpdatedAt": null,
+      "fetchedAt": "2026-10-18T08:00:00Z",
+      "expectedBasis": "local_fallback"
+    }
+  ]
+}

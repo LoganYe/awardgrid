@@ -40,6 +40,11 @@ export interface AskDrawerProps {
   cell: AskCellContext | null;
   /** Whether the user has a seats.aero key on file (server-rendered, like the grid). */
   hasKey: boolean;
+  /**
+   * UI/UX v1 T19, the workspace's assistant panel: its title (the approved "AI assistance"), width (360), the column it
+   * docks into at ≥ 1280, its test id, and a full-height page below 768 (S10). The grid passes none of these.
+   */
+  panel?: { title: string; width: number; container: HTMLElement | null; testId: string; className?: string; opener?: HTMLElement | null };
 }
 
 type Phase = "idle" | "streaming" | "done";
@@ -128,7 +133,7 @@ function Turn({ prompt, text, tools, streaming, defaultExpanded }: { prompt: str
   );
 }
 
-export function AskDrawer({ open, onOpenChange, query, cell, hasKey }: AskDrawerProps) {
+export function AskDrawer({ open, onOpenChange, query, cell, hasKey, panel }: AskDrawerProps) {
   const t = useT();
   const locale = useLocale();
   const [prompt, setPrompt] = useState("");
@@ -438,12 +443,15 @@ export function AskDrawer({ open, onOpenChange, query, cell, hasKey }: AskDrawer
     <DrawerShell
       open={open}
       onClose={() => onOpenChange(false)}
-      title={t("ask.title")}
+      title={panel?.title ?? t("ask.title")}
       subtitle={<p className="t-meta text-fg-muted">{t("ask.subtitle")}</p>}
-      width={ASK_DRAWER_WIDTH}
-      mobile="bottom-sheet"
+      width={panel?.width ?? ASK_DRAWER_WIDTH}
+      mobile={panel ? "sheet" : "bottom-sheet"}
+      container={panel?.container}
+      opener={panel?.opener}
+      className={panel?.className}
       footer={footer}
-      data-testid="ask-drawer"
+      data-testid={panel?.testId ?? "ask-drawer"}
     >
       <div className="flex flex-col gap-3">
         <ContextPills

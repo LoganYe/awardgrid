@@ -40,6 +40,8 @@ import {
   type CacheQuery,
   type CachedRows,
   type CoverageRecord,
+  type CoverageRecordEvidence,
+  readRecordEvidence,
 } from "@awardgrid/core/seatsaero/cache";
 
 // ---------------------------------------------------------------------------
@@ -220,6 +222,12 @@ function toRow(r: AvailabilityCacheRow): AvailabilityRow {
   };
   // Only present when true, matching what normalize() produces and what callers compare against.
   if (include_filtered) row.include_filtered = true;
+  // Only present when recorded by the write that produced these values (see decodeTimeEvidence).
+  const evidence = decodeTimeEvidence(r.timeEvidence, r.fetchedAt);
+  if (evidence) {
+    row.time_basis = evidence.basis;
+    if (evidence.updated !== null) row.provider_updated_at = evidence.updated;
+  }
   // Same rule for the default 100: absent, exactly as normalize() leaves it.
   if (min_cabin_pct !== DEFAULT_MIN_CABIN_PCT) row.min_cabin_pct = min_cabin_pct;
   return row;
@@ -243,11 +251,66 @@ function toInsert(userId: string, r: AvailabilityRow): typeof availabilityCache.
     sourceId: r.source_id,
     bookingUrl: r.booking_url,
     fetchedAt: r.fetched_at,
+    timeEvidence: encodeTimeEvidence(r),
   };
 }
 
+/** The coverage evidence column: null when the record carries none (written before UI/UX v1 T03). */
+export function encodeCoverageEvidence(r: Pick<CoverageRecord, "evidence" | "fetched_at">): string | null {
+  const evidence = readRecordEvidence(r.evidence);
+  return evidence ? JSON.stringify({ ...evidence, at: r.fetched_at }) : null;
+}
+
+/** The weaker of two cells' evidence: none beats partial beats complete. */
+function weakerEvidence(a: CoverageRecordEvidence | null, b: CoverageRecordEvidence | null): CoverageRecordEvidence | null {
+  if (a === null || b === null) return null;
+  if (a.state === "partial") return a;
+  return b;
+}
+
+/** Parse the coverage evidence column; malformed, or written for another fetch than the cell's, is none. */
+export function decodeCoverageEvidence(json: string | null, fetchedAt: string): CoverageRecordEvidence | null {
+  if (!json) return null;
+  try {
+    const v: unknown = JSON.parse(json);
+    if (typeof v !== "object" || v === null || (v as { at?: unknown }).at !== fetchedAt) return null;
+    return readRecordEvidence(v);
+  } catch {
+    return null;
+  }
+}
+
+const TIME_BASES: ReadonlySet<string> = new Set(["provider_last_seen", "provider_updated", "local_fallback"]);
+
+/** The time_evidence column: null when the row recorded no provenance (a row from before UI/UX v1 T02). */
+export function encodeTimeEvidence(r: Pick<AvailabilityRow, "time_basis" | "provider_updated_at" | "fetched_at">): string | null {
+  if (!r.time_basis) return null;
+  return JSON.stringify({ basis: r.time_basis, updated: r.provider_updated_at ?? null, at: r.fetched_at });
+}
+
+/**
+ * Parse the time_evidence column. Anything malformed, or written for a different fetch than the row's current
+ * fetched_at (an older build rewrote the values without knowing this column), is no evidence at all.
+ */
+export function decodeTimeEvidence(
+  json: string | null,
+  fetchedAt: string,
+): { basis: NonNullable<AvailabilityRow["time_basis"]>; updated: string | null } | null {
+  if (!json) return null;
+  try {
+    const v: unknown = JSON.parse(json);
+    if (typeof v !== "object" || v === null) return null;
+    const { basis, updated, at } = v as Record<string, unknown>;
+    if (typeof basis !== "string" || !TIME_BASES.has(basis) || at !== fetchedAt) return null;
+    if (updated !== null && typeof updated !== "string") return null;
+    return { basis: basis as NonNullable<AvailabilityRow["time_basis"]>, updated };
+  } catch {
+    return null;
+  }
+}
+
 /** SQLite's bound-parameter ceiling is 32,766; keep multi-row statements well under it. */
-const ROW_CHUNK = 400; // 16 columns
+const ROW_CHUNK = 400; // 17 columns
 const COVERAGE_CHUNK = 1000; // 7 columns
 
 function chunks<T>(items: readonly T[], size: number): T[][] {
@@ -322,6 +385,68 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
     return and(...conds);
   }
 
+
+  /** The statements behind putRows/deleteRows/markPairsFetched, runnable inside one caller's transaction. */
+  type Writer = Pick<Db, "insert" | "delete">;
+
+  function removeRows(w: Writer, userId: string, q: CacheQuery): void {
+    const where = scopeWhere(userId, q);
+    if (!where) return;
+    w.delete(t).where(where).run();
+  }
+
+  function writeRows(w: Writer, userId: string, rows: readonly AvailabilityRow[]): void {
+    const values = rows.map((r) => toInsert(userId, r));
+    for (const chunk of chunks(values, ROW_CHUNK)) {
+      w.insert(t)
+        .values(chunk)
+        .onConflictDoUpdate({
+          target: [t.userId, t.program, t.origin, t.dest, t.date, t.cabin],
+          set: {
+            miles: sql`excluded.miles`,
+            feesCents: sql`excluded.fees_cents`,
+            currency: sql`excluded.currency`,
+            seatsLeft: sql`excluded.seats_left`,
+            direct: sql`excluded.direct`,
+            airlines: sql`excluded.airlines`,
+            computedLastSeen: sql`excluded.computed_last_seen`,
+            sourceId: sql`excluded.source_id`,
+            bookingUrl: sql`excluded.booking_url`,
+            fetchedAt: sql`excluded.fetched_at`,
+            timeEvidence: sql`excluded.time_evidence`,
+          },
+        })
+        .run();
+    }
+  }
+
+  function writeCoverage(w: Writer, userId: string, records: readonly CoverageRecord[]): void {
+    const values: (typeof cacheCoverage.$inferInsert)[] = [];
+    for (const r of records) {
+      const key = encodeProgramsKey(r.programs, r.direct_only, r.include_filtered, r.min_cabin_pct);
+      for (const date of datesBetween(r.date_from, r.date_to)) {
+        for (const cabin of r.cabins) {
+          values.push({ userId, origin: r.origin, dest: r.dest, date, cabin, programsKey: key, fetchedAt: r.fetched_at, evidence: encodeCoverageEvidence(r) });
+        }
+      }
+    }
+    for (const chunk of chunks(values, COVERAGE_CHUNK)) {
+      w.insert(c)
+        .values(chunk)
+        .onConflictDoUpdate({
+          target: [c.userId, c.origin, c.dest, c.date, c.cabin, c.programsKey],
+          // Newest fetch wins; ISO-8601 UTC strings order lexicographically. SET expressions read the cell's OLD
+          // values. Evidence: a newer (or same-instant) fetch brings its own; an OLDER fetch that finishes later
+          // has just rewritten these rows, so unless it too proved completeness the cell keeps no evidence.
+          set: {
+            fetchedAt: sql`max(${c.fetchedAt}, excluded.fetched_at)`,
+            evidence: sql`CASE WHEN excluded.fetched_at >= ${c.fetchedAt} THEN excluded.evidence WHEN excluded.evidence IS NULL OR json_extract(excluded.evidence, '$.state') <> 'complete' THEN NULL ELSE ${c.evidence} END`,
+          },
+        })
+        .run();
+    }
+  }
+
   return {
     async getRows(userId, q): Promise<CachedRows> {
       assertUserId(userId);
@@ -384,36 +509,12 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
     async putRows(userId, rows) {
       assertUserId(userId);
       if (rows.length === 0) return;
-      const values = rows.map((r) => toInsert(userId, r));
-      db.transaction((tx) => {
-        for (const chunk of chunks(values, ROW_CHUNK)) {
-          tx.insert(t)
-            .values(chunk)
-            .onConflictDoUpdate({
-              target: [t.userId, t.program, t.origin, t.dest, t.date, t.cabin],
-              set: {
-                miles: sql`excluded.miles`,
-                feesCents: sql`excluded.fees_cents`,
-                currency: sql`excluded.currency`,
-                seatsLeft: sql`excluded.seats_left`,
-                direct: sql`excluded.direct`,
-                airlines: sql`excluded.airlines`,
-                computedLastSeen: sql`excluded.computed_last_seen`,
-                sourceId: sql`excluded.source_id`,
-                bookingUrl: sql`excluded.booking_url`,
-                fetchedAt: sql`excluded.fetched_at`,
-              },
-            })
-            .run();
-        }
-      });
+      db.transaction((tx) => writeRows(tx, userId, rows));
     },
 
     async deleteRows(userId, q) {
       assertUserId(userId);
-      const where = scopeWhere(userId, q);
-      if (!where) return;
-      db.delete(t).where(where).run();
+      removeRows(db, userId, q);
     },
 
     async getCoverage(userId, pairs): Promise<CoverageRecord[]> {
@@ -438,16 +539,23 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
         dest: string;
         key: string;
         fetched_at: string;
+        /** What the fetch proved, when it recorded it for this very fetched_at (see decodeCoverageEvidence). */
+        evidence: CoverageRecordEvidence | null;
         /** cabin → set of dates covered for that cabin */
         byCabin: Map<string, Set<string>>;
       }
       const groups = new Map<string, Group>();
       for (const r of rows) {
+        const evidence = decodeCoverageEvidence(r.evidence, r.fetchedAt);
+        // Grouping (and so folding, and so which queries are cache hits) is exactly as before evidence existed;
+        // a group's evidence is the weakest of its cells, so a folded rectangle never claims more than any cell.
         const gk = [r.origin, r.dest, r.programsKey, r.fetchedAt].join(" ");
         let g = groups.get(gk);
         if (!g) {
-          g = { origin: r.origin, dest: r.dest, key: r.programsKey, fetched_at: r.fetchedAt, byCabin: new Map() };
+          g = { origin: r.origin, dest: r.dest, key: r.programsKey, fetched_at: r.fetchedAt, evidence, byCabin: new Map() };
           groups.set(gk, g);
+        } else {
+          g.evidence = weakerEvidence(g.evidence, evidence);
         }
         let dates = g.byCabin.get(r.cabin);
         if (!dates) {
@@ -472,6 +580,7 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
           };
           if (decoded.include_filtered) rec.include_filtered = true;
           if (decoded.min_cabin_pct !== DEFAULT_MIN_CABIN_PCT) rec.min_cabin_pct = decoded.min_cabin_pct;
+          if (g.evidence) rec.evidence = g.evidence;
           out.push(rec);
         }
       }
@@ -487,27 +596,19 @@ export function createSqliteAvailabilityCache(db: Db): SqliteAvailabilityCache {
 
     async markPairsFetched(userId, records) {
       assertUserId(userId);
-      const values: (typeof cacheCoverage.$inferInsert)[] = [];
-      for (const r of records) {
-        const key = encodeProgramsKey(r.programs, r.direct_only, r.include_filtered, r.min_cabin_pct);
-        for (const date of datesBetween(r.date_from, r.date_to)) {
-          for (const cabin of r.cabins) {
-            values.push({ userId, origin: r.origin, dest: r.dest, date, cabin, programsKey: key, fetchedAt: r.fetched_at });
-          }
-        }
-      }
-      if (values.length === 0) return;
+      db.transaction((tx) => writeCoverage(tx, userId, records));
+    },
+
+    /**
+     * Delete the scope's rows, write the new ones and record coverage in ONE SQLite transaction (UI/UX v1 T03):
+     * a failure anywhere rolls all three back, so an earlier fetch's record never stands over rows that are gone.
+     */
+    async replaceScope(userId, scope, rows, records) {
+      assertUserId(userId);
       db.transaction((tx) => {
-        for (const chunk of chunks(values, COVERAGE_CHUNK)) {
-          tx.insert(c)
-            .values(chunk)
-            .onConflictDoUpdate({
-              target: [c.userId, c.origin, c.dest, c.date, c.cabin, c.programsKey],
-              // Newest fetch wins; ISO-8601 UTC strings order lexicographically.
-              set: { fetchedAt: sql`max(${c.fetchedAt}, excluded.fetched_at)` },
-            })
-            .run();
-        }
+        removeRows(tx, userId, scope);
+        if (rows.length > 0) writeRows(tx, userId, rows);
+        writeCoverage(tx, userId, records);
       });
     },
 

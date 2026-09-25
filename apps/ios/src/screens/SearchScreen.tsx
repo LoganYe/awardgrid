@@ -1,244 +1,593 @@
 /**
- * The search screen.
+ * The search screen: the shown results, and the way to a new search (UI/UX v1 T07; docs/04 S01; reference
+ * results-light.png / results-dark.png).
  *
- * Deliberately plain: PIVOT §6 puts the design system and the real grid components in Phase 3,
- * and the `ApiResult` contract in `src/search/search.ts` is what makes that a small diff rather
- * than a rewrite. What this screen does own is the honesty rules, which are not cosmetic:
+ * With results, the page is the S01 stack at the 390 pt default — header 52 (title, AI assistance), query summary 64
+ * (the SHOWN snapshot's query; it opens the editor), filters 44 (each opens the editor at its condition: changing a
+ * query condition is always an explicit submit), result view 44 (List, Calendar or Matrix, and the sort), status 28 (how many options, how fresh, the data attribution), 12 gap — then the view, and after
+ * it the actions (search again, watch, ask) and today's quota. Header and summary stay on screen while the list
+ * scrolls. Without results it is a text search and the way into the editor.
+ *
+ * All three views read one projection of the shown snapshot (T08, core projection.ts): the same rows, the same local
+ * filter and sort, one selection. Switching view, sort or calendar cabin is local — it never fetches.
+ *
+ * The honesty rules, which are not cosmetic:
  *
  *   - **No cancel button.** Phase 0 measured that `AbortSignal` does not cancel a native request
- *     (docs/PHASE0.md §3): the promise rejects, the request completes, the quota call is spent.
- *     A "Cancel" that implied the search had been called off would be a lie about the user's
- *     money, so the search is bounded by a native timeout instead and simply cannot be recalled.
- *   - **"Last checked", never "next check".** PIVOT §3: "Never print a next-run time." Nothing
- *     here promises a cadence, because iOS cannot honour one.
- *   - **Freshness is reported from the data**, not from when the button was pressed —
- *     `fetched_at_min` is the oldest row in the answer, so a cache hit says so honestly.
+ *     (docs/PHASE0.md §3): a "Cancel" that implied the search had been called off would be a lie about the user's
+ *     money, so a search is bounded by a native timeout and simply cannot be recalled.
+ *   - **"Last checked", never "next check".** PIVOT §3: nothing here promises a cadence iOS cannot honour.
+ *   - **Every value from the snapshot, unknown said as unknown** (core present.ts): fees not yet confirmed, seat count
+ *     not provided, source time unknown — never free, sold out or "just now".
+ *   - **A new search never takes the shown results away**: while it runs they stay, labelled; if it fails they stay,
+ *     labelled, with why (docs/03 §3, copy run.inflight / run.old). The labels come from the workspace's run state.
+ *   - **Coverage is said, not implied**: partial, unknown, empty and not monitored each have their own words.
  *
- * The last successful search is kept in `services.lastSearch` (memory only), and the screen opens on
- * it, so going to Ask and back keeps the grid (design §6.2). Ask offers the same search as context.
+ * Searches run through the workspace (T05); the last search is its shown snapshot, which a relaunch shows with the
+ * time it was saved, without running it. The screen marks itself with its language (the other screens are English
+ * until T11).
  */
-import { useCallback, useEffect, useState } from "react";
-import { Link, useOutletContext } from "react-router";
+import { SortBy } from "@awardgrid/core/query/schema";
+import { projectResults } from "@awardgrid/core/workspace/projection";
+import { type Locale, ageLabel, copy, coverageNotices, moreConditionsCount, optionsCount, sortLabel, sortShortLabel } from "@awardgrid/core/workspace/present";
+import { describeQuery, textReproducesQuery } from "@awardgrid/core/workspace/query-editor";
+import { draftForWatch } from "@awardgrid/core/workspace/watch-migration";
+import { type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
+import { Link, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
-import { ASK_ABOUT_SEARCH } from "../ask/labels";
-import type { ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
-import { GridTable } from "../components/GridTable";
+import { langTag, useLocale } from "../app/locale";
+import type { ApiFailure, ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
+import type { LastSearchEntry } from "../search/last-search";
+import { TextSearch } from "../components/query/TextSearch";
+import { AvailabilityCalendar } from "../components/results/AvailabilityCalendar";
+import { AvailabilityList } from "../components/results/AvailabilityList";
+import { AvailabilityMatrix } from "../components/results/AvailabilityMatrix";
+import { TraySlot } from "../app/tray-slot";
+import { CompareTray } from "../components/CompareTray";
+import { WithTail } from "../app/WithTail";
+import { favoriteFromOption, favoriteFromSnapshot, optionOrigin } from "../store/favorites-store";
+import type { RowKey } from "@awardgrid/core/workspace/types";
+import { FAVORITES } from "./favorites-copy";
+import { SAVED_TITLE } from "./FavoritesScreen";
+import { RESULTS } from "../components/results/copy";
+import { QuerySummary } from "../components/results/QuerySummary";
+import { Button, Icon, Notice, SegmentedControl } from "../components/ui";
+import { Welcome } from "./OnboardingScreen";
+import { RETURN_FOCUS } from "./QueryEditorScreen";
 
-const EXAMPLES = [
-  "HKG, SHA to SEA, next 30 days, business and first",
-  "SFO to NRT next 60 days business",
-  "LHR to JFK, next 2 weeks, first",
-];
+/**
+ * Why a run failed, from the workspace's run state, for a run this screen did not start itself (the query editor)
+ * or after the screen was left and opened again. A run this screen started shows the engine's own message instead.
+ */
+function runFailureText(code: string, locale: Locale): string {
+  const texts = RESULTS[locale].runFailed;
+  return code in texts ? texts[code as keyof typeof texts] : texts.other;
+}
 
-/** "2 h ago" from an ISO timestamp. Past tense only — this never extrapolates forwards. */
-function agoLabel(iso: string | null, now: Date): string | null {
+/** An age on the app clock, or null when the time is missing or later than the clock. */
+function ageSince(iso: string | null | undefined, now: Date, locale: Locale): string | null {
   if (!iso) return null;
   const ms = now.getTime() - Date.parse(iso);
-  if (!Number.isFinite(ms) || ms < 0) return null;
-  const mins = Math.floor(ms / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} h ago`;
-  return `${Math.floor(hours / 24)} d ago`;
+  return Number.isFinite(ms) && ms >= 0 ? ageLabel(ms, locale) : null;
 }
+
+/**
+ * How fresh the shown results are, for the status line: saved on this device (with its age when the clock allows),
+ * from this device's cache (with the age of its oldest row), or how many calls a fresh answer cost.
+ */
+function freshness(shown: LastSearchEntry, now: Date, locale: Locale): string {
+  const t = RESULTS[locale];
+  if (shown.savedAt) {
+    const age = ageSince(shown.savedAt, now, locale);
+    return age ? t.saved(age) : t.savedNoAge;
+  }
+  if (shown.value.served_from_cache) return t.fromCache(ageSince(shown.value.fetched_at_min, now, locale));
+  return shown.value.api_calls_used === null ? t.callsUnknown : t.calls(shown.value.api_calls_used);
+}
+
+/** Where focus goes back to when the editor closes: the control that opened it (U-027). */
+const CHIP_IDS = { programs: "chip-programs", stops: "chip-stops", more: "chip-more" } as const;
 
 export function SearchScreen() {
   const services = useOutletContext<AppServices>();
-  // Opens on the last successful search, as typed and as answered, when there is one.
-  const [text, setText] = useState(() => services.lastSearch.get()?.text ?? EXAMPLES[0]!);
+  const locale = useLocale(services);
+  const t = RESULTS[locale];
+  // What is shown follows the workspace: re-render when it changes, then read the shown snapshot's view.
+  const workspace = useSyncExternalStore(services.workspace.subscribe, services.workspace.getState, services.workspace.getState);
+  const shown = services.lastSearch.get();
+  const snapshot = workspace.displayedSnapshot;
+  const running = workspace.run.kind === "running";
+  // Local only while this screen's own request is being prepared or saved; the run itself is the workspace's.
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<ApiResult<FindValue> | null>(() => {
-    const last = services.lastSearch.get();
-    return last === null ? null : { ok: true, value: last.value };
-  });
+  // The last attempt's failure message, for an attempt made from this screen, with the revision it belongs to.
+  const [attempt, setAttempt] = useState<{ error: ApiFailure; revision: number } | null>(null);
+  const failure = attempt && attempt.revision === workspace.revision ? attempt.error : null;
+  const location = useLocation();
+  // Whether the shown search's words, read again, give that search (as read on the day it was made).
+  const madeOn = snapshot?.createdAt.slice(0, 10) ?? null;
+  const reproduces = useMemo(() => (shown && madeOn ? textReproducesQuery(shown.text, shown.value.query, madeOn) : false), [shown, madeOn]);
   const [quota, setQuota] = useState<QuotaSnapshotView | null>(null);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [watchMessage, setWatchMessage] = useState<string | null>(null);
+  // Saving the results on screen (T13): a copy on this device, never a booking; what happened is said beside the button.
+  const [saving, setSaving] = useState(false);
+  // Said of the snapshot it was about, and shown only beside that snapshot: a newer search is not "saved".
+  const [saveMessage, setSaveMessage] = useState<{ snapshotId: string; text: string; ok: boolean; tail?: string } | null>(null);
+  const now = services.now();
+  const asking = useSyncExternalStore(services.ask.subscribe, services.ask.isRunning, services.ask.isRunning);
 
   useEffect(() => {
     void services.keys.get().then((k) => setHasKey(Boolean(k)));
     void services.engine.quotaView().then(setQuota);
   }, [services]);
 
-  const run = useCallback(async () => {
-    setBusy(true);
-    setWatchMessage(null);
-    try {
-      const key = await services.keys.get();
-      const res = await services.engine.search(text, key);
-      setResult(res);
-      // Only a search that answered becomes the last search: Ask describes it to Claude, and this screen reopens on it.
-      if (res.ok) services.lastSearch.set({ text, value: res.value });
-      setQuota(await services.engine.quotaView());
-      // A search is the moment worth persisting: it is the only thing that spends quota.
-      await services.persist();
-    } finally {
-      setBusy(false);
-    }
-  }, [services, text]);
+  // A run that settles — from this screen or from the editor — may have spent calls: read the counter again.
+  const settled = workspace.run.kind === "finished" || workspace.run.kind === "failed" ? workspace.run.runId : null;
+  useEffect(() => {
+    if (settled) void services.engine.quotaView().then(setQuota);
+  }, [services, settled]);
+
+  // Back from the editor: focus returns to what opened it (the summary, a filter chip, "Build a search") — once for
+  // that arrival. The history entry keeps its state, so closing an option's details (which returns to the same entry)
+  // must not apply it again.
+  const returnFocus = (location.state as { focus?: string } | null)?.focus;
+  const focusedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!returnFocus || focusedFor.current === location.key) return;
+    const target = document.getElementById(returnFocus);
+    // Not drawn yet (the first run's welcome waits for the Keychain to answer): tried again once it is.
+    if (!target) return;
+    focusedFor.current = location.key;
+    target.focus();
+  }, [returnFocus, location.key, hasKey]);
+
+  /** Run a search from this screen: a typed one (no results yet), or the shown one again. */
+  const runSearch = useCallback(
+    async (start: () => Promise<ApiResult<FindValue>>) => {
+      setBusy(true);
+      setWatchMessage(null);
+      try {
+        const res = await start();
+        setAttempt(res.ok ? null : { error: res, revision: services.workspace.getState().revision });
+        // A search is the moment worth persisting: it is the only thing that spends quota.
+        await services.persist();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [services],
+  );
+
+  // Search again: the words, when they reproduce the search (a rolling "next 30 days" rolls); else the search itself.
+  const searchAgain = () => {
+    if (!shown) return;
+    const text = shown.text;
+    void runSearch(() => (reproduces ? services.searchText(text) : services.rerunShown()));
+  };
 
   /**
-   * Watch the query exactly as typed. The TEXT is stored, not the parsed dates, so "next 30 days"
-   * keeps meaning the next 30 days — the fix for the web app's issue #47, where a standing query
-   * froze its dates and went silent once they passed.
+   * Watch the search on screen, as its text. The TEXT is stored, not the parsed dates, so "next 30 days" keeps
+   * meaning the next 30 days — the fix for the web app's issue #47. A search whose text cannot hold it cannot be
+   * watched as text yet (U-024; watches become structured in T14).
    */
+  const shownText = shown?.text ?? null;
+  const saveResults = async () => {
+    const shown = services.workspace.getState().displayedSnapshot;
+    if (!shown || saving) return;
+    const f = FAVORITES[locale];
+    setSaving(true);
+    setSaveMessage(null);
+    const result = await services.favorites.save(favoriteFromSnapshot(shown, services.now().toISOString(), `fav-${shown.id}`));
+    setSaving(false);
+    const about = shown.id;
+    if (result.ok) setSaveMessage({ snapshotId: about, text: result.already ? f.alreadySaved : f.saved, ok: true });
+    else if (result.reason === "write_failed") setSaveMessage({ snapshotId: about, text: f.writeFailed(result.message), ok: false, tail: result.message });
+    else if (result.reason === "capacity") setSaveMessage({ snapshotId: about, text: copy("favorite.limit", locale), ok: false });
+    else setSaveMessage({ snapshotId: about, text: f.readOnly, ok: false });
+  };
+
+  // T22: one option saved on its own, from its card (core favoriteFromOption, as on the Web): the snapshot's query and
+  // coverage with that one row. It fetches nothing; the card then says "Saved", and the status line says where it is.
+  const savedItems = useSyncExternalStore(services.favorites.subscribe, services.favorites.all, services.favorites.all);
+  const shownId = workspace.displayedSnapshot?.id ?? null;
+  const savedOptions = useMemo(() => {
+    if (!shownId) return new Set<RowKey>();
+    const prefix = optionOrigin(shownId, "");
+    return new Set(savedItems.filter((f) => f.originalSnapshotId.startsWith(prefix)).map((f) => f.originalSnapshotId.slice(prefix.length) as RowKey));
+  }, [savedItems, shownId]);
+  const saveOption = useCallback(
+    async (rowKey: RowKey) => {
+      const shown = services.workspace.getState().displayedSnapshot;
+      const item = shown ? favoriteFromOption(shown, rowKey, services.now().toISOString(), `fav-${optionOrigin(shown.id, rowKey)}`) : null;
+      if (!shown || !item) return;
+      const f = FAVORITES[locale];
+      setSaveMessage(null);
+      const result = await services.favorites.save(item);
+      if (result.ok) setSaveMessage({ snapshotId: shown.id, text: f.optionSaved, ok: true });
+      else if (result.reason === "write_failed") setSaveMessage({ snapshotId: shown.id, text: f.writeFailed(result.message), ok: false, tail: result.message });
+      else if (result.reason === "capacity") setSaveMessage({ snapshotId: shown.id, text: copy("favorite.limit", locale), ok: false });
+      else setSaveMessage({ snapshotId: shown.id, text: f.readOnly, ok: false });
+    },
+    [services, locale],
+  );
+  const optionSaving = useMemo(() => ({ saved: savedOptions, onSave: (rowKey: RowKey) => void saveOption(rowKey) }), [savedOptions, saveOption]);
+
+  // A watch keeps the search on screen as its structured query and date rule (T14, core draftForWatch): what a check
+  // runs, whatever text the search was typed as.
   const watchThis = useCallback(async () => {
-    const trimmed = text.trim();
+    const snap = services.workspace.getState().displayedSnapshot;
+    if (!snap) return;
+    const draft = draftForWatch(snap.query, (madeOn ?? snap.createdAt).slice(0, 10));
+    const title = describeQuery(snap.query, draft.dates);
     const added = services.watches.add({
       id: crypto.randomUUID(),
-      name: trimmed.length > 60 ? `${trimmed.slice(0, 59)}…` : trimmed,
-      text: trimmed,
+      name: title.length > 60 ? `${title.slice(0, 59)}…` : title,
+      text: shownText?.trim() || title,
+      draft,
+      review: null,
       lastCheckedAt: null,
       baseline: [],
       dropThresholdPct: 10,
       enabled: true,
-      createdAt: new Date().toISOString(),
+      createdAt: services.now().toISOString(),
     });
     if (!added.ok) {
-      setWatchMessage(
-        added.reason === "duplicate" ? "You are already watching this search." : "You have reached the limit of 20 watches.",
-      );
+      setWatchMessage(added.reason === "duplicate" ? t.alreadyWatching : added.reason === "held" ? t.watchHeld : t.watchLimit);
       return;
     }
-    setWatchMessage("Watching this search. It is checked when you open the app.");
+    setWatchMessage(t.watching);
     await services.persist();
     services.notifyWatchesChanged();
-  }, [services, text]);
+  }, [services, shownText, t, madeOn]);
 
-  const value = result?.ok ? result.value : null;
-  const failure = result && !result.ok ? result : null;
-  const checked = value ? agoLabel(value.fetched_at_min, new Date()) : null;
+  const searching = busy || running;
+  const value = shown?.value ?? null;
+  const prefs = workspace.preferences;
+  // One projection for every view: the filtered rows in the view's sort, the calendar's days, the matrix's cells.
+  const projected = useMemo(() => (snapshot ? projectResults(snapshot, prefs) : null), [snapshot, prefs]);
+  const rows = projected?.rows ?? [];
+  // Coverage speaks for the search, so it counts the snapshot's rows, not the ones a view filter lets through.
+  const coverage = snapshot && value ? coverageNotices(snapshot.coverage, snapshot.rows.length, locale) : [];
+  // "Show all" takes its own button away: focus goes to the status line, and the change is announced.
+  const [announcement, setAnnouncement] = useState("");
+  const showAll = () => {
+    services.workspace.setPreferences({ localFilter: {} });
+    const total = services.workspace.getState().displayedSnapshot?.rows.length ?? 0;
+    setAnnouncement(t.showingAll(total));
+    window.requestAnimationFrame(() => document.getElementById("results-status")?.focus());
+  };
+  // The filter row scrolls sideways when its chips do not fit; it then shows that there is more.
+  const filtersRef = useRef<HTMLDivElement>(null);
+  // The sticky header and summary's real height (it grows with a long route or larger text; 0 when landscape makes
+  // it static), for the page's scroll padding and the matrix's height (results.css --results-sticky-h).
+  // docs/04 S01: at large text the header is measured, and stops being sticky rather than cover the results. Where it
+  // would take more than 40% of the screen's scroll area (a short screen, large text, the compare bar up), it scrolls
+  // away with them (T21 review 2 REACH-3). The scroll area is watched too: the compare bar appearing shrinks it.
+  // The bar is taller with one option chosen than with two (it says why it cannot compare yet), so once static the
+  // header returns to sticky only below 30%: a second pick never pins it back over the box just chosen (review 3
+  // REGR-1). If it does return, whatever has focus in the results is brought out from under it.
+  const stickyRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = stickyRef.current;
+    const main = el?.closest<HTMLElement>(".app-main");
+    if (!el || !main) return;
+    const measure = () => {
+      const share = el.offsetHeight / Math.max(1, main.clientHeight);
+      const wasStatic = el.hasAttribute("data-static");
+      const isStatic = wasStatic ? share > 0.3 : share > 0.4;
+      el.toggleAttribute("data-static", isStatic);
+      main.style.setProperty("--results-sticky-h", `${getComputedStyle(el).position === "sticky" ? el.offsetHeight : 0}px`);
+      const focused = document.activeElement;
+      if (wasStatic && !isStatic && focused instanceof HTMLElement && main.contains(focused) && !el.contains(focused)) focused.scrollIntoView({ block: "nearest" });
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(el);
+    observer?.observe(main);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      main.style.removeProperty("--results-sticky-h");
+    };
+  }, []);
+  const [filtersOverflow, setFiltersOverflow] = useState(false);
+  useLayoutEffect(() => {
+    const el = filtersRef.current;
+    if (!el) return;
+    const measure = () => setFiltersOverflow(el.scrollWidth > el.clientWidth + 1);
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(el);
+    return () => observer?.disconnect();
+  }, [snapshot?.id, locale]);
+  const selected = new Set(workspace.selected.filter((r) => r.snapshotId === snapshot?.id).map((r) => r.rowKey));
+  const snapshotId = snapshot?.id ?? null;
+  // T10: an option's details open over the results (a child route), which stay mounted underneath — inert while the
+  // details are open — so coming back finds view, selection, scroll and the matrix or calendar exactly as they were.
+  const navigate = useNavigate();
+  const detailPage = useMatch("/detail/:snapshotId/:rowKey") !== null;
+  // The comparison (T12) opens over the results the same way.
+  const comparePage = useMatch("/compare") !== null;
+  const detailOpen = detailPage || comparePage;
+  const traySlot = useContext(TraySlot);
+  // A details load spends a call without a workspace run: read the counter again when the details close.
+  useEffect(() => {
+    if (!detailOpen) void services.engine.quotaView().then(setQuota);
+  }, [services, detailOpen]);
+  const openDetail = useCallback(
+    (rowKey: string, returnFocusId: string) => {
+      if (snapshotId) navigate(`/detail/${encodeURIComponent(snapshotId)}/${encodeURIComponent(rowKey)}`, { state: { returnFocus: returnFocusId } });
+    },
+    [navigate, snapshotId],
+  );
+  // Choosing for comparison (T12): at most four. A fifth is refused where it was made and said in the bar, cleared
+  // first so the same refusal is announced again.
+  const [limitNotice, setLimitNotice] = useState<string | null>(null);
+  const toggleRow = useCallback(
+    (rowKey: string, on: boolean) => {
+      if (!snapshotId) return;
+      const result = services.workspace.setSelected({ snapshotId, rowKey }, on);
+      setLimitNotice(null);
+      if (!result.ok && result.reason === "limit") window.requestAnimationFrame(() => setLimitNotice(copy("compare.limit", locale)));
+    },
+    [services, snapshotId, locale, setLimitNotice],
+  );
+  const programs = value?.query.programs?.length ?? 0;
+
+  // The engine's own messages and run warnings are English (core); they say so on a Chinese screen.
+  const english = locale === "en" ? undefined : "en";
+  const saveNote = saveMessage && saveMessage.snapshotId === snapshot?.id ? saveMessage : null;
+  const keyCallout =
+    hasKey === false ? (
+      <Callout tone="danger" className="ag-results-callout">
+        {t.noKey.before}
+        <Link to="/settings/seats">{t.noKey.link}</Link>
+        {t.noKey.after}
+      </Callout>
+    ) : null;
+  const failureCallout = failure ? (
+    <Callout tone="danger" lang={english}>
+      {failure.message ?? failure.error}
+    </Callout>
+  ) : workspace.run.kind === "failed" ? (
+    // A run this screen did not start (the editor), or one from before the screen was opened again.
+    <Callout tone="danger">{runFailureText(workspace.run.code, locale)}</Callout>
+  ) : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 900, margin: "0 auto" }}>
-      <label htmlFor="q" style={{ fontSize: 13, color: "var(--fg-muted)" }}>
-        Search awards
-      </label>
-      <textarea
-        id="q"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={2}
-        style={{
-          font: "inherit",
-          padding: 10,
-          borderRadius: "var(--radius-control)",
-          border: "1px solid var(--line)",
-          background: "var(--bg-raised)",
-          color: "var(--fg)",
-          resize: "vertical",
-        }}
-      />
-
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button
-          onClick={() => void run()}
-          disabled={busy || hasKey === false}
-          style={{
-            padding: "9px 18px",
-            borderRadius: "var(--radius-control)",
-            border: "none",
-            background: busy || hasKey === false ? "var(--line)" : "var(--accent)",
-            color: busy || hasKey === false ? "var(--fg-muted)" : "var(--bg)",
-            fontWeight: 600,
-          }}
-        >
-          {busy ? "Searching…" : "Run"}
-        </button>
-        {/* No cancel button, on purpose — see the note at the top of this file. */}
-        {value ? (
-          <button
-            onClick={() => void watchThis()}
-            style={{
-              padding: "9px 14px",
-              borderRadius: "var(--radius-control)",
-              border: "1px solid var(--line)",
-              background: "transparent",
-            }}
-          >
-            Watch this search
-          </button>
-        ) : null}
-        {value ? (
-          <Link to="/ask" className="ag-button">
-            {ASK_ABOUT_SEARCH}
+    <>
+    <div className="ag-results" lang={langTag(locale)} data-run={workspace.run.kind} data-busy={String(searching)} data-revision={workspace.revision} inert={detailOpen || undefined}>
+      <div className="ag-results-sticky" ref={stickyRef}>
+        <header className="ag-results-header" data-testid="results-header">
+          <h1 className="ag-results-title" id="search-title" tabIndex={-1}>
+            {t.title}
+          </h1>
+          <Link id="ask-entry-header" to="/ask" state={{ returnFocus: "ask-entry-header" }} className="ag-results-ai">
+            <Icon name="sparkle" />
+            <span>{asking ? t.aiWorking : t.ai}</span>
           </Link>
-        ) : null}
-        {quota ? (
-          <span className="tabular" style={{ fontSize: 12, color: "var(--fg-muted)" }}>
-            seats.aero calls today: {quota.used} of {quota.softLimit}
-          </span>
-        ) : null}
+        </header>
+        {snapshot && value ? <QuerySummary id={RETURN_FOCUS} query={value.query} locale={locale} waitNote={running ? t.editWhileRunning : null} /> : null}
       </div>
 
-      {watchMessage ? (
-        <p role="status" style={{ margin: 0, fontSize: 13, color: "var(--fg-muted)" }}>
-          {watchMessage}
-        </p>
-      ) : null}
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {EXAMPLES.map((e) => (
-          <button
-            key={e}
-            onClick={() => setText(e)}
-            style={{
-              padding: "4px 8px",
-              fontSize: 12,
-              borderRadius: 999,
-              border: "1px solid var(--line)",
-              background: "var(--bg-raised)",
-              color: "var(--fg-muted)",
-            }}
-          >
-            {e}
-          </button>
-        ))}
-      </div>
-
-      {hasKey === false ? (
-        <Callout tone="danger">
-          No seats.aero key yet. Add your own Pro key in <strong>Settings</strong> — awardgrid has no
-          key of its own and never will.
-        </Callout>
-      ) : null}
-
-      {failure ? <Callout tone="danger">{failure.message ?? failure.error}</Callout> : null}
-
-      {value ? (
+      {snapshot && value ? (
         <>
-          <div style={{ fontSize: 12, color: "var(--fg-muted)" }} className="tabular">
-            {value.served_from_cache
-              ? `Served from this device's cache${checked ? ` · last checked ${checked}` : ""}`
-              : `${value.api_calls_used} seats.aero call${value.api_calls_used === 1 ? "" : "s"}${checked ? ` · checked ${checked}` : ""}`}
+          <div
+            ref={filtersRef}
+            className="ag-results-filters"
+            data-testid="results-filters"
+            data-overflow={filtersOverflow || undefined}
+            inert={running || undefined}
+          >
+            <Link id={CHIP_IDS.programs} to="/edit?section=programs" state={{ from: CHIP_IDS.programs }} className="ag-chip">
+              <span className="ag-chip-face">
+                {t.programs(programs)}
+                <Icon name="chevron-down" size={16} />
+              </span>
+            </Link>
+            <Link id={CHIP_IDS.stops} to="/edit?section=stops" state={{ from: CHIP_IDS.stops }} className="ag-chip">
+              <span className="ag-chip-face">
+                {value.query.direct_only ? t.stopsNonstop : t.stopsAny}
+                <Icon name="chevron-down" size={16} />
+              </span>
+            </Link>
+            <Link id={CHIP_IDS.more} to="/edit?section=more" state={{ from: CHIP_IDS.more }} className="ag-chip">
+              <span className="ag-chip-face">
+                {t.moreFilters(moreConditionsCount(value.query))}
+                <Icon name="filter" size={16} />
+              </span>
+            </Link>
           </div>
-          {value.warnings.map((w) => (
-            <Callout key={w} tone="warn">
-              {w}
-            </Callout>
-          ))}
-          <GridTable grid={value.grid} />
+          <div className="ag-results-view" data-testid="results-view">
+            <SegmentedControl<"list" | "calendar" | "matrix">
+              label={t.view}
+              className="ag-results-segmented"
+              value={prefs.kind}
+              onChange={(kind) => services.workspace.setPreferences({ kind })}
+              options={[
+                { value: "list", label: t.list },
+                { value: "calendar", label: t.calendar },
+                { value: "matrix", label: t.matrix },
+              ]}
+            />
+            {/* A native picker under the visible label: the phone's own list, one control, named "Sort". */}
+            <label className="ag-results-sort">
+              <span className="ag-results-sort-text" aria-hidden="true">
+                {sortShortLabel(prefs.sort, locale)}
+                <Icon name="chevron-down" />
+              </span>
+              <select aria-label={t.sort} value={prefs.sort} onChange={(e) => services.workspace.setPreferences({ sort: SortBy.parse(e.target.value) })}>
+                {SortBy.options.map((option) => (
+                  <option key={option} value={option}>
+                    {sortLabel(option, locale)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="ag-results-status" data-testid="results-status" id="results-status" tabIndex={-1}>
+            <span>
+              {optionsCount(rows.length, locale)}
+              {shown ? ` · ${freshness(shown, now, locale)}` : ""}
+            </span>
+            <span>{copy("data.source", locale)}</span>
+          </div>
+
+          <p className="sr-only" role="status">
+            {announcement}
+          </p>
+          <div className="ag-results-notes">
+            {running ? (
+              <Notice tone="info" live>
+                {copy("run.inflight", locale)}
+              </Notice>
+            ) : null}
+            {workspace.run.kind === "failed" ? (
+              <Notice tone="warning" live>
+                {copy("run.old", locale)}
+              </Notice>
+            ) : null}
+            {failureCallout}
+            {coverage.map((notice) => (
+              <Notice key={notice.kind} tone={notice.kind === "none" ? "info" : "warning"} data-testid="coverage-notice">
+                {notice.text}
+              </Notice>
+            ))}
+            {value.warnings.map((w) => (
+              <Callout key={w} tone="warn" lang={english}>
+                {w}
+              </Callout>
+            ))}
+            {projected && projected.dynamicNotShown > 0 ? <Notice tone="info">{t.dynamicNotShown(projected.dynamicNotShown)}</Notice> : null}
+            {projected && projected.hiddenByFilter > 0 ? (
+              <Notice tone="info">
+                {t.hiddenByFilter(projected.hiddenByFilter)}{" "}
+                <button type="button" className="ag-link-button" onClick={showAll}>
+                  {t.showAll}
+                </button>
+              </Notice>
+            ) : null}
+          </div>
+
+          {prefs.kind === "matrix" && projected ? (
+            <AvailabilityMatrix
+              snapshot={snapshot}
+              projected={projected}
+              sort={prefs.sort}
+              selected={selected}
+              onToggle={toggleRow}
+              now={now.toISOString()}
+              locale={locale}
+              onOpen={openDetail}
+              saving={optionSaving}
+            />
+          ) : prefs.kind === "calendar" && projected ? (
+            <AvailabilityCalendar
+              key={snapshot.id}
+              query={value.query}
+              days={projected.days}
+              rows={rows}
+              sort={prefs.sort}
+              onCabin={(calendarCabin) => services.workspace.setPreferences({ calendarCabin })}
+              snapshotId={snapshot.id}
+              selected={selected}
+              onToggle={toggleRow}
+              now={now.toISOString()}
+              locale={locale}
+              onOpen={openDetail}
+              saving={optionSaving}
+            />
+          ) : rows.length > 0 ? (
+            <AvailabilityList rows={rows} sort={prefs.sort} snapshotId={snapshot.id} selected={selected} onToggle={toggleRow} now={now.toISOString()} locale={locale} onOpen={openDetail} saving={optionSaving} />
+          ) : null}
+
+          <div className="ag-results-actions">
+            <Button onClick={searchAgain} disabled={hasKey === false} loading={searching} loadingLabel={t.searching}>
+              {t.searchAgain}
+            </Button>
+            <Button onClick={() => void watchThis()}>
+              {t.watch}
+            </Button>
+            <Button onClick={() => void saveResults()} loading={saving} loadingLabel={FAVORITES[locale].saving}>
+              {FAVORITES[locale].save}
+            </Button>
+            <Link id="ask-entry-results" to="/ask" state={{ returnFocus: "ask-entry-results" }} className="ag-button">
+              {t.askAbout}
+            </Link>
+          </div>
+          {/* Always in the tree, so saving is announced; a failure is an alert of its own. */}
+          <p role="status" className="ag-results-meta ag-results-save">
+            {saveNote?.ok ? (
+              <>
+                {saveNote.text}{" "}
+                <Link to="/saved" state={{ focus: SAVED_TITLE }} className="ag-results-link">
+                  {FAVORITES[locale].viewSaved}
+                </Link>
+              </>
+            ) : null}
+          </p>
+          {saveNote && !saveNote.ok ? (
+            <p role="alert" className="ag-callout ag-callout-danger ag-results-callout">
+              <WithTail text={saveNote.text} tail={saveNote.tail} tailLang={english} />
+            </p>
+          ) : null}
+          {watchMessage ? (
+            <p role="status" className="ag-results-meta">
+              {watchMessage}
+            </p>
+          ) : null}
+          {keyCallout}
+          {quota ? <p className="ag-results-meta tabular">{t.quota(quota.used, quota.softLimit)}</p> : null}
         </>
-      ) : null}
+      ) : hasKey === false ? (
+        // First run (T11): no seats.aero key yet — what the app does, connect first, or look at an example.
+        <Welcome locale={locale} />
+      ) : (
+        <div className="ag-results-empty">
+          <p className="ag-results-meta">{t.emptyIntro}</p>
+          <TextSearch locale={locale} busy={searching} onSearch={(text) => void runSearch(() => services.searchText(text))} />
+          {searching ? (
+            // T06: the editor would show nothing to edit yet and would supersede the search in flight.
+            <Button disabled disabledReason={t.editWhileRunning}>
+              {t.newSearch}
+            </Button>
+          ) : (
+            <Link id={RETURN_FOCUS} to="/edit" className="ag-button">
+              {t.newSearch}
+            </Link>
+          )}
+          {failureCallout}
+          {quota ? <p className="ag-results-meta tabular">{t.quota(quota.used, quota.softLimit)}</p> : null}
+        </div>
+      )}
     </div>
+    {workspace.selected.length > 0 && traySlot
+      ? createPortal(
+          <CompareTray
+            count={workspace.selected.length}
+            locale={locale}
+            notice={limitNotice}
+            inert={detailOpen}
+            onClear={() => {
+              setLimitNotice(null);
+              services.workspace.clearSelection();
+              // The bar, and the button pressed, are gone with the selection: focus goes to the results' title.
+              window.requestAnimationFrame(() => document.getElementById("search-title")?.focus());
+            }}
+          />,
+          traySlot,
+        )
+      : null}
+    <Outlet context={services} />
+    </>
   );
 }
 
-function Callout({ tone, children }: { tone: "warn" | "danger"; children: React.ReactNode }) {
+function Callout({ tone, children, lang, className }: { tone: "warn" | "danger"; children: ReactNode; lang?: string; className?: string }) {
   return (
-    <p
-      role={tone === "danger" ? "alert" : undefined}
-      style={{
-        margin: 0,
-        padding: "8px 10px",
-        borderRadius: "var(--radius-control)",
-        border: "1px solid var(--line)",
-        borderLeft: `3px solid ${tone === "danger" ? "var(--error)" : "var(--fg-muted)"}`,
-        background: "var(--bg-raised)",
-        fontSize: 13,
-      }}
-    >
+    <p role={tone === "danger" ? "alert" : undefined} className={["ag-callout", `ag-callout-${tone}`, className].filter(Boolean).join(" ")} lang={lang}>
       {children}
     </p>
   );

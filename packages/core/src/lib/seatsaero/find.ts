@@ -27,10 +27,13 @@ import {
   type AvailabilityCacheStore,
   type CacheQuery,
   type CoverageRecord,
+  type CoverageRecordEvidence,
 } from "./cache";
 import { notice, noticesToText, type Notice } from "../notices";
 import { availabilitiesToRows } from "./normalize";
 import type { RoutesCatalog, RoutesKnowledge } from "./routes";
+import { type RequestOutcome, coverageFor, recordEvidence, runEvidence } from "../workspace/coverage";
+import type { CoverageEvidence } from "../workspace/types";
 
 // ---------------------------------------------------------------------------
 // Estimation heuristics (documented constants — tune with real usage data)
@@ -244,6 +247,12 @@ export interface FindResult {
   plan: FindPlan | null;
   /** Oldest fetched_at among the returned rows (null when empty). */
   fetched_at_min: string | null;
+  /**
+   * How much of the query's scope this result covers (UI/UX v1 T03): per pair, checked to the end, stopped at the
+   * page cap or for quota, not monitored, or unknown (a cache hit on records that carry no evidence). Always set
+   * by runFind; optional only so results built elsewhere keep compiling.
+   */
+  coverage?: CoverageEvidence;
 }
 
 export async function runFind(opts: RunFindOptions): Promise<FindResult> {
@@ -289,16 +298,30 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
     // first — that reads what earlier requests paid for and never calls the API.
     if (routes) await routes.hydrate(userId, sources);
     const allLoaded = routes !== undefined && sources.every((s) => routes.isLoaded(userId, s));
+    const unmonitoredPairs = allLoaded ? routes.unmonitoredPairs(userId, zero, sources) : [];
+    // The evidence comes from the records that satisfied the lookup: a record written by a capped fetch stays
+    // partial on every later hit, and one written before evidence existed proves nothing (unknown).
+    const nowAtHit = now();
+    const cachedCoverage = coverageFor(
+      query,
+      pairs.map((p) => ({
+        origin: p.origin,
+        dest: p.dest,
+        evidence: recordEvidence(coverage, p, scope, ttl, nowAtHit),
+        unmonitored: unmonitoredPairs.some((u) => u.key === p.key),
+      })),
+    );
     return {
       rows,
       api_calls_used: 0,
       routes_calls_used: 0,
       served_from_cache: true,
-      unmonitored_pairs: allLoaded ? routes.unmonitoredPairs(userId, zero, sources) : [],
+      unmonitored_pairs: unmonitoredPairs,
       warnings: noticesToText(notices),
       notices,
       plan: null,
       fetched_at_min: cached.fetched_at_min,
+      coverage: cachedCoverage,
     };
   }
 
@@ -319,14 +342,20 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
   const unmonitored: RoutePair[] = [];
   let reserved = 0;
   let routesCalls = 0;
+  const outcomes: RequestOutcome[] = [];
+  let runEvidenceProven: CoverageRecordEvidence = { state: "partial", reason: "quota" };
   // One UTC day key for the whole run: reservations made before midnight are settled on the
   // same day after it (otherwise a refund would over-credit the new day).
   const day = quota.today();
   try {
     const remaining = await quota.remaining(userId);
-    const pageCap = await quota.reserve(userId, Math.max(1, Math.min(remaining, opts.maxPages ?? MAX_PAGES_PER_FIND)), day);
+    const pageLimit = opts.maxPages ?? MAX_PAGES_PER_FIND;
+    const pageCap = await quota.reserve(userId, Math.max(1, Math.min(remaining, pageLimit)), day);
     reserved += pageCap;
-    const availabilities = await executePlan(plan, client, pageCap, notices);
+    const availabilities = await executePlan(plan, client, pageCap, notices, outcomes);
+    // A stop is a quota stop when the day's remaining quota, not the page cap, set this run's budget.
+    const evidence = runEvidence(outcomes, { quotaBound: pageCap < pageLimit });
+    runEvidenceProven = evidence;
 
     // (d) normalize, filter locally to the query, replace the cached scope, record coverage.
     // A truncated pull (page cap / quota headroom) is still recorded as coverage: the
@@ -352,10 +381,17 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
       include_filtered: query.include_filtered,
       min_cabin_pct: query.min_cabin_pct,
       fetched_at: fetchedAt,
+      evidence,
     }));
-    await cache.deleteRows(userId, scope);
-    await cache.putRows(userId, all);
-    await cache.markPairsFetched(userId, records);
+    // One unit when the store supports it: a failure between "delete" and "mark" must not leave an earlier
+    // fetch's record claiming the rows this run just removed.
+    if (cache.replaceScope) {
+      await cache.replaceScope(userId, scope, all, records);
+    } else {
+      await cache.deleteRows(userId, scope);
+      await cache.putRows(userId, all);
+      await cache.markPairsFetched(userId, records);
+    }
 
     // (e) zero-row pairs → consult the routes catalog within the remaining soft quota.
     const zero = zeroRowPairs(pairs, rows);
@@ -393,27 +429,38 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
     notices,
     plan,
     fetched_at_min: rows.length > 0 ? fetchedAt : null,
+    coverage: coverageFor(
+      query,
+      pairs.map((p) => ({ origin: p.origin, dest: p.dest, evidence: runEvidenceProven, unmonitored: unmonitored.some((u) => u.key === p.key) })),
+    ),
   };
 }
 
-/** Run every request of the plan, paginating within the quota headroom; dedupes across requests. */
+/**
+ * Run every request of the plan, paginating within the quota headroom; dedupes across requests. How each request
+ * ended is appended to `outcomes` (truncated at the page cap, or skipped because the budget ran out first), which
+ * is what the run's coverage evidence is built from.
+ */
 async function executePlan(
   plan: FindPlan,
   client: SeatsAeroClient,
   maxTotalPages: number,
   notices: Notice[],
+  outcomes: RequestOutcome[],
 ): Promise<Availability[]> {
   const seen = new Map<string, Availability>();
   let pagesLeft = maxTotalPages;
-  for (const req of plan.requests) {
+  for (const [i, req] of plan.requests.entries()) {
     if (pagesLeft <= 0) {
       notices.push(notice("find.quota_headroom"));
+      for (let j = i; j < plan.requests.length; j++) outcomes.push({ truncated: false, skipped: true });
       break;
     }
     const result =
       req.kind === "search"
         ? await client.cachedSearchAll(req.params, { maxPages: pagesLeft })
         : await client.bulkAvailabilityAll(req.params, { maxPages: pagesLeft });
+    outcomes.push({ truncated: result.truncated, skipped: false, ...(result.incomplete ? { incomplete: true } : {}) });
     pagesLeft -= result.pages;
     if (result.truncated) {
       notices.push(

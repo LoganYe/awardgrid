@@ -41,6 +41,9 @@ export function parseMiles(raw: string | null | undefined): number {
 export function availabilityToRows(av: Availability, opts: NormalizeOptions): AvailabilityRow[] {
   const rows: AvailabilityRow[] = [];
   const computedLastSeen = av.ComputedLastSeen ?? av.UpdatedAt ?? opts.fetchedAt;
+  // Keep WHICH clock that was (T02, docs/uiux-v1): the fallback chain above is what every existing
+  // consumer reads, and it makes a row with no provider time look freshly updated.
+  const timeBasis = av.ComputedLastSeen != null ? "provider_last_seen" : av.UpdatedAt != null ? "provider_updated" : "local_fallback";
   const currency = av.TaxesCurrency ? av.TaxesCurrency : null;
   for (const cabin of Cabin.options) {
     if (av[`${cabin}Available`] !== true) continue;
@@ -60,6 +63,8 @@ export function availabilityToRows(av: Availability, opts: NormalizeOptions): Av
       direct: av[`${cabin}Direct`] ?? false,
       airlines: splitAirlines(av[`${cabin}Airlines`]),
       computed_last_seen: computedLastSeen,
+      time_basis: timeBasis,
+      ...(av.UpdatedAt != null ? { provider_updated_at: av.UpdatedAt } : {}),
       source_id: av.ID,
       booking_url: null,
       fetched_at: opts.fetchedAt,

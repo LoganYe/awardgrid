@@ -3,7 +3,7 @@
  *
  *   findGridForUser   QueryObject → Grid using the CALLING user's own seats.aero key
  *   getTripsForUser   Get Trips for one Availability ID (costs exactly one call)
- *   parseForUser      NL text → QueryObject (LLM only when ANTHROPIC_API_KEY is set)
+ *   parseForUser      NL text → QueryObject (the LLM only when the request asks and ANTHROPIC_API_KEY is set)
  *   userFromRequest   session cookie on a Route Handler request → User | null
  *
  * Boundaries honoured here (§0.2): there is no default key — a user without a key gets a
@@ -18,6 +18,7 @@ import type { Db } from "@/lib/db/client";
 import { createSqliteStores } from "@/lib/db/stores";
 import { buildGrid, enumeratePairs } from "@awardgrid/core/grid/pivot";
 import type { AvailabilityRow, Grid, NotFetchedPair, Orientation, RoutePair } from "@awardgrid/core/grid/types";
+import type { CoverageEvidence } from "@awardgrid/core/workspace/types";
 import { getDecryptedKey, getMasterKey, hasKey, NoKeyError } from "@/lib/keys";
 import { BodyError } from "@/lib/server/http";
 import { PARSER_MODEL_DEFAULT, ParseError, parseQuery, resolveParserModel, type ParseQueryResult, type ParserClient } from "@awardgrid/core/query";
@@ -96,6 +97,13 @@ export interface FindGridResult {
    * them all). The empty-results sentence's "Checked N programs".
    */
   programs_checked: number;
+  /**
+   * UI/UX v1 T18, additive: the rows the grid was built from (dynamic ones appended as above) and how much of the
+   * query's scope they cover, so the Web workspace builds the same ResultSnapshot iOS does (core
+   * workspace/snapshot-from-find.ts). Older clients ignore both.
+   */
+  rows: AvailabilityRow[];
+  coverage: CoverageEvidence | null;
 }
 
 type UserRef = Pick<User, "id">;
@@ -421,6 +429,8 @@ export async function findGridForUser(
     programs_failed: [...routes.failed],
     programs_by_pair: counts.by_pair,
     programs_checked: counts.checked,
+    rows,
+    coverage: result.coverage ?? null,
   };
 }
 
@@ -628,6 +638,11 @@ export interface ParseForUserOptions {
   env?: Record<string, string | undefined>;
   /** Injected LLM client (tests); when omitted a real Anthropic client is built only if the key is set. */
   llmClient?: ParserClient;
+  /**
+   * UI/UX v1 T20: the person asked, for this text, to let the language model read it. Without it the model is never
+   * called, whatever the server has: ordinary search never calls AI implicitly (the text would leave for Anthropic).
+   */
+  allowLlm?: boolean;
 }
 
 /** True when the server can fall back to the language model for ambiguous text. */
@@ -638,11 +653,13 @@ export function llmAvailable(env: Record<string, string | undefined> = process.e
 
 /**
  * NL → QueryObject. Deterministic first; the LLM (model from AWARDGRID_PARSER_MODEL, default
- * PARSER_MODEL_DEFAULT) only when ANTHROPIC_API_KEY is configured — otherwise parseQuery throws
- * a ParseError naming the missing fields so the UI can ask for them.
+ * PARSER_MODEL_DEFAULT) only when the request asks for it (`allowLlm`) and ANTHROPIC_API_KEY is configured —
+ * otherwise parseQuery throws a ParseError naming the missing fields so the UI can ask for them (and, with a key,
+ * offer the model explicitly).
  */
 export async function parseForUser(text: string, opts: ParseForUserOptions): Promise<ParseQueryResult> {
   const env = opts.env ?? process.env;
+  if (opts.allowLlm !== true) return parseQuery(text, { today: opts.today, model: resolveParserModel(env) });
   let llmClient = opts.llmClient;
   if (!llmClient && llmAvailable(env)) {
     // The Anthropic SDK owns its key; nothing here reads or forwards it.

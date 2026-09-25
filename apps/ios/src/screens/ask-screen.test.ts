@@ -13,7 +13,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { AskEntry, EntryEnd } from "@awardgrid/core/ask/conversation";
 import { buildGrid } from "@awardgrid/core/grid/pivot";
 import { QueryObject } from "@awardgrid/core/query/schema";
-import type { AskActivity, AskService, AskState } from "../ask/ask-service";
+import { copy } from "@awardgrid/core/workspace/present";
+import type { AskActivity, AskService, AskState, ContextPreview } from "../ask/ask-service";
 import * as labels from "../ask/labels";
 import { MemoryKeyStore, type KeyStore } from "../native/keychain";
 import type { LastSearchEntry } from "../search/last-search";
@@ -57,6 +58,10 @@ function fakeAsk(current: AskState): AskService {
     persist: vi.fn(async () => {}),
   };
 }
+
+/** T17: the approved Stop (S09 "停止后续步骤") and its note, never a claim that a request is recalled. */
+const STOP = copy("ai.stop", "en");
+const STOP_NOTE = copy("ai.stop_note", "en");
 
 const LAST_SEARCH: LastSearchEntry = (() => {
   const query = QueryObject.parse({
@@ -118,7 +123,12 @@ const isDisabled = (attrs: string) => /\sdisabled=""/.test(attrs);
 describe("no key on file", () => {
   it("without an Anthropic key: the notice with a way to Settings, and the composer disabled before any question", () => {
     const html = render(state(), { keys: { anthropic: false, seats: true }, last: LAST_SEARCH });
-    expect(html).toContain(keyCallout(labels.NO_ANTHROPIC_KEY));
+    // T11: the first AI entry without a key says what connecting Anthropic means, and links to its settings page — a
+    // setup step in a labelled region, not an alert.
+    expect(html).toContain('<section aria-labelledby="ask-connect-title" class="ask-connect"');
+    expect(html).toContain('<h2 id="ask-connect-title" class="ask-connect-title">Connect Anthropic</h2>');
+    expect(html).not.toMatch(/role="alert"[^>]*class="[^"]*ask-connect/);
+    expect(html).toMatch(/<a class="ag-button ag-button-primary" href="\/settings\/anthropic"[^>]*>Add an Anthropic key<\/a>/);
     expect(html).not.toContain(labels.NO_SEATS_KEY);
     expect(isDisabled(textarea(html))).toBe(true);
     expect(isDisabled(button(html, labels.ASK_BUTTON).attrs)).toBe(true);
@@ -171,30 +181,41 @@ describe("no key on file", () => {
 });
 
 describe("a build without native HTTP", () => {
+  it("offers no New conversation beside it, even with a conversation on file (review REG-10)", () => {
+    const html = render(state({ wiring: labels.WIRING, notice: { kind: "wiring", message: labels.WIRING }, entries: [entry("e1", { end: ended("answered") })] }));
+    expect(findButton(html, labels.NEW_CONVERSATION)).toBeUndefined();
+    expect(html).toContain(labels.WIRING);
+  });
+
   it("renders only the wiring message", () => {
     const html = render(state({ wiring: labels.WIRING, notice: { kind: "wiring", message: labels.WIRING } }), { last: LAST_SEARCH });
-    expect(html).toBe(`<div class="ask-screen"><p role="alert" class="ask-callout">${labels.WIRING}</p></div>`);
+    // The page's header (Back, title) and the wiring message: nothing else (T15: Ask is a full-height page).
+    expect(html).toMatch(/^<div class="ask-screen" lang="en"><header class="ask-header">.*<h1 tabindex="-1" class="ask-title">Ask Claude<\/h1><\/header>/);
+    expect(html).toMatch(new RegExp(`</header><p role="alert" class="ask-callout">${labels.WIRING.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</p></div>$`));
   });
 });
 
 describe("idle", () => {
-  it("with a last search: the checkbox on by default, the suggestions for it, and the composer", () => {
+  it("with a last search: the checkbox on by default, what is sent said from the payload, the suggestions for it, and the composer", () => {
     const html = render(state(), { last: LAST_SEARCH });
     expect(html).toContain(`<p role="status" class="sr-only"></p>`);
-    expect(html).toContain(`<h1 class="ag-title">${labels.ASK_TITLE}</h1><p class="ask-subline">${labels.ASK_SUBLINE}</p>`);
-    expect(html).toContain(
-      `<label class="ask-check"><input type="checkbox" checked=""/><span>Include my last search: SEA to NRT, HND, 2026-10-01 to 2026-10-30, business</span></label>`,
-    );
-    expect(buttonTexts(html)).toEqual([...labels.SUGGESTIONS_WITH_SEARCH, labels.ASK_BUTTON]);
-    expect(textarea(html)).toBe(`<textarea class="ag-input" aria-label="${labels.QUESTION_LABEL}" maxLength="1000" rows="3">`);
+    expect(html).toContain(`<h1 tabindex="-1" class="ask-title">${labels.ASK_TITLE}</h1>`);
+    expect(html).toContain(`<p class="ask-subline">${labels.ASK_SUBLINE}</p>`);
+    // T15: what goes with the question (the approved row), the search in the results summary's words, and the choice.
+    expect(html).toContain(`<p class="ask-context-sends">Only the query conditions will be sent.</p><p class="ask-context-search">Search: SEA → NRT, HND · Oct 1 – 30 · Business</p>`);
+    expect(html).toContain(`<label class="ask-check"><input type="checkbox" checked=""/><span>Include this search</span></label>`);
+    // The header's Back (an icon, named "Back"), then the suggestions and Ask.
+    expect(buttonTexts(html).slice(1)).toEqual([...labels.SUGGESTIONS_WITH_SEARCH, labels.ASK_BUTTON]);
+    expect(html).toContain('<button type="button" aria-label="Back" class="ag-icon-button">');
+    expect(textarea(html)).toBe(`<textarea class="ag-input ask-input" aria-label="${labels.QUESTION_LABEL}" maxLength="1000" rows="1">`);
     // Ask waits for a question; nothing is running, so there is no Stop and no Stop note.
     expect(isDisabled(button(html, labels.ASK_BUTTON).attrs)).toBe(true);
-    expect(findButton(html, labels.STOP_BUTTON)).toBeUndefined();
-    expect(html).not.toContain(labels.STOP_NOTE);
+    expect(findButton(html, STOP)).toBeUndefined();
+    expect(html).not.toContain(STOP_NOTE);
     expect(html).toContain(labels.CONVERSATION_NOTE);
     expect(findButton(html, labels.NEW_CONVERSATION)).toBeUndefined();
-    // Top to bottom: title, checkbox, suggestions, composer, the conversation note.
-    const order = [labels.ASK_TITLE, "Include my last search", labels.SUGGESTIONS_WITH_SEARCH[0]!, labels.QUESTION_LABEL, labels.CONVERSATION_NOTE].map((t) => html.indexOf(t));
+    // Top to bottom (S09): title, what is sent and its choice, the suggestions, the conversation note, the composer.
+    const order = [labels.ASK_TITLE, "Include this search", labels.SUGGESTIONS_WITH_SEARCH[0]!, labels.CONVERSATION_NOTE, labels.QUESTION_LABEL].map((t) => html.indexOf(t));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect(order).toEqual([...order].sort((a, b) => a - b));
   });
@@ -202,7 +223,21 @@ describe("idle", () => {
   it("without a last search: no checkbox, and the suggestions that need no search", () => {
     const html = render(state());
     expect(html).not.toContain('type="checkbox"');
-    expect(buttonTexts(html)).toEqual([...labels.SUGGESTIONS_WITHOUT_SEARCH, labels.ASK_BUTTON]);
+    expect(buttonTexts(html).slice(1)).toEqual([...labels.SUGGESTIONS_WITHOUT_SEARCH, labels.ASK_BUTTON]);
+  });
+
+  it("a selection that cannot be attached is said, and offers no attach choice (review CTX-4)", () => {
+    const ask = fakeAsk(state());
+    // Two results chosen on an earlier search: attaching them is refused; the search alone can go.
+    const refused = (_include: boolean, attach: boolean): ContextPreview =>
+      attach
+        ? { snapshot: null, context: null, rows: [], refused: "context_snapshot_mismatch", earlier: 0, selected: 2, revision: null }
+        : { snapshot: null, context: { revision: 1, snapshotId: "s1", sent: "query_only", query: LAST_SEARCH.value.query, selectedRefs: [] }, rows: [], refused: null, earlier: 0, selected: 2, revision: null };
+    ask.preview = refused;
+    const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(AskView, { services: { ask, lastSearch: { get: () => LAST_SEARCH, set: () => {} } }, keys: BOTH })));
+    expect(html).toContain("The selected results are not all from the search on screen, so none can be attached.");
+    expect(html).not.toContain("Attach the");
+    expect(html).toContain("Only the query conditions will be sent.");
   });
 
   it("labels the checkbox with the query Claude is told about", () => {
@@ -217,10 +252,10 @@ describe("running", () => {
   it("renders Stop in Ask's place with the Stop note, the status region, and the entry list marked busy", () => {
     const html = render(runningState, { now: () => Date.parse(AT) + 12_400 });
     expect(findButton(html, labels.ASK_BUTTON)).toBeUndefined();
-    expect(button(html, labels.STOP_BUTTON).attrs).toBe(' type="button" class="ag-button ag-button-primary ask-send"');
-    expect(html).toContain(`<button type="button" class="ag-button ag-button-primary ask-send">${labels.STOP_BUTTON}</button><p class="ask-note">${labels.STOP_NOTE}</p>`);
+    expect(button(html, STOP).attrs).toBe(' type="button" class="ag-button ag-button-primary ask-send"');
+    expect(html).toContain(`<button type="button" class="ag-button ag-button-primary ask-send">${STOP}</button><p class="ask-note ask-stop-note">${STOP_NOTE}</p>`);
     expect(html).toContain('<p role="status" class="sr-only">');
-    expect(html).toContain('<ul class="ask-entries" data-surface="flat" aria-busy="true">');
+    expect(html).toContain('<ol class="ask-entries" data-surface="flat" aria-busy="true">');
     expect(html).not.toContain("aria-live");
     expect(html).toContain('<span aria-hidden="true">Waiting for Claude (12 s)</span>');
     // The suggestions are for an empty conversation, and New conversation waits for the question to end.
@@ -230,15 +265,16 @@ describe("running", () => {
 
   it("turns Stop off once it has been pressed", () => {
     const html = render(state({ ...runningState, running: { entryId: "e1", activity: request, stopping: true } }));
-    expect(isDisabled(button(html, labels.STOP_BUTTON).attrs)).toBe(true);
+    expect(isDisabled(button(html, STOP).attrs)).toBe(true);
   });
 });
 
 describe("the conversation", () => {
-  it("shows entries newest first, with New conversation and its note after them", () => {
+  it("shows entries oldest first, newest at the bottom (T15, S09), with New conversation in the header and its note after them", () => {
     const html = render(state({ entries: [entry("e1", { end: ended("answered") }), entry("e2", { end: ended("answered") })] }));
-    expect(html.indexOf("Question e2")).toBeLessThan(html.indexOf("Question e1"));
-    expect(html.indexOf("Question e1")).toBeLessThan(html.indexOf(`>${labels.NEW_CONVERSATION}<`));
+    expect(html.indexOf("Question e1")).toBeLessThan(html.indexOf("Question e2"));
+    expect(html.indexOf(`>${labels.NEW_CONVERSATION}<`)).toBeLessThan(html.indexOf("Question e1"));
+    expect(html.indexOf("Question e2")).toBeLessThan(html.indexOf(labels.CONVERSATION_NOTE));
     expect(html).toContain('aria-busy="false"');
   });
 
@@ -259,28 +295,28 @@ describe("the conversation", () => {
       },
     ];
     const attribution = `<p class="ask-attribution">${labels.ATTRIBUTION}</p>`;
-    /** Each entry's markup, as the screen lists them: newest first. */
+    /** Each entry's markup, as the screen lists them: oldest first (T15). */
     const listed = (html: string) => html.split('<li class="ag-surface ask-entry">').slice(1);
     const followUp = entry("e2", { texts: ["The taxes on that seat are $5.60."], end: ended("answered", { committed: true }) });
 
     const committed = listed(render(state({ entries: [entry("e1", { steps: searched, end: ended("answered", { committed: true }) }), followUp] })));
     expect(committed.map((html) => [html.includes("Question e2"), html.includes(attribution)])).toEqual([
-      [true, true],
       [false, true],
+      [true, true],
     ]);
 
     // A stopped question is never committed, so the follow-up after it resent none of its results.
     const stopped = listed(render(state({ entries: [entry("e1", { steps: searched, end: ended("stopped", { stoppedDuring: "between" }) }), followUp] })));
     expect(stopped.map((html) => [html.includes("Question e2"), html.includes(attribution)])).toEqual([
-      [true, false],
       [false, true],
+      [true, false],
     ]);
 
     // A later question's search was in no request of an earlier one.
     const later = listed(render(state({ entries: [entry("e1", { texts: ["Qatar flies this route."], end: ended("answered", { committed: true }) }), entry("e2", { steps: searched, end: ended("answered", { committed: true }) })] })));
     expect(later.map((html) => [html.includes("Question e2"), html.includes(attribution)])).toEqual([
-      [true, true],
       [false, false],
+      [true, true],
     ]);
   });
 
@@ -299,7 +335,7 @@ describe("the conversation", () => {
     expect(isDisabled(button(render(stopped, { keys: { anthropic: false, seats: true } }), labels.ASK_AGAIN).attrs)).toBe(true);
   });
 
-  it("shows the last refusal under the composer, and a failure the screen opened on without re-announcing it", () => {
+  it("shows the last refusal next to the composer, and a failure the screen opened on without re-announcing it", () => {
     const html = render(
       state({
         entries: [entry("e1", { end: ended("failed", { failure: { code: "overloaded", retryable: true, message: "Anthropic is overloaded and did not answer.", requestId: null } }) })],
@@ -308,7 +344,9 @@ describe("the conversation", () => {
       }),
     );
     expect(html).toContain(`<p class="ask-callout">${labels.KEYS_CHANGED}</p>`);
-    expect(html.indexOf(labels.KEYS_CHANGED)).toBeLessThan(html.indexOf("Question e1"));
+    // After the conversation, directly above the composer the refused action came from (T15: the composer is last).
+    expect(html.indexOf("Question e1")).toBeLessThan(html.indexOf(labels.KEYS_CHANGED));
+    expect(html.indexOf(labels.KEYS_CHANGED)).toBeLessThan(html.indexOf(labels.QUESTION_LABEL));
     expect(html).toContain('<div class="ask-failure"><p>Anthropic is overloaded and did not answer.</p></div>');
     expect(html).not.toContain('role="alert"');
     expect(buttonTexts(html)).toContain(labels.TRY_AGAIN);

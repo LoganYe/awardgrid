@@ -106,6 +106,15 @@ export const availabilityCache = sqliteTable(
     sourceId: text("source_id").notNull(),
     bookingUrl: text("booking_url"),
     fetchedAt: text("fetched_at").notNull(),
+    /**
+     * JSON {"basis","updated","at"}: which clock computed_last_seen came from (core grid/types.ts
+     * AvailabilityRow.time_basis), the provider's UpdatedAt when it sent one, and the fetched_at of
+     * the write that recorded them. Read back only while "at" still equals this row's fetched_at, so
+     * a writer that does not know the column (an older build after a rollback) cannot leave a stale
+     * label on newer values. Nullable and additive (migration 0003): rows written before it read back
+     * with no provenance, which the UI/UX v1 surfaces show as "provider time unknown".
+     */
+    timeEvidence: text("time_evidence"),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.program, t.origin, t.dest, t.date, t.cabin] }),
@@ -130,6 +139,14 @@ export const cacheCoverage = sqliteTable(
     /** "*" for all programs, else a sorted comma-joined list. */
     programsKey: text("programs_key").notNull(),
     fetchedAt: text("fetched_at").notNull(),
+    /**
+     * JSON {"state","reason","at"}: what the fetch that wrote this cell proved (core seatsaero/cache.ts
+     * CoverageRecord.evidence) — ran to its end, or stopped at the page cap or for quota — and that fetch's
+     * fetched_at. Kept only while "at" equals this cell's fetched_at, so a newer write that did not record
+     * evidence (an older build) leaves the cell with none. Nullable and additive (migration 0004): cells
+     * written before it prove nothing about completeness.
+     */
+    evidence: text("evidence"),
   },
   (t) => [primaryKey({ columns: [t.userId, t.origin, t.dest, t.date, t.cabin, t.programsKey] })],
 );

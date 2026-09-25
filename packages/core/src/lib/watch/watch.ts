@@ -15,6 +15,7 @@
  *      than that returns the same rows from cache. `dueForCheck` says no until the TTL has passed.
  *   2. **What changed?** `diffWithinOverlap`, below, on top of `diffSnapshots` from ./diff.
  */
+import type { QueryDraft } from "../workspace/types";
 import { diffSnapshots, parseCellKey } from "./diff";
 import type { CellSnapshot, DiffOptions, SnapshotDiff } from "./types";
 
@@ -56,8 +57,14 @@ export interface Watch {
   baselineWindow?: DateWindow | null;
   /** Minimum miles decrease that counts as a price drop, in percent of the baseline. */
   dropThresholdPct: number;
-  /** The most recent check that COMPLETED, successful or not. Drives "last checked" and "last attempt failed". */
-  lastResult?: { at: string; status: "checked" | "failed"; firstCheck: boolean; message?: string } | null;
+  /**
+   * The most recent check that COMPLETED, successful or not. Drives "last checked" and "last attempt failed".
+   * `compared` (T14): the dates the check compared against the previous baseline, or null when it could not compare
+   * (the first check, or windows that did not overlap): that is not "no change". Absent on results from before T14,
+   * where it is unknown. `refused`: the key was refused. `unresolved`: the structured conditions could not be run, so
+   * nothing was sent.
+   */
+  lastResult?: { at: string; status: "checked" | "failed"; firstCheck: boolean; message?: string; compared?: DateWindow | null; refused?: boolean; unresolved?: boolean } | null;
   /**
    * Changes found by checks the user has not looked at yet, accumulated across checks.
    *
@@ -70,10 +77,57 @@ export interface Watch {
   /** A paused watch is never checked and says so; it is not deleted. */
   enabled: boolean;
   createdAt: string;
+  /**
+   * The structured query and date rule a check runs (UI/UX v1 T14). When present and not under review, `text` is only
+   * what the watch was made from: it is never read again over these fields. Absent on a watch from before T14 until
+   * it is migrated (workspace/watch-migration.ts).
+   */
+  draft?: QueryDraft | null;
+  /** Why the person must confirm the conditions (T14); until then a check reads `text`, as before. */
+  review?: "dates" | "unparsed" | null;
+  /**
+   * What changed, one entry per cell, newest first, since the person last looked (T14; capped at
+   * MAX_UNSEEN_CHANGES). Kept beside the counts in `unseen`, which stay whole even when this list is cut.
+   */
+  unseenChanges?: WatchChange[] | null;
 }
 
-/** Why a watch did not run. Every one of these is a sentence the UI has to be able to say. */
-export type SkipReason = "disabled" | "no_key" | "quota_low" | "checked_recently";
+/** One change a check found, over the dates both checks covered: old and new values, never inferred. */
+export interface WatchChange {
+  kind: "new" | "gone" | "cheaper";
+  /** "program|origin|dest|date|cabin" (./diff cellKey). */
+  key: string;
+  before: { miles: number; fees_cents: number | null } | null;
+  after: { miles: number; fees_cents: number | null } | null;
+  /** When the check that found it ran. */
+  at: string;
+}
+
+/** How many change details a watch keeps until they are seen. */
+export const MAX_UNSEEN_CHANGES = 30;
+
+/** The dates two checks both covered, or null when they did not overlap (nothing can then be compared). */
+export function overlapWindow(prev: DateWindow | null | undefined, next: DateWindow): DateWindow | null {
+  const from = prev && prev.date_from > next.date_from ? prev.date_from : next.date_from;
+  const to = prev && prev.date_to < next.date_to ? prev.date_to : next.date_to;
+  return from > to ? null : { date_from: from, date_to: to };
+}
+
+/** A diff as change entries, newest check's first, for `Watch.unseenChanges`. */
+export function changesFrom(diff: SnapshotDiff, at: string): WatchChange[] {
+  const values = (c: CellSnapshot) => ({ miles: c.miles, fees_cents: c.fees_cents });
+  return [
+    ...diff.new.map((c) => ({ kind: "new" as const, key: c.key, before: null, after: values(c), at })),
+    ...diff.price_drops.map((d) => ({ kind: "cheaper" as const, key: d.key, before: values(d.before), after: values(d.after), at })),
+    ...diff.dropped.map((c) => ({ kind: "gone" as const, key: c.key, before: values(c), after: null, at })),
+  ];
+}
+
+/**
+ * Why a watch did not run. Every one of these is a sentence the UI has to be able to say. "dates_passed": a watch with
+ * fixed dates that have all gone by (T14); checking it could only spend a call on dates nobody can book.
+ */
+export type SkipReason = "disabled" | "no_key" | "quota_low" | "checked_recently" | "dates_passed";
 
 export type WatchOutcome =
   | { status: "skipped"; reason: SkipReason }

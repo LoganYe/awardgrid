@@ -607,6 +607,16 @@ describe("a question", () => {
     const state = await h.service.ask(QUESTION, false);
     expect(state.entries[0]!.end?.status).toBe("answered");
     expect(logged).toHaveBeenCalledWith("ask.json save failed", "Error");
+    // T13: the save is still owed, and says so, for the app's save report.
+    await h.service.persist();
+    expect(h.service.saveFailed?.()).toBe(true);
+  });
+
+  it("says a save is no longer owed once ask.json is written (T13)", async () => {
+    const h = await harness({ replies: [{ script: "text" }] });
+    await h.service.ask(QUESTION, false);
+    await h.service.persist();
+    expect(h.service.saveFailed?.()).toBe(false);
   });
 });
 

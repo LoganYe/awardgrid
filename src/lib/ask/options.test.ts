@@ -222,6 +222,13 @@ describe("buildSystemPrompt", () => {
     expect(empty).toContain("The UI locale is en");
   });
 
+  it("says a selected cell's 0 seats and null fees are unreported, never none (UI/UX v1 T19)", () => {
+    const p = buildSystemPrompt({ cell: { origin: "HKG", dest: "SEA", date: "2026-10-18", cabin: "J", program: "aeroplan", miles: 75000, fees_cents: null, seats_left: 0, source_id: "s" } });
+    expect(p).toContain('"seats_left":0');
+    expect(p).toContain("seats_left 0 means the program did not report a seat count");
+    expect(p).toContain("fees_cents null means the fees are not yet confirmed");
+  });
+
   it("truncates oversized context", () => {
     const big = buildSystemPrompt({ cell: { blob: "x".repeat(MAX_CONTEXT_CHARS * 2) } });
     expect(big).toContain("…(truncated)");

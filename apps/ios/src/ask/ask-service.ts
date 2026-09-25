@@ -46,6 +46,8 @@ import type { AskStore } from "../store/ask-store";
 import {
   BUSY,
   CLEARED,
+  CONTEXT_CHANGED,
+  SEARCH_CHANGED,
   KEY_ACCEPTED,
   KEYS_CHANGED,
   NO_ANTHROPIC_KEY,
@@ -59,6 +61,14 @@ import {
   type KeyCheckOutcome,
 } from "./labels";
 import { createSeatsPort } from "./seats-port";
+import { ContextError, type ContextRefusal, attachedRows, buildAIContext, entryContext, lastSearchOf as searchOfQuery, readEntryContext, readEntryProposals } from "./context";
+import type { AttachedRow } from "@awardgrid/core/ask/prompt";
+import type { EntryContext, EntryProposal } from "@awardgrid/core/ask/conversation";
+import type { ScopeGate, ToolRun, ToolRunner } from "@awardgrid/core/ask/tools";
+import { RequestNotStartedError, type RequestKind } from "../workspace/request-coordinator";
+import type { QueryObject } from "@awardgrid/core/query/schema";
+import { proposalStatus } from "@awardgrid/core/workspace/proposals";
+import type { AIContext, ResultRef, ResultSnapshot, WorkspaceRow } from "@awardgrid/core/workspace/types";
 
 // ---------------------------------------------------------------------------
 // What the service needs
@@ -98,6 +108,31 @@ export interface AskServiceDeps {
   /** AppServices.persist: the snapshots and ask.json. Tools call it after a call that moved the quota. */
   persist(): Promise<void>;
   lastSearch: Pick<LastSearchStore, "get">;
+  /**
+   * The trusted results on screen (T15): the workspace's displayed snapshot and the selection made on it. When given,
+   * the search and any attached results come from here, the one snapshot every view shows; `lastSearch` is then unused.
+   */
+  context?: {
+    snapshot(): ResultSnapshot | null;
+    selected(): readonly ResultRef[];
+    /** Hear when either changes, so a page showing what would be sent is redrawn (the workspace's subscribe). */
+    subscribe?(listener: () => void): () => void;
+    /**
+     * T16: the revision of the search on screen (0 when none): a proposal made about another one is stale. Not the
+     * workspace's run counter, which moves when a search starts, before its results replace the ones shown.
+     */
+    revision?(): number;
+  };
+  /**
+   * T16: run a search the person applied from a proposal, through the workspace (a new revision, the normal Search
+   * path and its quota). With `context`, questions get the scope gate and may propose; without this, applying is off.
+   */
+  runQuery?(query: QueryObject): Promise<unknown>;
+  /**
+   * T17: queue each tool call with the app's other spending entries (RequestCoordinator). A call still waiting when
+   * Stop is pressed never starts: it rejects with RequestNotStartedError and is recorded as stopped, with no calls.
+   */
+  coordinate?<T>(kind: RequestKind, operation: () => Promise<T>, signal?: AbortSignal, onStart?: () => void): Promise<T>;
   /** The watch run under way, or a resolved promise (AppServices.whenWatchesIdle). */
   whenWatchesIdle(): Promise<void>;
   now: () => Date;
@@ -127,6 +162,8 @@ export type AskActivity =
   | { kind: "request"; request: number; startedAt: string; resend: boolean }
   /** A tool call is under way. `input` is Claude's, not yet checked by the runner. */
   | { kind: "tool"; name: string; input: unknown }
+  /** T17: a tool call waits its turn behind another search, watch run or lookup; nothing has been sent for it yet. */
+  | { kind: "queued"; name: string; input: unknown }
   /** awardgrid was hidden before a step, which waits until it is visible again. */
   | { kind: "paused" }
   /** Between steps: nothing is out. The question waits to take its next step, for the last step's save to land or a watch run under way to finish. */
@@ -140,7 +177,19 @@ export interface AskRunning {
   stopping: boolean;
 }
 
-export type AskNoticeKind = "busy" | "no_anthropic_key" | "no_seats_key" | "wiring" | "not_started" | "cleared" | "keys_changed" | "retry_unavailable";
+export type AskNoticeKind =
+  | "busy"
+  | "no_anthropic_key"
+  | "no_seats_key"
+  | "wiring"
+  | "not_started"
+  | "cleared"
+  | "keys_changed"
+  | "retry_unavailable"
+  /** T15: the results a question was to be sent with are not in the snapshot on screen; nothing was sent. */
+  | "context_changed"
+  /** T15: the search on screen changed after the page said what would be sent; nothing was sent. */
+  | "search_changed";
 
 export interface AskNotice {
   kind: AskNoticeKind;
@@ -171,12 +220,38 @@ export interface KeyCheckResult {
   requestId: string | null;
 }
 
+/**
+ * What the next question would send (T15), built by the same function a question uses, so the screen's context line
+ * is the payload's: the snapshot, the context built from it (null when the search is not included or there is none),
+ * the rows it attaches, why attaching was refused, and how many earlier questions go with it.
+ */
+export interface ContextPreview {
+  snapshot: ResultSnapshot | null;
+  context: AIContext | null;
+  rows: readonly WorkspaceRow[];
+  refused: ContextRefusal | null;
+  earlier: number;
+  /** How many results are selected on screen, attachable or not: a refused selection is said, never silently dropped. */
+  selected: number;
+  /** T16: the workspace's current revision, which a proposal's status is read against; null without a workspace. */
+  revision: number | null;
+}
+
+/** T16: what applying a proposal did. Only "applied" ran a search, once. */
+export type ApplyOutcome = "applied" | "stale" | "gone" | "unavailable";
+
 export interface AskService {
   state(): AskState;
+  /** What a question asked now with these choices would send (T15). Sends nothing. Optional for stand-ins in tests. */
+  preview?(includeSearch: boolean, attachRows: boolean): ContextPreview;
   subscribe(listener: () => void): () => void;
   isRunning(): boolean;
-  /** Ask a question in the current conversation, with the last grid search when `includeSearch` and one exists. */
-  ask(text: string, includeSearch: boolean): Promise<AskState>;
+  /**
+   * Ask a question in the current conversation, with the search on screen when `includeSearch` and one exists, and the
+   * results selected on it when `attachRows` (T15). `shown` is the snapshot the page said would go (null: none); when
+   * the one on screen is no longer it, nothing is sent and the page says so.
+   */
+  ask(text: string, includeSearch: boolean, attachRows?: boolean, shown?: string | null): Promise<AskState>;
   /** Send nothing more for the question under way. A request or tool call already out still finishes. */
   stop(): void;
   /** Resend the last failed request, only when its outcome offers it (canRetry). */
@@ -185,12 +260,21 @@ export interface AskService {
   askAgain(entryId: string): Promise<AskState>;
   /** Forget the conversation and remove ask.json, and nothing else. */
   newConversation(): Promise<AskState>;
+  /**
+   * T16: apply a pending proposal: consumed before anything is awaited, so a second tap does nothing; refused when the
+   * query has changed since it was made (stale). The search runs through the workspace, as any search does.
+   */
+  applyProposal?(entryId: string, proposalId: string): Promise<ApplyOutcome>;
+  /** T16: keep the current conditions: the proposal is set aside, and nothing else changes. */
+  dismissProposal?(entryId: string, proposalId: string): void;
   /** Check the Anthropic key on file with a request that carries no question. `draft` is saved first, when given. */
   checkKey(draft?: string): Promise<KeyCheckResult>;
   /** Read ask.json (once) and check native HTTP. A question the app was closed during becomes unfinished. */
   restore(): Promise<AskState>;
   /** Save ask.json, when there is a conversation. AppServices.persist() calls it. */
   persist(): Promise<void>;
+  /** Whether the conversation is still not on disk after the last save (T13): the save report says so. */
+  saveFailed?(): boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,7 +302,22 @@ interface Question {
   conversation: Conversation;
   keys: Keys;
   includeSearch: boolean;
+  /** What went with it besides the history (T15), recorded on its entry. */
+  context: EntryContext;
 }
+
+/** What a question sends beside the history: built, or refused before anything is sent. */
+type Prepared =
+  | {
+      ok: true;
+      lastSearch: LastSearch | null;
+      attached: AttachedRow[];
+      coverage?: ResultSnapshot["coverage"]["state"];
+      record: EntryContext;
+      /** T16: the search the person authorized with this question (the one sent), or null. */
+      authorized: QueryObject | null;
+    }
+  | { ok: false; refused: ContextRefusal };
 
 type FailedQuestion = Question & { outcome: FailedOutcome };
 
@@ -241,6 +340,8 @@ export function createAskService(deps: AskServiceDeps): AskService {
   let unsaved = false;
   const listeners = new Set<() => void>();
   let snapshot: AskState = build();
+  // What would be sent follows the search on screen: its page is redrawn when that changes (T15).
+  deps.context?.subscribe?.(() => emit());
 
   // ---- State ----
 
@@ -377,7 +478,70 @@ export function createAskService(deps: AskServiceDeps): AskService {
     };
   }
 
-  async function start(run: Active, text: string, includeSearch: boolean): Promise<void> {
+  /**
+   * Earlier questions a request resends: the committed history's questions. Each begins with one user turn whose
+   * first block is text (buildUserTurn); a tool round adds user turns of tool results, which are not questions.
+   */
+  function earlierCount(): number {
+    if (conversation === null) return 0;
+    return conversation.committed.filter((m) => m.role === "user" && (typeof m.content === "string" || m.content[0]?.type === "text")).length;
+  }
+
+  /**
+   * The context for a question, from the trusted snapshot on screen (T15). `refs` are the results to attach: the
+   * selection now, or, for Ask again, the ones that question was sent with. Without the workspace (older wiring and
+   * tests), the last search's query alone, as before T15.
+   */
+  function prepare(includeSearch: boolean, refs: readonly ResultRef[] | null): Prepared {
+    const earlier = earlierCount();
+    if (!includeSearch) return { ok: true, lastSearch: null, attached: [], record: entryContext(null, earlier), authorized: null };
+    if (!deps.context) {
+      const lastSearch = lastSearchOf(deps.lastSearch.get());
+      return {
+        ok: true,
+        lastSearch,
+        attached: [],
+        record: lastSearch === null ? entryContext(null, earlier) : { sent: "query_only", snapshotId: null, revision: null, refs: [], earlier },
+        authorized: null,
+      };
+    }
+    const snapshot = deps.context.snapshot();
+    if (snapshot === null) {
+      if (refs !== null && refs.length > 0) return { ok: false, refused: "context_snapshot_mismatch" };
+      return { ok: true, lastSearch: null, attached: [], record: entryContext(null, earlier), authorized: null };
+    }
+    try {
+      const built = buildAIContext(snapshot, refs ?? [], refs !== null && refs.length > 0);
+      return {
+        ok: true,
+        lastSearch: searchOfQuery(built.context.query),
+        attached: attachedRows(built.rows, deps.now()),
+        coverage: snapshot.coverage.state,
+        record: entryContext(built.context, earlier),
+        authorized: built.context.query,
+      };
+    } catch (err) {
+      if (err instanceof ContextError) return { ok: false, refused: err.code };
+      throw err;
+    }
+  }
+
+  function preview(includeSearch: boolean, attachRows: boolean): ContextPreview {
+    const earlier = earlierCount();
+    const snapshot = deps.context?.snapshot() ?? null;
+    const selected = deps.context?.selected().length ?? 0;
+    const revision = deps.context?.revision?.() ?? null;
+    if (!includeSearch || snapshot === null) return { snapshot, context: null, rows: [], refused: null, earlier, selected, revision };
+    try {
+      const built = buildAIContext(snapshot, attachRows ? (deps.context?.selected() ?? []) : [], attachRows);
+      return { snapshot, context: built.context, rows: built.rows, refused: null, earlier, selected, revision };
+    } catch (err) {
+      if (err instanceof ContextError) return { snapshot, context: null, rows: [], refused: err.code, earlier, selected, revision };
+      throw err;
+    }
+  }
+
+  async function start(run: Active, text: string, includeSearch: boolean, refs: readonly ResultRef[] | null, shown: string | null | undefined): Promise<void> {
     await ensureLoaded();
     if (!nativeHttpReady()) return setNotice("wiring", WIRING);
     // Refusals about the question itself come first: they need no key, and a key message would not be the reason.
@@ -405,16 +569,59 @@ export function createAskService(deps: AskServiceDeps): AskService {
       return setNotice("wiring", WIRING);
     }
 
+    // The page said what would go; if the search on screen has changed since, nothing goes (T15).
+    if (includeSearch && shown !== undefined && deps.context && (deps.context.snapshot()?.id ?? null) !== shown) return setNotice("search_changed", SEARCH_CHANGED);
+    // Built from the snapshot on screen at the moment of asking; a reference it does not hold sends nothing.
+    const prepared = prepare(includeSearch, refs);
+    if (!prepared.ok) return setNotice("context_changed", CONTEXT_CHANGED);
+    const { lastSearch, attached, coverage, record, authorized } = prepared;
     const conv = conversation ?? startConversation({ id: newId(), now: deps.now });
-    const lastSearch = includeSearch ? lastSearchOf(deps.lastSearch.get()) : null;
-    const question: Question = { run, conversation: conv, keys, includeSearch: lastSearch !== null };
+    const question: Question = { run, conversation: conv, keys, includeSearch: lastSearch !== null, context: record };
     const port = createSeatsPort({ fetchImpl: deps.seatsFetch, engine: deps.engine, keys, persist: () => deps.persist(), now: deps.now });
+    // T16: with the workspace, searches stay inside what the person included, and anything else is only proposed.
+    const baseRevision = deps.context?.revision?.() ?? 0;
+    const gate: ScopeGate | undefined = deps.context
+      ? {
+          authorized,
+          propose: (query, reason) => {
+            const entry = entryOf(question);
+            if (entry === undefined) return { ok: false, message: "This proposal could not be recorded." };
+            const proposal: EntryProposal = { id: newId(), baseRevision, proposed: query, reason, status: "pending", base: authorized };
+            entry.proposals = [...(entry.proposals ?? []), proposal];
+            void save();
+            emit();
+            return { ok: true, id: proposal.id };
+          },
+        }
+      : undefined;
+    const runner = createToolRunner(port, conv, gate);
+    // T17: each tool call waits its turn behind a search, a watch run or a lookup; the question itself is not queued
+    // (it waits for watch runs, and a queued question would wait for itself).
+    const tools: ToolRunner = deps.coordinate
+      ? {
+          run: (block) =>
+            deps.coordinate!("ask", () => runner.run(block), run.controller.signal, () => {
+              // Its turn came: only now is it said to be running.
+              if (run.activity.kind === "queued") {
+                run.activity = { kind: "tool", name: run.activity.name, input: run.activity.input };
+                emit();
+              }
+            }).catch((err: unknown) => {
+              if (err instanceof RequestNotStartedError) return notStartedRun(block);
+              throw err;
+            }),
+          usage: () => runner.usage(),
+        }
+      : runner;
     const outcome = await runQuestion({
       model,
-      tools: createToolRunner(port, conv),
+      tools,
+      proposals: gate !== undefined,
       conversation: conv,
       question: text,
       lastSearch,
+      attached,
+      coverage,
       deps: loopDeps(question),
       onEvent: (event) => onEvent(question, event),
       signal: run.controller.signal,
@@ -433,6 +640,7 @@ export function createAskService(deps: AskServiceDeps): AskService {
         id: newId(),
         question: event.question,
         includeSearch: question.includeSearch,
+        context: question.context,
         askedAt: event.at,
         steps: [],
         texts: [],
@@ -475,7 +683,8 @@ export function createAskService(deps: AskServiceDeps): AskService {
         void save();
         break;
       case "tool_started":
-        run.activity = { kind: "tool", name: event.name, input: event.input };
+        // With the request queue, a tool call first waits its turn: said as waiting until it starts (T17).
+        run.activity = deps.coordinate ? { kind: "queued", name: event.name, input: event.input } : { kind: "tool", name: event.name, input: event.input };
         break;
       case "tool_finished":
         entry.steps.push({ kind: "tool", step: event.step });
@@ -568,14 +777,16 @@ export function createAskService(deps: AskServiceDeps): AskService {
 
   // ---- The API ----
 
-  async function ask(text: string, includeSearch: boolean): Promise<AskState> {
+  async function ask(text: string, includeSearch: boolean, attachRows = false, again: readonly ResultRef[] | null = null, shown?: string | null): Promise<AskState> {
     if (active !== null) return refuse("busy", BUSY);
+    // The selection is read now, with the snapshot, so what is attached is what was on screen when Ask was pressed.
+    const refs = again ?? (includeSearch && attachRows ? [...(deps.context?.selected() ?? [])] : null);
     const run: Active = { controller: new AbortController(), entryId: null, activity: { kind: "starting" } };
     active = run;
     notice = null;
     emit();
     try {
-      await start(run, text, includeSearch);
+      await start(run, text, includeSearch, refs, shown);
     } finally {
       if (active === run) active = null;
       clearBusy();
@@ -624,7 +835,48 @@ export function createAskService(deps: AskServiceDeps): AskService {
       emit();
       return snapshot;
     }
-    return ask(entry.question, entry.includeSearch);
+    // The same choice, and the same results: the ones it was sent with, which must still be on screen (T15).
+    const sentWith = readEntryContext(entry.context);
+    const refs = sentWith?.sent === "query_and_selected_rows" ? sentWith.refs : null;
+    return ask(entry.question, entry.includeSearch, refs !== null, refs);
+  }
+
+  /**
+   * A proposal on an entry of this conversation: the validated copy (what the card shows, and what runs) and the
+   * stored record (whose status is saved). None when the id is missing, unreadable, or not unique: ask.json may come
+   * from elsewhere, and a hidden record must never run in place of the one on screen.
+   */
+  function findProposal(entryId: string, proposalId: string): { valid: EntryProposal; stored: EntryProposal } | undefined {
+    const entry = conversation?.entries.find((e) => e.id === entryId);
+    const stored = (Array.isArray(entry?.proposals) ? entry.proposals : []).filter((p) => p && typeof p === "object" && p.id === proposalId);
+    const valid = readEntryProposals(entry?.proposals).filter((p) => p.id === proposalId);
+    if (stored.length !== 1 || valid.length !== 1) return undefined;
+    return { valid: valid[0]!, stored: stored[0]! };
+  }
+
+  async function applyProposal(entryId: string, proposalId: string): Promise<ApplyOutcome> {
+    const found = findProposal(entryId, proposalId);
+    if (found === undefined || found.stored.status !== "pending" || found.valid.status !== "pending") return "gone";
+    if (!deps.runQuery || !deps.context?.revision) return "unavailable";
+    if (proposalStatus(found.valid, deps.context.revision()) === "stale") {
+      emit();
+      return "stale";
+    }
+    // Consumed before anything is awaited: a second tap finds it applied and sends nothing.
+    found.stored.status = "applied";
+    void save();
+    emit();
+    // What runs is the validated query the card showed.
+    await deps.runQuery(found.valid.proposed);
+    return "applied";
+  }
+
+  function dismissProposal(entryId: string, proposalId: string): void {
+    const found = findProposal(entryId, proposalId);
+    if (found === undefined || found.stored.status !== "pending") return;
+    found.stored.status = "dismissed";
+    void save();
+    emit();
   }
 
   async function newConversation(): Promise<AskState> {
@@ -693,6 +945,7 @@ export function createAskService(deps: AskServiceDeps): AskService {
   }
 
   return {
+    saveFailed: () => unsaved,
     state: () => snapshot,
     subscribe(listener) {
       listeners.add(listener);
@@ -701,7 +954,8 @@ export function createAskService(deps: AskServiceDeps): AskService {
       };
     },
     isRunning: () => active !== null,
-    ask,
+    preview,
+    ask: (text, includeSearch, attachRows, shown) => ask(text, includeSearch, attachRows, null, shown),
     stop() {
       if (active === null || active.controller.signal.aborted) return;
       active.controller.abort();
@@ -710,6 +964,8 @@ export function createAskService(deps: AskServiceDeps): AskService {
     retry,
     askAgain,
     newConversation,
+    applyProposal,
+    dismissProposal,
     checkKey,
     restore,
     persist,
@@ -719,6 +975,19 @@ export function createAskService(deps: AskServiceDeps): AskService {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** T17: a tool call Stop ended while it waited its turn: never started, nothing sent, said to Claude as such. */
+function notStartedRun(block: { id: string; name: string }): ToolRun {
+  return {
+    result: {
+      type: "tool_result",
+      tool_use_id: block.id,
+      content: JSON.stringify({ error: "stopped", message: "The person pressed Stop before this call started; nothing was sent." }),
+      is_error: true,
+    },
+    step: { tool: String(block.name), outcome: "stopped", calls: 0, fromCache: false, fromMemo: false, search: null, program: null, estimate: null },
+  };
+}
 
 /** Entries a closed app left running become unfinished, and the marker is cleared. Returns whether anything changed. */
 function markUnfinished(conversation: Conversation, now: Date): boolean {
@@ -786,7 +1055,14 @@ function emptyUsage(): QuestionUsage {
 
 /** A copy the screen can hold: the service keeps changing its own entries while a question runs. */
 function copyEntry(entry: AskEntry): AskEntry {
-  return { ...entry, steps: [...entry.steps], texts: [...entry.texts], usage: { ...entry.usage }, end: entry.end === null ? null : { ...entry.end } };
+  return {
+    ...entry,
+    steps: [...entry.steps],
+    texts: [...entry.texts],
+    usage: { ...entry.usage },
+    end: entry.end === null ? null : { ...entry.end },
+    ...(Array.isArray(entry.proposals) ? { proposals: entry.proposals.map((p) => ({ ...p })) } : {}),
+  };
 }
 
 function errorName(err: unknown): string {

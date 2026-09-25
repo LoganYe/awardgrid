@@ -1,0 +1,148 @@
+/*
+ * Watches (T14; docs/04 S07). Tokens only. An information block under the title; cards at least 148 tall, 16 padding,
+ * 12 apart; title 16/22, conditions 13/18, change 16/24, last state 13/18; the switch a 44 pt target with its label.
+ */
+.ag-watches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.ag-watches-title {
+  margin: 0;
+  font-size: calc(22px * var(--ag-text-scale));
+  line-height: calc(28px * var(--ag-text-scale));
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-watches-title:focus {
+  outline: none;
+}
+
+.ag-watches-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-watches-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  padding: var(--ag-space-3) var(--ag-space-4);
+  border-radius: 12px;
+  background: var(--ag-surface-subtle);
+}
+
+.ag-watches-info p,
+.ag-watches-empty,
+.ag-watches-status {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: calc(20px * var(--ag-text-scale));
+  color: var(--ag-text-secondary);
+}
+
+.ag-watches-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ag-watches-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ag-watch-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  min-height: 148px;
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: 16px;
+  background: var(--ag-surface);
+}
+
+.ag-watch-title {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: calc(22px * var(--ag-text-scale));
+  font-weight: var(--ag-weight-strong);
+  overflow-wrap: anywhere;
+}
+
+.ag-watch-conditions,
+.ag-watch-last,
+.ag-watch-review {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-watch-review {
+  color: var(--ag-warning);
+}
+
+.ag-watch-change {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-accent);
+}
+
+.ag-watch-details {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ag-watch-details summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ag-touch-target);
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+  cursor: pointer;
+}
+
+.ag-watch-details ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-1);
+  margin: 0;
+  padding-inline-start: var(--ag-space-4);
+}
+
+.ag-watch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ag-space-2);
+  margin-top: var(--ag-space-2);
+}
+
+.ag-watch-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-touch-target);
+  margin-inline-end: auto;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+/* A kept-aside file's name is long and unbroken: it wraps rather than widening the page. */
+.ag-watches .ag-notice {
+  overflow-wrap: anywhere;
+}

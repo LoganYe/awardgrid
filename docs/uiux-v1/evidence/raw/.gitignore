@@ -1,0 +1,3 @@
+# Raw command logs stay local (docs/06: large logs in a gitignored dir; only redacted summaries are committed).
+*
+!.gitignore

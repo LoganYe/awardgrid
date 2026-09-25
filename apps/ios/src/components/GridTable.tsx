@@ -57,10 +57,13 @@ function Cell({ cell, now }: { cell: GridCell; now: Date }) {
  *   anything else             null. A mix of states, or a pull that did not reach every pair, has to
  *                             show which cell is which, so the table renders with its per-cell labels.
  */
-export function emptyGridMessage(grid: Grid): string | null {
+export function emptyGridMessage(grid: Grid, opts: { saved?: boolean } = {}): string | null {
   const cells = grid.cells.flat();
   if (cells.every((c) => c.status === "none")) {
-    return "No availability for that query. The call worked — this route and date window simply has nothing cached at seats.aero right now.";
+    // A saved snapshot shown again says what was true when it was fetched, not "right now".
+    return opts.saved
+      ? "No availability in these saved results. When they were fetched, the call worked and seats.aero had nothing cached for this route and date window."
+      : "No availability for that query. The call worked — this route and date window simply has nothing cached at seats.aero right now.";
   }
   if (cells.every((c) => c.status === "unmonitored")) {
     return "Nothing to show for this query. seats.aero does not monitor these routes for the programs searched.";
@@ -68,8 +71,8 @@ export function emptyGridMessage(grid: Grid): string | null {
   return null;
 }
 
-export function GridTable({ grid, now = new Date() }: { grid: Grid; now?: Date }) {
-  const message = emptyGridMessage(grid);
+export function GridTable({ grid, now = new Date(), saved = false }: { grid: Grid; now?: Date; saved?: boolean }) {
+  const message = emptyGridMessage(grid, { saved });
 
   if (message) {
     return (

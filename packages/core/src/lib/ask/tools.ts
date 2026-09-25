@@ -46,6 +46,8 @@ import {
   type SeatsBudgetGuard,
   type SpendRefusal,
 } from "./budget";
+import { sameAuthorizedScope } from "../workspace/proposals";
+import { isRealDate } from "../workspace/semantics";
 import { coveredByCache } from "./coverage";
 import { scrubSecrets } from "./errors";
 import {
@@ -67,6 +69,8 @@ import {
 
 export const SEARCH_AWARDS = "search_awards";
 export const GET_FLIGHTS = "get_flights";
+/** T16: the one way Claude can ask for a search outside what the person included. It proposes; it never searches. */
+export const PROPOSE_QUERY_CHANGE = "propose_query_change";
 
 const CABIN_LETTERS: readonly string[] = Cabin.options;
 
@@ -119,6 +123,38 @@ export const ASK_TOOLS: Anthropic.Tool[] = deepFreeze([
   },
 ]);
 
+/**
+ * T16: the proposal tool, offered only by a shell that shows proposals and asks the person (a ScopeGate). A separate
+ * list, so ASK_TOOLS and every existing request keep their bytes.
+ */
+export const PROPOSE_TOOL: Anthropic.Tool = deepFreeze({
+  name: PROPOSE_QUERY_CHANGE,
+  strict: true,
+  description:
+    "Proposes a search with other conditions for the person to review: other airports, dates, cabins, programs, nonstop, mileage cap, mixed-cabin share or dynamic pricing. awardgrid shows the person exactly what would change and runs the search only if they apply it; nothing is searched now, and nothing you write counts as their agreement. Use it when answering needs a search outside the one the person included, or when they included none. One proposal per question. Afterwards, answer with what you have and say the proposal is waiting for them; do not describe its results.",
+  input_schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      origins: { type: "array", items: { type: "string" } },
+      destinations: { type: "array", items: { type: "string" } },
+      date_from: { type: "string", format: "date" },
+      date_to: { type: "string", format: "date", description: "Inclusive." },
+      cabins: { type: "array", items: { type: "string", enum: [...Cabin.options] } },
+      programs: { anyOf: [{ type: "array", items: { type: "string", enum: [...SEATS_SOURCES] } }, { type: "null" }] },
+      direct_only: { type: "boolean" },
+      max_miles: { anyOf: [{ type: "integer" }, { type: "null" }] },
+      min_cabin_pct: { type: "integer", description: "Share of the distance flown in the cabin asked for, 0 to 100; 100 allows no mixed cabin." },
+      include_filtered: { type: "boolean", description: "Include dynamically priced seats." },
+      reason: { type: "string", description: "One sentence the person reads: why this search would answer their question." },
+    },
+    required: ["origins", "destinations", "date_from", "date_to", "cabins", "programs", "direct_only", "max_miles", "min_cabin_pct", "include_filtered", "reason"],
+  },
+});
+
+/** The tool list for a shell with a ScopeGate: search, flights, and the proposal tool. */
+export const ASK_TOOLS_WITH_PROPOSALS: Anthropic.Tool[] = deepFreeze([...ASK_TOOLS, PROPOSE_TOOL]);
+
 /** The inputs as the schemas above describe them. Checked again here: a strict schema is a promise about the model, not about this code. */
 const SearchInput = z.strictObject({
   origins: z.array(z.string()),
@@ -134,6 +170,15 @@ const SearchInput = z.strictObject({
 });
 
 const FlightsInput = z.strictObject({ availability_id: z.string(), cabin: Cabin });
+
+const ProposalInput = SearchInput.extend({
+  min_cabin_pct: z.number().int().min(0).max(100),
+  include_filtered: z.boolean(),
+  reason: z.string().trim().min(1).max(300),
+});
+
+/** How long Claude's reason may be, in characters: one sentence the person reads. */
+const PROPOSAL_REASON_MAX = 300;
 
 /** client.ts getTrips refuses anything else (client.ts:299); the length bound keeps a refusal short. */
 const AVAILABILITY_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -235,6 +280,12 @@ export type ToolErrorCode =
   | "seatsaero_error"
   | "unknown_id"
   | "unknown_tool"
+  /** T16: a search outside the scope the person authorized; nothing was sent. */
+  | "needs_confirmation"
+  /** T16: a proposal for a search inside the included one, which needs no proposal. */
+  | "inside_scope"
+  /** T17: Stop was pressed while this call waited its turn behind another spending entry; it never started. */
+  | "stopped"
   | "tool_failed";
 
 /** The search a search_awards call ran, after metro codes expanded: the `query` echoed in its result. */
@@ -284,6 +335,17 @@ export interface ToolUsage {
   seatsCalls: number;
 }
 
+/**
+ * T16: the trusted scope, from the shell, never from the model. A search inside `authorized` runs as before; any
+ * other is refused before a request with `needs_confirmation`, and Claude may only propose it. `authorized` null (no
+ * search included) means every search needs the person. `propose` records a validated proposal for the person to
+ * apply or keep; it returns its id, or why it was not recorded.
+ */
+export interface ScopeGate {
+  authorized: QueryObject | null;
+  propose(query: QueryObject, reason: string): { ok: true; id: string } | { ok: false; message: string };
+}
+
 export interface ToolRunner {
   /** Run one tool_use block. Never rejects. */
   run(block: Pick<Anthropic.ToolUseBlock, "id" | "name" | "input">): Promise<ToolRun>;
@@ -317,8 +379,10 @@ interface Attempt {
  * tool's limit, so malformed input Claude can fix does not use up the searches or lookups the fix needs. A block past
  * a limit gets limit_reached and does not run.
  */
-export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunner {
+export function createToolRunner(port: SeatsPort, state: ToolRunState, gate?: ScopeGate): ToolRunner {
   const used: ToolUsage = { toolCalls: 0, searches: 0, flights: 0, seatsCalls: 0 };
+  /** Proposals this question made (T16): at most one. Not part of ToolUsage, whose shape callers rely on. */
+  let proposals = 0;
   const secrets = [port.apiKey, ...(port.secrets ?? [])];
   /** Mask first, then cap, as errors.ts:84 does, so the cut can never leave part of a key showing. */
   const quote = (text: string): string => capQuote(scrubSecrets(text, secrets));
@@ -474,6 +538,16 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
     const now = port.now();
     const today = utcDayKey(now);
     if (query.date_to < today) return refuse(toolUseId, s, "invalid_input", `The dates are before today (${today}).`);
+    // T16: the trusted scope, checked before anything is counted, planned or sent. The model's words do not widen it.
+    if (gate && !insideScope(query, gate.authorized)) {
+      const included = gate.authorized === null ? "The person included no search with this question" : `The person included this search: ${JSON.stringify(echo(gate.authorized))}`;
+      return refuse(
+        toolUseId,
+        s,
+        "needs_confirmation",
+        `${included}, and this search goes outside it. awardgrid did not run it and sent nothing. If a search with other conditions would answer the question, call ${PROPOSE_QUERY_CHANGE} with it: the person sees what would change and decides whether it runs.`,
+      );
+    }
     // Counted only here, once the input is a search that could run; every check after this one is about budget.
     used.searches += 1;
 
@@ -579,6 +653,15 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
     const rows = await port.cache.getRowsBySourceId(port.userId, id, GRID_SCOPE);
     const program = (rows.find((r) => r.cabin === cabin) ?? rows[0])?.program ?? null;
     const s = { ...base, program };
+    // T16: a lookup costs a call, so it too stays inside what the person included: the row this device holds for the
+    // id, in this cabin, must lie inside it. An id from an earlier, wider search, or a row no longer held, is refused.
+    if (gate) {
+      const row = rows.find((r) => r.cabin === cabin);
+      if (!row || !rowInsideScope(row, cabin, gate.authorized)) {
+        const included = gate.authorized === null ? "The person included no search with this question" : "This result is outside the search the person included";
+        return refuse(toolUseId, s, "needs_confirmation", `${included}, so awardgrid did not look it up and sent nothing.`);
+      }
+    }
     if (!plan.run) return spendRefusal(toolUseId, s, plan, "lookup");
 
     const guard = createSeatsBudgetGuard(port.fetch, plan.guard);
@@ -611,6 +694,65 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
     return finish(toolUseId, { ...s, calls: guard.sent() }, payload, false);
   }
 
+  /** T16: validate a proposed search as a search is validated, and hand it to the shell; nothing is searched. */
+  function proposeQueryChange(toolUseId: string, input: unknown): ToolRun {
+    const base = step(PROPOSE_QUERY_CHANGE);
+    if (!gate) return refuse(toolUseId, base, "unknown_tool", `awardgrid has no tool named ${JSON.stringify(PROPOSE_QUERY_CHANGE)}. Its tools are ${SEARCH_AWARDS} and ${GET_FLIGHTS}.`);
+    if (proposals >= 1) return refuse(toolUseId, base, "limit_reached", "One question may make one proposal.");
+    const parsed = ProposalInput.safeParse(input);
+    if (!parsed.success) return refuse(toolUseId, base, "invalid_input", `The proposal could not be read: ${quote(issuesText(parsed.error))}.`);
+    const inp = parsed.data;
+    const origins = expandCodes(inp.origins);
+    const destinations = expandCodes(inp.destinations);
+    const unknown = [...origins.unknown, ...destinations.unknown];
+    if (unknown.length > 0) return refuse(toolUseId, base, "invalid_place", `Unknown place code: ${unknown.join(", ")}. Use 3-letter airport or metro codes.`);
+    if (origins.airports.length === 0 || destinations.airports.length === 0) {
+      return refuse(toolUseId, base, "invalid_input", "origins and destinations each need at least one airport or metro code.");
+    }
+    const pairCount = origins.airports.length * destinations.airports.length;
+    if (pairCount > MAX_PAIRS) return refuse(toolUseId, base, "too_wide", `Too many airport pairs: ${pairCount}. One search may cover at most ${MAX_PAIRS}.`, { pairs: pairCount });
+    const programs = unique(inp.programs ?? []);
+    const checked = QueryObject.safeParse({
+      origins: origins.airports,
+      destinations: destinations.airports,
+      date_from: inp.date_from,
+      date_to: inp.date_to,
+      cabins: unique(inp.cabins),
+      ...(programs.length > 0 ? { programs } : {}),
+      direct_only: inp.direct_only,
+      include_filtered: inp.include_filtered,
+      min_cabin_pct: inp.min_cabin_pct,
+      ...(inp.max_miles === null ? {} : { max_miles: inp.max_miles }),
+      sort_by: gate.authorized?.sort_by ?? "miles_asc",
+      raw_text: "",
+      language: gate.authorized?.language ?? "en",
+    });
+    if (!checked.success) return refuse(toolUseId, base, "invalid_input", `The proposal could not be read: ${quote(issuesText(checked.error))}.`);
+    const query = checked.data;
+    // Real calendar days only: the schema reads "2026-11-31" as 1 December, and the workspace would refuse it.
+    if (!isRealDate(query.date_from) || !isRealDate(query.date_to)) return refuse(toolUseId, base, "invalid_input", "The dates must be real calendar dates.");
+    const today = utcDayKey(port.now());
+    if (query.date_to < today) return refuse(toolUseId, base, "invalid_input", `The dates are before today (${today}).`);
+    const s = { ...base, search: echo(query) };
+    if (gate.authorized !== null && insideScope(query, gate.authorized)) {
+      return refuse(toolUseId, s, "inside_scope", `This search is inside the one the person included; run it with ${SEARCH_AWARDS} instead of proposing it.`);
+    }
+    const recorded = gate.propose(query, inp.reason.slice(0, PROPOSAL_REASON_MAX));
+    if (!recorded.ok) return refuse(toolUseId, s, "invalid_input", recorded.message);
+    proposals += 1;
+    return finish(
+      toolUseId,
+      s,
+      {
+        proposed: true,
+        id: recorded.id,
+        query: echo(query),
+        message: "awardgrid shows this proposal to the person with what it changes. Nothing was searched. It runs only if they apply it: answer with what you have, say the proposal is waiting for them, and do not describe its results.",
+      },
+      false,
+    );
+  }
+
   return {
     async run(block) {
       const attempt: Attempt = { calls: 0 };
@@ -626,6 +768,7 @@ export function createToolRunner(port: SeatsPort, state: ToolRunState): ToolRunn
         used.toolCalls += 1;
         if (tool === SEARCH_AWARDS) return await searchAwards(block.id, block.input, attempt);
         if (tool === GET_FLIGHTS) return await getFlights(block.id, block.input, attempt);
+        if (tool === PROPOSE_QUERY_CHANGE) return proposeQueryChange(block.id, block.input);
         return refuse(block.id, step(tool), "unknown_tool", `awardgrid has no tool named ${JSON.stringify(tool)}. Its tools are ${SEARCH_AWARDS} and ${GET_FLIGHTS}.`);
       } catch (err) {
         // A bug or a failing store, not seats.aero: say so, and still report any calls that went out.
@@ -809,6 +952,31 @@ function byPair(query: QueryObject, rows: readonly AvailabilityRow[]) {
     }
   }
   return out;
+}
+
+/**
+ * Whether a search stays inside what was authorized (T16). The model's codes were expanded already (a metro code is
+ * its airports); the authorized query is airports as stored, never expanded again: SHA alone is Hongqiao, not
+ * Shanghai (U-024), and BKK alone is Suvarnabhumi.
+ */
+function insideScope(query: QueryObject, authorized: QueryObject | null): boolean {
+  if (authorized === null) return false;
+  return sameAuthorizedScope(query, authorized);
+}
+
+/** Whether one cached row, looked up in one cabin, lies inside what was authorized (T16, get_flights). */
+function rowInsideScope(row: AvailabilityRow, cabin: Cabin, authorized: QueryObject | null): boolean {
+  if (authorized === null) return false;
+  const has = (list: readonly string[], code: string) => list.some((item) => item.toUpperCase() === code.toUpperCase());
+  const programs = authorized.programs && authorized.programs.length > 0 ? authorized.programs : null;
+  return (
+    has(authorized.origins, row.origin) &&
+    has(authorized.destinations, row.dest) &&
+    row.date >= authorized.date_from &&
+    row.date <= authorized.date_to &&
+    has(authorized.cabins, cabin) &&
+    (programs === null || has(programs, row.program))
+  );
 }
 
 function echo(query: QueryObject): SearchEcho {

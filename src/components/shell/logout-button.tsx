@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { clearAskSession } from "@/components/ask/history";
+import { forgetWorkspacesOnDevice } from "@/components/workspace/storage";
 import { useT } from "@awardgrid/core/i18n/client";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,8 @@ export function LogoutButton({ className, role }: { className?: string; role?: s
     } finally {
       setBusy(false);
       clearAskSession();
+      // UI/UX v1 T18: every account's workspace leaves this browser too; saved options stay under their account.
+      forgetWorkspacesOnDevice();
       router.push("/login");
       router.refresh();
     }

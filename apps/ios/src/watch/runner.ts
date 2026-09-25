@@ -19,17 +19,33 @@
  *     so a watch here and a standing query there mean the same thing by "changed".
  *   - **Changes accumulate until seen.** Each check moves the baseline forward, so a quiet check
  *     must not erase an earlier check's news. See `Watch.unseen`.
+ *   - **A structured watch runs its structured query** (T14): the draft resolved against today, through the
+ *     engine's `searchQuery`, never its old text read again over edited fields. A watch under review, or one from
+ *     before T14 not migrated yet, reads its text as it always did. Fixed dates that have all passed are not
+ *     checked: that could only spend a call on dates nobody can book.
+ *   - **What changed is kept, with the old and new values** (T14), over the dates both checks covered; a check that
+ *     could not compare (no overlap) says so rather than "no change".
+ *   - **An edit made while a check is out wins** (T14 review). Each watch is read when its turn comes, and again when
+ *     its request returns: a watch edited, restarted or removed meanwhile gets nothing from a check of its old
+ *     conditions (its next check sets the baseline the edit asked for), and changes marked seen meanwhile stay seen.
+ *   - **Conditions that cannot be run are not replaced by the old text.** A structured watch whose draft no longer
+ *     resolves (a damaged file) is not checked, costs nothing, and says its conditions need editing.
  */
 import {
   DEFAULT_MIN_QUOTA,
+  MAX_UNSEEN_CHANGES,
   type SkipReason,
   type Watch,
   type WatchOutcome,
+  changesFrom,
   diffWithinOverlap,
   dueForCheck,
   isChanged,
+  overlapWindow,
   snapshot,
 } from "@awardgrid/core/watch";
+import { resolveDraft } from "@awardgrid/core/workspace/query-editor";
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { DEFAULT_CACHE_TTL_MINUTES } from "@awardgrid/core/seatsaero/cache";
 import type { ApiFailureCode, SearchEngine } from "../search/search";
 import type { WatchStore } from "../store/watch-store";
@@ -43,7 +59,7 @@ export interface WatchCheckResult {
 }
 
 export interface CheckWatchesOptions {
-  engine: Pick<SearchEngine, "search" | "quotaView">;
+  engine: Pick<SearchEngine, "search" | "searchQuery" | "quotaView">;
   store: WatchStore;
   apiKey: string | null;
   now: () => Date;
@@ -63,8 +79,10 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
   const ttlMinutes = opts.ttlMinutes ?? DEFAULT_CACHE_TTL_MINUTES;
   const results: WatchCheckResult[] = [];
 
-  // Iterate over a copy: the store is updated as each watch finishes.
-  for (const watch of [...opts.store.all()]) {
+  // Ids, not records: each watch is read when its turn comes, so an edit made during an earlier watch's check is run.
+  for (const id of opts.store.all().map((w) => w.id)) {
+    const watch = opts.store.get(id);
+    if (!watch) continue;
     const now = opts.now();
     const firstCheck = watch.lastCheckedAt === null;
     const quota = await opts.engine.quotaView();
@@ -81,16 +99,38 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
       continue;
     }
 
-    const res = await opts.engine.search(watch.text, opts.apiKey);
+    // A structured watch runs its own query for today (T14); one under review, or not migrated, reads its text.
+    let structured: QueryObject | null = null;
+    if (watch.draft && !watch.review) {
+      try {
+        structured = resolveDraft(watch.draft, now.toISOString().slice(0, 10));
+      } catch {
+        // Never the old text instead: that is a different search from the one on its card. Nothing was sent.
+        opts.store.update(watch.id, { lastResult: { at: now.toISOString(), status: "failed", firstCheck, unresolved: true } });
+        results.push(result(watch, { status: "failed", message: "The watch's conditions could not be resolved." }, firstCheck));
+        continue;
+      }
+      if (structured.date_to < now.toISOString().slice(0, 10)) {
+        results.push(result(watch, { status: "skipped", reason: "dates_passed" }, firstCheck));
+        continue;
+      }
+    }
+
+    const res = structured ? await opts.engine.searchQuery(structured, opts.apiKey) : await opts.engine.search(watch.text, opts.apiKey);
     const iso = now.toISOString();
+    // Read again: the request may have been out while the watch was edited, restarted from the editor, or removed.
+    const current = opts.store.get(watch.id);
+    if (!current || editedSince(watch, current)) continue;
 
     if (!res.ok) {
       const message = res.message ?? res.error;
       // Do NOT touch the baseline or the unseen changes: a failed check says nothing about
       // availability, and must not wipe news an earlier check found.
+      // A refused key (401/403) is its own reason, so the screen can say the key, not the watch, is the problem.
+      const refused = res.error === "no_key" && (res.status === 401 || res.status === 403);
       opts.store.update(watch.id, {
-        ...(COSTLY_FAILURES.has(res.error) ? { lastAttemptAt: iso } : {}),
-        lastResult: { at: iso, status: "failed", firstCheck, message },
+        ...(COSTLY_FAILURES.has(res.error) || refused ? { lastAttemptAt: iso } : {}),
+        lastResult: { at: iso, status: "failed", firstCheck, message, refused },
       });
       results.push(result(watch, { status: "failed", message }, firstCheck));
       continue;
@@ -102,8 +142,12 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
       dropThresholdPct: watch.dropThresholdPct,
     });
     const changed = !firstCheck && isChanged(diff);
+    // The dates this check compared against the baseline; null when it could not compare (first check, no overlap).
+    const compared = firstCheck ? null : overlapWindow(watch.baselineWindow, window);
+    // What is still unseen now, not when the check started: changes marked seen meanwhile stay seen.
+    const unseenChanges = changed ? [...changesFrom(diff, iso), ...(current.unseenChanges ?? [])].slice(0, MAX_UNSEEN_CHANGES) : (current.unseenChanges ?? null);
 
-    const prev = watch.unseen ?? null;
+    const prev = current.unseen ?? null;
     const unseen = changed
       ? {
           new: (prev?.new ?? 0) + diff.new.length,
@@ -118,12 +162,25 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
       baselineWindow: window,
       lastCheckedAt: iso,
       lastAttemptAt: iso,
-      lastResult: { at: iso, status: "checked", firstCheck },
+      lastResult: { at: iso, status: "checked", firstCheck, compared },
       unseen,
+      unseenChanges,
     });
     results.push(result(watch, { status: "checked", diff, changed, snapshot: cells }, firstCheck));
   }
   return results;
+}
+
+/** Whether what a check of `before` compared against, or what it ran, has changed since. */
+function editedSince(before: Watch, after: Watch): boolean {
+  return (
+    after.draft !== before.draft ||
+    after.text !== before.text ||
+    after.review !== before.review ||
+    after.lastCheckedAt !== before.lastCheckedAt ||
+    after.baselineWindow !== before.baselineWindow ||
+    after.baseline !== before.baseline
+  );
 }
 
 function result(watch: Watch, outcome: WatchOutcome, firstCheck: boolean): WatchCheckResult {

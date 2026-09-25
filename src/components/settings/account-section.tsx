@@ -10,6 +10,8 @@
  * component except in the POST body.
  */
 import { useRouter } from "next/navigation";
+import { clearAskSession } from "@/components/ask/history";
+import { forgetWorkspacesOnDevice } from "@/components/workspace/storage";
 import { useId, useState, type FormEvent } from "react";
 import { InlineConfirm } from "@/components/queries/inline-confirm";
 import { Button } from "@/components/ui/button";
@@ -63,6 +65,9 @@ export function AccountSection({ username, createdAt }: { username: string; crea
     setBusy(false);
     if (res.ok || res.status === 401) {
       setConfirmLogoutAll(false);
+      // As plain logout does (T18): the conversation and every account's workspace leave this browser.
+      clearAskSession();
+      forgetWorkspacesOnDevice();
       router.push("/login");
       router.refresh();
     } else {

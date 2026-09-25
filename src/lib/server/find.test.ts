@@ -594,13 +594,28 @@ describe("parseForUser", () => {
       stop_reason: "end_turn" as const,
     }));
     const llmClient = { messages: { parse } };
-    const r = await parseForUser("HKG to SEA over Thanksgiving, first", { today: "2026-10-01", env: {}, llmClient });
+    // UI/UX v1 T20: only when the person asked for it (allowLlm), never implicitly.
+    const r = await parseForUser("HKG to SEA over Thanksgiving, first", { today: "2026-10-01", env: {}, llmClient, allowLlm: true });
     expect(r.used_llm).toBe(true);
     expect(parse).toHaveBeenCalledTimes(1);
     expect(r.query.date_from).toBe("2026-11-26");
-    const d = await parseForUser("HKG to SEA next month", { today: "2026-10-01", env: {}, llmClient });
+    const d = await parseForUser("HKG to SEA next month", { today: "2026-10-01", env: {}, llmClient, allowLlm: true });
     expect(d.used_llm).toBe(false);
     expect(parse).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls the language model unless the request asks: a server key and missing fields are not consent (UI/UX v1 T20)", async () => {
+    const parse = vi.fn(async () => {
+      throw new Error("must not be called");
+    });
+    const llmClient = { messages: { parse } };
+    for (const opts of [{}, { allowLlm: false }]) {
+      await expect(parseForUser("first class over Thanksgiving", { today: "2026-10-01", env: { ANTHROPIC_API_KEY: "sk-test" }, llmClient, ...opts })).rejects.toBeInstanceOf(ParseError);
+    }
+    expect(parse).not.toHaveBeenCalled();
+    // A complete sentence still parses, deterministically, with no model.
+    const r = await parseForUser("HKG to SEA next month", { today: "2026-10-01", env: { ANTHROPIC_API_KEY: "sk-test" }, llmClient });
+    expect(r.used_llm).toBe(false);
   });
 
   it("llmAvailable reflects ANTHROPIC_API_KEY without exposing it", () => {

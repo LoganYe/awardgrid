@@ -84,6 +84,9 @@ const webServer: NonNullable<PlaywrightTestConfig["webServer"]> = [
 
 export default defineConfig({
   testDir: "e2e",
+  // e2e/uiux/** belongs to playwright.uiux.config.ts: it drives the iOS shell through its own fixture host,
+  // not this Next app, so running it here would fail on every project.
+  testIgnore: ["uiux/**"],
   globalSetup: "./e2e/global-setup.ts",
   // One SQLite file and one app process: never run tests in parallel.
   fullyParallel: false,

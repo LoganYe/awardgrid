@@ -1,0 +1,10 @@
+{
+  "miles": 65000,
+  "time_basis": null,
+  "coverage": [
+    {
+      "fetched_at": "2026-10-02T12:00:00.000Z",
+      "evidence": null
+    }
+  ]
+}

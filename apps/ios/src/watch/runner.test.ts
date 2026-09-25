@@ -10,6 +10,8 @@ import { describe, expect, it, vi } from "vitest";
 import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 import { Quota } from "@awardgrid/core/seatsaero/quota";
 import type { Watch } from "@awardgrid/core/watch";
+import { draftFromQuery } from "@awardgrid/core/workspace/query-editor";
+import { fixtureQuery } from "@awardgrid/core/test-fixtures/uiux/factory";
 import { SearchEngine, type ApiResult, type FindValue, type QuotaSnapshotView } from "../search/search";
 import { DeviceQuotaStore } from "../store/quota-store";
 import { WatchStore } from "../store/watch-store";
@@ -82,6 +84,10 @@ function stubEngine(remaining: number[] = [900]) {
   const search = vi.fn(async (): Promise<ApiResult<FindValue>> => {
     throw new Error("stub search must not be called in this test");
   });
+  // T14: structured watches search by query; the stub refuses that too.
+  const searchQuery = vi.fn(async (): Promise<ApiResult<FindValue>> => {
+    throw new Error("stub searchQuery must not be called in this test");
+  });
   const quotaView = vi.fn(
     async (): Promise<QuotaSnapshotView> => ({
       used: 0,
@@ -90,7 +96,7 @@ function stubEngine(remaining: number[] = [900]) {
       resetAt: "2026-10-02T00:00:00.000Z",
     }),
   );
-  return { search, quotaView };
+  return { search, searchQuery, quotaView };
 }
 
 describe("checkWatches", () => {
@@ -318,5 +324,200 @@ describe("changes the user has not seen yet", () => {
 
     expect(store.get("w1")!.unseen ?? null).toBeNull();
     expect(store.get("w1")!.lastResult).toMatchObject({ status: "checked", firstCheck: true });
+  });
+});
+
+describe("structured watches (T14)", () => {
+  /** A structured HKG→SEA business watch, the next 30 days, with edits a text could not carry. */
+  function structured(over: Partial<Watch> = {}): Watch {
+    const query = { ...fixtureQuery(), origins: ["HKG"], destinations: ["SEA"], cabins: ["J" as const], programs: undefined, direct_only: true, min_cabin_pct: 100, raw_text: "HKG to SEA next 30 days business" };
+    return watch({ draft: { ...draftFromQuery(query), dates: { kind: "relative_days", days: 30, clock: "UTC" } }, ...over });
+  }
+
+  it("runs its structured query for today, not its text read again: edited fields go through, the window moves", async () => {
+    const c = clock("2026-10-01T12:00:00.000Z");
+    const store = new WatchStore();
+    store.add(structured());
+    const engine = realEngine(seatsAero(() => [["2026-10-05"]]), c.now);
+    const byQuery = vi.spyOn(engine, "searchQuery");
+    const byText = vi.spyOn(engine, "search");
+
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    expect(byText).not.toHaveBeenCalled();
+    expect(byQuery.mock.calls[0]![0]).toMatchObject({ date_from: "2026-10-01", date_to: "2026-10-30", direct_only: true, min_cabin_pct: 100 });
+
+    c.advanceDays(2);
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    expect(byQuery.mock.calls[1]![0]).toMatchObject({ date_from: "2026-10-03", date_to: "2026-11-01" });
+  });
+
+  it("fixed dates that have all passed are not checked: nothing is spent, and the reason is said", async () => {
+    const engine = stubEngine();
+    const store = new WatchStore();
+    const draft = { ...structured().draft!, dates: { kind: "fixed" as const, from: "2026-09-01", to: "2026-09-10" } };
+    store.add(structured({ draft }));
+    const [r] = await checkWatches({ engine, store, apiKey: KEY, now: () => new Date("2026-10-01T12:00:00.000Z") });
+    expect(r!.outcome).toEqual({ status: "skipped", reason: "dates_passed" });
+    expect(engine.searchQuery).not.toHaveBeenCalled();
+  });
+
+  it("a watch under review reads its text, as it always did", async () => {
+    const c = clock("2026-10-01T12:00:00.000Z");
+    const store = new WatchStore();
+    store.add(structured({ review: "dates", text: "HKG to SEA next 30 days business" }));
+    const engine = realEngine(seatsAero(() => [["2026-10-05"]]), c.now);
+    const byQuery = vi.spyOn(engine, "searchQuery");
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    expect(byQuery).not.toHaveBeenCalled();
+    expect(store.get("w1")!.lastResult).toMatchObject({ status: "checked" });
+  });
+
+  it("first check: a baseline, nothing new, nothing compared; then changes are kept with old and new values; a quiet check keeps them; a failed one changes nothing", async () => {
+    const c = clock("2026-10-01T12:00:00.000Z");
+    const store = new WatchStore();
+    store.add(structured());
+    let dates: Array<[string, string?]> = [["2026-10-05", "80000"], ["2026-10-06", "90000"]];
+    let fail = false;
+    const engine = realEngine(
+      fakeFetch((req) => {
+        if (fail) return textResponse("boom", 500);
+        if (req.url.pathname.endsWith("/routes")) return jsonResponse([]);
+        return jsonResponse({ data: dates.map(([d, m]) => apiRow(d, m)), hasMore: false });
+      }),
+      c.now,
+    );
+
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    const first = store.get("w1")!;
+    expect(first.unseen ?? null).toBeNull();
+    expect(first.unseenChanges ?? null).toBeNull();
+    expect(first.lastResult).toMatchObject({ status: "checked", firstCheck: true, compared: null });
+
+    c.advanceMinutes(60);
+    dates = [["2026-10-05", "60000"], ["2026-10-07", "70000"]];
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    const second = store.get("w1")!;
+    expect(second.unseen).toMatchObject({ new: 1, dropped: 1, cheaper: 1 });
+    expect(second.unseenChanges!.map((x) => [x.kind, x.key.split("|")[3], x.before?.miles ?? null, x.after?.miles ?? null])).toEqual([
+      ["new", "2026-10-07", null, 70000],
+      ["cheaper", "2026-10-05", 80000, 60000],
+      ["gone", "2026-10-06", 90000, null],
+    ]);
+    expect(second.lastResult!.compared).toEqual({ date_from: "2026-10-01", date_to: "2026-10-30" });
+
+    c.advanceMinutes(60);
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    expect(store.get("w1")!.unseenChanges).toEqual(second.unseenChanges);
+    expect(store.get("w1")!.unseen).toEqual(second.unseen);
+
+    c.advanceMinutes(60);
+    fail = true;
+    const baseline = store.get("w1")!.baseline;
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    const failed = store.get("w1")!;
+    expect(failed.baseline).toEqual(baseline);
+    expect(failed.unseenChanges).toEqual(second.unseenChanges);
+    expect(failed.lastResult).toMatchObject({ status: "failed" });
+  });
+
+  it("an edit saved while its check is out wins: that check writes nothing, and the next one only sets a baseline (T14 review RUN-01)", async () => {
+    const c = clock("2026-10-01T12:00:00.000Z");
+    const store = new WatchStore();
+    store.add(structured());
+    let during: (() => void) | null = null;
+    const engine = realEngine(
+      fakeFetch((req) => {
+        if (req.url.pathname.endsWith("/routes")) return jsonResponse([]);
+        during?.();
+        during = null;
+        return jsonResponse({ data: [apiRow("2026-10-05"), apiRow("2026-10-06")], hasMore: false });
+      }),
+      c.now,
+    );
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    c.advanceMinutes(60);
+    // What the editor's Save watch writes, while the second check's request is out.
+    const edited = { ...store.get("w1")!.draft!, query: { ...store.get("w1")!.draft!.query, cabins: ["F" as const] } };
+    during = () => store.update("w1", { draft: edited, baseline: [], baselineWindow: null, lastCheckedAt: null, lastAttemptAt: null, lastResult: null });
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    expect(store.get("w1")).toMatchObject({ draft: edited, baseline: [], lastCheckedAt: null, lastResult: null });
+
+    c.advanceMinutes(1);
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    const after = store.get("w1")!;
+    expect(after.lastResult).toMatchObject({ status: "checked", firstCheck: true });
+    expect(after.unseen ?? null).toBeNull();
+    expect(after.unseenChanges ?? null).toBeNull();
+  });
+
+  it("changes marked seen while a check is out stay seen", async () => {
+    const c = clock("2026-10-01T12:00:00.000Z");
+    const store = new WatchStore();
+    store.add(structured());
+    let rows = [apiRow("2026-10-05")];
+    let during: (() => void) | null = null;
+    const engine = realEngine(
+      fakeFetch((req) => {
+        if (req.url.pathname.endsWith("/routes")) return jsonResponse([]);
+        during?.();
+        during = null;
+        return jsonResponse({ data: rows, hasMore: false });
+      }),
+      c.now,
+    );
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    c.advanceMinutes(60);
+    rows = [apiRow("2026-10-05"), apiRow("2026-10-06")];
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    expect(store.get("w1")!.unseen).toMatchObject({ new: 1 });
+
+    c.advanceMinutes(60);
+    rows = [apiRow("2026-10-05"), apiRow("2026-10-06"), apiRow("2026-10-07")];
+    // The Watches screen opens and marks what it shows as seen, while this check is out.
+    during = () => store.update("w1", { unseen: null, unseenChanges: null });
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    const after = store.get("w1")!;
+    expect(after.unseen).toMatchObject({ new: 1, dropped: 0, cheaper: 0 });
+    expect(after.unseenChanges!.map((x) => x.key.split("|")[3])).toEqual(["2026-10-07"]);
+  });
+
+  it("a watch removed while its check is out is not brought back", async () => {
+    const c = clock("2026-10-01T12:00:00.000Z");
+    const store = new WatchStore();
+    store.add(structured());
+    const engine = realEngine(
+      fakeFetch((req) => {
+        if (req.url.pathname.endsWith("/routes")) return jsonResponse([]);
+        store.remove("w1");
+        return jsonResponse({ data: [apiRow("2026-10-05")], hasMore: false });
+      }),
+      c.now,
+    );
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    expect(store.all()).toEqual([]);
+  });
+
+  it("conditions that cannot be run are never replaced by the old text: nothing is sent, the baseline stays, and it says so (T14 review RUN-03)", async () => {
+    const engine = stubEngine();
+    const store = new WatchStore();
+    const damaged = { ...structured().draft!, query: { ...structured().draft!.query, cabins: [] } };
+    store.add(structured({ draft: damaged, text: "SFO to NRT next 60 days economy", baseline: [], lastAttemptAt: undefined }));
+    const [r] = await checkWatches({ engine, store, apiKey: KEY, now: () => new Date("2026-10-01T12:00:00.000Z") });
+    expect(r!.outcome.status).toBe("failed");
+    expect(engine.search).not.toHaveBeenCalled();
+    expect(engine.searchQuery).not.toHaveBeenCalled();
+    const after = store.get("w1")!;
+    expect(after.lastResult).toMatchObject({ status: "failed", unresolved: true });
+    expect(after.lastAttemptAt).toBeUndefined();
+    expect(after.baseline).toEqual([]);
+  });
+
+  it("a refused key is said as a refused key", async () => {
+    const c = clock("2026-10-01T12:00:00.000Z");
+    const store = new WatchStore();
+    store.add(structured());
+    const engine = realEngine(fakeFetch(() => textResponse("no", 401)), c.now);
+    await checkWatches({ engine, store, apiKey: KEY, now: c.now });
+    expect(store.get("w1")!.lastResult).toMatchObject({ status: "failed", refused: true });
   });
 });

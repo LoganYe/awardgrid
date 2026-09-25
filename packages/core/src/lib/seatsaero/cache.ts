@@ -12,6 +12,7 @@
  */
 import { DEFAULT_MIN_CABIN_PCT, type Cabin } from "../query/schema";
 import type { AvailabilityRow } from "../grid/types";
+import { isRealDate, parseInstant } from "../workspace/semantics";
 
 export const DEFAULT_CACHE_TTL_MINUTES = 45;
 
@@ -56,7 +57,15 @@ export interface CoverageRecord {
   /** The min_cabin_pct the fetch carried (see CacheQuery). Absent = 100. */
   min_cabin_pct?: number;
   fetched_at: string; // ISO
+  /**
+   * What the fetch that wrote this record proved (UI/UX v1 T03): it ran to its end, or it stopped at the page cap
+   * or for quota. Absent on records written before evidence existed — those still satisfy a cache lookup exactly
+   * as before, but prove nothing about completeness (workspace/coverage.ts recordEvidence → unknown).
+   */
+  evidence?: CoverageRecordEvidence;
 }
+
+export type CoverageRecordEvidence = { state: "complete"; reason: "exhausted" } | { state: "partial"; reason: "page_cap" | "quota" | "upstream_error" };
 
 export interface CachedRows {
   rows: AvailabilityRow[];
@@ -130,6 +139,13 @@ export interface AvailabilityCacheStore {
   /** Coverage records for these pairs, any age. */
   getCoverage(userId: string, pairs: ReadonlyArray<{ origin: string; dest: string }>): Promise<CoverageRecord[]>;
   markPairsFetched(userId: string, records: readonly CoverageRecord[]): Promise<void>;
+  /**
+   * deleteRows(scope) + putRows(rows) + markPairsFetched(records) as ONE unit: either all of it happens or none
+   * of it does (UI/UX v1 T03). Without this, a failure after the delete leaves an earlier fetch's "complete"
+   * record standing over rows that are gone. Optional so existing stores and test doubles keep compiling; runFind
+   * uses it when present and falls back to the three calls otherwise.
+   */
+  replaceScope?(userId: string, scope: CacheQuery, rows: readonly AvailabilityRow[], records: readonly CoverageRecord[]): Promise<void>;
 }
 
 export function rowKey(
@@ -199,6 +215,20 @@ export class InMemoryAvailabilityCache implements AvailabilityCacheStore {
   }
 
   async markPairsFetched(userId: string, records: readonly CoverageRecord[]): Promise<void> {
+    this.#mark(userId, records);
+  }
+
+  /**
+   * The same three public calls runFind used to make, started back to back with no await between them. Each body
+   * runs to completion synchronously (none of them awaits anything), so nothing can interleave between the delete
+   * and the mark; and anything observing the store (tests spy on deleteRows) still sees the calls it expects.
+   */
+  async replaceScope(userId: string, scope: CacheQuery, rows: readonly AvailabilityRow[], records: readonly CoverageRecord[]): Promise<void> {
+    const steps = [this.deleteRows(userId, scope), this.putRows(userId, rows), this.markPairsFetched(userId, records)];
+    await Promise.all(steps);
+  }
+
+  #mark(userId: string, records: readonly CoverageRecord[]): void {
     const list = this.#coverage.get(userId) ?? [];
     list.push(...records.map((r) => ({ ...r, cabins: [...r.cabins], programs: r.programs ? [...r.programs] : null })));
     this.#coverage.set(userId, list);
@@ -240,16 +270,15 @@ export class InMemoryAvailabilityCache implements AvailabilityCacheStore {
     for (const entry of snapshot.users) {
       if (!entry || typeof entry.userId !== "string") continue;
       const m = this.#rowsOf(entry.userId);
-      for (const r of entry.rows ?? []) {
+      // Entry by entry: one damaged row or record is dropped (a cold search for that scope at worst) instead of
+      // throwing here, which would stop the app launching (UI/UX v1 T03, "损坏新entry隔离后保留旧有效内容").
+      for (const r of Array.isArray(entry.rows) ? entry.rows : []) {
+        if (!isRestorableRow(r)) continue;
         m.set(rowKey(r), { ...r, airlines: [...r.airlines] });
         restored += 1;
       }
-      if (entry.coverage?.length) {
-        this.#coverage.set(
-          entry.userId,
-          entry.coverage.map((c) => ({ ...c, cabins: [...c.cabins], programs: c.programs ? [...c.programs] : null })),
-        );
-      }
+      const coverage = (Array.isArray(entry.coverage) ? entry.coverage : []).flatMap((c) => restorableRecord(c) ?? []);
+      if (coverage.length) this.#coverage.set(entry.userId, coverage);
     }
     return restored;
   }
@@ -257,6 +286,59 @@ export class InMemoryAvailabilityCache implements AvailabilityCacheStore {
 
 /** Bump when the shape of a persisted row or coverage record changes; old snapshots are dropped. */
 export const CACHE_SNAPSHOT_VERSION = 1;
+
+const RESTORE_CABINS: ReadonlySet<unknown> = new Set(["Y", "W", "J", "F"]);
+const isStr = (v: unknown): v is string => typeof v === "string";
+
+/**
+ * What a restored row needs so that restoring it cannot throw or file it under a garbage key: the identity fields
+ * rowKey reads, a real cabin, finite miles and an airlines list. Deliberately no stricter than the snapshot contract
+ * the pinned cache-snapshot tests hold (they restore rows without computed_last_seen): damage is dropped, older
+ * shapes are not.
+ */
+function isRestorableRow(r: unknown): r is AvailabilityRow {
+  if (typeof r !== "object" || r === null) return false;
+  const v = r as Record<string, unknown>;
+  return (
+    isStr(v.program) &&
+    isStr(v.origin) &&
+    isStr(v.dest) &&
+    isStr(v.date) &&
+    RESTORE_CABINS.has(v.cabin) &&
+    typeof v.miles === "number" &&
+    Number.isFinite(v.miles) &&
+    Array.isArray(v.airlines) &&
+    v.airlines.every(isStr)
+  );
+}
+
+/** A copy of a persisted coverage record, or null when damaged. Malformed evidence is dropped, not the record. */
+function restorableRecord(c: unknown): CoverageRecord | null {
+  if (typeof c !== "object" || c === null) return null;
+  const v = c as Record<string, unknown>;
+  if (!isStr(v.origin) || !isStr(v.dest)) return null;
+  // Real calendar days in order, and a real fetch instant: a record with junk dates would satisfy any range.
+  if (!isRealDate(v.date_from) || !isRealDate(v.date_to) || v.date_from > v.date_to || parseInstant(v.fetched_at) === null) return null;
+  if (!Array.isArray(v.cabins) || v.cabins.length === 0 || !v.cabins.every((cab) => RESTORE_CABINS.has(cab))) return null;
+  if (v.programs !== null && !(Array.isArray(v.programs) && v.programs.every(isStr))) return null;
+  if (v.direct_only !== undefined && typeof v.direct_only !== "boolean") return null;
+  if (v.include_filtered !== undefined && typeof v.include_filtered !== "boolean") return null;
+  if (v.min_cabin_pct !== undefined && typeof v.min_cabin_pct !== "number") return null;
+  const record = { ...(c as CoverageRecord), cabins: [...(v.cabins as Cabin[])], programs: v.programs === null ? null : [...(v.programs as string[])] };
+  const evidence = readRecordEvidence(v.evidence);
+  if (evidence) record.evidence = evidence;
+  else delete record.evidence;
+  return record;
+}
+
+/** A coverage record's evidence only if it is one of the shapes a run writes; anything else proves nothing. */
+export function readRecordEvidence(value: unknown): CoverageRecordEvidence | null {
+  if (typeof value !== "object" || value === null) return null;
+  const { state, reason } = value as Record<string, unknown>;
+  if (state === "complete" && reason === "exhausted") return { state, reason };
+  if (state === "partial" && (reason === "page_cap" || reason === "quota" || reason === "upstream_error")) return { state, reason };
+  return null;
+}
 
 export interface CacheSnapshotUser {
   userId: string;

@@ -30,9 +30,14 @@ export function missingSentenceKeys(missing: readonly string[] | undefined): I18
 export interface ParseFailureProps {
   failure: ApiFailure;
   onBuildWithChips: () => void;
+  /**
+   * UI/UX v1 T20: when the server could let the language model read the text (`llm_offer`), this asks it to, as the
+   * person's own action. The note before it says the text goes to Anthropic; nothing is sent until it is pressed.
+   */
+  onUseAi?: () => void;
 }
 
-export function ParseFailure({ failure, onBuildWithChips }: ParseFailureProps) {
+export function ParseFailure({ failure, onBuildWithChips, onUseAi }: ParseFailureProps) {
   const t = useT();
   const keys = missingSentenceKeys(failure.missing);
   return (
@@ -45,6 +50,16 @@ export function ParseFailure({ failure, onBuildWithChips }: ParseFailureProps) {
       <button type="button" onClick={onBuildWithChips} data-testid="build-with-chips" className="link text-body">
         {t("grid.parse_failure.build")}
       </button>
+      {failure.llm_offer && onUseAi ? (
+        <>
+          <p className="t-meta text-fg-muted" id="parse-ai-note">
+            {t("grid.parse_failure.ai_note")}
+          </p>
+          <button type="button" onClick={onUseAi} data-testid="parse-with-ai" aria-describedby="parse-ai-note" className="link text-body">
+            {t("grid.parse_failure.ai")}
+          </button>
+        </>
+      ) : null}
     </div>
   );
 }

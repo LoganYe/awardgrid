@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AppServices } from "../app/bootstrap";
 import type { AskService, KeyCheckResult } from "../ask/ask-service";
 import * as labels from "../ask/labels";
+import { SettingsStore } from "../app/settings-store";
 import { type KeyStore, MemoryKeyStore } from "../native/keychain";
 import { AnthropicKeySection, SettingsScreen, anthropicKeyLine, checkStatus, readMasked, removeAnthropicKey, saveAnthropicKey } from "./SettingsScreen";
 
@@ -63,7 +64,7 @@ describe("Save", () => {
     expect(order).toEqual(["set", "saved", `check with ${PASTED}`]);
     // No draft is handed to the check: it reads what the Keychain now holds.
     expect(ask.checkKey).toHaveBeenCalledWith();
-    expect(status).toEqual({ text: labels.KEY_REJECTED, ok: false, requestIdLine: "Anthropic request ID: req_check_401" });
+    expect(status).toEqual({ text: labels.KEY_REJECTED, ok: false, requestIdLine: "Anthropic request ID: req_check_401", lang: "en" });
   });
 
   it("a Keychain that refuses the key is a failure, masked of the pasted key, and nothing is checked", async () => {
@@ -75,7 +76,7 @@ describe("Save", () => {
     const ask = fakeAsk(async () => ACCEPTED);
     const onSaved = vi.fn();
     const status = await saveAnthropicKey({ anthropicKeys, ask }, PASTED, onSaved);
-    expect(status).toEqual({ text: "Could not save the key: OSStatus -34018 storing ••••", ok: false, requestIdLine: null });
+    expect(status).toEqual({ text: "Could not save the key: OSStatus -34018 storing ••••", ok: false, requestIdLine: null, tail: "OSStatus -34018 storing ••••" });
     expect(JSON.stringify(status)).not.toContain(PASTED);
     expect(onSaved).not.toHaveBeenCalled();
     expect(ask.checkKey).not.toHaveBeenCalled();
@@ -84,8 +85,8 @@ describe("Save", () => {
 
 describe("Check key and its result", () => {
   it("shows a check's sentence in its tone, with Anthropic's request ID when there was one", () => {
-    expect(checkStatus(ACCEPTED)).toEqual({ text: labels.KEY_ACCEPTED, ok: true, requestIdLine: null });
-    expect(checkStatus(REJECTED)).toEqual({ text: labels.KEY_REJECTED, ok: false, requestIdLine: "Anthropic request ID: req_check_401" });
+    expect(checkStatus(ACCEPTED)).toEqual({ text: labels.KEY_ACCEPTED, ok: true, requestIdLine: null, lang: "en" });
+    expect(checkStatus(REJECTED)).toEqual({ text: labels.KEY_REJECTED, ok: false, requestIdLine: "Anthropic request ID: req_check_401", lang: "en" });
     expect(checkStatus({ outcome: "keychain", ok: false, message: labels.keyReadFailedLabel("OSStatus -25308"), requestId: null }).ok).toBe(false);
   });
 });
@@ -118,6 +119,7 @@ describe("Remove key", () => {
       text: "Could not read the key from the Keychain: errSecInteractionNotAllowed reading ••••",
       ok: false,
       requestIdLine: null,
+      tail: "errSecInteractionNotAllowed reading ••••",
     });
   });
 });
@@ -133,6 +135,21 @@ describe("what is on file", () => {
     expect(anthropicKeyLine(undefined)).toBeNull();
     expect(anthropicKeyLine(null)).toBe("No Anthropic key on file.");
     expect(anthropicKeyLine("••••wxyz")).toBe("On file: ••••wxyz");
+  });
+});
+
+describe("languages on the Anthropic key page (T11)", () => {
+  it("in Chinese, its own result sentences carry no English marking; the Keychain's words at their end do", async () => {
+    const { WithTail } = await import("../app/WithTail");
+    const removed = await removeAnthropicKey({ anthropicKeys: new MemoryKeyStore() }, "zh");
+    expect(removed).toEqual({ text: "已从本机钥匙串移除 Anthropic 密钥。", ok: true, requestIdLine: null });
+    expect(removed.lang).toBeUndefined();
+    const failing: KeyStore = { get: async () => null, set: async () => Promise.reject(new Error("OSStatus -34018")), clear: async () => {} };
+    const failed = await saveAnthropicKey({ anthropicKeys: failing, ask: fakeAsk(async () => ACCEPTED) }, PASTED, () => {}, "zh");
+    expect(failed).toMatchObject({ text: "无法保存密钥：OSStatus -34018", tail: "OSStatus -34018" });
+    expect(renderToStaticMarkup(createElement(WithTail, { text: failed.text, tail: failed.tail, tailLang: "en" }))).toBe('无法保存密钥：<span lang="en">OSStatus -34018</span>');
+    // The check's own sentence is the Ask service's, in English.
+    expect(checkStatus(ACCEPTED).lang).toBe("en");
   });
 });
 
@@ -159,8 +176,8 @@ describe("the markup", () => {
     expect(html).toContain('<div role="status" class="settings-results"></div>');
   });
 
-  it("adds the sentence to the seats.aero section and the new cache copy, on the Settings route", () => {
-    const shell = { ...services, keys: new MemoryKeyStore(), clearCache: async () => {} } as unknown as AppServices;
+  it("Settings is the S08 groups in order, with the seats.aero key on its own page (T11, U-038)", () => {
+    const shell = { ...services, keys: new MemoryKeyStore(), clearCache: async () => {}, settings: new SettingsStore({ deviceLocale: "en" }) } as unknown as AppServices;
     const html = renderToStaticMarkup(
       createElement(
         MemoryRouter,
@@ -168,12 +185,16 @@ describe("the markup", () => {
         createElement(Routes, null, createElement(Route, { path: "/", element: createElement(Outlet, { context: shell }) }, createElement(Route, { path: "settings", element: createElement(SettingsScreen) }))),
       ),
     );
-    expect(html).toContain(`seats.aero settings page. ${labels.SEATS_KEY_NOT_SENT}</p>`);
-    expect(html).toContain(`aria-label="${labels.SAVE_SEATS_KEY_NAME}"`);
+    const headings = [...html.matchAll(/<h2 class="ag-settings-label"[^>]*>([^<]*)<\/h2>/g)].map((m) => m[1]);
+    expect(headings).toEqual(["Data connection", "AI (optional)", "Appearance and language", "Local data", "About"]);
+    expect(html).toMatch(/<a id="settings-row-seats" class="ag-settings-row" href="\/settings\/seats"/);
+    expect(html).toMatch(/<a id="settings-row-anthropic" class="ag-settings-row" href="\/settings\/anthropic"/);
+    expect(html).toContain('role="radiogroup" aria-label="Theme"');
+    expect(html).toContain('role="radiogroup" aria-label="Language"');
     expect(html).toContain(escape(labels.CACHE_NOTE));
-    // The sections in order: seats.aero, Anthropic, the cache.
-    const order = ["seats.aero Pro key", labels.ANTHROPIC_SECTION_TITLE, "Cached data"].map((t) => html.indexOf(escape(t)));
-    expect(order.every((i) => i >= 0)).toBe(true);
-    expect(order).toEqual([...order].sort((a, b) => a - b));
+    // No key is typed or checked on this page, and nothing is claimed before the Keychain has been read.
+    expect(html).not.toContain('type="password"');
+    expect(html).not.toContain("Not connected");
   });
+
 });

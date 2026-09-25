@@ -1,0 +1,231 @@
+/*
+ * Quiet Precision — the UI/UX v1 design tokens (docs/uiux-v1; reference design tokens v1.0).
+ *
+ * Added BESIDE tokens.css, not in place of it: tokens.css is pinned value by value by src/styles/tokens.test.ts
+ * and the Linux visual baselines, and the rule for that file is "add tokens, change no values, rename nothing".
+ * Every surface migrated to the v1 design reads these `--ag-*` properties; the web keeps the old ones until M4
+ * (docs/uiux-v1/DECISIONS.md U-004). src/styles/precision-tokens.test.ts holds every value below to the design
+ * JSON (packages/tokens/quiet-precision.json) and recomputes the 32 contrast pairs from this file.
+ *
+ * Units are logical CSS px at the baseline viewport (never CSS pt). Sizes are minimums at the default text size:
+ * containers grow with larger text rather than clipping it.
+ *
+ * Blocks: light on :root and [data-theme="light"]; dark on [data-theme="dark"] and, when no theme is chosen, under
+ * prefers-color-scheme: dark — the same three-way shape as tokens.css, plus an explicit light island.
+ */
+
+:root,
+[data-theme="light"] {
+  --ag-canvas: #F6F7F9;
+  --ag-surface: #FFFFFF;
+  --ag-surface-subtle: #EEF2F6;
+  --ag-text: #182230;
+  --ag-text-secondary: #475467;
+  --ag-text-muted: #626D7D;
+  --ag-divider: #DCE2E8;
+  --ag-control-border: #7A8798;
+  --ag-accent: #006D77;
+  --ag-accent-hover: #005B63;
+  --ag-accent-soft: #E6F3F4;
+  --ag-on-accent: #FFFFFF;
+  --ag-success: #167347;
+  --ag-success-soft: #EAF7EF;
+  --ag-warning: #8A4B08;
+  --ag-warning-soft: #FFF4DF;
+  --ag-danger: #B42318;
+  --ag-danger-soft: #FEECEB;
+  --ag-info: #2457A7;
+  --ag-info-soft: #EDF3FF;
+  --ag-shadow-popover: 0 8px 24px rgba(24, 34, 48, 0.12);
+  --ag-shadow-sheet: 0 16px 48px rgba(24, 34, 48, 0.16);
+  --ag-scrim: rgba(16, 22, 30, 0.36);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --ag-canvas: #10161E;
+  --ag-surface: #18212B;
+  --ag-surface-subtle: #202C38;
+  --ag-text: #F2F4F7;
+  --ag-text-secondary: #C1CAD6;
+  --ag-text-muted: #9CAABD;
+  --ag-divider: #334354;
+  --ag-control-border: #718399;
+  --ag-accent: #63D2D6;
+  --ag-accent-hover: #8DDFE2;
+  --ag-accent-soft: #173A3D;
+  --ag-on-accent: #102326;
+  --ag-success: #75D9A2;
+  --ag-success-soft: #183729;
+  --ag-warning: #F5C16C;
+  --ag-warning-soft: #3D2D17;
+  --ag-danger: #FFA6A0;
+  --ag-danger-soft: #432320;
+  --ag-info: #A8C6FF;
+  --ag-info-soft: #1B304D;
+  --ag-shadow-popover: none;
+  --ag-shadow-sheet: none;
+  --ag-scrim: rgba(0, 0, 0, 0.56);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --ag-canvas: #10161E;
+    --ag-surface: #18212B;
+    --ag-surface-subtle: #202C38;
+    --ag-text: #F2F4F7;
+    --ag-text-secondary: #C1CAD6;
+    --ag-text-muted: #9CAABD;
+    --ag-divider: #334354;
+    --ag-control-border: #718399;
+    --ag-accent: #63D2D6;
+    --ag-accent-hover: #8DDFE2;
+    --ag-accent-soft: #173A3D;
+    --ag-on-accent: #102326;
+    --ag-success: #75D9A2;
+    --ag-success-soft: #183729;
+    --ag-warning: #F5C16C;
+    --ag-warning-soft: #3D2D17;
+    --ag-danger: #FFA6A0;
+    --ag-danger-soft: #432320;
+    --ag-info: #A8C6FF;
+    --ag-info-soft: #1B304D;
+    --ag-shadow-popover: none;
+    --ag-shadow-sheet: none;
+    --ag-scrim: rgba(0, 0, 0, 0.56);
+    color-scheme: dark;
+  }
+}
+
+/* Theme-independent scales. */
+:root {
+  /* Spacing: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64. 2 is for borders and optical nudges only. */
+  --ag-space-1: 4px;
+  --ag-space-2: 8px;
+  --ag-space-3: 12px;
+  --ag-space-4: 16px;
+  --ag-space-5: 20px;
+  --ag-space-6: 24px;
+  --ag-space-8: 32px;
+  --ag-space-10: 40px;
+  --ag-space-12: 48px;
+  --ag-space-16: 64px;
+
+  /* Radius. Cards are 16 on the phone and 12 on the web (docs/02 D11). */
+  --ag-radius-small: 6px;
+  --ag-radius-chip: 8px;
+  --ag-radius-control: 12px;
+  --ag-radius-card: 16px;
+  --ag-radius-card-desktop: 12px;
+  --ag-radius-sheet: 24px;
+  --ag-radius-dialog: 16px;
+  --ag-radius-pill: 999px;
+
+  /* Sizes: minimums at the default text size. */
+  --ag-touch-target: 44px;
+  --ag-button-height: 48px;
+  --ag-input-height: 48px;
+  --ag-chip-height: 36px;
+  --ag-chip-slot: 44px;
+  --ag-segmented-height: 44px;
+  --ag-icon-button: 44px;
+  --ag-icon: 20px;
+  --ag-gutter: 16px;
+  --ag-gutter-desktop: 24px;
+  --ag-header-height: 52px;
+  --ag-query-summary-min: 64px;
+  --ag-tabbar-height: 56px;
+  --ag-card-min: 164px;
+  --ag-card-gap: 12px;
+  --ag-watch-card-min: 148px;
+  --ag-desktop-row: 64px;
+  --ag-nav-rail: 72px;
+  --ag-panel-assistant: 360px;
+  --ag-panel-detail: 400px;
+  --ag-content-max: 1600px;
+  --ag-focus-width: 2px;
+  --ag-focus-offset: 2px;
+
+  /*
+   * Type (size / line height). Phone values; the web's differ where noted below. Every size is multiplied by
+   * --ag-text-scale (1 by default), the hook a larger-text setting or a browser test turns up; containers use
+   * min-heights, so they grow with it instead of clipping. Not a substitute for verifying iOS Dynamic Type.
+   */
+  --ag-text-scale: 1;
+  --ag-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --ag-type-page-title: calc(28px * var(--ag-text-scale));
+  --ag-leading-page-title: calc(34px * var(--ag-text-scale));
+  --ag-type-compact-title: calc(22px * var(--ag-text-scale));
+  --ag-leading-compact-title: calc(28px * var(--ag-text-scale));
+  --ag-type-section: calc(20px * var(--ag-text-scale));
+  --ag-leading-section: calc(26px * var(--ag-text-scale));
+  --ag-type-route: calc(17px * var(--ag-text-scale));
+  --ag-leading-route: calc(24px * var(--ag-text-scale));
+  --ag-type-miles: calc(24px * var(--ag-text-scale));
+  --ag-leading-miles: calc(28px * var(--ag-text-scale));
+  --ag-type-body: calc(16px * var(--ag-text-scale));
+  --ag-leading-body: calc(24px * var(--ag-text-scale));
+  --ag-type-reading: calc(17px * var(--ag-text-scale));
+  --ag-leading-reading: calc(26px * var(--ag-text-scale));
+  --ag-type-meta: calc(13px * var(--ag-text-scale));
+  --ag-leading-meta: calc(18px * var(--ag-text-scale));
+  --ag-type-control: calc(16px * var(--ag-text-scale));
+  --ag-leading-control: calc(24px * var(--ag-text-scale));
+  --ag-type-label: calc(12px * var(--ag-text-scale));
+  --ag-leading-label: calc(16px * var(--ag-text-scale));
+  --ag-weight-title: 650;
+  --ag-weight-strong: 600;
+  --ag-weight-label: 500;
+  --ag-weight-body: 400;
+
+  /* Motion. Reduced motion sets every duration to 0 below. */
+  --ag-motion-feedback: 100ms;
+  --ag-motion-popover: 160ms;
+  --ag-motion-sheet: 220ms;
+  --ag-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layers (docs/02 D11). */
+  --ag-z-base: 0;
+  --ag-z-sticky: 20;
+  --ag-z-nav: 30;
+  --ag-z-overlay: 40;
+  --ag-z-modal: 50;
+  --ag-z-toast: 60;
+}
+
+/* Desktop type: wider containers (docs/04 S10). Width decides type; pointer decides control size (below). */
+@media (min-width: 768px) {
+  :root {
+    --ag-type-route: calc(16px * var(--ag-text-scale));
+    --ag-leading-route: calc(24px * var(--ag-text-scale));
+    --ag-type-miles: calc(18px * var(--ag-text-scale));
+    --ag-leading-miles: calc(24px * var(--ag-text-scale));
+    --ag-type-body: calc(14px * var(--ag-text-scale));
+    --ag-leading-body: calc(22px * var(--ag-text-scale));
+    --ag-type-reading: calc(16px * var(--ag-text-scale));
+    --ag-leading-reading: calc(26px * var(--ag-text-scale));
+    --ag-type-control: calc(14px * var(--ag-text-scale));
+    --ag-leading-control: calc(22px * var(--ag-text-scale));
+  }
+}
+
+/* Smaller controls only with a fine pointer: a touch screen keeps 44 pt targets at any width (spec §17). */
+@media (min-width: 768px) and (pointer: fine) {
+  :root {
+    --ag-button-height: 40px;
+    --ag-input-height: 40px;
+    --ag-chip-height: 32px;
+    --ag-chip-slot: 32px;
+    --ag-segmented-height: 40px;
+    --ag-icon-button: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ag-motion-feedback: 0ms;
+    --ag-motion-popover: 0ms;
+    --ag-motion-sheet: 0ms;
+  }
+}

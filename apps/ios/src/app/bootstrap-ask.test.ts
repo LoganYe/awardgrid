@@ -37,6 +37,8 @@ import { type KeyStore, MemoryKeyStore } from "../native/keychain";
 import { LOCAL_USER } from "../search/search";
 import { ASK_FILE, AskStore } from "../store/ask-store";
 import { CACHE_FILE, MemoryFileStore, QUOTA_FILE, SnapshotStore } from "../store/persistence";
+import { fixtureQuery, fixtureSnapshot } from "@awardgrid/core/test-fixtures/uiux/factory";
+import { DEFAULT_PREFERENCES, WORKSPACE_NAMESPACE } from "../workspace/workspace-store";
 import { bootstrap } from "./bootstrap";
 
 const NOW = new Date("2026-10-01T00:00:00.000Z");
@@ -193,15 +195,29 @@ describe("launch", () => {
 });
 
 describe("a question through AppServices", () => {
+  /**
+   * T16: Ask searches only inside the search the person included (docs/02 D08), so the question includes one: a
+   * search from an earlier launch, restored from the workspace file with nothing in the availability cache, whose
+   * scope holds the scripted search (SEA to NRT and HND, October, business). That search then goes out over the
+   * observed seats.aero transport, as it always did.
+   */
+  function includedSearch(files: MemoryFileStore): void {
+    const query = { ...fixtureQuery(), origins: ["SEA"], destinations: ["NRT", "HND"], date_from: "2026-10-01", date_to: "2026-10-31", cabins: ["J" as const], programs: undefined };
+    const snapshot = fixtureSnapshot({ id: "earlier-launch", revision: 1, query });
+    const value = { schemaVersion: 1, revision: 1, displayedId: snapshot.id, previousId: null, preferences: DEFAULT_PREFERENCES, snapshots: [snapshot] };
+    files.files.set(`${WORKSPACE_NAMESPACE}.a.json`, JSON.stringify({ generation: 1, value }));
+  }
+
   async function asked() {
     const files = new MemoryFileStore();
+    includedSearch(files);
     const seats = fakeFetch(seatsAero());
     const api = anthropic(["tool_use_search", "text"]);
     const keys = await seatsKeys();
     const anthropicKeys = new MemoryKeyStore();
     await anthropicKeys.set(ANTHROPIC_KEY);
     const svc = await bootstrap({ keys, anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: seats, anthropicFetch: api.fetchImpl });
-    const state = await svc.ask.ask(QUESTION, false);
+    const state = await svc.ask.ask(QUESTION, true);
     return { files, seats, api, keys, anthropicKeys, svc, state };
   }
 
@@ -302,19 +318,27 @@ describe("whenWatchesIdle and lastSearch", () => {
     expect(idle).toBe(true);
   });
 
-  it("keeps the last search in memory only: nothing is written, and a relaunch has none", async () => {
+  // UI/UX v1 T05 (DECISIONS U-017): the last search is now the workspace's shown snapshot. The workspace saves its
+  // snapshot (the query, which docs/02 D04 allows, never the key). After a relaunch that snapshot is back on the
+  // Search screen, labelled with when it was saved, so it is also what Ask may offer; nothing is fetched to show it.
+  it("the last search is the workspace's shown snapshot; the key is never written; a relaunch shows the saved one", async () => {
     const files = new MemoryFileStore();
     const options = { keys: await seatsKeys(), anthropicKeys: watchedKeys(null), snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: fakeFetch(seatsAero()) };
     const svc = await bootstrap(options);
-    const res = await svc.engine.search("HKG to SEA next 30 days business", SEATS_KEY);
-    if (!res.ok) throw new Error("the grid search should have succeeded");
-
     expect(svc.lastSearch.get()).toBeNull();
-    svc.lastSearch.set({ text: "HKG to SEA next 30 days business", value: res.value });
+    const res = await svc.searchText("HKG to SEA next 30 days business");
+    if (!res.ok) throw new Error("the grid search should have succeeded");
     expect(svc.lastSearch.get()?.value.query.origins).toEqual(["HKG"]);
+    expect(svc.lastSearch.get()?.text).toBe("HKG to SEA next 30 days business");
 
     await svc.persist();
-    for (const contents of files.files.values()) expect(contents).not.toContain("HKG to SEA next 30 days business");
-    expect((await bootstrap(options)).lastSearch.get()).toBeNull();
+    for (const contents of files.files.values()) expect(contents).not.toContain(SEATS_KEY);
+    const relaunched = await bootstrap(options);
+    expect(relaunched.workspace.getState().displayedSnapshot?.query.origins).toEqual(["HKG"]);
+    const restored = relaunched.lastSearch.get();
+    expect(restored?.value.query.origins).toEqual(["HKG"]);
+    expect(restored?.savedAt).toBe(relaunched.workspace.getState().displayedSnapshot?.createdAt);
+    // What a saved snapshot does not record is not carried over as if it were known.
+    expect(restored?.value.api_calls_used).toBeNull();
   });
 });

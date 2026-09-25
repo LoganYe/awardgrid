@@ -29,7 +29,8 @@
     "./watch": "./src/lib/watch/index.ts",
     "./watch/*": "./src/lib/watch/*.ts",
     "./ask": "./src/lib/ask/index.ts",
-    "./ask/*": "./src/lib/ask/*.ts"
+    "./ask/*": "./src/lib/ask/*.ts",
+    "./workspace/*": "./src/lib/workspace/*.ts"
   },
   "scripts": {
     "test": "vitest run",

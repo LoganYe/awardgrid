@@ -22,6 +22,20 @@
       "when": 1788720311041,
       "tag": "0002_query_runs_calls_used",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790219072419,
+      "tag": "0003_availability_time_basis",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790220410341,
+      "tag": "0004_coverage_evidence",
+      "breakpoints": true
     }
   ]
 }

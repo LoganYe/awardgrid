@@ -11,10 +11,12 @@
  * `unauthorized` (there are no sessions) and `internal` (there is no server to 500).
  */
 import { buildGrid } from "@awardgrid/core/grid/pivot";
-import type { Grid } from "@awardgrid/core/grid/types";
+import type { AvailabilityRow, Grid } from "@awardgrid/core/grid/types";
 import type { Notice } from "@awardgrid/core/notices";
 import { parseQuery } from "@awardgrid/core/query/parse";
-import type { QueryObject } from "@awardgrid/core/query/schema";
+import { type Cabin, QueryObject } from "@awardgrid/core/query/schema";
+import { isRealDate } from "@awardgrid/core/workspace/semantics";
+import type { CoverageEvidence } from "@awardgrid/core/workspace/types";
 import {
   InMemoryAvailabilityCache,
   type AvailabilityCacheStore,
@@ -29,6 +31,8 @@ import { pairsOf, runFind } from "@awardgrid/core/seatsaero/find";
 import { notFetchedPairsFrom } from "@awardgrid/core/seatsaero/not-fetched";
 import { Quota, QuotaExceededError } from "@awardgrid/core/seatsaero/quota";
 import { RoutesCatalog } from "@awardgrid/core/seatsaero/routes";
+import { type GetTripsResult, runGetTrips } from "@awardgrid/core/seatsaero/trips";
+import { type KeyCheckOutcome, checkSeatsKey } from "@awardgrid/core/seatsaero/key-check";
 
 /**
  * There is exactly one user, and `runFind` still wants an id because the core is shared with the
@@ -79,6 +83,20 @@ export interface FindValue {
   api_calls_used: number;
   /** Oldest fetched_at among the rows — the honest input to a "last checked" line. */
   fetched_at_min: string | null;
+  /**
+   * The rows the grid was built from, as runFind returned them, and how much of the query's scope they cover
+   * (UI/UX v1 T05: what a workspace snapshot is made of). Always set by SearchEngine; optional so a value built
+   * elsewhere keeps compiling.
+   */
+  rows?: AvailabilityRow[];
+  coverage?: CoverageEvidence | null;
+}
+
+/** A free-text query after the deterministic parser, before anything is fetched. */
+export interface ParsedText {
+  query: QueryObject;
+  warnings: string[];
+  notices: Notice[];
 }
 
 export interface SearchEngineOptions {
@@ -120,21 +138,30 @@ export class SearchEngine {
   /**
    * Free text in, grid out. Every failure is a VALUE, never a throw, so the caller renders an empty
    * state instead of catching — the same contract `src/components/grid/api.ts` has always had.
+   *
+   * The text is parsed, and the parsed query then runs on the SAME path as `searchQuery`: one executor, one
+   * quota, one cache (UI/UX v1 T05, acceptance A09).
    */
   async search(text: string, apiKey: string | null): Promise<ApiResult<FindValue>> {
-    const now = this.#now();
-    if (!apiKey) {
-      return { ok: false, status: 400, error: "no_key", message: "Add your seats.aero Pro API key in Settings." };
-    }
+    const parsed = await this.parseText(text, apiKey);
+    if (!parsed.ok) return parsed;
+    return this.#execute(parsed.value.query, apiKey!, parsed.value);
+  }
+
+  /**
+   * Check the key and parse free text, sending nothing. The same checks, in the same order, as `search`.
+   *
+   * No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key
+   * (PIVOT §3). A query the parser cannot resolve becomes a `parse` failure with the missing
+   * fields named, which is what the chip editors use to offer a manual fix.
+   */
+  async parseText(text: string, apiKey: string | null): Promise<ApiResult<ParsedText>> {
+    if (!apiKey) return noKey();
     const trimmed = text.trim();
     if (!trimmed) return { ok: false, status: 400, error: "invalid_body", message: "Type a query first." };
-
-    // No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key
-    // (PIVOT §3). A query the parser cannot resolve becomes a `parse` failure with the missing
-    // fields named, which is what the chip editors use to offer a manual fix.
-    let parsed;
     try {
-      parsed = await parseQuery(trimmed, { today: now.toISOString().slice(0, 10) });
+      const parsed = await parseQuery(trimmed, { today: this.#now().toISOString().slice(0, 10) });
+      return { ok: true, value: { query: parsed.query, warnings: parsed.warnings, notices: parsed.notices } };
     } catch (err) {
       return {
         ok: false,
@@ -144,10 +171,27 @@ export class SearchEngine {
         missing: missingFrom(err),
       };
     }
+  }
 
+  /**
+   * A structured query in, grid out: the entry the query editor and the workspace use (docs/03 §3). No text, no
+   * parser, no LLM. An invalid query — schema, or a date that is not on the calendar — is `invalid_body` before
+   * anything is sent.
+   */
+  async searchQuery(query: QueryObject, apiKey: string | null): Promise<ApiResult<FindValue>> {
+    if (!apiKey) return noKey();
+    const valid = QueryObject.safeParse(query);
+    if (!valid.success || !isRealDate(valid.data.date_from) || !isRealDate(valid.data.date_to)) {
+      return { ok: false, status: 400, error: "invalid_body", message: "That search is not a valid query." };
+    }
+    return this.#execute(valid.data, apiKey, { warnings: [], notices: [] });
+  }
+
+  /** The one executor both entries share. */
+  async #execute(query: QueryObject, apiKey: string, parsed: { warnings: string[]; notices: Notice[] }): Promise<ApiResult<FindValue>> {
     try {
       const result = await runFind({
-        query: parsed.query,
+        query,
         userId: LOCAL_USER,
         apiKey,
         fetch: this.#fetch,
@@ -165,21 +209,66 @@ export class SearchEngine {
           // not read the same as a pair that was checked and had nothing. `pairsOf` is the pair list
           // runFind itself walked (find.ts:257); the web's `enumeratePairs` (grid/pivot.ts:48-56)
           // builds the identical list.
-          grid: buildGrid(result.rows, parsed.query, {
+          grid: buildGrid(result.rows, query, {
             unmonitored_pairs: result.unmonitored_pairs,
-            not_fetched_pairs: notFetchedPairsFrom(result, pairsOf(parsed.query)),
+            not_fetched_pairs: notFetchedPairsFrom(result, pairsOf(query)),
           }),
-          query: parsed.query,
+          query,
           warnings: [...parsed.warnings, ...result.warnings],
           notices: [...parsed.notices, ...result.notices],
           quota: await this.quotaView(),
           served_from_cache: result.served_from_cache,
           api_calls_used: result.api_calls_used,
           fetched_at_min: result.fetched_at_min,
+          rows: result.rows,
+          coverage: result.coverage ?? null,
         },
       };
     } catch (err) {
       return await this.#failure(err);
+    }
+  }
+
+  /**
+   * Get Trips for one shown option (UI/UX v1 T10): exactly one seats.aero call, reserved on the same quota and
+   * sent through the same transport as a search, with the fee it learns written back to the same cache
+   * (core seatsaero/trips.ts runGetTrips). Only the option's own source id and cabin, and the scope it was fetched
+   * in, are sent — never free text. The same failures as a search.
+   */
+  async getTrips(
+    option: { availabilityId: string; cabin: Cabin; include_filtered: boolean; min_cabin_pct: number },
+    apiKey: string | null,
+  ): Promise<ApiResult<GetTripsResult>> {
+    if (!apiKey) return noKey();
+    try {
+      const value = await runGetTrips({
+        availabilityId: option.availabilityId,
+        cabin: option.cabin,
+        userId: LOCAL_USER,
+        apiKey,
+        fetch: this.#fetch,
+        quota: this.quota,
+        cache: this.cache,
+        include_filtered: option.include_filtered,
+        min_cabin_pct: option.min_cabin_pct,
+      });
+      return { ok: true, value };
+    } catch (err) {
+      return await this.#failure(err);
+    }
+  }
+
+  /**
+   * Check a seats.aero key before it is saved (T11): one call — the smallest Cached Search — through the same quota
+   * and transport as a search (core seatsaero/key-check.ts). Only on the user's request; never to render a screen.
+   */
+  async checkKey(draft: string): Promise<KeyCheckOutcome> {
+    try {
+      const { api_calls_used: _calls, ...outcome } = await checkSeatsKey({ apiKey: draft, userId: LOCAL_USER, fetch: this.#fetch, quota: this.quota });
+      return outcome;
+    } catch {
+      // The quota store itself failed; the engine answers with a value, as it does everywhere else.
+      return { ok: false, reason: "unknown" };
     }
   }
 
@@ -218,6 +307,10 @@ export class SearchEngine {
     }
     return { ok: false, status: 500, error: "internal", message: err instanceof Error ? err.message : String(err) };
   }
+}
+
+function noKey(): ApiFailure {
+  return { ok: false, status: 400, error: "no_key", message: "Add your seats.aero Pro API key in Settings." };
 }
 
 /** `ParseError` carries the field names the chip editors need; anything else has none. */

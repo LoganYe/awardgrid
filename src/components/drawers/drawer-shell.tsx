@@ -15,6 +15,10 @@
  *   < 768       bottom-sheet  bottom-anchored with a drag handle (the Ask drawer); a drag of
  *                             more than 120 px closes it (bottom-sheet.tsx, drag.ts).
  *
+ *   ≥ 1280      docked        with a `container` (UI/UX v1 T19, the workspace): the panel is drawn inside that
+ *                             element — the workspace's own side column — instead of padding <main>. Not
+ *                             modal, as push. Below 1280 the container is ignored.
+ *
  * In every mode Esc closes, focus moves into the panel on open and returns to whatever opened
  * it on close, and the open/close transform runs 200 ms — 0 under prefers-reduced-motion
  * (drawer.css). Mutual exclusion is not this component's job: one `useDrawerState` slot decides
@@ -53,7 +57,11 @@ function prefersReducedMotion(): boolean {
 }
 
 function focusableIn(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null || el === root);
+  // A disabled control or an inert one is not a Tab stop even with a tabindex (Ask's Send before a question is typed):
+  // counted as the last stop, Tab from the real last one would leave a modal panel (T19 review LAY-1).
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    (el) => (el.offsetParent !== null || el === root) && !(el as HTMLButtonElement).disabled && el.getAttribute("aria-disabled") !== "true" && !el.closest("[inert]"),
+  );
 }
 
 /**
@@ -91,6 +99,16 @@ export interface DrawerShellProps {
   openerKey?: string;
   children: ReactNode;
   className?: string;
+  /**
+   * UI/UX v1 T19: at ≥ 1280, draw the panel inside this element (docked) instead of pushing <main>. Null or absent
+   * keeps the push behaviour, so the grid's drawers are unchanged.
+   */
+  container?: HTMLElement | null;
+  /**
+   * UI/UX v1 T19: the control that opened the panel, when the caller knows it (a click that does not focus its button,
+   * or one panel replacing another). Focus goes back to it on close. Absent, the focused element at open is used.
+   */
+  opener?: HTMLElement | null;
   /** Test/e2e hook, set on the panel. */
   "data-testid"?: string;
 }
@@ -108,12 +126,16 @@ export function DrawerShell({
   openerKey,
   children,
   className,
+  container,
+  opener,
   "data-testid": testId,
 }: DrawerShellProps) {
   const t = useT();
   const density = useDensity();
   const mode: DrawerMode = drawerMode(density, mobile);
   const modal = isModalMode(mode);
+  // Docked: beside the page inside the caller's column, so there is no slide and nothing to push.
+  const docked = mode === "push" && !!container;
   const titleId = useId();
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -138,12 +160,16 @@ export function DrawerShell({
   // "Esc closes drawers" and the keyboard walk returns to the cell that opened them).
   useEffect(() => {
     if (!open) return;
+    if (opener?.isConnected) {
+      openerRef.current = opener;
+      return;
+    }
     const active = document.activeElement;
     if (active instanceof HTMLElement && !panelRef.current?.contains(active)) openerRef.current = active;
     // `openerKey` re-runs this when the drawer stays open but changes what it is about — in push
     // mode the grid behind it is still clickable, so a second cell replaces the first without a
     // close, and Esc must return focus to the cell the user actually came from.
-  }, [open, openerKey]);
+  }, [open, openerKey, opener]);
 
   // Enter: two frames before `entered`, so the closed transform is painted first.
   useEffect(() => {
@@ -162,9 +188,9 @@ export function DrawerShell({
   // motion (drawer.css drops the transition there, so there is nothing to wait for).
   useEffect(() => {
     if (open || !rendered) return;
-    const id = window.setTimeout(() => setRendered(false), prefersReducedMotion() ? 0 : EXIT_MS);
+    const id = window.setTimeout(() => setRendered(false), prefersReducedMotion() || docked ? 0 : EXIT_MS);
     return () => window.clearTimeout(id);
-  }, [open, rendered]);
+  }, [open, rendered, docked]);
 
   // Move focus in on open; hand it back on close. The panel itself is the fallback target so a
   // drawer whose body is still loading is never left with focus on the page behind it.
@@ -174,11 +200,24 @@ export function DrawerShell({
     if (!panel) return;
     initialFocusTarget(panel).focus({ preventScroll: true });
     return () => {
-      const opener = openerRef.current;
+      const back = openerRef.current;
       openerRef.current = null;
-      if (opener?.isConnected) opener.focus({ preventScroll: true });
+      // Only when focus is still this panel's (or fell to the page as it closed): a panel replacing this one has the
+      // person's focus already, and must not see this panel's opener as its own (T19 review LAY-4).
+      const active = document.activeElement;
+      const ours = active === null || active === document.body || !!panel.contains(active);
+      if (back?.isConnected && ours) back.focus({ preventScroll: true });
     };
   }, [open]);
+
+  // A panel that moves between the page's column and the overlay (the width crossed 1280 while it was open) is drawn
+  // anew, and the focus inside it is lost with the old node: it goes back into the panel (T19 review LAY-1).
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    const active = document.activeElement;
+    if (panel && (active === null || active === document.body)) initialFocusTarget(panel).focus({ preventScroll: true });
+  }, [open, docked, mode]);
 
   /**
    * Body scroll lock for the modal modes (spec §6: overlay, sheet and bottom sheet are modal).
@@ -204,7 +243,7 @@ export function DrawerShell({
   // Push mode reserves the width on <main> (drawer.css). Drawers are mutually exclusive, so at
   // most one of these effects owns the attribute at a time.
   useEffect(() => {
-    if (!open || mode !== "push") return;
+    if (!open || mode !== "push" || docked) return;
     const root = document.documentElement;
     root.dataset.drawerPush = "open";
     root.style.setProperty("--ag-drawer-push", `${width}px`);
@@ -212,7 +251,7 @@ export function DrawerShell({
       delete root.dataset.drawerPush;
       root.style.removeProperty("--ag-drawer-push");
     };
-  }, [open, mode, width]);
+  }, [open, mode, width, docked]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -283,7 +322,7 @@ export function DrawerShell({
         className={cn("ag-drawer", className)}
         data-slot="drawer"
         data-side={bottom ? "bottom" : side}
-        data-mode={mode}
+        data-mode={docked ? "docked" : mode}
         data-state={state}
         data-dragging={dragging ? "true" : undefined}
         data-testid={testId}
@@ -302,10 +341,10 @@ export function DrawerShell({
             <XIcon aria-hidden />
           </Button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">{children}</div>
+        <div className="ag-drawer-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">{children}</div>
         {footer && <div className="flex flex-col gap-2 border-t border-line px-4 py-3">{footer}</div>}
       </div>
     </>,
-    document.body,
+    docked && container ? container : document.body,
   );
 }

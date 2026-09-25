@@ -1,0 +1,201 @@
+{
+  "metadata": {
+    "name": "AwardGrid / Quiet Precision",
+    "version": "1.0-review",
+    "date": "2026-09-23",
+    "status": "Proposed design, not implemented",
+    "sizeUnit": "logical design units; CSS px at baseline viewport, calibrated to native pt; never CSS pt",
+    "palette": "sRGB",
+    "source": "Original design choices; not extracted from competitor pixels"
+  },
+  "color": {
+    "light": {
+      "canvas": "#F6F7F9",
+      "surface": "#FFFFFF",
+      "surface-subtle": "#EEF2F6",
+      "text": "#182230",
+      "text-secondary": "#475467",
+      "text-muted": "#626D7D",
+      "divider": "#DCE2E8",
+      "control-border": "#7A8798",
+      "accent": "#006D77",
+      "accent-hover": "#005B63",
+      "accent-soft": "#E6F3F4",
+      "on-accent": "#FFFFFF",
+      "success": "#167347",
+      "success-soft": "#EAF7EF",
+      "warning": "#8A4B08",
+      "warning-soft": "#FFF4DF",
+      "danger": "#B42318",
+      "danger-soft": "#FEECEB",
+      "info": "#2457A7",
+      "info-soft": "#EDF3FF"
+    },
+    "dark": {
+      "canvas": "#10161E",
+      "surface": "#18212B",
+      "surface-subtle": "#202C38",
+      "text": "#F2F4F7",
+      "text-secondary": "#C1CAD6",
+      "text-muted": "#9CAABD",
+      "divider": "#334354",
+      "control-border": "#718399",
+      "accent": "#63D2D6",
+      "accent-hover": "#8DDFE2",
+      "accent-soft": "#173A3D",
+      "on-accent": "#102326",
+      "success": "#75D9A2",
+      "success-soft": "#183729",
+      "warning": "#F5C16C",
+      "warning-soft": "#3D2D17",
+      "danger": "#FFA6A0",
+      "danger-soft": "#432320",
+      "info": "#A8C6FF",
+      "info-soft": "#1B304D"
+    }
+  },
+  "spacing": {
+    "0": 0,
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "5": 20,
+    "6": 24,
+    "8": 32,
+    "10": 40,
+    "12": 48,
+    "16": 64
+  },
+  "radius": {
+    "small": 6,
+    "chip": 8,
+    "control": 12,
+    "card": 16,
+    "sheet": 24,
+    "pill": 999
+  },
+  "size": {
+    "touch-target-min": 44,
+    "button-mobile": 48,
+    "button-desktop": 40,
+    "input-mobile": 48,
+    "input-desktop": 40,
+    "chip-visual": 36,
+    "chip-touch-slot": 44,
+    "mobile-page-gutter": 16,
+    "desktop-page-gutter": 24,
+    "mobile-header": 52,
+    "mobile-query-summary-min": 64,
+    "mobile-tabs": 56,
+    "mobile-availability-card-min": 164,
+    "desktop-result-row": 64,
+    "desktop-nav-rail": 72,
+    "desktop-assistant-panel": 360,
+    "desktop-detail-panel": 400,
+    "watch-card-min": 148,
+    "mobile-card-gap": 12
+  },
+  "typography": {
+    "page-title": {
+      "mobile": 28,
+      "desktop": 28,
+      "lineHeight": 34,
+      "weight": 650
+    },
+    "compact-title": {
+      "mobile": 22,
+      "desktop": 22,
+      "lineHeight": 28,
+      "weight": 650
+    },
+    "section-title": {
+      "mobile": 20,
+      "desktop": 20,
+      "lineHeight": 26,
+      "weight": 600
+    },
+    "route": {
+      "mobile": 17,
+      "desktop": 16,
+      "lineHeight": 24,
+      "weight": 600
+    },
+    "miles": {
+      "mobile": 24,
+      "desktop": 18,
+      "lineHeightMobile": 28,
+      "lineHeightDesktop": 24,
+      "weight": 650,
+      "numeric": "tabular-nums lining-nums"
+    },
+    "body": {
+      "mobile": 16,
+      "desktop": 14,
+      "lineHeightMobile": 24,
+      "lineHeightDesktop": 22,
+      "weight": 400
+    },
+    "reading": {
+      "mobile": 17,
+      "desktop": 16,
+      "lineHeightMobile": 26,
+      "lineHeightDesktop": 26,
+      "weight": 400
+    },
+    "meta": {
+      "mobile": 13,
+      "desktop": 13,
+      "lineHeight": 18,
+      "weight": 400
+    },
+    "input": {
+      "mobile": 16,
+      "desktop": 14,
+      "weight": 400,
+      "lineHeightMobile": 24,
+      "lineHeightDesktop": 22
+    },
+    "control": {
+      "mobile": 16,
+      "desktop": 14,
+      "weight": 600,
+      "lineHeightMobile": 24,
+      "lineHeightDesktop": 22
+    },
+    "short-label": {
+      "mobile": 12,
+      "desktop": 12,
+      "lineHeight": 16,
+      "weight": 500
+    }
+  },
+  "motion": {
+    "feedbackMs": 100,
+    "popoverMs": 160,
+    "sheetMs": 220,
+    "easing": "cubic-bezier(0.2,0,0,1)",
+    "reducedMotionMs": 0,
+    "noFakeStream": true
+  },
+  "breakpoints": {
+    "mobileMax": 767,
+    "mediumMin": 768,
+    "sidePanelMin": 1280,
+    "contentMax": 1600
+  },
+  "elevation": {
+    "card": "none",
+    "popoverLight": "0 8px 24px rgba(24,34,48,0.12)",
+    "sheetLight": "0 16px 48px rgba(24,34,48,0.16)",
+    "scrimLight": "rgba(16,22,30,0.36)",
+    "scrimDark": "rgba(0,0,0,0.56)"
+  },
+  "notes": [
+    "All heights are minimums at default type size unless a fixed artboard illustration is identified.",
+    "Decorative divider is NOT sufficient for required interactive boundaries. Use control-border.",
+    "No automatic mapping from green to a universally best redemption.",
+    "Do not use 2-hour freshness bands without displaying the timestamp basis.",
+    "App tabs exclude safe-area-inset-bottom; runtime must supply safe areas."
+  ]
+}

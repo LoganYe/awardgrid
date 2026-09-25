@@ -7,7 +7,8 @@
   "//": "CSS only, no build step and no JS entry point. It exists so there is exactly one copy of the palette: three surfaces reading three copies is how a design system drifts.",
   "exports": {
     "./tokens.css": "./tokens.css",
-    "./surfaces.css": "./surfaces.css"
+    "./surfaces.css": "./surfaces.css",
+    "./precision.css": "./precision.css"
   },
-  "files": ["tokens.css", "surfaces.css"]
+  "files": ["tokens.css", "surfaces.css", "precision.css"]
 }

@@ -2,7 +2,8 @@
  * Typed browser-side calls to the grid API. Every failure becomes an `ApiFailure` value
  * (never a throw) so the page can render the matching empty state.
  */
-import type { Grid, Orientation } from "@awardgrid/core/grid/types";
+import type { AvailabilityRow, Grid, Orientation } from "@awardgrid/core/grid/types";
+import type { CoverageEvidence } from "@awardgrid/core/workspace/types";
 import { isNotice, type Notice } from "@awardgrid/core/notices";
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import type { Provenance } from "@awardgrid/core/query/deterministic";
@@ -26,6 +27,8 @@ export interface ApiFailure {
   requested?: number;
   /** seatsaero */
   kind?: string;
+  /** parse (UI/UX v1 T20): the server could let the language model read the text, if the person asks. */
+  llm_offer?: boolean;
 }
 
 export type ApiResult<T> = { ok: true; value: T } | ApiFailure;
@@ -52,6 +55,9 @@ export interface FindResponse {
   programs_by_pair?: Record<string, number> | null;
   /** Phase 6 additive: programs the run checked for these pairs (the empty-results sentence). */
   programs_checked?: number;
+  /** UI/UX v1 T18 additive: the rows and coverage a workspace snapshot is made of (the Web workspace reads them). */
+  rows?: AvailabilityRow[];
+  coverage?: CoverageEvidence | null;
 }
 
 /** A warning as the UI renders it: translated when structured, the server's English otherwise. */
@@ -83,6 +89,7 @@ async function failureFrom(res: Response): Promise<ApiFailure> {
   if (typeof body.remaining === "number") out.remaining = body.remaining;
   if (typeof body.requested === "number") out.requested = body.requested;
   if (typeof body.kind === "string") out.kind = body.kind;
+  if (body.llm_offer === true) out.llm_offer = true;
   return out;
 }
 
@@ -102,8 +109,12 @@ function json(body: unknown): RequestInit {
   return { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
 }
 
-export function apiParse(text: string, today: string, signal?: AbortSignal): Promise<ApiResult<ParseResponse>> {
-  return request<ParseResponse>("/api/parse", json({ text, today }), signal);
+/**
+ * Parse the text deterministically. `useLlm` is the person's explicit choice to let the language model read it (it
+ * leaves for Anthropic): never set implicitly (UI/UX v1 T20).
+ */
+export function apiParse(text: string, today: string, signal?: AbortSignal, opts: { useLlm?: boolean } = {}): Promise<ApiResult<ParseResponse>> {
+  return request<ParseResponse>("/api/parse", json({ text, today, ...(opts.useLlm ? { use_llm: true } : {}) }), signal);
 }
 
 export function apiFind(query: QueryObject, orientation: Orientation, signal?: AbortSignal): Promise<ApiResult<FindResponse>> {

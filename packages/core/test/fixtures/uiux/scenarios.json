@@ -1,0 +1,224 @@
+{
+  "synthetic": true,
+  "format": "scenario manifest, not a seats.aero API payload",
+  "now": "2026-10-18T08:30:00Z",
+  "scenarios": [
+    {
+      "id": "complete",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "purpose": "complete matched results"
+    },
+    {
+      "id": "complete-empty",
+      "coverage": "complete",
+      "rowIndexes": [],
+      "purpose": "successful checked empty range"
+    },
+    {
+      "id": "partial",
+      "coverage": "partial",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "page cap, unknown missing pairs"
+    },
+    {
+      "id": "coverage-unknown",
+      "coverage": "unknown",
+      "rowIndexes": [
+        0
+      ],
+      "purpose": "legacy cache without provenance"
+    },
+    {
+      "id": "unmonitored",
+      "coverage": "complete",
+      "rowIndexes": [],
+      "purpose": "explicit routes catalog: unmonitored pair"
+    },
+    {
+      "id": "legacy-cache",
+      "coverage": "unknown",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "do not infer source timestamp from computed fallback"
+    },
+    {
+      "id": "missing-values",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        3
+      ],
+      "purpose": "unknown fees vs explicit zero fees; count 0 unknown"
+    },
+    {
+      "id": "inflight-old",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "active new query with old snapshot labelled"
+    },
+    {
+      "id": "failed-old",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "failed new query, old data preserved"
+    },
+    {
+      "id": "no-seats-key",
+      "coverage": "unknown",
+      "rowIndexes": [],
+      "purpose": "no API key, no fake fallback"
+    },
+    {
+      "id": "no-ai-key",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "direct search works; AI setup required"
+    },
+    {
+      "id": "quota-low",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "quota refuses new requests before spend"
+    },
+    {
+      "id": "ai-pending",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "validated proposal pending confirmation"
+    },
+    {
+      "id": "ai-stale",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "proposal revision differs from current query"
+    },
+    {
+      "id": "ai-stopped",
+      "coverage": "partial",
+      "rowIndexes": [
+        0
+      ],
+      "purpose": "in-flight request may still complete, no next tool"
+    },
+    {
+      "id": "watch-baseline",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "first check records no new-result count"
+    },
+    {
+      "id": "watch-changes",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1,
+        2
+      ],
+      "purpose": "unread changes survive quiet check"
+    },
+    {
+      "id": "watch-failure",
+      "coverage": "partial",
+      "rowIndexes": [
+        0
+      ],
+      "purpose": "previous baseline retained"
+    },
+    {
+      "id": "favorite-snapshot",
+      "coverage": "partial",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "saved incomplete snapshot no auto-refresh"
+    },
+    {
+      "id": "storage-failure",
+      "coverage": "complete",
+      "rowIndexes": [
+        0
+      ],
+      "purpose": "atomic write fails, previous data untouched"
+    },
+    {
+      "id": "multi-program",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1,
+        2
+      ],
+      "purpose": "fixture adapter adds second synthetic program; no value scores",
+      "rowOverrides": {
+        "2": {
+          "program": "american",
+          "currency": "EUR"
+        }
+      }
+    },
+    {
+      "id": "long-labels",
+      "coverage": "complete",
+      "rowIndexes": [
+        0,
+        1
+      ],
+      "purpose": "expanded translated labels, 200 percent type"
+    },
+    {
+      "id": "web-user-a",
+      "coverage": "complete",
+      "rowIndexes": [
+        0
+      ],
+      "purpose": "isolation namespace A"
+    },
+    {
+      "id": "web-user-b",
+      "coverage": "complete",
+      "rowIndexes": [
+        2
+      ],
+      "purpose": "isolation namespace B"
+    },
+    {
+      "id": "foundations",
+      "coverage": "unknown",
+      "rowIndexes": [],
+      "purpose": "Actual shared primitives in isolated test host; not a production route"
+    }
+  ]
+}

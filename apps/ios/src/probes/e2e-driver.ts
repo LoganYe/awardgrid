@@ -275,47 +275,60 @@ function quotaLine(): string | null {
   return span ? textOf(span) : null;
 }
 
-/** Type into the Search screen's box and press Run, then read what the screen shows. */
+/**
+ * Type a search into the Search screen and run it, then read the grid it shows. Since UI/UX v1 T07 a search's results
+ * are cards and the grid is the Matrix view (U-028, brought up to date in T22): once results are on screen the text
+ * search is behind the query summary, and each empty slot of the grid carries its reason as data-state (complete: no
+ * matches; partial: not checked to the end; unmonitored; unknown). The facts keep their Phase 5 names; calls_line now
+ * begins with the option count, and grid_message is the coverage notices.
+ */
 async function gridSearch(text: string): Promise<Values> {
-  await go("#/", () => document.querySelector("#q"));
-  const box = document.querySelector<HTMLTextAreaElement>("#q")!;
+  await go("#/", () => document.querySelector("#q") ?? document.querySelector("[data-testid='query-summary'] a"));
+  if (!document.querySelector("#q")) document.querySelector<HTMLAnchorElement>("[data-testid='query-summary'] a")?.click();
+  const box = await waitFor("the text search", () => document.querySelector<HTMLTextAreaElement>("#q"));
   Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, text);
   box.dispatchEvent(new Event("input", { bubbles: true }));
-  const runButton = () => [...document.querySelectorAll("button")].find((b) => ["Run", "Searching…"].includes((b.textContent ?? "").trim()));
-  await waitFor("the query in the box and Run enabled", () => document.querySelector<HTMLTextAreaElement>("#q")?.value === text && runButton() && !runButton()!.disabled);
-  let sawSearching = false;
-  const observer = new MutationObserver(() => {
-    if ((runButton()?.textContent ?? "").trim() === "Searching…") sawSearching = true;
-  });
-  observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+  const run = () => document.querySelector<HTMLButtonElement>("[data-testid='text-search-run']");
+  const results = () => document.querySelector<HTMLElement>(".ag-results[data-run]");
+  const before = Number(results()?.dataset.revision ?? -1);
+  await waitFor("the query in the box and Run enabled", () => document.querySelector<HTMLTextAreaElement>("#q")?.value === text && run() && !run()!.disabled);
   const started = performance.now();
-  runButton()!.click();
-  try {
-    await waitFor("the search to finish", () => sawSearching && (runButton()?.textContent ?? "").trim() === "Run", 120_000);
-  } finally {
-    observer.disconnect();
-  }
+  run()!.click();
+  await waitFor(
+    "the search to finish",
+    () => {
+      if (document.querySelector("#q-error, .ag-results [role='alert']")) return true;
+      const el = results();
+      return el !== null && el.dataset.busy === "false" && el.dataset.run !== "running" && Number(el.dataset.revision) > before;
+    },
+    120_000,
+  );
+  const ms = Math.round(performance.now() - started);
+  [...document.querySelectorAll<HTMLElement>("[role='radio']")].find((r) => textOf(r) === "Matrix")?.click();
   await settle();
-  return { query: text, ms: Math.round(performance.now() - started), ...gridFacts() };
+  return { query: text, ms, ...gridFacts() };
 }
 
 function gridFacts(): Values {
-  const table = document.querySelector("table.ag-grid");
-  const cells = table ? [...table.querySelectorAll("tbody td")].map((td) => textOf(td)) : [];
-  const count = (label: string) => cells.filter((c) => c === label).length;
-  const main = document.querySelector("main");
+  const table = document.querySelector("table.ag-mx-grid");
+  const slots = table ? [...table.querySelectorAll(".ag-mx-slot")] : [];
+  const empty = (state: string) => slots.filter((slot) => slot.getAttribute("data-state") === state).length;
+  const main = document.querySelector(".app-main") ?? document.querySelector("main");
   return {
     table: table !== null,
     columns: table ? [...table.querySelectorAll("thead th")].map((th) => textOf(th)) : [],
     rows: table ? [...table.querySelectorAll("tbody th")].map((th) => textOf(th)) : [],
-    cells_total: cells.length,
-    cells_with_miles: table ? table.querySelectorAll("tbody td .miles").length : 0,
-    not_monitored: count("not monitored"),
-    not_checked: count("not checked"),
-    dash: count("—"),
-    grid_message: [...(main?.querySelectorAll("p.ag-surface") ?? [])].map((p) => textOf(p)),
+    cells_total: table ? table.querySelectorAll("tbody td").length : 0,
+    cells_with_miles: table ? table.querySelectorAll("tbody td .ag-mx-miles").length : 0,
+    not_monitored: empty("unmonitored"),
+    not_checked: empty("partial"),
+    dash: empty("complete"),
+    // The coverage notices (docs/04's stable test id), where Phase 5 read the grid's own message.
+    grid_message: [...(main?.querySelectorAll("[data-testid='coverage-notice']") ?? [])].map((p) => textOf(p)),
     alerts: [...(main?.querySelectorAll("[role='alert']") ?? [])].map((p) => textOf(p)),
-    calls_line: [...(main?.querySelectorAll("div.tabular") ?? [])].map((d) => textOf(d)),
+    // The status line's first part ("4 options · 1 seats.aero call", or how old a cached answer is); in Phase 5 it
+    // was the grid's own calls line, without the option count (T22 review PROD-5).
+    calls_line: [...(main?.querySelectorAll(".ag-results-status > span:first-child") ?? [])].map((d) => textOf(d)),
     quota_line: quotaLine(),
     ask_about_search_link: [...document.querySelectorAll("a")].some((a) => textOf(a) === "Ask Claude about this search"),
   };

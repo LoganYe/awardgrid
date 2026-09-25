@@ -10,13 +10,26 @@
  * This is also where watches are checked: once when the app opens and again each time it returns
  * to the foreground, and at no other time. There is no background check (../watch/capabilities.ts).
  */
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { NavLink, Outlet, RouterProvider, createHashRouter } from "react-router";
-import { type AppServices, bootstrap } from "./bootstrap";
-import { askNavLabel } from "../ask/labels";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { NavLink, Outlet, RouterProvider, createHashRouter, useLocation } from "react-router";
+import { type AppServices, type BootstrapOptions, bootstrap } from "./bootstrap";
+import { RESULTS } from "../components/results/copy";
+import { Button, Icon, type IconName, applyThemePreference } from "../components/ui";
+import { FAVORITES } from "../screens/favorites-copy";
+import { WithTail } from "./WithTail";
+import { installKeyboardInset } from "./keyboard";
+import { installAppearanceBridge, postAppearance } from "../native/appearance";
+import { installSystemTextSize } from "../native/text-size";
+import { type Locale, langTag, useLocale } from "./locale";
+import { TraySlot } from "./tray-slot";
 import { AskScreen } from "../screens/AskScreen";
+import { CompareScreen } from "../screens/CompareScreen";
+import { QueryEditorScreen } from "../screens/QueryEditorScreen";
+import { DetailScreen } from "../screens/DetailScreen";
+import { ExampleScreen } from "../screens/OnboardingScreen";
+import { FavoritesScreen, SavedScreen } from "../screens/FavoritesScreen";
 import { SearchScreen } from "../screens/SearchScreen";
-import { SettingsScreen } from "../screens/SettingsScreen";
+import { AnthropicKeyScreen, SeatsKeyScreen, SettingsScreen } from "../screens/SettingsScreen";
 import { WatchesScreen } from "../screens/WatchesScreen";
 
 /**
@@ -48,78 +61,179 @@ function useUnseenCount(services: AppServices): number {
   return useSyncExternalStore(subscribe, count, count);
 }
 
-/** Whether a question is under way. The service runs it, not the Ask screen, so the nav says so from any screen. */
-function useAskRunning(services: AppServices): boolean {
+/** Whether a question is under way. The service runs it, not the Ask screen, so the Search header says so. */
+export function useAskRunning(services: Pick<AppServices, "ask">): boolean {
   return useSyncExternalStore(services.ask.subscribe, services.ask.isRunning, services.ask.isRunning);
 }
 
-/** The header with its nav, the screen, and the footer. Exported for app-chrome.test.ts. */
-export function Chrome({ services }: { services: AppServices }) {
-  const unseen = useUnseenCount(services);
-  const asking = useAskRunning(services);
-  const nav: Array<[string, string]> = [
-    ["/", "Search"],
-    ["/ask", askNavLabel(asking)],
-    ["/watches", unseen > 0 ? `Watches (${unseen})` : "Watches"],
-    ["/settings", "Settings"],
-  ];
+/**
+ * A full-height page outside the tab chrome (UI/UX v1 T06: the query editor, docs/04 S02). It shows no award data,
+ * so it carries no data attribution; the screens it returns to do.
+ */
+export function FullPage({ services }: { services: AppServices }) {
   return (
-    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-      {/* Both rows wrap, so a 375 pt phone with "Ask (working)" and "Watches (12)" wraps instead of clipping. */}
-      <header
-        className="chrome-top chrome-x"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          columnGap: 16,
-          rowGap: 6,
-          alignItems: "center",
-          paddingBottom: 10,
-          borderBottom: "1px solid var(--line)",
-          background: "var(--bg-raised)",
-        }}
-      >
-        <strong style={{ fontSize: 16 }}>awardgrid</strong>
-        <nav style={{ display: "flex", flexWrap: "wrap", columnGap: 12, rowGap: 6 }} aria-label="Main navigation">
-          {nav.map(([to, label]) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className="ag-nav-link"
-              style={({ isActive }) => ({
-                textDecoration: "none",
-                color: isActive ? "var(--accent)" : "var(--fg-muted)",
-                fontWeight: isActive ? 600 : 400,
-              })}
-            >
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-
-      <main className="chrome-x" style={{ flex: 1, paddingTop: 16, paddingBottom: 16 }}>
-        <Outlet context={services} />
-      </main>
-
-      {/*
-        LEGAL.md: "Every screen that shows award data carries the attribution 'Data: seats.aero'".
-        It lives in the shell so no screen can forget it.
-      */}
-      <footer
-        className="chrome-bottom chrome-x"
-        style={{ paddingTop: 10, borderTop: "1px solid var(--line)", color: "var(--fg-muted)", fontSize: 12, background: "var(--bg-raised)" }}
-      >
-        Data: seats.aero · your own keys, on this device
-      </footer>
-    </div>
+    <main>
+      <Outlet context={services} />
+    </main>
   );
 }
 
-export function App() {
+/**
+ * The tab chrome (UI/UX v1 T07; docs/04 S01; reference results-light.png): the screen in a scrolling area, and a
+ * bottom tab bar — Search, Watches, Saved (T13), Settings — above the home indicator. AI assistance
+ * is reached from the Search header, which also says when a question is under way. The page itself never scrolls (the
+ * shell's html/body overflow rule would stop sticky headers), the area above the bar does.
+ *
+ * LEGAL.md: "Every screen that shows award data carries the attribution 'Data: seats.aero'". The Search screen says it
+ * in its status line; every other screen in the chrome carries it at the end of its content.
+ */
+export function Chrome({ services }: { services: AppServices }) {
+  const unseen = useUnseenCount(services);
+  const locale = useLocale(services);
+  const t = RESULTS[locale];
+  const { pathname } = useLocation();
+  // An option's details (T10) open over the Search screen, which stays as it is underneath: same scroll, same chrome.
+  // The comparison (T12) opens over the Search screen the same way.
+  const detailOpen = pathname.startsWith("/detail/") || pathname === "/compare";
+  const place = detailOpen ? "/" : pathname;
+  const onSearch = place === "/";
+  // One scrolling area serves every tab, so each tab's position is kept and restored when it is shown again.
+  const main = useRef<HTMLElement>(null);
+  const positions = useRef(new Map<string, number>());
+  const shownPath = useRef(place);
+  useLayoutEffect(() => {
+    const el = main.current;
+    if (!el || shownPath.current === place) return;
+    positions.current.set(shownPath.current, el.scrollTop);
+    el.scrollTop = positions.current.get(place) ?? 0;
+    shownPath.current = place;
+  }, [place]);
+  const [traySlot, setTraySlot] = useState<HTMLDivElement | null>(null);
+  const saveProblem = useSyncExternalStore(services.saveStatus.subscribe, services.saveStatus.get, services.saveStatus.get);
+  const tabs: Array<{ to: string; icon: IconName; label: string; badge: number }> = [
+    { to: "/", icon: "search", label: t.tabs.search, badge: 0 },
+    { to: "/watches", icon: "bell", label: t.tabs.watches, badge: unseen },
+    { to: "/saved", icon: "bookmark", label: t.tabs.saved, badge: 0 },
+    { to: "/settings", icon: "gear", label: t.tabs.settings, badge: 0 },
+  ];
+  return (
+    <TraySlot.Provider value={traySlot}>
+    <div className="app-shell">
+      <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(place, e.currentTarget.scrollTop)}>
+        <Outlet context={services} />
+        {/* Not on Search (its status line says it), Settings (its About says it) or the example (made up, not seats.aero's). */}
+        {onSearch || place === "/settings" || place === "/example" ? null : <p className="app-attribution">{t.attribution}</p>}
+      </main>
+      <SaveProblemBar services={services} problem={saveProblem} locale={locale} />
+      {/* The comparison bar (T12) sits here, above the tab bar and outside the scrolling area, so it never covers a
+          result, a focused control or the matrix (SearchScreen portals it in). */}
+      <div ref={setTraySlot} className="app-tray-slot" />
+      <nav className="app-tabs" aria-label={t.tabsLabel} lang={langTag(locale)} inert={detailOpen || undefined}>
+        {tabs.map((tab) => (
+          <NavLink key={tab.to} to={tab.to} end={tab.to === "/"} className="app-tab">
+            <Icon name={tab.icon} />
+            <span className="app-tab-label">{tab.label}</span>
+            {tab.badge > 0 ? (
+              <>
+                <span className="app-tab-badge" aria-hidden="true">
+                  {tab.badge}
+                </span>
+                <span className="sr-only">{t.unseen(tab.badge)}</span>
+              </>
+            ) : null}
+          </NavLink>
+        ))}
+      </nav>
+    </div>
+    </TraySlot.Provider>
+  );
+}
+
+/**
+ * What the whole app follows, whichever route is shown (T11): the appearance and language chosen in Settings, on
+ * <html> so a sheet or anything else outside a screen's own root has them too, and the keyboard's height.
+ */
+export function ShellEffects({ services }: { services: Pick<AppServices, "settings" | "locale"> }) {
+  const locale = useLocale(services);
+  const theme = useSyncExternalStore(services.settings.subscribe, services.settings.theme, services.settings.theme);
+  useLayoutEffect(() => {
+    applyThemePreference(theme);
+    // The native side paints what shows around the page with the same appearance (T22, U-042).
+    postAppearance(theme);
+  }, [theme]);
+  useEffect(() => installAppearanceBridge(() => services.settings.theme()), [services]);
+  useLayoutEffect(() => {
+    document.documentElement.lang = langTag(locale);
+  }, [locale]);
+  useEffect(() => installKeyboardInset(), []);
+  // Dynamic Type drives the page's text scale, 100–200% (T22; A35's native half).
+  useEffect(() => installSystemTextSize(), []);
+  return null;
+}
+
+/**
+ * A save that failed (T13, U-046): one short line above the tab bar, the storage's own words behind "Details", and
+ * "Try saving again", which shows it is working and says how it went. It gives way to the keyboard, as the tab bar
+ * does, so it never takes the screen. When a retry succeeds the bar goes, and focus goes to the page's title.
+ */
+function SaveProblemBar({ services, problem, locale }: { services: AppServices; problem: ReturnType<AppServices["saveStatus"]["get"]>; locale: Locale }) {
+  const f = FAVORITES[locale];
+  const [trying, setTrying] = useState(false);
+  const [said, setSaid] = useState("");
+  const retry = async () => {
+    setTrying(true);
+    setSaid("");
+    const report = await services.persist();
+    setTrying(false);
+    window.requestAnimationFrame(() => {
+      setSaid(report.ok ? f.saveFixed : f.saveRetried);
+      if (report.ok) document.querySelector<HTMLElement>("main h1")?.focus();
+    });
+  };
+  return (
+    <>
+      {/* Always in the tree, so the outcome of a retry is announced even when the bar has gone. */}
+      <p role="status" className="sr-only">
+        {said}
+      </p>
+      {problem ? (
+        <div className="app-save-problem" role="alert" lang={langTag(locale)}>
+          <p>{f.saveProblemShort}</p>
+          <Button onClick={() => void retry()} loading={trying} loadingLabel={f.saveProblemRetry}>
+            {f.saveProblemRetry}
+          </Button>
+          <details className="app-save-problem-details">
+            <summary>{f.saveProblemDetails}</summary>
+            <p>
+              <WithTail text={f.saveProblem(problem.message)} tail={problem.message} tailLang={locale === "en" ? undefined : "en"} />
+            </p>
+          </details>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/** The Search screen with no option's details open: nothing over the results. */
+function NoDetail() {
+  return null;
+}
+
+export interface AppProps {
+  /**
+   * The ports to boot with. Only the UI/UX test host (apps/ios/fixture-host) passes these; main.tsx renders
+   * `<App />`, so production boots with bootstrap()'s own native defaults exactly as before.
+   */
+  bootstrapOptions?: BootstrapOptions;
+  /** Told once the services exist. Test host only, for the same reason. */
+  onReady?: (services: AppServices) => void;
+}
+
+export function App({ bootstrapOptions, onReady }: AppProps = {}) {
   const [services, setServices] = useState<AppServices | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Read once, at boot: a new options object on a later render must not boot a second set of services.
+  const boot = useRef({ bootstrapOptions, onReady });
 
   useEffect(() => {
     // A probe build sends seats.aero requests to the local mock (../probes/probe-transport.ts); any other build is unchanged.
@@ -127,8 +241,14 @@ export function App() {
       ? import("../probes/probe-transport").then((m) => bootstrap(m.probeBootstrapOptions()))
       : E2E
         ? import("../probes/probe-transport").then((m) => bootstrap(m.e2eBootstrapOptions()))
-        : bootstrap();
-    booted.then(setServices, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+        : bootstrap(boot.current.bootstrapOptions);
+    booted.then(
+      (ready) => {
+        setServices(ready);
+        boot.current.onReady?.(ready);
+      },
+      (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    );
   }, []);
 
   useEffect(() => {
@@ -161,13 +281,37 @@ export function App() {
       services
         ? createHashRouter([
             {
+              path: "/edit",
+              element: <FullPage services={services} />,
+              children: [{ index: true, element: <QueryEditorScreen /> }],
+            },
+            // AI assistance, a full-height page (T15, docs/04 S09): its own header, context, conversation and composer.
+            {
+              path: "/ask",
+              element: <FullPage services={services} />,
+              children: [{ index: true, element: <AskScreen /> }],
+            },
+            {
               path: "/",
               element: <Chrome services={services} />,
               children: [
-                { index: true, element: <SearchScreen /> },
-                { path: "ask", element: <AskScreen /> },
+                {
+                  // The Search screen, and an option's details over it (T10).
+                  element: <SearchScreen />,
+                  children: [
+                    { index: true, Component: NoDetail },
+                    { path: "detail/:snapshotId/:rowKey", element: <DetailScreen /> },
+                    // The comparison (T12), over the results like the details, so they are as they were on return.
+                    { path: "compare", element: <CompareScreen /> },
+                  ],
+                },
                 { path: "watches", element: <WatchesScreen /> },
+                { path: "saved", element: <FavoritesScreen /> },
+                { path: "saved/:id", element: <SavedScreen /> },
                 { path: "settings", element: <SettingsScreen /> },
+                { path: "settings/seats", element: <SeatsKeyScreen /> },
+                { path: "settings/anthropic", element: <AnthropicKeyScreen /> },
+                { path: "example", element: <ExampleScreen /> },
                 ...(ProbesScreen
                   ? [
                       {
@@ -203,5 +347,10 @@ export function App() {
 
   if (!services || !router) return <div style={{ padding: 24, color: "var(--fg-muted)" }}>Starting…</div>;
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <ShellEffects services={services} />
+      <RouterProvider router={router} />
+    </>
+  );
 }

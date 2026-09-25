@@ -1,0 +1,184 @@
+{
+  "synthetic": true,
+  "note": "Testing only. No real request or availability. UTC test clock is explicit.",
+  "cases": [
+    {
+      "id": "query-fixed",
+      "query": {
+        "origins": [
+          "HKG"
+        ],
+        "destinations": [
+          "SEA"
+        ],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-30",
+        "cabins": [
+          "J",
+          "F"
+        ],
+        "programs": [
+          "aeroplan"
+        ],
+        "direct_only": false,
+        "include_filtered": false,
+        "min_cabin_pct": 100,
+        "sort_by": "miles_asc",
+        "raw_text": "Synthetic HKG to SEA October business and first",
+        "language": "en"
+      },
+      "dates": {
+        "kind": "fixed",
+        "from": "2026-10-01",
+        "to": "2026-10-30"
+      },
+      "today": "2026-09-23",
+      "expected": {
+        "from": "2026-10-01",
+        "to": "2026-10-30"
+      }
+    },
+    {
+      "id": "query-relative",
+      "query": {
+        "origins": [
+          "HKG"
+        ],
+        "destinations": [
+          "SEA"
+        ],
+        "date_from": "2026-10-01",
+        "date_to": "2026-10-30",
+        "cabins": [
+          "J",
+          "F"
+        ],
+        "programs": [
+          "aeroplan"
+        ],
+        "direct_only": false,
+        "include_filtered": false,
+        "min_cabin_pct": 100,
+        "sort_by": "miles_asc",
+        "raw_text": "Synthetic HKG to SEA October business and first",
+        "language": "en"
+      },
+      "dates": {
+        "kind": "relative_days",
+        "days": 30,
+        "clock": "UTC"
+      },
+      "today": "2026-09-23",
+      "expected": {
+        "from": "2026-09-23",
+        "to": "2026-10-22"
+      }
+    },
+    {
+      "id": "query-invalid-calendar",
+      "query": {
+        "origins": [
+          "HKG"
+        ],
+        "destinations": [
+          "SEA"
+        ],
+        "date_from": "2026-02-30",
+        "date_to": "2026-03-02",
+        "cabins": [
+          "J",
+          "F"
+        ],
+        "programs": [
+          "aeroplan"
+        ],
+        "direct_only": false,
+        "include_filtered": false,
+        "min_cabin_pct": 100,
+        "sort_by": "miles_asc",
+        "raw_text": "Synthetic HKG to SEA October business and first",
+        "language": "en"
+      },
+      "dates": {
+        "kind": "fixed",
+        "from": "2026-02-30",
+        "to": "2026-03-02"
+      },
+      "today": "2026-01-01",
+      "expected": {
+        "error": "invalid_calendar_date"
+      }
+    },
+    {
+      "id": "query-invalid-span",
+      "query": {
+        "origins": [
+          "HKG"
+        ],
+        "destinations": [
+          "SEA"
+        ],
+        "date_from": "2026-10-01",
+        "date_to": "2027-01-01",
+        "cabins": [
+          "J",
+          "F"
+        ],
+        "programs": [
+          "aeroplan"
+        ],
+        "direct_only": false,
+        "include_filtered": false,
+        "min_cabin_pct": 100,
+        "sort_by": "miles_asc",
+        "raw_text": "Synthetic HKG to SEA October business and first",
+        "language": "en"
+      },
+      "dates": {
+        "kind": "fixed",
+        "from": "2026-10-01",
+        "to": "2027-01-01"
+      },
+      "today": "2026-09-23",
+      "expected": {
+        "error": "span_exceeds_core_limit"
+      }
+    },
+    {
+      "id": "query-leap-day",
+      "query": {
+        "origins": [
+          "HKG"
+        ],
+        "destinations": [
+          "SEA"
+        ],
+        "date_from": "2028-02-29",
+        "date_to": "2028-03-01",
+        "cabins": [
+          "J",
+          "F"
+        ],
+        "programs": [
+          "aeroplan"
+        ],
+        "direct_only": false,
+        "include_filtered": false,
+        "min_cabin_pct": 100,
+        "sort_by": "miles_asc",
+        "raw_text": "Synthetic HKG to SEA October business and first",
+        "language": "en"
+      },
+      "dates": {
+        "kind": "fixed",
+        "from": "2028-02-29",
+        "to": "2028-03-01"
+      },
+      "today": "2028-01-01",
+      "expected": {
+        "from": "2028-02-29",
+        "to": "2028-03-01"
+      }
+    }
+  ]
+}

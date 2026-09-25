@@ -35,6 +35,21 @@ export interface AvailabilityRow {
    * "filtered" cell state and explain the "Show dynamic pricing" toggle. Absent = false.
    */
   dynamic?: boolean;
+  /**
+   * Which source `computed_last_seen` was taken from, recorded when the payload was decoded
+   * (seatsaero/normalize.ts): the provider's ComputedLastSeen, its UpdatedAt, or — when neither
+   * was sent — this device's fetch time. Absent on rows written before UI/UX v1 and on rows read
+   * back from a store that does not keep it; for those, computed_last_seen cannot be proven to be
+   * the provider's time (workspace/semantics.ts rowTimeEvidence). Additive: nothing that read
+   * computed_last_seen before reads anything different now.
+   */
+  time_basis?: "provider_last_seen" | "provider_updated" | "local_fallback";
+  /**
+   * The provider's UpdatedAt, kept as sent whenever the payload had one. computed_last_seen prefers
+   * ComputedLastSeen; if that value turns out unusable (malformed, or ahead of the device clock),
+   * this is the provider time that can still be shown. Absent when not sent, and on older rows.
+   */
+  provider_updated_at?: string;
 }
 
 /**

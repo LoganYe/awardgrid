@@ -24,6 +24,10 @@ export const QUOTA_FILE = "quota.json";
 
 /** The filesystem surface used here, so tests need no device. */
 export interface FileStore {
+  /**
+   * The file's text, or null when there is no such file. A file that exists but cannot be read rejects (T13): the
+   * two-slot storage must never mistake an unreadable file for an absent one and write over it.
+   */
   read(path: string): Promise<string | null>;
   write(path: string, data: string): Promise<void>;
   remove(path: string): Promise<void>;
@@ -34,8 +38,13 @@ export const capacitorFiles: FileStore = {
     try {
       const res = await Filesystem.readFile({ path, directory: Directory.Data, encoding: Encoding.UTF8 });
       return typeof res.data === "string" ? res.data : null;
-    } catch {
-      return null; // absent is the normal first-run case
+    } catch (err) {
+      // Absent is the normal first-run case. On iOS the plugin rejects a missing file with code OS-PLUG-FILE-0008
+      // (its FilesystemError.fileNotFound); its web version says "does not exist". Anything else is a file that is
+      // there and could not be read: that is thrown, not taken as absent (read from the plugin's source; not yet
+      // seen on a device).
+      if (isFileNotFound(err)) return null;
+      throw err;
     }
   },
   async write(path, data) {
@@ -49,6 +58,13 @@ export const capacitorFiles: FileStore = {
     }
   },
 };
+
+/** Whether a Filesystem rejection means "no such file" (see capacitorFiles.read). */
+export function isFileNotFound(err: unknown): boolean {
+  const code = typeof err === "object" && err !== null && "code" in err ? String((err as { code: unknown }).code) : "";
+  const message = err instanceof Error ? err.message : typeof err === "object" && err !== null && "message" in err ? String((err as { message: unknown }).message) : "";
+  return code === "OS-PLUG-FILE-0008" || /does not exist/i.test(message);
+}
 
 export class MemoryFileStore implements FileStore {
   readonly files = new Map<string, string>();
@@ -81,6 +97,16 @@ export const WATCHES_FILE = "watches.json";
 
 type WatchSnapshot = import("./watch-store").WatchSnapshot;
 
+/**
+ * What is in watches.json (T14: old data is never deleted). Unlike the cache, a watches file that cannot be used is
+ * not a cold start to write over: it is the person's own watches.
+ *   - "absent": no file, the first run.
+ *   - "read": a watches file (any version; the store decides what it can read).
+ *   - "damaged": text that is not a watches file (torn or foreign). It is copied aside before anything is written.
+ *   - "unreadable": the storage could not read it. Nothing may be written over it.
+ */
+export type WatchesFile = { kind: "absent" } | { kind: "read"; snapshot: WatchSnapshot } | { kind: "damaged"; raw: string } | { kind: "unreadable" };
+
 export class SnapshotStore {
   readonly #files: FileStore;
 
@@ -93,8 +119,17 @@ export class SnapshotStore {
     return this.#files;
   }
 
+  /** Best effort, as ever: a file that cannot be read is a cold start, never a failed launch. */
+  async #readOrNull(path: string): Promise<string | null> {
+    try {
+      return await this.#files.read(path);
+    } catch {
+      return null;
+    }
+  }
+
   async loadCache(): Promise<CacheSnapshot | null> {
-    return parse<CacheSnapshot>(await this.#files.read(CACHE_FILE));
+    return parse<CacheSnapshot>(await this.#readOrNull(CACHE_FILE));
   }
 
   async saveCache(snapshot: CacheSnapshot): Promise<void> {
@@ -102,7 +137,7 @@ export class SnapshotStore {
   }
 
   async loadQuota(): Promise<QuotaSnapshot | null> {
-    return parse<QuotaSnapshot>(await this.#files.read(QUOTA_FILE));
+    return parse<QuotaSnapshot>(await this.#readOrNull(QUOTA_FILE));
   }
 
   async saveQuota(snapshot: QuotaSnapshot): Promise<void> {
@@ -110,7 +145,21 @@ export class SnapshotStore {
   }
 
   async loadWatches(): Promise<WatchSnapshot | null> {
-    return parse<WatchSnapshot>(await this.#files.read(WATCHES_FILE));
+    return parse<WatchSnapshot>(await this.#readOrNull(WATCHES_FILE));
+  }
+
+  /** watches.json, told apart: absent, a watches file, damaged, or unreadable (see WatchesFile). */
+  async readWatchesFile(): Promise<WatchesFile> {
+    let raw: string | null;
+    try {
+      raw = await this.#files.read(WATCHES_FILE);
+    } catch {
+      return { kind: "unreadable" };
+    }
+    if (raw === null) return { kind: "absent" };
+    const snapshot = parse<WatchSnapshot>(raw);
+    const looksRight = snapshot !== null && typeof snapshot === "object" && typeof snapshot.version === "number" && Array.isArray(snapshot.watches);
+    return looksRight ? { kind: "read", snapshot } : { kind: "damaged", raw };
   }
 
   async saveWatches(snapshot: WatchSnapshot): Promise<void> {

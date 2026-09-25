@@ -1,0 +1,1574 @@
+/*
+ * The tab chrome and the results screen (UI/UX v1 T07; docs/04 S01; reference results-light.png). Tokens only.
+ *
+ * At the 390 pt default the stack above the first card is header 52, query summary 64, filters 44, result view 44,
+ * status 28 and a 12 gap: 244 below the safe area. Header and summary are sticky inside the scrolling area (116).
+ * Cards are 358 × at least 164 with 16 corners and 14/16 padding; miles are tabular lining figures.
+ *
+ * The gutter is 16, or the horizontal safe area when that is wider (a phone in landscape). With a short landscape
+ * screen the header and summary stop being sticky (spec §11), so they never take most of the height.
+ */
+
+.ag-results {
+  --results-gutter-start: max(var(--ag-gutter), env(safe-area-inset-left));
+  --results-gutter-end: max(var(--ag-gutter), env(safe-area-inset-right));
+}
+
+/* ---- chrome ---- */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  /* The space above the software keyboard when it is up (app/keyboard.ts, T11), else the whole screen. */
+  height: calc(100dvh - var(--ag-keyboard-inset, 0px));
+  background: var(--ag-canvas);
+}
+
+/* The keyboard covers the tab bar, as it does in a native app; the screen gets the space. */
+:root[data-keyboard="open"] .app-tabs {
+  display: none;
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* The containing block of the screen's visually hidden status text, so it stays inside this scroll area and never
+     makes the document taller than the screen: the shell's document never scrolls (T21 review 2 REACH-1). */
+  position: relative;
+  overscroll-behavior: contain;
+}
+
+.app-page {
+  padding-top: calc(env(safe-area-inset-top) + var(--ag-space-4));
+  padding-bottom: var(--ag-space-4);
+}
+
+.app-attribution {
+  margin: var(--ag-space-6) 0 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+/* The comparison bar's place (T12): between the scrolling area and the tab bar, taking its own height. */
+.app-tray-slot {
+  flex: none;
+}
+
+:root[data-keyboard="open"] .app-tray-slot {
+  display: none;
+}
+
+.app-tabs {
+  flex: none;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  min-height: calc(var(--ag-tabbar-height) + env(safe-area-inset-bottom));
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+/*
+ * Four tabs share the width (80 each at 320). Like a native iOS tab bar, whose labels do not grow with Dynamic Type,
+ * the label stops growing at 15/18 so "Settings" still fits at 200% text (T13); the name is the same at any size.
+ */
+.app-tab-label {
+  font-size: min(var(--ag-type-label), 15px);
+  line-height: min(var(--ag-leading-label), 18px);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.app-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--ag-space-1) / 2);
+  min-height: var(--ag-touch-target);
+  color: var(--ag-text-secondary);
+  font-size: var(--ag-type-label);
+  line-height: var(--ag-leading-label);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active: accent AND weight, so it is not colour alone. */
+.app-tab[aria-current="page"] {
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+}
+
+.app-tab:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+.app-tab-badge {
+  position: absolute;
+  top: var(--ag-space-1);
+  left: calc(50% + var(--ag-space-2));
+  min-width: var(--ag-space-4);
+  padding: 0 var(--ag-space-1);
+  border-radius: var(--ag-radius-pill);
+  background: var(--ag-accent);
+  color: var(--ag-on-accent);
+  font-size: var(--ag-type-label);
+  line-height: var(--ag-space-4);
+  font-weight: var(--ag-weight-strong);
+  text-align: center;
+}
+
+/* ---- results stack ---- */
+
+.ag-results {
+  min-height: 100%;
+  padding-bottom: var(--ag-space-6);
+  color: var(--ag-text);
+}
+
+.ag-results-sticky {
+  position: sticky;
+  top: 0;
+  z-index: var(--ag-z-sticky);
+  background: var(--ag-surface);
+}
+
+/* At least 52 below the safe area; larger text makes it taller instead of pushing the title off the top. */
+.ag-results-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--ag-space-3);
+  min-height: calc(var(--ag-header-height) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-title:focus {
+  outline: none;
+}
+
+.ag-results-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-results-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-results-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: var(--ag-touch-target);
+  padding: 0 var(--ag-space-2);
+  margin-right: calc(-1 * var(--ag-space-2));
+  border-radius: var(--ag-radius-control);
+  color: var(--ag-accent);
+  font-size: var(--ag-type-control);
+  line-height: var(--ag-leading-control);
+  font-weight: var(--ag-weight-strong);
+  text-decoration: none;
+}
+
+.ag-query-summary {
+  display: flex;
+  min-height: var(--ag-query-summary-min);
+  border-bottom: 1px solid var(--ag-divider);
+}
+
+.ag-query-summary-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-3);
+  padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
+  color: var(--ag-text);
+  text-decoration: none;
+}
+
+.ag-query-summary-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ag-query-summary-route {
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+  overflow-wrap: anywhere;
+}
+
+.ag-query-summary-sub {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-results-ai:focus-visible,
+.ag-query-summary-link:focus-visible,
+.ag-results-filters .ag-chip:focus-visible .ag-chip-face {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+.ag-results-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-chip-slot);
+  padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
+  overflow-x: auto;
+  /* T21: a sideways swipe at its edge stays here, never the page's (or the browser's back gesture). */
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+/* The end inset stays reachable when the row scrolls (a flex row drops its trailing padding). */
+.ag-results-filters::after {
+  content: "";
+  flex: none;
+  width: 1px;
+}
+
+/* More chips than fit: the far edge fades, so the row visibly continues. */
+.ag-results-filters[data-overflow] {
+  mask-image: linear-gradient(to right, black calc(100% - var(--ag-space-8)), transparent);
+}
+
+.ag-results-filters .ag-chip {
+  flex: none;
+  color: var(--ag-text);
+  text-decoration: none;
+}
+
+/*
+ * View and sort on one 44 row at 390. The segments stay equal (spec §10) and never narrower than their longest word;
+ * where the row cannot hold both (320 in English, larger text) the sort takes its own line, right-aligned, rather
+ * than breaking a word. Only a screen narrower than the segments themselves lets a word break.
+ */
+.ag-results-view {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--ag-space-2);
+  min-height: var(--ag-segmented-height);
+  padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-segmented {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.ag-results-segmented .ag-segment {
+  /* 6 pt: three equal bold-width English labels plus "Lowest miles" fit 358 (measured 353). */
+  padding-inline: 6px;
+  overflow-wrap: break-word;
+}
+
+/* The sort: a visible label over a transparent native picker the same size (44 pt), so a tap opens the phone's own list. */
+.ag-results-sort {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: var(--ag-touch-target);
+  margin-inline-start: auto;
+}
+
+.ag-results-sort-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  white-space: nowrap;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-label);
+  color: var(--ag-text);
+}
+
+.ag-results-sort-text .ag-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.ag-results-sort select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: var(--ag-touch-target);
+  opacity: 0;
+  /* 16 px keeps iOS from zooming the page when the picker opens. */
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.ag-results-sort:has(select:focus-visible) {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+  border-radius: var(--ag-radius-small);
+}
+
+.ag-link-button {
+  min-height: var(--ag-touch-target);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ag-accent);
+  font: inherit;
+  font-weight: var(--ag-weight-strong);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ag-link-button:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+/* Fee groups under the fee sort (D07): each currency named, never compared with another. */
+.ag-result-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-card-gap);
+}
+
+.ag-result-group + .ag-result-group {
+  margin-top: var(--ag-space-4);
+}
+
+.ag-result-group-name {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text-secondary);
+}
+
+/*
+ * The calendar (T08; spec §14): month title 20/26 with 44 pt arrows, weekday heads 13/18, day cells at least 64 tall
+ * with 4 pt gaps — at 390 wide each column is (358 − 24) / 7 ≈ 47.7. The table's spacing is pulled out by one gap
+ * each side so the outer cells line up with the 16 pt gutters.
+ */
+.ag-cal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-cal-caption,
+.ag-cal-legend,
+.ag-cal-note {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-3);
+}
+
+.ag-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-touch-target);
+}
+
+.ag-cal-title,
+.ag-cal-day-title {
+  margin: 0;
+  font-size: var(--ag-type-section);
+  line-height: var(--ag-leading-section);
+  font-weight: var(--ag-weight-title);
+  color: var(--ag-text);
+}
+
+.ag-cal-title {
+  flex: 1 1 auto;
+  text-align: center;
+}
+
+.ag-cal-grid {
+  width: calc(100% + 8px);
+  margin: 0 -4px;
+  border-collapse: separate;
+  border-spacing: 4px;
+  table-layout: fixed;
+}
+
+.ag-cal-grid th {
+  padding: 0 0 var(--ag-space-1);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-label);
+  color: var(--ag-text-secondary);
+  text-align: center;
+}
+
+.ag-cal-grid td {
+  padding: 0;
+  vertical-align: top;
+}
+
+.ag-cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  padding: var(--ag-space-2) 0;
+  border: 1px solid transparent;
+  border-radius: var(--ag-radius-small);
+  font: inherit;
+  color: var(--ag-text);
+  background: none;
+}
+
+.ag-cal-num {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-cal-min {
+  font-size: calc(15px * var(--ag-text-scale));
+  line-height: calc(20px * var(--ag-text-scale));
+  font-weight: var(--ag-weight-strong);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.ag-cal-has {
+  position: relative;
+  border-color: var(--ag-control-border);
+  background: var(--ag-surface);
+  cursor: pointer;
+}
+
+.ag-cal-has[aria-pressed="true"] {
+  border-color: var(--ag-accent);
+  box-shadow: inset 0 0 0 1px var(--ag-accent);
+  background: var(--ag-accent-soft);
+}
+
+.ag-cal-has:focus-visible,
+.ag-cal-row:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+/* A rounded number's mark sits in the corner, so the number keeps the cell's full width. */
+.ag-cal-approx {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: calc(11px * var(--ag-text-scale));
+  line-height: calc(13px * var(--ag-text-scale));
+  color: var(--ag-text-secondary);
+}
+
+.ag-cal-empty {
+  background: var(--ag-surface-subtle);
+}
+
+.ag-cal-mark {
+  font-size: calc(15px * var(--ag-text-scale));
+  line-height: calc(20px * var(--ag-text-scale));
+  color: var(--ag-text-muted);
+}
+
+.ag-cal-out .ag-cal-num {
+  color: var(--ag-text-muted);
+}
+
+/* Narrow or large text: the days as a list, full numbers, one per line. */
+.ag-cal-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ag-cal-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ag-space-1) var(--ag-space-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--ag-touch-target);
+  padding: var(--ag-space-2) var(--ag-space-3);
+  border: 1px solid var(--ag-control-border);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-surface);
+  color: var(--ag-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ag-cal-row[aria-expanded="true"] {
+  border-color: var(--ag-accent);
+  box-shadow: inset 0 0 0 1px var(--ag-accent);
+  background: var(--ag-accent-soft);
+}
+
+.ag-cal-row-day {
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-cal-row-min {
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+}
+
+.ag-cal-row-count {
+  flex-basis: 100%;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-cal-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+/* In the list layout a chosen day's options open right under its row. */
+.ag-cal-list > li > .ag-cal-panel {
+  margin-top: var(--ag-space-3);
+}
+
+/* The cabin switch never breaks a word; four cabins sit two by two. */
+.ag-cal-cabins .ag-segment {
+  overflow-wrap: normal;
+}
+
+.ag-cal-cabins-2x2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: row;
+}
+
+.ag-cal-panel .ag-result-list {
+  padding: 0;
+}
+
+.ag-results-status,
+.ag-results-meta {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-results-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--ag-space-3);
+  min-height: calc(var(--ag-space-6) + var(--ag-space-1));
+  padding: 0 var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-notes:not(:empty) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-meta {
+  margin: var(--ag-space-2) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-6) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-matrix {
+  padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-results-matrix > .ag-results-meta {
+  margin: 0 0 var(--ag-space-2);
+}
+
+.ag-results-status:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+.ag-results-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-4);
+  padding: var(--ag-space-4) var(--results-gutter-end) var(--ag-space-4) var(--results-gutter-start);
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .ag-results-sticky {
+    position: static;
+  }
+}
+
+/* Taller than 40% of the scroll area (measured in SearchScreen): it scrolls away with the results (T21 review 2 REACH-3). */
+.ag-results-sticky[data-static] {
+  position: static;
+}
+
+.ag-results-empty > .ag-results-meta {
+  margin: 0;
+}
+
+.ag-text-search-actions {
+  display: flex;
+  gap: var(--ag-space-2);
+}
+
+.ag-callout {
+  margin: 0;
+  padding: var(--ag-space-2) var(--ag-space-3);
+  border: 1px solid var(--ag-divider);
+  border-left-width: calc(var(--ag-space-1) - 1px);
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-surface);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ag-callout-danger {
+  border-left-color: var(--ag-danger);
+}
+
+.ag-callout-warn {
+  border-left-color: var(--ag-warning);
+}
+
+/* ---- cards ---- */
+
+.ag-result-list {
+  display: grid;
+  /* One column that never grows with a card's content: a card too wide for the screen shows as such, never widening
+     every card and the screen's own scroll (T22 review PROD-1). */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ag-card-gap);
+  padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-result-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  min-height: var(--ag-card-min);
+  padding: calc(var(--ag-space-3) + var(--ag-space-1) / 2) var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-card);
+  background: var(--ag-surface);
+}
+
+.ag-result-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ag-space-2);
+}
+
+.ag-result-card-head {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ag-result-route {
+  margin: 0;
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* Route 17/24, then 4, then the day and cabin line at 13/20 (S01). */
+.ag-result-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ag-space-2);
+  margin: var(--ag-space-1) 0 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+/* The day breaks at its spaces, never inside "周一" or "10月19日"; a word wider than the line still breaks (T22: the
+   card's corner holds two controls, so at 320 and 200% the heading is narrow). */
+.ag-result-when > span {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ag-result-cabin {
+  padding: 0 var(--ag-space-2);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-accent-soft);
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* T22: Save option, the Saved tab's bookmark, beside the compare box; a 44-pt target over a 20-pt mark, filled once
+   saved. Its name says which (Save option / Saved) and aria-pressed says it too, so the fill is never the only cue. */
+.ag-result-save {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ag-touch-target);
+  min-height: var(--ag-touch-target);
+  margin: calc(-1 * var(--ag-space-2)) 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ag-radius-small);
+  background: none;
+  color: var(--ag-accent);
+  cursor: pointer;
+}
+
+.ag-result-save svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ag-result-save[aria-pressed="true"] svg {
+  fill: currentColor;
+}
+
+.ag-result-save:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+/* The bookmark and the compare box, side by side in the card's corner (T22). */
+.ag-result-controls {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+}
+
+/* Selected says so in words too, not only with the ticked box; on the day line beside the cabin (T22). */
+.ag-result-selected {
+  padding: 0 var(--ag-space-2);
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-accent-soft);
+  color: var(--ag-accent);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* The selection box: its own 44 target, beside the content, never inside another control. */
+.ag-result-select {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ag-touch-target);
+  min-height: var(--ag-touch-target);
+  margin: calc(-1 * var(--ag-space-2)) calc(-1 * var(--ag-space-3)) 0 0;
+  cursor: pointer;
+}
+
+.ag-result-select input {
+  inline-size: var(--ag-space-5);
+  block-size: var(--ag-space-5);
+  margin: 0;
+  accent-color: var(--ag-accent);
+}
+
+.ag-result-select:has(input:focus-visible) {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+  border-radius: var(--ag-radius-control);
+}
+
+.ag-result-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: var(--ag-space-3);
+}
+
+.ag-result-line > p {
+  margin: 0;
+}
+
+/* Miles, then 6, then the program and seats line (the card's other gaps are 8). */
+.ag-result-line + .ag-result-line {
+  margin-top: calc(-1 * var(--ag-space-1) / 2);
+}
+
+.ag-result-miles {
+  min-width: 0;
+}
+
+.ag-miles {
+  font-size: var(--ag-type-miles);
+  line-height: var(--ag-leading-miles);
+  font-weight: var(--ag-weight-title);
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.ag-result-unit,
+.ag-result-fees,
+.ag-result-seats {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-result-fees,
+.ag-result-seats {
+  text-align: end;
+}
+
+.ag-result-program {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ag-result-time {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: calc(var(--ag-leading-meta) - var(--ag-space-1) / 2);
+  color: var(--ag-text-secondary);
+}
+
+/*
+ * The matrix (T09; docs/04 S03; spec §14): an 88 pt date column and whole data columns (--mx-col, from core
+ * mobileColumns); header 44; a row per date at least 64 for one cabin, 88 for two; cell padding 12; miles 16/22,
+ * program and cabin 13/18. The date column and the header stay put inside the matrix's own scroller, the corner
+ * above both; sideways scrolling snaps to whole columns (scroll-padding keeps them clear of the dates).
+ */
+.ag-mx {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-3) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-mx-caption,
+.ag-mx-hint {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-mx-hint {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ag-mx-hint {
+    display: block;
+  }
+}
+
+.ag-mx-scroll {
+  overflow: auto;
+  /* Room for the page's sticky header and summary (measured) and the tab bar, so the grid's own header stays in view. */
+  /* The comparison bar (T12), when shown, takes its own space above the tab bar. */
+  max-height: calc(100dvh - var(--results-sticky-h, calc(env(safe-area-inset-top) + 116px)) - var(--ag-tabbar-height) - env(safe-area-inset-bottom) - var(--compare-tray-h, 0px) - var(--ag-space-4));
+  /* No side border: the scrollport must be the full content width (358 = 88 + 2 × 135 at 390). */
+  border-radius: var(--ag-radius-small);
+  background: var(--ag-surface);
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline-start: var(--mx-date, 88px);
+  scroll-padding-block-start: 44px;
+  overscroll-behavior-x: contain;
+  /* Brought into view, the grid lands just below the page's sticky block (the page's scroll-padding, below, is that block). */
+  scroll-margin-top: var(--ag-space-2);
+}
+
+/* The page itself keeps what it scrolls to clear of its sticky header and summary (measured by SearchScreen). */
+.app-main:has(> .ag-results) {
+  scroll-padding-top: var(--results-sticky-h, calc(env(safe-area-inset-top) + 116px));
+}
+
+@media (max-height: 500px) {
+  .ag-mx-scroll {
+    scroll-margin-top: 0;
+  }
+}
+
+.ag-mx-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.ag-mx-grid:focus {
+  outline: none;
+}
+
+.ag-mx-grid th,
+.ag-mx-grid td {
+  box-sizing: border-box;
+  padding: var(--ag-space-3);
+  border-bottom: 1px solid var(--ag-divider);
+  text-align: start;
+  vertical-align: top;
+  background: var(--ag-surface);
+}
+
+.ag-mx-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 44px;
+  padding-block: 0;
+  vertical-align: middle;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text);
+  background: var(--ag-surface-subtle);
+}
+
+.ag-mx-route {
+  width: var(--mx-col);
+  min-width: var(--mx-col);
+  max-width: var(--mx-col);
+  scroll-snap-align: start;
+}
+
+.ag-mx-corner,
+.ag-mx-date {
+  position: sticky;
+  left: 0;
+  width: var(--mx-date, 88px);
+  min-width: var(--mx-date, 88px);
+  max-width: var(--mx-date, 88px);
+  border-right: 1px solid var(--ag-divider);
+}
+
+.ag-mx-date {
+  z-index: 1;
+  background: var(--ag-surface-subtle);
+}
+
+/* The corner sits above both the sticky header and the sticky dates. */
+.ag-mx-grid thead th.ag-mx-corner {
+  z-index: 3;
+}
+
+.ag-mx-date-day,
+.ag-mx-date-week {
+  display: block;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ag-mx-date-day {
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text);
+}
+
+.ag-mx-date-week {
+  color: var(--ag-text-secondary);
+  font-weight: var(--ag-weight-body);
+}
+
+.ag-mx-grid tbody tr {
+  height: 64px;
+}
+
+.ag-mx-grid tbody tr[data-cabins="2"],
+.ag-mx-grid tbody tr[data-cabins="3"],
+.ag-mx-grid tbody tr[data-cabins="4"] {
+  height: 88px;
+}
+
+.ag-mx-cell {
+  width: var(--mx-col);
+  min-width: var(--mx-col);
+  max-width: var(--mx-col);
+  cursor: pointer;
+  /* Every cell is a snap area too: the sticky header's are out of view once the grid scrolls down, and a snap
+     area must be in view across the other axis to count. */
+  scroll-snap-align: start;
+}
+
+.ag-mx-cell:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: calc(-1 * var(--ag-focus-width));
+}
+
+/* The opened cell: a frame, not a tint alone (and its cabin chips keep their shape). */
+.ag-mx-cell[aria-expanded="true"] {
+  box-shadow: inset 0 0 0 2px var(--ag-accent);
+}
+
+.ag-mx-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border: 1px solid transparent;
+  border-radius: var(--ag-radius-small);
+}
+
+.ag-mx-slot + .ag-mx-slot {
+  margin-top: var(--ag-space-1);
+}
+
+/* Selected: a thin frame and a tick, not colour alone. */
+.ag-mx-slot[data-selected] {
+  border-color: var(--ag-accent);
+}
+
+/* Not checked to the end, or unknown: a light warning ground behind the words that say so. */
+.ag-mx-slot[data-state="partial"],
+.ag-mx-slot[data-state="unknown"] {
+  background: var(--ag-warning-soft);
+}
+
+/* The figure never breaks; the cabin chip and tick drop under it when larger text leaves no room beside it. */
+.ag-mx-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--ag-space-1);
+}
+
+.ag-mx-miles {
+  white-space: nowrap;
+  font-size: calc(16px * var(--ag-text-scale));
+  line-height: calc(22px * var(--ag-text-scale));
+  font-weight: var(--ag-weight-strong);
+  font-variant-numeric: tabular-nums;
+  color: var(--ag-text);
+}
+
+.ag-mx-empty {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+.ag-mx-reason {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-mx-empty-mark {
+  font-size: calc(16px * var(--ag-text-scale));
+  line-height: calc(22px * var(--ag-text-scale));
+  color: var(--ag-text-muted);
+}
+
+.ag-mx-cabin {
+  padding: 0 4px;
+  border-radius: var(--ag-radius-small);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-accent);
+  background: var(--ag-accent-soft);
+}
+
+.ag-mx-tick {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-accent);
+}
+
+.ag-mx-meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--ag-space-1);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-mx-program {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ag-mx-program::after {
+  content: " ·" / "";
+}
+
+/* Words, so they wrap: "Seat count not provided" is wider than a 135 column; at 200% text on 320 one word is wider
+   than the column, and breaks inside itself rather than spilling into the next (UI/UX v1 T21). */
+.ag-mx-seats {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ag-mx-others {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+  color: var(--ag-text);
+}
+
+
+/*
+ * T10: a card's way into its details — a button of its own, never the whole card, on the source-time line. Its
+ * 44 pt target reaches into the card's padding with negative margins rather than adding a row.
+ */
+.ag-result-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--ag-space-2);
+}
+
+.ag-result-foot .ag-result-time {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ag-result-open-button {
+  margin-block: calc((var(--ag-leading-meta) - var(--ag-touch-target)) / 2);
+  margin-inline-end: calc(-1 * var(--ag-space-1));
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: var(--ag-touch-target);
+  padding: 0 var(--ag-space-1);
+  border: 0;
+  border-radius: var(--ag-radius-small);
+  background: none;
+  color: var(--ag-accent);
+  font: inherit;
+  font-size: var(--ag-type-control);
+  line-height: var(--ag-leading-control);
+  font-weight: var(--ag-weight-strong);
+  cursor: pointer;
+}
+
+.ag-result-open-button svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.ag-result-open-button:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+/*
+ * The details page (T10; docs/04 S04): a full-height page over the results — header 52, a summary card with 16 pt
+ * padding, section titles 20/26 with 24 between sections and 12 between rows, itinerary rows at least 72 — and two
+ * buttons at the bottom, each (content − 8) / 2 wide and 48 tall, above the home indicator.
+ */
+.ag-detail {
+  /* Outside .ag-results, so the page's own 16 pt gutters (and the safe area in landscape). */
+  --results-gutter-start: max(var(--ag-gutter), env(safe-area-inset-left));
+  --results-gutter-end: max(var(--ag-gutter), env(safe-area-inset-right));
+  position: fixed;
+  inset: 0;
+  z-index: var(--ag-z-modal);
+  display: flex;
+  flex-direction: column;
+  background: var(--ag-canvas);
+  color: var(--ag-text);
+}
+
+.ag-detail-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--ag-space-1);
+  min-height: calc(52px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--results-gutter-end) 0 max(var(--ag-space-1), env(safe-area-inset-left));
+  background: var(--ag-surface);
+  border-bottom: 1px solid var(--ag-divider);
+}
+
+.ag-detail-title {
+  margin: 0;
+  font-size: var(--ag-type-compact-title);
+  line-height: var(--ag-leading-compact-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-detail-title:focus {
+  outline: none;
+}
+
+.ag-detail-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-detail-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* The containing block of the screen's visually hidden status text, so it stays inside this scroll area and never
+     makes the document taller than the screen: the shell's document never scrolls (T21 review 2 REACH-1). */
+  position: relative;
+  /* T21: reaching its end never scrolls what is behind it. */
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-6);
+  padding: var(--ag-space-4) var(--results-gutter-end) var(--ag-space-6) var(--results-gutter-start);
+}
+
+.ag-detail-summary,
+.ag-trip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-card);
+  background: var(--ag-surface);
+}
+
+.ag-detail-when,
+.ag-detail-meta,
+.ag-trip-meta,
+.ag-trip-day,
+.ag-trip-note,
+.ag-detail-status {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-detail-route {
+  margin: 0;
+  font-size: var(--ag-type-page-title);
+  line-height: var(--ag-leading-page-title);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-detail-price,
+.ag-detail-program,
+.ag-detail-seats {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.ag-detail-miles {
+  font-size: var(--ag-type-miles);
+  line-height: var(--ag-leading-miles);
+  font-weight: var(--ag-weight-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}
+
+.ag-detail-section-title:focus {
+  outline: none;
+}
+
+.ag-detail-section-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-detail-section-title {
+  margin: 0;
+  font-size: var(--ag-type-section);
+  line-height: var(--ag-leading-section);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-trip {
+  min-height: 72px;
+}
+
+.ag-trip-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ag-space-1) var(--ag-space-3);
+}
+
+.ag-trip-title {
+  margin: 0;
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* Departure, arrow, arrival; at 320 or larger text they wrap rather than run past the card. */
+.ag-trip-times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ag-space-1) var(--ag-space-3);
+}
+
+.ag-trip-times p {
+  margin: 0;
+}
+
+.ag-trip-end {
+  text-align: end;
+}
+
+.ag-trip-time {
+  font-size: var(--ag-type-miles);
+  line-height: var(--ag-leading-miles);
+  font-weight: var(--ag-weight-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-trip-airport {
+  font-size: var(--ag-type-route);
+  line-height: var(--ag-leading-route);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-trip-arrow {
+  color: var(--ag-text-secondary);
+}
+
+.ag-trip-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  margin: 0;
+}
+
+.ag-trip-facts > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ag-space-1) var(--ag-space-3);
+}
+
+.ag-trip-facts dt {
+  color: var(--ag-text-secondary);
+}
+
+.ag-trip-facts dd {
+  margin: 0;
+  font-weight: var(--ag-weight-strong);
+  text-align: end;
+}
+
+.ag-trip-note {
+  color: var(--ag-warning);
+}
+
+.ag-trip-segments-title {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-trip-segments ol {
+  margin: var(--ag-space-1) 0 0;
+  padding-inline-start: var(--ag-space-4);
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-detail-actions {
+  flex: none;
+  display: grid;
+  /* Two columns while both labels fit (175 each at 390); one when larger text would wrap them. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5em), 1fr));
+  font-size: var(--ag-type-control);
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-3) var(--results-gutter-end) calc(var(--ag-space-3) + env(safe-area-inset-bottom)) var(--results-gutter-start);
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+}
+
+.ag-detail-actions[data-links="1"] {
+  grid-template-columns: 1fr;
+}
+
+.ag-detail-caveat {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+/* Two labels side by side in (358 − 8) / 2: 8 pt side padding keeps the approved "Copy search details" on one line. */
+.ag-detail-actions .ag-button {
+  box-sizing: border-box;
+  width: 100%;
+  padding-inline: var(--ag-space-2);
+}
+
+.ag-detail-out svg {
+  flex: none;
+}
+
+.ag-detail-out {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ag-space-1);
+  text-decoration: none;
+}
+
+.ag-detail-status {
+  grid-column: 1 / -1;
+}
+
+/* Always in the accessibility tree (a live region must exist before it changes); no height while empty. */
+.ag-detail-status:empty {
+  height: 0;
+  margin-top: calc(-1 * var(--ag-space-2));
+  overflow: hidden;
+}
+
+/* T11: the first-run screen and the example (spec §16). */
+.ag-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-4) var(--results-gutter-end) 0 var(--results-gutter-start);
+}
+
+.ag-welcome-value {
+  margin: 0;
+  font-size: var(--ag-type-reading);
+  line-height: var(--ag-leading-reading);
+}
+
+.ag-example {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.ag-example-list {
+  display: grid;
+  gap: var(--ag-card-gap);
+}
+
+
+/* Saving the results (T13): the line that says it, with a way to the Saved tab. */
+.ag-results-save:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ag-results-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ag-touch-target);
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+}
+
+/* A save that failed (T13): said above the tab bar, with a way to try again; nothing on screen is lost. */
+.app-save-problem {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ag-space-2) var(--ag-space-3);
+  padding: var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-right)) var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-left));
+  border-top: 1px solid var(--ag-divider);
+  background: var(--ag-surface);
+  color: var(--ag-danger);
+}
+
+.app-save-problem > p {
+  flex: 1 1 12em;
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+/* The storage's own words, on request: the bar stays one line and never takes the screen. */
+.app-save-problem-details {
+  flex-basis: 100%;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.app-save-problem-details summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ag-touch-target);
+  color: var(--ag-accent);
+  font-weight: var(--ag-weight-strong);
+  cursor: pointer;
+}
+
+.app-save-problem-details p {
+  margin: 0;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+:root[data-keyboard="open"] .app-save-problem {
+  display: none;
+}
+
+/* A callout among the results' actions (a key removed, a save refused): on the gutters, apart from the buttons. */
+.ag-results-callout {
+  margin: var(--ag-space-2) var(--results-gutter-end) 0 var(--results-gutter-start);
+}

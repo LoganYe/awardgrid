@@ -9,28 +9,38 @@
  */
 @import "@awardgrid/tokens/tokens.css";
 @import "@awardgrid/tokens/surfaces.css";
+/* Quiet Precision (UI/UX v1): the --ag-* tokens and the base controls built on them. */
+@import "@awardgrid/tokens/precision.css";
+@import "./components/ui/ui.css";
+@import "./components/query/query.css";
+@import "./components/results/results.css";
 
 /*
- * Inter, self-hosted, byte-identical to the web app's copy (public/fonts/, licence beside it).
- * PIVOT §4: "Inter unchanged as the data face (tabular figures and the CJK-after-Latin
- * unicode-range stack are load-bearing)". The unicode-range is what makes a bilingual grid work —
- * Latin and punctuation come from Inter, CJK falls through to the platform face rather than being
- * rendered by a font that has no glyphs for it.
+ * One palette on screen while the shell moves to Quiet Precision (UI/UX v1 T04, DECISIONS U-012). The screens not yet
+ * rebuilt still read the older names; here those names become the Quiet Precision roles, so an old card and a new
+ * button never show two different accents or greys side by side. !important because tokens.css sets these names on
+ * a more specific system-dark selector; a custom property marked !important wins regardless of specificity. Each
+ * rebuilt screen reads --ag-* directly, and this block goes when the last old rule does (T21).
  */
-@font-face {
-  font-family: "InterVariable";
-  src: url("/fonts/InterVariable.woff2") format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range:
-    U+0000-00FF, U+0100-024F, U+2000-206F, U+20A0-20CF, U+2190-2199, U+2212, U+2026;
+:root {
+  --bg: var(--ag-canvas) !important;
+  --bg-raised: var(--ag-surface) !important;
+  --line: var(--ag-divider) !important;
+  --line-strong: var(--ag-control-border) !important;
+  --fg: var(--ag-text) !important;
+  --fg-muted: var(--ag-text-secondary) !important;
+  --accent: var(--ag-accent) !important;
+  --fresh: var(--ag-success) !important;
+  --aging: var(--ag-warning) !important;
+  --stale: var(--ag-danger) !important;
+  --error: var(--ag-danger) !important;
+  --radius-control: var(--ag-radius-control) !important;
+  /* Native checkboxes and radios take the same accent as everything else (the Ask screen's include-search box). */
+  accent-color: var(--ag-accent);
 }
 
-:root {
-  /* So the OS paints form controls and scrollbars for the active theme. */
-  color-scheme: light dark;
-}
+/* color-scheme (so the OS paints form controls and scrollbars to match) comes from precision.css, per theme: a pinned
+   theme pins it too. */
 
 *,
 *::before,
@@ -60,11 +70,14 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font-family:
-    "InterVariable", ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei",
-    sans-serif;
-  font-size: 15px;
-  line-height: 1.45;
+  /* Spec §09: the system face (San Francisco on iOS) with the platform's Chinese fallback; figures are tabular where
+     they are compared, not everywhere. */
+  font-family: var(--ag-font-sans);
+  font-size: var(--ag-type-body);
+  /* Body 16/24 as a ratio, not a length: a length is inherited as-is, so an older element with its own font size
+     would keep 24 px lines (too loose for 13 px meta, overlapping for a large title). Rebuilt screens set the
+     --ag-leading-* token that goes with each size. */
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -136,6 +149,16 @@ textarea {
   margin: 0 0 var(--space-2);
 }
 
+/* A title that takes focus (Watches, after a watch is stopped): ringed only for the keyboard. */
+.ag-title:focus {
+  outline: none;
+}
+
+.ag-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
 /* ---- the grid, flat by definition ---- */
 .ag-grid {
   border-collapse: collapse;
@@ -190,14 +213,17 @@ textarea {
   color: var(--stale);
 }
 
-/* The repo's CI asserts that nothing animates under `reduce`. */
+/*
+ * Nothing moves under `reduce` (spec §10: every duration 0). 0s rather than the 0.01ms trick, which only exists to
+ * keep transitionend/animationend firing; nothing in this shell listens for them.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0s !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }
@@ -218,9 +244,7 @@ textarea {
 
 /*
  * 44 pt is the smallest touch target, for every button, link-as-button, field and the checkbox row
- * (design §6.5, raised from the web's 40 px). Colours are the shell's existing ones: the primary
- * action is filled with --accent over --bg, exactly as Search's Run and Settings' Save already are.
- * Nothing here transitions or animates.
+ * (design §6.5, raised from the web's 40 px). Buttons and fields are 48 pt primitives now (UI/UX v1 T04).
  */
 .ag-nav-link {
   display: inline-flex;
@@ -228,82 +252,18 @@ textarea {
   min-height: 44px;
 }
 
-.ag-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--fg);
-  font-weight: 500;
-  text-align: center;
-  text-decoration: none;
-}
-
-.ag-button:disabled {
-  color: var(--fg-muted);
-}
-
-.ag-button-primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--bg);
-  font-weight: 600;
-}
-
-.ag-button-primary:disabled {
-  border-color: var(--line);
-  background: var(--line);
-  color: var(--fg-muted);
-}
-
-.ag-button-danger {
-  color: var(--error);
-}
-
-.ag-input {
-  width: 100%;
-  min-height: 44px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-  background: var(--bg-raised);
-  color: var(--fg);
-}
-
-textarea.ag-input {
-  resize: vertical;
-}
-
-.ag-input:disabled {
-  color: var(--fg-muted);
-}
-
-.ag-button:focus-visible,
-.ag-input:focus-visible,
+/* .ag-button, .ag-button-primary, .ag-button-danger and .ag-input are defined once, in ./components/ui/ui.css, on the
+   Quiet Precision tokens. What stays here is the focus ring for the older controls that are not primitives yet. */
 .ag-nav-link:focus-visible,
 .ask-suggestion:focus-visible,
 .ask-check input:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent);
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
 }
 
 /* ---- Ask ---- */
 
-.ask-screen {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  max-width: 720px;
-  margin: 0 auto;
-}
-
-.ask-screen p {
-  margin: 0;
-}
+/* The page itself (a full-height column since T15) is laid out in ./screens/ask.css. */
 
 .ask-subline {
   color: var(--fg-muted);
@@ -387,6 +347,32 @@ textarea.ag-input {
 
 .ask-callout-neutral {
   border-left-color: var(--fg-muted);
+}
+
+/* The first AI entry without a key (T11): a setup step in a plain card, not an error. */
+.ask-connect {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ag-space-2);
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: 16px;
+  background: var(--ag-surface);
+  color: var(--ag-text);
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+}
+
+.ask-connect p {
+  margin: 0;
+}
+
+.ask-connect-title {
+  margin: 0;
+  font-size: var(--ag-type-section);
+  line-height: var(--ag-leading-section);
+  font-weight: var(--ag-weight-title);
 }
 
 /* Answers are data: flat, hairline-bordered, no shadow (surfaces.css flat mode). */
