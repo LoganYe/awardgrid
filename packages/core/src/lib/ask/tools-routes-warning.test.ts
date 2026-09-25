@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryAvailabilityCache } from "../seatsaero/cache";
 import { InMemoryQuotaStore, Quota } from "../seatsaero/quota";
-import { RoutesCatalog } from "../seatsaero/routes";
+import { ResilientRoutesCatalog, RoutesCatalog } from "../seatsaero/routes";
 import { SEATS_SOURCES, type SearchResponse } from "../seatsaero/types";
 import { fakeFetch, jsonResponse, loadFixture, textResponse } from "../../../test/fixtures/seatsaero/helpers";
 import { en } from "../i18n/dictionaries/en";
@@ -154,5 +154,52 @@ describe("search_awards: why route lists were skipped", () => {
       en["notice.find.truncated_search"].replace("{pages}", "3"),
       "Could not check whether seats.aero monitors 2 empty airport pairs: 25 program route lists were skipped because Ask lets one search make at most 1 route list call, not because of today's seats.aero quota.",
     ]);
+  });
+});
+
+describe("search_awards: a route list that fails (#89)", () => {
+  /** SFO to JFK (rows from american) and NRT (none), american only: the one route list Ask may load fails. */
+  const WITH_ROWS = { ...EMPTY_PAIRS, destinations: ["JFK", "NRT"], programs: ["american"] };
+
+  async function failingSearch(routes: RoutesCatalog) {
+    const fetch = fakeFetch((req) => {
+      if (req.url.pathname === "/partnerapi/search") return jsonResponse(recorded);
+      if (req.url.pathname === "/partnerapi/routes") return textResponse("upstream failure", 500);
+      return textResponse("not found", 404);
+    });
+    const now = () => NOW;
+    const port: SeatsPort = {
+      userId: USER,
+      apiKey: "pro_key_for_routes_warning_tests_SECRET",
+      fetch,
+      quota: new Quota({ store: new InMemoryQuotaStore(), now }),
+      cache: new InMemoryAvailabilityCache(),
+      routes,
+      now,
+      persist: async () => {},
+    };
+    const runner = createToolRunner(port, { seenIds: new Set(), bookingUrls: new Set(), flightsMemo: new Map() });
+    return runner.run({ id: "toolu_1", name: SEARCH_AWARDS, input: WITH_ROWS });
+  }
+
+  it("keeps the rows it paid for and says which list failed, that the monitor check did not finish, and not the quota", async () => {
+    const run = await failingSearch(new ResilientRoutesCatalog({ now: () => NOW }));
+    const res = body(run) as Body & { rows: unknown[] };
+
+    expect(res.rows_total).toBeGreaterThan(0);
+    expect(res.rows.length).toBeGreaterThan(0);
+    // One page and the one route list call, which failed and was still charged.
+    expect(res.spent).toMatchObject({ seats_aero_calls: 2, from_cache: false });
+    expect(res.unmonitored).toEqual([]);
+    expect(res.warnings).toEqual([
+      "The route list for american could not be loaded: seats.aero answered with an error, not a quota limit. The rows returned are complete. Whether seats.aero monitors this empty airport pair could not be checked, so no rows there may mean no availability or a route seats.aero does not monitor: SFO-NRT.",
+    ]);
+    expect(res.warnings.join(" ")).not.toContain(en["notice.find.routes_failed"].split("{programs}")[0]!);
+  });
+
+  it("on the base catalog the same failure ends the search with no rows: what #89 was", async () => {
+    const run = await failingSearch(new RoutesCatalog({ now: () => NOW }));
+    expect(run.step.outcome).toBe("seatsaero_error");
+    expect(run.result.is_error).toBe(true);
   });
 });

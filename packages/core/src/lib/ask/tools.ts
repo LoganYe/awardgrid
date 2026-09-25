@@ -19,7 +19,9 @@
  *    never runFind's own count, which includes a request the guard refused (budget.ts).
  *  - IT CAPS EVERY PULL. runFind's defaults allow 40 pages plus 26 Get Routes calls (find.ts:62, :367), so every
  *    call passes maxPages, maxRoutesCalls and ttlMinutes explicitly. A warning that blames today's quota for route
- *    lists Ask's own cap skipped is rewritten to name the bound that ran out (searchWarnings).
+ *    lists Ask's own cap skipped is rewritten to name the bound that ran out (searchWarnings). On a catalog that
+ *    survives a failed route list (ResilientRoutesCatalog, #89, which the iOS port hands in), the failure costs the
+ *    monitor check only, and its warning says so.
  *  - IT ACCEPTS ONLY IDS IT RETURNED. get_flights takes an id only if search_awards returned it in this
  *    conversation, so an invented id cannot spend a call.
  *  - IT LEAKS NO KEY. Results are built from typed fields, and the finished text is still masked of every secret.
@@ -823,8 +825,25 @@ function observedQuota(quota: Quota): { quota: Quota; lastRemaining(): number | 
 function searchWarnings(result: FindResult, routes: { allowed: number; quotaLeft: number | null }): string[] {
   return result.warnings.map((text, i) => {
     const notice = result.notices[i];
-    return notice?.code === "find.routes_skipped" ? routesSkippedWarning(notice.vars ?? {}, result.routes_calls_used, routes) : text;
+    if (notice?.code === "find.routes_skipped") return routesSkippedWarning(notice.vars ?? {}, result.routes_calls_used, routes);
+    if (notice?.code === "find.routes_failed") return routesFailedWarning(result);
+    return text;
   });
+}
+
+/**
+ * A route list that failed (#89). runFind's own sentence is the web grid's ("Blank cells on those routes may be
+ * unchecked rather than empty"), about cells Ask has none of. This one says which lists failed and why, that the rows
+ * stand, and which empty pairs lost their monitor check, and it names no quota: the call was made and answered.
+ */
+function routesFailedWarning(result: Pick<FindResult, "routes_failed" | "monitoring_unknown">): string {
+  const failed = result.routes_failed ?? [];
+  const unknown = result.monitoring_unknown ?? [];
+  const lists = `route ${failed.length === 1 ? "list" : "lists"} for ${failed.join(", ")}`;
+  const head = `The ${lists} could not be loaded: seats.aero answered with an error, not a quota limit. The rows returned are complete.`;
+  if (unknown.length === 0) return `${head} Every empty airport pair is on a route list that loaded, so it is monitored and had no results.`;
+  const pairs = unknown.map((p) => p.key).join(", ");
+  return `${head} Whether seats.aero monitors ${unknown.length === 1 ? "this empty airport pair" : `these ${unknown.length} empty airport pairs`} could not be checked, so no rows there may mean no availability or a route seats.aero does not monitor: ${pairs}.`;
 }
 
 /**

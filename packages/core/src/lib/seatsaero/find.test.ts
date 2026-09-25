@@ -4,8 +4,8 @@ import { SeatsAeroClient, SeatsAeroHttpError } from "@/lib/seatsaero/client";
 import { InMemoryAvailabilityCache } from "@/lib/seatsaero/cache";
 import { ASSUMED_ROUTES_PER_PROGRAM, ROW_DENSITY, planFind, runFind } from "@/lib/seatsaero/find";
 import { InMemoryQuotaStore, Quota, QuotaExceededError } from "@/lib/seatsaero/quota";
-import { RoutesCatalog } from "@/lib/seatsaero/routes";
-import { SEATS_SOURCES, SearchResponse, type Route } from "@/lib/seatsaero/types";
+import { ResilientRoutesCatalog, RoutesCatalog } from "@/lib/seatsaero/routes";
+import { SEATS_SOURCES, SOURCE_NAMES, SearchResponse, type Route } from "@/lib/seatsaero/types";
 import { fakeFetch, jsonResponse, loadFixture, textResponse } from "../../../test/fixtures/seatsaero/helpers";
 import {
   SYNTHETIC_ORIGINS,
@@ -485,5 +485,98 @@ describe("runFind (end to end over the synthetic fixture, no network)", () => {
     const h = harness();
     await expect(runFind({ query: query(), userId: "alice", apiKey: "", ...h })).rejects.toThrow(/API key/);
     expect(h.fetch.calls).toHaveLength(0);
+  });
+});
+
+describe("runFind with one program's route list failing (#89)", () => {
+  const synthetic = generateSynthetic();
+
+  /** Every program's route list answers except aeroplan's, which answers `status`. GMP is monitored by nobody. */
+  function harness(status: number, routes: RoutesCatalog = new ResilientRoutesCatalog({ now: () => NOW })) {
+    const fetch = fakeFetch((req) => {
+      if (req.url.pathname === "/partnerapi/search") return jsonResponse(synthetic);
+      if (req.url.pathname === "/partnerapi/routes") {
+        const source = req.url.searchParams.get("source")!;
+        return source === "aeroplan" ? textResponse(`upstream failure ${KEY}`, status) : jsonResponse(syntheticRoutes(source));
+      }
+      return textResponse("not found", 404);
+    });
+    const quotaStore = new InMemoryQuotaStore();
+    return { fetch, quotaStore, quota: new Quota({ store: quotaStore, now: () => NOW }), cache: new InMemoryAvailabilityCache(), routes };
+  }
+
+  it("keeps the rows it paid for, names the failed program without blaming the quota, and claims no unmonitored pair", async () => {
+    const h = harness(500);
+    const q = query({ programs: [...SYNTHETIC_PROGRAMS] });
+    const res = await runFind({ query: q, userId: "alice", apiKey: KEY, ...h, now: () => NOW });
+
+    expect(res.rows.length).toBeGreaterThan(200);
+    expect(res.served_from_cache).toBe(false);
+    expect(res.routes_failed).toEqual(["aeroplan"]);
+    // GMP-SEA had no rows and no loaded list monitors it: the failed list might.
+    expect(res.monitoring_unknown).toEqual([{ origin: "GMP", dest: "SEA", key: "GMP-SEA" }]);
+    expect(res.unmonitored_pairs).toEqual([]);
+    expect(res.notices).toEqual([{ code: "find.routes_failed", vars: { programs: SOURCE_NAMES.aeroplan, count: 1 } }]);
+    expect(res.warnings).toHaveLength(res.notices.length);
+    expect(res.warnings.join(" ")).not.toMatch(/quota/i);
+    // One search page and one Get Routes per program, the failed one included: seats.aero charged for it.
+    expect(res.api_calls_used).toBe(1 + SYNTHETIC_PROGRAMS.length);
+    expect(res.routes_calls_used).toBe(SYNTHETIC_PROGRAMS.length);
+    expect(await h.quota.used("alice")).toBe(1 + SYNTHETIC_PROGRAMS.length);
+    // The pull itself finished: every pair, GMP-SEA included, was checked to the end.
+    expect(res.coverage?.slices.map((s) => `${s.origin}-${s.destination}:${s.state}`)).toContain("GMP-SEA:complete");
+    expect(res.coverage?.state).toBe("complete");
+    expect(JSON.stringify(res)).not.toContain(KEY);
+
+    // The rows are in the cache: the same search again is free and draws the same rows.
+    const again = await runFind({ query: q, userId: "alice", apiKey: KEY, ...h, now: () => NOW });
+    expect(again.served_from_cache).toBe(true);
+    expect(again.rows).toHaveLength(res.rows.length);
+    expect(h.fetch.calls).toHaveLength(1 + SYNTHETIC_PROGRAMS.length);
+  });
+
+  it("with only the failed program asked for, every empty pair's monitoring is unknown", async () => {
+    const h = harness(503);
+    const res = await runFind({ query: query({ programs: ["aeroplan"] }), userId: "alice", apiKey: KEY, ...h, now: () => NOW });
+    expect(res.routes_failed).toEqual(["aeroplan"]);
+    const zero = SYNTHETIC_ORIGINS.map((o) => `${o}-SEA`).filter((key) => !res.rows.some((r) => `${r.origin}-${r.dest}` === key));
+    expect(zero.length).toBeGreaterThan(0);
+    expect(res.monitoring_unknown?.map((p) => p.key)).toEqual(zero);
+    expect(res.unmonitored_pairs).toEqual([]);
+  });
+
+  it("a failure and a spent routes budget are two notices, and only the budget's is the quota's", async () => {
+    const h = harness(500);
+    // 5 calls left: one search page, then 4 Get Routes calls over SYNTHETIC_PROGRAMS in order: american, alaska and
+    // united load, aeroplan fails (charged), singapore and jetblue are never asked for.
+    await h.quotaStore.increment("alice", "2026-10-01", 945);
+    const res = await runFind({ query: query({ programs: [...SYNTHETIC_PROGRAMS] }), userId: "alice", apiKey: KEY, ...h, now: () => NOW });
+    expect(res.notices).toEqual([
+      { code: "find.routes_skipped", vars: { pairs: 1, skipped: 2 } },
+      { code: "find.routes_failed", vars: { programs: SOURCE_NAMES.aeroplan, count: 1 } },
+    ]);
+    expect(res.routes_calls_used).toBe(4);
+    expect(res.api_calls_used).toBe(5);
+    expect(res.unmonitored_pairs).toEqual([]);
+  });
+
+  it("a rejected key on a route list still fails the run, and the base catalog still fails on any list error", async () => {
+    const q = query({ programs: [...SYNTHETIC_PROGRAMS] });
+    const rejected = harness(401);
+    await expect(runFind({ query: q, userId: "alice", apiKey: KEY, ...rejected, now: () => NOW })).rejects.toBeInstanceOf(SeatsAeroHttpError);
+    const plain = harness(500, new RoutesCatalog({ now: () => NOW }));
+    await expect(runFind({ query: q, userId: "alice", apiKey: KEY, ...plain, now: () => NOW })).rejects.toBeInstanceOf(SeatsAeroHttpError);
+  });
+
+  it("with every list loading, a resilient catalog changes nothing", async () => {
+    const h = harness(200);
+    const fetch = fakeFetch((req) =>
+      req.url.pathname === "/partnerapi/search" ? jsonResponse(synthetic) : jsonResponse(syntheticRoutes(req.url.searchParams.get("source")!)),
+    );
+    const res = await runFind({ query: query({ programs: [...SYNTHETIC_PROGRAMS] }), userId: "alice", apiKey: KEY, ...h, fetch, now: () => NOW });
+    expect(res.routes_failed).toBeUndefined();
+    expect(res.monitoring_unknown).toBeUndefined();
+    expect(res.unmonitored_pairs).toEqual([{ origin: "GMP", dest: "SEA", key: "GMP-SEA" }]);
+    expect(res.notices).toEqual([]);
   });
 });

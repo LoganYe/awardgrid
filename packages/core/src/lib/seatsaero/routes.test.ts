@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { SeatsAeroClient } from "@/lib/seatsaero/client";
-import { InMemoryRoutesStore, ROUTES_TTL_MS, RoutesCatalog } from "@/lib/seatsaero/routes";
+import { SeatsAeroClient, SeatsAeroHttpError, SeatsAeroNetworkError } from "@/lib/seatsaero/client";
+import { InMemoryRoutesStore, ROUTES_TTL_MS, ResilientRoutesCatalog, RoutesCatalog } from "@/lib/seatsaero/routes";
 import type { Route } from "@/lib/seatsaero/types";
-import { fakeFetch, jsonResponse } from "../../../test/fixtures/seatsaero/helpers";
+import { fakeFetch, jsonResponse, textResponse } from "../../../test/fixtures/seatsaero/helpers";
 
 function route(source: string, origin: string, dest: string): Route {
   return {
@@ -129,5 +129,61 @@ describe("RoutesCatalog", () => {
     expect((await catalog.ensureLoaded("alice", ["american"], client)).fetched).toEqual(["american"]);
     expect(fetch.calls).toHaveLength(2);
     expect(catalog.isMonitored("alice", "american", "HKG", "SEA")).toBe(true);
+  });
+});
+
+describe("ResilientRoutesCatalog (#89): one failed list costs its own claim, not the run", () => {
+  const NOW = new Date("2026-10-01T00:00:00Z");
+
+  /** american and united answer; alaska answers `failure`. */
+  function harness(failure: () => Response | Promise<Response>) {
+    const fetch = fakeFetch((req) => {
+      const source = req.url.searchParams.get("source")!;
+      return source === "alaska" ? failure() : jsonResponse(ROUTES[source] ?? []);
+    });
+    return { fetch, client: new SeatsAeroClient({ apiKey: "k", fetch }), catalog: new ResilientRoutesCatalog({ now: () => NOW }) };
+  }
+
+  it.each([
+    ["an HTTP 500", () => textResponse("upstream failure", 500)],
+    ["an HTTP 429", () => textResponse("slow down", 429)],
+    ["a response that is not the documented schema", () => jsonResponse({ not: "a route list" })],
+  ])("%s on one list leaves that source unloaded and reported, and loads the others", async (_what, failure) => {
+    const { fetch, client, catalog } = harness(failure);
+    const loaded = await catalog.ensureLoaded("alice", ["american", "alaska", "united"], client);
+    expect(loaded).toEqual({ fetched: ["american", "united"], cached: [], skipped: [], failed: ["alaska"] });
+    // The failed call was still made: seats.aero counts it.
+    expect(fetch.calls).toHaveLength(3);
+    expect(catalog.isLoaded("alice", "alaska")).toBe(false);
+    expect(catalog.isLoaded("alice", "american")).toBe(true);
+    // Nothing about the failure is stored: the next call asks for that list again, and only that list.
+    const again = await catalog.ensureLoaded("alice", ["american", "alaska", "united"], client);
+    expect(again).toEqual({ fetched: [], cached: ["american", "united"], skipped: [], failed: ["alaska"] });
+    expect(fetch.calls).toHaveLength(4);
+  });
+
+  it("a failed call counts against maxFetches, like a successful one", async () => {
+    const { fetch, client, catalog } = harness(() => textResponse("upstream failure", 503));
+    const loaded = await catalog.ensureLoaded("alice", ["alaska", "american", "united"], client, { maxFetches: 2 });
+    expect(loaded).toEqual({ fetched: ["american"], cached: [], skipped: ["united"], failed: ["alaska"] });
+    expect(fetch.calls).toHaveLength(2);
+  });
+
+  it("a rejected key and a transport failure still end the run: they affect every request", async () => {
+    for (const status of [401, 403]) {
+      const { client, catalog } = harness(() => textResponse("no", status));
+      await expect(catalog.ensureLoaded("alice", ["american", "alaska", "united"], client)).rejects.toBeInstanceOf(SeatsAeroHttpError);
+    }
+    const { client, catalog } = harness(() => {
+      throw new TypeError("Load failed");
+    });
+    await expect(catalog.ensureLoaded("alice", ["american", "alaska", "united"], client)).rejects.toBeInstanceOf(SeatsAeroNetworkError);
+  });
+
+  it("the base catalog is unchanged: the same failure ends its run, and it reports no failed list", async () => {
+    const fetch = fakeFetch((req) => (req.url.searchParams.get("source") === "alaska" ? textResponse("upstream failure", 500) : jsonResponse([])));
+    const client = new SeatsAeroClient({ apiKey: "k", fetch });
+    await expect(new RoutesCatalog({ now: () => NOW }).ensureLoaded("alice", ["american", "alaska"], client)).rejects.toBeInstanceOf(SeatsAeroHttpError);
+    expect(await new RoutesCatalog({ now: () => NOW }).ensureLoaded("alice", ["american"], client)).toEqual({ fetched: ["american"], cached: [], skipped: [] });
   });
 });

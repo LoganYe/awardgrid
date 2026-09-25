@@ -10,6 +10,7 @@
  */
 import {
   SEATS_SOURCES,
+  SOURCE_NAMES,
   CABIN_LETTER_TO_NAME,
   type Availability,
   type BulkAvailabilityParams,
@@ -235,10 +236,21 @@ export interface FindResult {
   rows: AvailabilityRow[];
   /** Every HTTP request this run made (search/availability pages + Get Routes). */
   api_calls_used: number;
-  /** The part of api_calls_used spent on Get Routes (cached 7 days per user/source). */
+  /** The part of api_calls_used spent on Get Routes (cached 7 days per user/source), failed calls included. */
   routes_calls_used: number;
   served_from_cache: boolean;
   unmonitored_pairs: RoutePair[];
+  /**
+   * Programs whose Get Routes call failed in this run with a seats.aero error, which only a catalog that survives one
+   * (ResilientRoutesCatalog, #89) reports; absent when none did. The rows are unaffected: a route list only decides
+   * whether an empty pair may be called "not monitored".
+   */
+  routes_failed?: string[];
+  /**
+   * With `routes_failed`: the empty pairs that no loaded route list monitors, so the failed one may or may not. They
+   * were searched to the end like every other pair; only "not monitored" can be neither claimed nor ruled out.
+   */
+  monitoring_unknown?: RoutePair[];
   /** English renderings of `notices` (CLI, logs, tests). */
   warnings: string[];
   /** Structured {code, vars} for translation in the UI. */
@@ -342,6 +354,8 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
   const unmonitored: RoutePair[] = [];
   let reserved = 0;
   let routesCalls = 0;
+  const routesFailed: string[] = [];
+  const monitoringUnknown: RoutePair[] = [];
   const outcomes: RequestOutcome[] = [];
   let runEvidenceProven: CoverageRecordEvidence = { state: "partial", reason: "quota" };
   // One UTC day key for the whole run: reservations made before midnight are settled on the
@@ -404,12 +418,22 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
       const cap = wanted > 0 ? await quota.reserve(userId, wanted, day) : 0;
       reserved += cap;
       const loaded = await routes.ensureLoaded(userId, sources, client, { maxFetches: cap });
-      routesCalls = loaded.fetched.length;
+      const failed = loaded.failed ?? [];
+      // A list that failed was still requested, and seats.aero charged for it.
+      routesCalls = loaded.fetched.length + failed.length;
       if (loaded.skipped.length > 0) {
         notices.push(notice("find.routes_skipped", { pairs: zero.length, skipped: loaded.skipped.length }));
-      } else {
-        unmonitored.push(...routes.unmonitoredPairs(userId, zero, sources));
       }
+      if (failed.length > 0) {
+        // Its own notice, never the quota's (#89): the call was made and seats.aero answered with an error. Same code
+        // and vars as the web facade's reattributeRoutesNotices (src/lib/server/find.ts:273-289).
+        routesFailed.push(...failed);
+        monitoringUnknown.push(...unresolvedPairs(routes, userId, zero, sources));
+        const programs = failed.map((s) => (SOURCE_NAMES as Partial<Record<string, string>>)[s] ?? s);
+        notices.push(notice("find.routes_failed", { programs: programs.join(", "), count: failed.length }));
+      }
+      // "Not monitored" only from every requested list: a skipped or failed one may be the list that monitors it.
+      if (loaded.skipped.length === 0 && failed.length === 0) unmonitored.push(...routes.unmonitoredPairs(userId, zero, sources));
     }
   } finally {
     unsubscribe();
@@ -425,6 +449,7 @@ export async function runFind(opts: RunFindOptions): Promise<FindResult> {
     routes_calls_used: routesCalls,
     served_from_cache: false,
     unmonitored_pairs: unmonitored,
+    ...(routesFailed.length > 0 ? { routes_failed: routesFailed, monitoring_unknown: monitoringUnknown } : {}),
     warnings: noticesToText(notices),
     notices,
     plan,
@@ -477,4 +502,14 @@ async function executePlan(
 function zeroRowPairs(pairs: readonly RoutePair[], rows: readonly AvailabilityRow[]): RoutePair[] {
   const withRows = new Set(rows.map((r) => `${r.origin}-${r.dest}`));
   return pairs.filter((p) => !withRows.has(p.key));
+}
+
+/**
+ * Empty pairs that no LOADED list of `sources` monitors. With a list missing, the missing one may monitor them, so
+ * "not monitored" is open. With none loaded, that is every empty pair (where `unmonitoredPairs` answers none, since it
+ * must not claim anything from no knowledge).
+ */
+function unresolvedPairs(routes: RoutesCatalog, userId: string, zero: readonly RoutePair[], sources: readonly string[]): RoutePair[] {
+  const loaded = sources.filter((s) => routes.isLoaded(userId, s));
+  return zero.filter((p) => !loaded.some((s) => routes.isMonitored(userId, s, p.origin, p.dest)));
 }
