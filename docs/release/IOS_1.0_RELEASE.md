@@ -26,11 +26,11 @@ group with the owner, then install it from the TestFlight app.
 | P5 | Build 1.0 (2), without the internal-only flag | Agent | **Uploaded 2026-09-26 00:54** with the owner's OK; processed, and **selected on version 1.0** |
 | P6 | App Information: subtitle "Award seats in one table"; primary category Travel | Agent | **Saved** |
 | P7 | Price: Free | Agent | **Saved:** $0.00 in 175 countries or regions |
-| P8 | Availability: every country or region except China mainland. Apple silicon Mac and Vision Pro: off (D11) | Owner | Not set (the owner's step) |
+| P8 | Availability: every country or region except China mainland. Apple silicon Mac and Vision Pro: off (D11) | Agent, on the owner's OK | **Saved 2026-09-26:** 174 countries or regions, China mainland "Not Available"; Mac and Vision Pro off; distribution Public |
 | P9 | Version 1.0: screenshots, promotional text, description, keywords, support and marketing URLs, copyright | Agent | **Saved:** the 7 en-US screenshots in the 6.9-inch set, in order (list, calendar, matrix, details, compare, watches, Ask; the 6.5-inch set uses them); the §7 texts; `https://awardgrid.dowhiz.com/support/` and `/ios/`; "2026 Curastone CORP."; release automatically after approval |
 | P10 | App Privacy; age rating; content rights; DSA; regulated medical device | Agent, on the owner's OK | **Done 2026-09-26.** App Privacy published (D8: Search History and Other User Content, app functionality, linked, no tracking; privacy policy URL set). **Age rating 4+**: every question No or None, from the app's facts, and no override; Brazil shows ALL and Korea 00+. **Content rights**: the app shows third-party content (seats.aero's data), and the owner holds that it has the necessary rights. **DSA**: the account already declares non-trader, as for Restful. **Medical device**: not asked of a Travel app with no medical content |
 | P11 | App Review information | Agent | **Saved:** contact Logan Ye with Restful's phone number, e-mail knowhiz.us@gmail.com; sign-in not required; the notes (P4) |
-| P12 | Submit for Review | Owner, or the agent with an allow rule | After P2 (the agreement) and P8 (availability); everything else is in place |
+| P12 | Submit for Review | Owner, or the agent with an allow rule | **Only P2 (the agreement) remains.** Then: version 1.0 › Add for Review › Submit |
 | P13 | Once approved: LEGAL.md, the landing page and the privacy policy stop saying the app is tested privately and not on the App Store | Agent, with the owner's OK | Later |
 
 **Build 1.0 (2)** (`183dcce`: `CURRENT_PROJECT_VERSION` 2, `ExportOptions-AppStore.plist`). Archived on 2026-09-26
@@ -111,7 +111,8 @@ What is left is the owner's:
 | `183dcce` | Build 2 for the App Store; `ExportOptions-AppStore.plist`; the spike's Podfile.lock ignored again |
 | `2c46f07` | §0 (public release); App Store screenshots and their generator |
 | `128af10` | §0 after the App Store Connect work: build 2 uploaded and selected, the listing, App Privacy, review information |
-| (this commit) | The age rating (4+) and the content rights, done on the owner's instruction |
+| `f4fbcab` | The age rating (4+) and the content rights, done on the owner's instruction |
+| (this commit) | Availability set (P8); the repository is public, so CI runs again |
 
 ---
 
