@@ -203,6 +203,84 @@ footer p {
   margin: 0 auto;
 }
 
+/*
+ * ---- document pages: the privacy policy and the support page (release D7) ----
+ * Reading pages, not a pitch: one column of prose in normal flow, headings in the display face as the landing page's
+ * are, links in the accent colour and underlined so they read as links without colour.
+ */
+main.doc {
+  display: block;
+}
+
+.doc h1 {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 6vw, 40px);
+  line-height: 1.15;
+  letter-spacing: var(--tracking-display);
+  font-weight: 500;
+  margin: 0 0 var(--space-3);
+}
+
+.doc h2 {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 3.5vw, 26px);
+  letter-spacing: var(--tracking-display);
+  font-weight: 500;
+  margin: var(--space-8) 0 var(--space-3);
+}
+
+.doc h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: var(--space-6) 0 var(--space-2);
+}
+
+.doc h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.doc p,
+.doc ul {
+  margin: 0 0 var(--space-3);
+}
+
+.doc ul {
+  padding-left: 1.25em;
+}
+
+.doc li + li {
+  margin-top: var(--space-2);
+}
+
+.doc a,
+.status a,
+footer a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.doc-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  font-size: var(--type-meta);
+}
+
+.doc-meta {
+  color: var(--fg-muted);
+  font-size: var(--type-meta);
+}
+
+.doc hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--space-8) 0;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

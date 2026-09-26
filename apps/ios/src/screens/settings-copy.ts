@@ -47,6 +47,17 @@ export interface SettingsCopy {
   cacheCleared: string;
   aboutData: string;
   aboutSent: string;
+  /** Release D7: the non-affiliation sentence (LEGAL.md), and the rows to the site's pages and the licenses. */
+  notAffiliated: string;
+  privacy: string;
+  support: string;
+  /** Said to a screen reader after an external row's label: the tap leaves the app. */
+  opensInSafari: string;
+  acknowledgements: {
+    title: string;
+    intro: string;
+    meta: (version: string, license: string) => string;
+  };
   back: string;
   /** A sheet's close button. */
   close: string;
@@ -122,6 +133,16 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
     aboutData: "Data: seats.aero · your own keys, on this device",
     aboutSent:
       "Searches go to seats.aero with your key. When you use AI assistance, your question, the earlier questions and answers in that conversation, the search you include and the seats.aero results it reads go to Anthropic. Keeping keys on this device does not keep searches off the network.",
+    notAffiliated: "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.",
+    privacy: "Privacy policy",
+    support: "Support",
+    opensInSafari: "Opens in Safari",
+    acknowledgements: {
+      // "Licenses", not "Acknowledgements": one 16-letter word does not fit a 320-point screen at large text sizes.
+      title: "Licenses",
+      intro: "AwardGrid is built with this open-source software. Each is used under its license, and each license's text is below, as its authors ask.",
+      meta: (version, license) => `Version ${version}, ${license}`,
+    },
     back: "Back to settings",
     close: "Close",
     seats: {
@@ -193,6 +214,15 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
     cacheCleared: "缓存结果已清除，密钥未受影响。",
     aboutData: "数据：seats.aero · 使用你自己的密钥，保存在本机",
     aboutSent: "查票请求会携带你的密钥发往 seats.aero。使用 AI 辅助时，你的问题、同一对话中之前的问答、你附带的查询，以及它读取的 seats.aero 结果会发往 Anthropic。密钥保存在本机，不代表查询内容不外发。",
+    notAffiliated: "AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
+    privacy: "隐私政策",
+    support: "支持",
+    opensInSafari: "在 Safari 中打开",
+    acknowledgements: {
+      title: "开源许可",
+      intro: "AwardGrid 使用了以下开源软件，均按各自的许可证使用；按作者的要求，每份许可证的全文附在下方。",
+      meta: (version, license) => `版本 ${version}，${license}`,
+    },
     back: "返回设置",
     close: "关闭",
     seats: {

@@ -10,8 +10,10 @@
 import { describe, expect, it } from "vitest";
 import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 import { Quota } from "@awardgrid/core/seatsaero/quota";
+import { RoutesCatalog } from "@awardgrid/core/seatsaero/routes";
+import { SEATS_SOURCES } from "@awardgrid/core/seatsaero/types";
 import { DeviceQuotaStore } from "../store/quota-store";
-import { LOCAL_USER, SearchEngine } from "./search";
+import { LOCAL_USER, SearchEngine, routesFailedWarning } from "./search";
 
 const NOW = new Date("2026-10-01T00:00:00.000Z");
 const KEY = "pro_test_key_ABC123xyz_DO_NOT_LEAK";
@@ -210,5 +212,63 @@ describe("SearchEngine", () => {
     expect(cells.find((c) => c.origin === "SHA")?.reason).toBe("grid.cell.not_fetched");
     expect(statuses("HKG")).toEqual(new Set(["ok", "none"]));
     expect(grid.meta.unmonitored_pairs).toEqual([]);
+  });
+});
+
+describe("SearchEngine: one program's route list failing (#89)", () => {
+  /** Rows for HKG only; every program's list monitors HKG to SEA, and aeroplan's answers 500 (E2's demo-key-partial). */
+  function partial() {
+    return fakeFetch((req) => {
+      if (!req.url.pathname.endsWith("/routes")) return jsonResponse({ data: [availability("2026-10-05")], hasMore: false });
+      const source = req.url.searchParams.get("source")!;
+      return source === "aeroplan" ? textResponse("{}", 500) : jsonResponse(monitoredRoutes(source, ["HKG"]));
+    });
+  }
+
+  it("keeps the grid it paid for, names the failed list, and claims nothing about the pair it may cover", async () => {
+    const fetchImpl = partial();
+    const store = new DeviceQuotaStore();
+    const res = await engine(fetchImpl, store).search("HKG, PVG to SEA next 30 days business", KEY);
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const { grid, notices, warnings, rows, coverage } = res.value;
+    expect(rows?.length).toBe(1);
+    expect(notices.map((n) => n.code)).toEqual(["find.routes_failed"]);
+    // Said the way this screen draws it: PVG to SEA was searched to the end; only its monitoring is unknown.
+    expect(warnings).toEqual([
+      "Couldn't load the route list for Air Canada Aeroplan: seats.aero returned an error. PVG → SEA was searched to the end, but whether seats.aero monitors it is unknown.",
+    ]);
+    expect(warnings.join(" ")).not.toMatch(/quota|unchecked/i);
+    expect(grid.meta.unmonitored_pairs).toEqual([]);
+    expect(coverage?.slices.find((s) => s.origin === "PVG")?.state).toBe("complete");
+    // One search page and every program's list, the failed one included: all counted against today's calls.
+    expect(res.value.api_calls_used).toBe(1 + SEATS_SOURCES.length);
+    expect(res.value.quota.used).toBe(1 + SEATS_SOURCES.length);
+    expect(JSON.stringify(res)).not.toContain(KEY);
+  });
+
+  it("was the whole search's failure on the plain catalog, after the calls were spent", async () => {
+    const fetchImpl = partial();
+    const plain = new SearchEngine({ fetchImpl, quota: new Quota({ store: new DeviceQuotaStore(), now: () => NOW }), routes: new RoutesCatalog(), now: () => NOW });
+    const res = await plain.search("HKG, PVG to SEA next 30 days business", KEY);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toBe("seatsaero");
+  });
+
+  it("says when the failed list changes nothing, and names every pair it leaves open", () => {
+    expect(routesFailedWarning({ routes_failed: ["aeroplan", "united"], monitoring_unknown: [] })).toBe(
+      "Couldn't load the route lists for Air Canada Aeroplan, United MileagePlus: seats.aero returned an error. It does not change these results.",
+    );
+    expect(
+      routesFailedWarning({
+        routes_failed: ["aeroplan"],
+        monitoring_unknown: [
+          { origin: "PVG", dest: "SEA", key: "PVG-SEA" },
+          { origin: "SHA", dest: "SEA", key: "SHA-SEA" },
+        ],
+      }),
+    ).toBe("Couldn't load the route list for Air Canada Aeroplan: seats.aero returned an error. PVG → SEA, SHA → SEA were searched to the end, but whether seats.aero monitors them is unknown.");
   });
 });

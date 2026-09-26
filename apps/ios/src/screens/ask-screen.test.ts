@@ -18,6 +18,8 @@ import type { AskActivity, AskService, AskState, ContextPreview } from "../ask/a
 import * as labels from "../ask/labels";
 import { MemoryKeyStore, type KeyStore } from "../native/keychain";
 import type { LastSearchEntry } from "../search/last-search";
+import { ASK_COPY } from "../ask/ask-copy";
+import { SettingsStore } from "../app/settings-store";
 import { AskView, type KeyPresence, askAnnouncement, lastSearchLabel, missingKeys, readKeyPresence } from "./AskScreen";
 
 const AT = "2026-10-01T00:00:00.000Z";
@@ -396,5 +398,17 @@ describe("the status region announces transitions only (design §6.5)", () => {
     expect(askAnnouncement(answered, answered)).toBe("");
     const resent = state({ entries: [entry("e1", { end: ended("answered", { at: "2026-10-01T00:01:00.000Z" }) })] });
     expect(askAnnouncement(resent, answered)).toBe(labels.ANNOUNCEMENTS.answered);
+  });
+});
+
+describe("permission to send data to Anthropic (release D10)", () => {
+  it("the service's refusal is said in the page's language, and the consent sheet stays closed until a tap", () => {
+    const settings = new SettingsStore({ deviceLocale: "zh" });
+    const current = state({ notice: { kind: "no_consent", message: labels.NO_CONSENT } });
+    const services = { ask: fakeAsk(current), lastSearch: { get: () => null, set: () => {} }, settings };
+    const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(AskView, { services, keys: BOTH })));
+    expect(html).toContain(ASK_COPY.zh.noConsent);
+    expect(html).not.toContain(labels.NO_CONSENT);
+    expect(html).not.toContain('data-testid="ask-consent"');
   });
 });

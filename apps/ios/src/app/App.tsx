@@ -39,6 +39,8 @@ import { WatchesScreen } from "../screens/WatchesScreen";
  */
 const PROBES = import.meta.env.VITE_AG_PROBES === "1";
 const ProbesScreen = PROBES ? lazy(() => import("../probes/ProbesScreen").then((m) => ({ default: m.ProbesScreen }))) : null;
+// The license texts load only when their page opens (release handoff §3.5), not with every launch.
+const AcknowledgementsScreen = lazy(() => import("../screens/AcknowledgementsScreen").then((m) => ({ default: m.AcknowledgementsScreen })));
 /**
  * E2e build only (VITE_AG_PROBES=e2e, apps/ios/probes/run-probes.sh --e2e): the app as shipped, with its transports
  * pointed at the probe server and the seats.aero mock, and a driver that runs step 7's Simulator scenarios through the
@@ -311,6 +313,14 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
                 { path: "settings", element: <SettingsScreen /> },
                 { path: "settings/seats", element: <SeatsKeyScreen /> },
                 { path: "settings/anthropic", element: <AnthropicKeyScreen /> },
+                {
+                  path: "settings/acknowledgements",
+                  element: (
+                    <Suspense fallback={null}>
+                      <AcknowledgementsScreen />
+                    </Suspense>
+                  ),
+                },
                 { path: "example", element: <ExampleScreen /> },
                 ...(ProbesScreen
                   ? [

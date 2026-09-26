@@ -1,0 +1,13 @@
+# gitleaks (CI job "gitleaks"): the default rules, with one path allowed.
+#
+# A CocoaPods lockfile holds pod names, versions, local paths and the SHA-1 checksums of public podspecs, never a
+# secret. `KeychainSwift: 4a71a45c…` (apps/ios/ios/App/Podfile.lock, committed for release D14) matched
+# generic-api-key because the pod's name contains "Key" beside a 40-character hex value.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "CocoaPods lockfiles: pod names, versions, paths and public podspec checksums"
+paths = [
+  '''(^|/)Podfile\.lock$''',
+]

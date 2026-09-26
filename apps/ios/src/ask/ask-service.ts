@@ -7,6 +7,8 @@
  *   - LEAVING THE SCREEN NEVER STOPS A QUESTION. Unsubscribing only stops the screen hearing about it. This departs
  *     on purpose from the web drawer's abort-on-close, which protected an operator's shared budget (design §2.5).
  *     Here the person pays, and a question they looked away from is still one they may want answered.
+ *   - NOTHING GOES WITHOUT PERMISSION (release D10). Until the person has allowed Ask to send data to Anthropic, on
+ *     the Ask screen's consent sheet, a question and a Try again are refused before a key is read or a request built.
  *   - KEYS ARE READ WHEN A QUESTION STARTS. Both come from the Keychain at that moment, never at launch and never
  *     kept for the next question. Without an Anthropic key no client is built and nothing goes to Anthropic.
  *     Without a seats.aero key the question is refused before it starts. Try again resends only on the keys the
@@ -51,6 +53,7 @@ import {
   KEY_ACCEPTED,
   KEYS_CHANGED,
   NO_ANTHROPIC_KEY,
+  NO_CONSENT,
   NO_KEY_ON_FILE,
   NO_SEATS_KEY,
   RETRY_UNAVAILABLE,
@@ -95,6 +98,12 @@ export const documentVisibility: Visibility = {
 };
 
 export interface AskServiceDeps {
+  /**
+   * Whether the person has allowed Ask to send data to Anthropic (release D10: SettingsStore.aiConsent, given on the
+   * Ask screen's consent sheet). Read at every question and every Try again; false sends nothing. Required, so no
+   * wiring can leave it out and send without asking.
+   */
+  consent(): boolean;
   /** The Anthropic key's Keychain item (../native/anthropic-key.ts). */
   anthropicKeys: KeyStore;
   /** The seats.aero key's Keychain item (../native/keychain.ts). */
@@ -179,6 +188,8 @@ export interface AskRunning {
 
 export type AskNoticeKind =
   | "busy"
+  /** Release D10: the person has not allowed Ask to send data to Anthropic; nothing was read or sent. */
+  | "no_consent"
   | "no_anthropic_key"
   | "no_seats_key"
   | "wiring"
@@ -544,6 +555,8 @@ export function createAskService(deps: AskServiceDeps): AskService {
   async function start(run: Active, text: string, includeSearch: boolean, refs: readonly ResultRef[] | null, shown: string | null | undefined): Promise<void> {
     await ensureLoaded();
     if (!nativeHttpReady()) return setNotice("wiring", WIRING);
+    // Release D10: without the person's permission nothing goes to Anthropic, and no key is even read.
+    if (!deps.consent()) return setNotice("no_consent", NO_CONSENT);
     // Refusals about the question itself come first: they need no key, and a key message would not be the reason.
     const checked = checkQuestion(text);
     if (!checked.ok) return setNotice("not_started", checked.message);
@@ -748,6 +761,8 @@ export function createAskService(deps: AskServiceDeps): AskService {
   }
 
   async function resend(question: FailedQuestion, entry: AskEntry): Promise<void> {
+    // Permission withdrawn since the question failed: nothing is resent, and the failure can be once it is given again.
+    if (!deps.consent()) return keepRetry(question, "no_consent", NO_CONSENT);
     const anthropic = await readKey(deps.anthropicKeys);
     if (anthropic === null) return keepRetry(question, "no_anthropic_key", NO_ANTHROPIC_KEY);
     const seatsAero = await readKey(deps.seatsKeys);

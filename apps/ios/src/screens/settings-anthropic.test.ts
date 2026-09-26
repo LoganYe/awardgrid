@@ -14,7 +14,8 @@ import type { AskService, KeyCheckResult } from "../ask/ask-service";
 import * as labels from "../ask/labels";
 import { SettingsStore } from "../app/settings-store";
 import { type KeyStore, MemoryKeyStore } from "../native/keychain";
-import { AnthropicKeySection, SettingsScreen, anthropicKeyLine, checkStatus, readMasked, removeAnthropicKey, saveAnthropicKey } from "./SettingsScreen";
+import { CONSENT } from "../ask/consent-copy";
+import { AnthropicKeySection, AskPermission, SettingsScreen, anthropicKeyLine, checkStatus, readMasked, removeAnthropicKey, saveAnthropicKey } from "./SettingsScreen";
 
 const PASTED = "sk-ant-api03-settings-test-key-wxyz";
 
@@ -196,5 +197,28 @@ describe("the markup", () => {
     expect(html).not.toContain('type="password"');
     expect(html).not.toContain("Not connected");
   });
+});
 
+describe("Ask's permission on the Anthropic key page (release D10)", () => {
+  it("says it has not been given, with nothing to withdraw, until the consent sheet gives it", async () => {
+    const settings = new SettingsStore({ deviceLocale: "en" });
+    const html = renderToStaticMarkup(createElement(AskPermission, { settings, locale: "en" }));
+    expect(html).toContain(`<p class="settings-copy">${escape(CONSENT.en.settings.notAllowed)}</p>`);
+    expect(html).not.toContain(CONSENT.en.settings.withdraw);
+  });
+
+  it("once given, says so and offers to withdraw it, in the page's language", async () => {
+    const settings = new SettingsStore({ deviceLocale: "zh" });
+    await settings.allowAi(new Date("2026-10-01T09:30:00.000Z"));
+    const html = renderToStaticMarkup(createElement(AskPermission, { settings, locale: "zh" }));
+    expect(html).toContain(`<p class="settings-copy">${CONSENT.zh.settings.allowed}</p>`);
+    expect(html).toContain(`<button type="button" class="ag-button">${CONSENT.zh.settings.withdraw}</button>`);
+  });
+
+  it("is on the section whenever the page has the settings, and absent from a stand-in without them", async () => {
+    const services = { anthropicKeys: new MemoryKeyStore(), ask: fakeAsk(async () => ACCEPTED) };
+    expect(renderToStaticMarkup(createElement(AnthropicKeySection, { services }))).not.toContain('data-testid="ask-permission"');
+    const withSettings = { ...services, settings: new SettingsStore({ deviceLocale: "en" }) };
+    expect(renderToStaticMarkup(createElement(AnthropicKeySection, { services: withSettings }))).toContain('data-testid="ask-permission"');
+  });
 });

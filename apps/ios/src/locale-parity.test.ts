@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { EDITOR_COPY, allFieldErrors } from "./components/query/labels";
 import { RESULTS } from "./components/results/copy";
 import { ASK_COPY } from "./ask/ask-copy";
+import { CONSENT } from "./ask/consent-copy";
 import { CONNECT_ANTHROPIC } from "./screens/AskScreen";
 import { COMPARE } from "./screens/compare-copy";
 import { FAVORITES } from "./screens/favorites-copy";
@@ -24,6 +25,7 @@ const TABLES: Record<string, { en: unknown; zh: unknown }> = {
   welcome: WELCOME,
   connectAnthropic: CONNECT_ANTHROPIC,
   ask: ASK_COPY,
+  consent: CONSENT,
   compare: COMPARE,
   favorites: FAVORITES,
 };

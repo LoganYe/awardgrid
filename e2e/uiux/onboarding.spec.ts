@@ -118,6 +118,17 @@ test("settings: data connection, then AI (optional), appearance and language, lo
   await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Data connection", "AI (optional)", "Appearance and language", "Local data", "About"]);
   // About says where the data comes from; the page does not say it twice.
   await expect(page.getByText("Data: seats.aero · your own keys, on this device")).toHaveCount(1);
+  // Release D7: the non-affiliation sentence, the site's two pages (opened in Safari) and the licenses, in the app.
+  await expect(page.getByText("AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Privacy policy Opens in Safari" })).toHaveAttribute("href", "https://awardgrid.dowhiz.com/privacy/");
+  await expect(page.getByRole("link", { name: "Support Opens in Safari" })).toHaveAttribute("href", "https://awardgrid.dowhiz.com/support/");
+  await page.getByRole("link", { name: "Licenses" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Licenses" })).toBeFocused();
+  await expect(page.locator(".ag-ack-name")).toContainText(["@anthropic-ai/sdk", "@aparajita/capacitor-secure-storage"]);
+  await page.locator("summary").filter({ hasText: "react-router" }).click();
+  await expect(page.locator("pre.ag-ack-text").filter({ hasText: "Remix Software" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to settings" }).click();
+  await expect(page.locator("#settings-row-acknowledgements")).toBeFocused();
   const theme = page.getByRole("radiogroup", { name: "Theme" });
   const radios = theme.getByRole("radio");
   await expect(radios).toHaveCount(3);
@@ -306,6 +317,7 @@ for (const lang of ["en", "zh"] as const) {
         ["#/settings", ".ag-settings-label"],
         ["#/settings/seats", "input[type=password]"],
         ["#/settings/anthropic", "input[type=password]"],
+        ["#/settings/acknowledgements", ".ag-ack-list"],
         ["#/edit", ".query-editor-footer"],
         ["#/watches", "h1"],
       ] as const) {
@@ -393,13 +405,14 @@ test("320 wide at 200% text with keys on file: each settings row's label and val
     for (const scale of [1, 1.3, 1.6, 2]) {
       await page.addStyleTag({ content: `:root { --ag-text-scale: ${scale}; }` });
       for (const row of await page.locator(".ag-settings-row").all()) {
+        // No text runs past its own box, in any row.
+        expect(await row.locator(".ag-settings-row-label").evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${lang} ${scale}`).toBe(true);
+        // A row with a value (the two keys) keeps it clear of the label. About's links have none (release D7).
+        if ((await row.locator(".ag-settings-value").count()) === 0) continue;
         const [label, value] = await Promise.all([row.locator(".ag-settings-row-label").boundingBox(), row.locator(".ag-settings-value").boundingBox()]);
         const apart = label!.x + label!.width <= value!.x + 0.5 || value!.y >= label!.y + label!.height - 0.5;
         expect(apart, `${lang} ${scale}: ${await row.textContent()}`).toBe(true);
-        // And no text runs past its own box.
-        for (const part of [row.locator(".ag-settings-row-label"), row.locator(".ag-settings-value")]) {
-          expect(await part.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${lang} ${scale}`).toBe(true);
-        }
+        expect(await row.locator(".ag-settings-value").evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${lang} ${scale}`).toBe(true);
       }
       expect(await sidewaysProblems(page), `${lang} ${scale}`).toEqual([]);
     }

@@ -49,10 +49,13 @@ next-env.d.ts
 # `dist/` and `node_modules/` are already covered above.
 # NOTE: ios/App/App/public/ is a COPY of dist/ that `cap sync` writes; committing it would mean
 # two copies of the bundle in git, one of them silently stale.
+# Podfile.lock IS committed (iOS release D14): an archive must be rebuildable from git with the
+# exact pod versions it shipped with. dist-sourcemaps/ is where the iOS build moves its source
+# maps so they never ship (apps/ios/vite.config.ts).
 **/ios/App/Pods/
 **/ios/App/App/public/
-**/ios/App/Podfile.lock
 **/ios/DerivedData/
+dist-sourcemaps/
 **/*.xcworkspace/xcuserdata/
 **/*.xcodeproj/xcuserdata/
 

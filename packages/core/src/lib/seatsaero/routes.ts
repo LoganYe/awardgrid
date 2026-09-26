@@ -11,7 +11,7 @@
  * by user: every entry was paid for with one user's key, so no other user may read it
  * (§0.2 #2, §12 "cache scope: per user key, never global").
  */
-import type { SeatsAeroClient } from "./client";
+import { type SeatsAeroClient, SeatsAeroError, SeatsAeroHttpError, SeatsAeroNetworkError } from "./client";
 import type { Route } from "./types";
 
 export const ROUTES_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -54,6 +54,11 @@ export interface EnsureLoadedResult {
   cached: string[];
   /** Sources left unloaded because `maxFetches` ran out. */
   skipped: string[];
+  /**
+   * Sources left unloaded because their Get Routes call failed with a seats.aero error; each still cost one call.
+   * Only ResilientRoutesCatalog reports these. The base class lets the error end the run, and leaves this absent.
+   */
+  failed?: string[];
 }
 
 export interface PairLike {
@@ -213,4 +218,48 @@ export class RoutesCatalog {
     }
     perUser.set(source, { pairs, routes: [...routes], fetchedAt });
   }
+}
+
+/**
+ * A catalog whose Get Routes failure for ONE program does not end the run (#89). A route list only decides whether an
+ * empty pair may be called "not monitored", so losing one should cost that claim, not the rows the run already paid
+ * for. A seats.aero error on `/routes?source=x` (an HTTP error other than a rejected key, or a response that does not
+ * match the schema) leaves that source unloaded and reports it in `failed`; its call still counts against
+ * `maxFetches`, since seats.aero charged for it. A rejected key and a transport error still propagate: they affect
+ * every request, and hiding them would hide a broken key or a dead connection.
+ *
+ * The rule is the web facade's ResilientRoutesCatalog (src/lib/server/find.ts:122-150). That one puts a failed source
+ * in `skipped` and remembers it on the instance, which suits a catalog built per request; this one reports failures
+ * per call, because the iOS engine keeps one catalog for the life of the app, and runFind reads them from the result.
+ */
+export class ResilientRoutesCatalog extends RoutesCatalog {
+  override async ensureLoaded(
+    userId: string,
+    sources: readonly string[],
+    client: SeatsAeroClient,
+    opts: EnsureLoadedOptions = {},
+  ): Promise<EnsureLoadedResult> {
+    const result: EnsureLoadedResult = { fetched: [], cached: [], skipped: [], failed: [] };
+    let budget = opts.maxFetches ?? Number.POSITIVE_INFINITY;
+    for (const source of sources) {
+      try {
+        const one = await super.ensureLoaded(userId, [source], client, { maxFetches: budget });
+        budget -= one.fetched.length;
+        result.fetched.push(...one.fetched);
+        result.cached.push(...one.cached);
+        result.skipped.push(...one.skipped);
+      } catch (err) {
+        if (!survivable(err)) throw err;
+        budget -= 1;
+        result.failed!.push(source);
+      }
+    }
+    return result;
+  }
+}
+
+/** A seats.aero error about this one request: not a rejected key, not a transport failure, not our own bug. */
+function survivable(err: unknown): boolean {
+  if (!(err instanceof SeatsAeroError) || err instanceof SeatsAeroNetworkError) return false;
+  return !(err instanceof SeatsAeroHttpError && err.kind === "invalid_key");
 }

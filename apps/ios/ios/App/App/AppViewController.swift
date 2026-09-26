@@ -16,6 +16,13 @@ class AppViewController: CAPBridgeViewController, WKScriptMessageHandler {
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        // Until the page reports its own colour (below), the launch screen's: the app's canvas, light or dark
+        // (Assets.xcassets LaunchBackground). Capacitor would paint the system background, white or black.
+        if let canvas = UIColor(named: "LaunchBackground") {
+            webView?.backgroundColor = canvas
+            webView?.scrollView.backgroundColor = canvas
+            webView?.underPageBackgroundColor = canvas
+        }
         webView?.configuration.userContentController.add(self, name: Self.messageName)
     }
 

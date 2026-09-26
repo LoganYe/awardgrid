@@ -18,6 +18,10 @@
  *     failure line is role="alert" on the same terms, so reopening the screen does not read old failures out again.
  *   - WHERE THE READER IS. Entries read oldest first, newest at the bottom (S09). Reading at the end, new content
  *     follows into view; reading earlier content, nothing moves, and "New content below" offers the way down.
+ *   - PERMISSION FIRST (release D10). Until the person has allowed Ask to send data to Anthropic (SettingsStore
+ *     aiConsent), Ask, Try again and Ask again open the consent sheet instead: it names Anthropic, what is sent and
+ *     what is not, and sends the question only on Allow. Not now sends nothing and keeps the words in the box. The
+ *     service refuses on its own as well (ask-service.ts), so the sheet is the way to it, not the only guard.
  *
  * Layout, top to bottom: the header (Back, title, New conversation, which asks first); what the next question sends,
  * with its choices; the conversation, scrolling (the intro and suggestions while it is empty); the composer, above
@@ -35,6 +39,7 @@ import { useFocusOnArrival } from "../app/focus";
 import { useKeepInView } from "../app/keyboard";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import { ASK_COPY } from "../ask/ask-copy";
+import { ANTHROPIC_PRIVACY_URL, CONSENT } from "../ask/consent-copy";
 import type { AskNotice, AskState, ContextPreview } from "../ask/ask-service";
 import { ENTRY_LABELS } from "../ask/entry-labels";
 import { includeSearchLabel, searchSummary } from "../ask/labels";
@@ -184,6 +189,13 @@ const AT_END_PX = 32;
 export function AskView({ services, keys, now = Date.now }: AskViewProps) {
   const locale = useLocale(services as Partial<Pick<AppServices, "locale" | "settings">>);
   const c = ASK_COPY[locale];
+  const k = CONSENT[locale].sheet;
+  // Release D10. A stand-in without settings (older tests) asks nothing here; the service still decides.
+  const settings = services.settings;
+  const consented = useSyncExternalStore(settings?.subscribe ?? noSubscription, () => (settings ? settings.aiConsent() !== null : true), () => (settings ? settings.aiConsent() !== null : true));
+  /** The action waiting on the consent sheet: the question, Try again or Ask again the person tapped. */
+  const [awaitingConsent, setAwaitingConsent] = useState<(() => void) | null>(null);
+  const [declined, setDeclined] = useState(false);
   // Messages core and the service write, and a question's steps and endings, are English until T17 (U-039, U-050).
   const english = locale === "en" ? undefined : "en";
   const { ask } = services;
@@ -302,7 +314,27 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
   // Oldest first, as a conversation reads (S09), each with the entries before it: the history its requests resent.
   const entries = state.entries.map((entry, i) => ({ entry, earlier: state.entries.slice(0, i) }));
 
-  const send = () => {
+  /** Run `action` now if Ask may send to Anthropic; otherwise open the consent sheet, and run it only on Allow. */
+  const withConsent = (action: () => void) => {
+    setDeclined(false);
+    if (consented) action();
+    else setAwaitingConsent(() => action);
+  };
+  const allow = async () => {
+    const action = awaitingConsent;
+    setAwaitingConsent(null);
+    await settings?.allowAi(new Date(now()));
+    action?.();
+  };
+  const notNow = () => {
+    setAwaitingConsent(null);
+    setDeclined(true);
+    // Back to the question, whose words are still there.
+    composer.current?.focus();
+  };
+
+  const send = () => withConsent(sendNow);
+  const sendNow = () => {
     const text = draft;
     const before = ask.state().entries.length;
     setDraft("");
@@ -320,6 +352,7 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
   const noticeText = (n: AskNotice): { text: string; english: boolean } => {
     const own: Partial<Record<AskNotice["kind"], string>> = {
       busy: c.busy,
+      no_consent: c.noConsent,
       cleared: c.cleared,
       keys_changed: c.keysChanged,
       retry_unavailable: c.retryUnavailable,
@@ -401,8 +434,8 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
                 shownQuery={withRows.snapshot?.query ?? null}
                 onApplyProposal={(entryId, id) => void ask.applyProposal?.(entryId, id)}
                 onKeepProposal={(entryId, id) => ask.dismissProposal?.(entryId, id)}
-                onTryAgain={() => void ask.retry()}
-                onAskAgain={(id) => void ask.askAgain(id)}
+                onTryAgain={() => withConsent(() => void ask.retry())}
+                onAskAgain={(id) => withConsent(() => void ask.askAgain(id))}
                 onNewConversation={() => setConfirmNew(true)}
               />
             ))}
@@ -418,6 +451,11 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
               {c.newConversation}
             </button>
           </div>
+        ) : null}
+        {declined ? (
+          <p role="status" className="ask-callout ask-callout-neutral">
+            {k.declined}
+          </p>
         ) : null}
         {notice !== null ? (
           <p
@@ -465,6 +503,31 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
         {running !== null ? <p className="ask-note ask-stop-note">{copy("ai.stop_note", locale)}</p> : null}
       </div>
 
+      <Sheet open={awaitingConsent !== null} title={k.title} closeLabel={k.close} onClose={notNow}>
+        <div className="ask-consent" data-testid="ask-consent">
+          <p>{k.intro}</p>
+          <ul>
+            {k.sent.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p>{k.notSent}</p>
+          <p>
+            {k.terms}{" "}
+            <a href={ANTHROPIC_PRIVACY_URL} target="_blank" rel="noreferrer noopener">
+              {k.privacyLink}
+            </a>
+          </p>
+          <p className="ask-consent-note">{k.withdraw}</p>
+          <div className="ask-actions">
+            <Button variant="primary" onClick={() => void allow()}>
+              {k.allow}
+            </Button>
+            <Button onClick={notNow}>{k.notNow}</Button>
+          </div>
+        </div>
+      </Sheet>
+
       <Sheet open={confirmNew} title={c.confirmNewTitle} closeLabel={c.close} onClose={() => setConfirmNew(false)}>
         <p style={{ margin: 0 }}>{c.confirmNewBody}</p>
         <div className="ask-actions">
@@ -483,6 +546,9 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
     </div>
   );
 }
+
+/** A store that never changes, for a stand-in with no settings. */
+const noSubscription = (): (() => void) => () => {};
 
 export const CONNECT_ANTHROPIC: Record<Locale, { title: string; body: string; sent: string; add: string }> = {
   en: {

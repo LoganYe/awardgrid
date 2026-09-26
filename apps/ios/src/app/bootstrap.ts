@@ -18,7 +18,7 @@
 import { ANTHROPIC_IDLE_TIMEOUT_MS } from "@awardgrid/core/ask/limits";
 import { InMemoryAvailabilityCache } from "@awardgrid/core/seatsaero/cache";
 import { Quota } from "@awardgrid/core/seatsaero/quota";
-import { RoutesCatalog } from "@awardgrid/core/seatsaero/routes";
+import { ResilientRoutesCatalog } from "@awardgrid/core/seatsaero/routes";
 import { type AskService, type Visibility, createAskService } from "../ask/ask-service";
 import { anthropicKeychain } from "../native/anthropic-key";
 import { createNativeFetch } from "../native/http";
@@ -317,7 +317,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   const engine = new SearchEngine({
     fetchImpl,
     cache,
-    routes: new RoutesCatalog(),
+    // One program's route list failing costs its "not monitored" claim, never the paid rows (#89); Ask and watches
+    // search through this same engine, so they get the same rule.
+    routes: new ResilientRoutesCatalog(),
     quota: new Quota({ store: quotaStore, now }),
     now,
   });
@@ -382,6 +384,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
 
   const lastSearch = createWorkspaceLastSearch(workspace, searchViewFromSnapshot);
   const ask = createAskService({
+    // Release D10: read at every question, so a permission withdrawn in Settings stops the next one.
+    consent: () => settings.aiConsent() !== null,
     anthropicKeys,
     seatsKeys: keys,
     anthropicFetch,

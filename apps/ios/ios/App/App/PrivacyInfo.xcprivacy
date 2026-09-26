@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  The app's privacy manifest (docs/release/APP_STORE_HANDOFF.md §3.1). It must say what the App Privacy answers in
+  App Store Connect say (D8), and both must follow what the code sends (handoff §6):
+
+  - No tracking, no tracking domains: no analytics, ads, crash reporting or accounts; the only hosts are seats.aero
+    and api.anthropic.com, each on the user's own key.
+  - Collected, linked to the user, for app functionality only: Search History (search parameters sent to seats.aero,
+    and to Anthropic when a question includes a search) and Other User Content (Ask questions, the earlier questions
+    and answers resent with them, and the seats.aero results Ask reads, sent to Anthropic).
+  - Required-reason APIs: file timestamps (C617.1, files inside the app container), from IONFilesystemLib under
+    @capacitor/filesystem, which ships no manifest of its own. Capacitor and CapacitorCordova carry their own
+    manifests; KeychainSwift uses no required-reason API.
+-->
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeSearchHistory</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

@@ -243,6 +243,8 @@ interface HarnessOptions {
   whenWatchesIdle?: () => Promise<void>;
   assertNative?: () => void;
   createClient?: AskServiceDeps["createClient"];
+  /** Whether the person has allowed Ask to send data to Anthropic (release D10); true unless a test says otherwise. */
+  consent?: boolean;
 }
 
 async function harness(opts: HarnessOptions = {}) {
@@ -269,7 +271,9 @@ async function harness(opts: HarnessOptions = {}) {
   const lastSearch = createLastSearch();
   const whenWatchesIdle = vi.fn(opts.whenWatchesIdle ?? (async () => {}));
   let ids = 0;
+  const consent = { granted: opts.consent ?? true };
   const service = createAskService({
+    consent: () => consent.granted,
     anthropicKeys,
     seatsKeys,
     anthropicFetch,
@@ -286,7 +290,7 @@ async function harness(opts: HarnessOptions = {}) {
     assertNative: opts.assertNative ?? (() => {}),
     newId: () => `id-${++ids}`,
   });
-  return { service, files, anthropicKeys, seatsKeys, anthropicFetch, seatsFetch, engine, quotaStore, createClient, persist, timers, screen, lastSearch, clock, whenWatchesIdle, ...model };
+  return { service, files, anthropicKeys, seatsKeys, anthropicFetch, seatsFetch, engine, quotaStore, createClient, persist, timers, screen, lastSearch, clock, whenWatchesIdle, consent, ...model };
 }
 
 /** Let the event loop turn until `check` holds. Counts turns, never wall-clock time. */
@@ -371,6 +375,55 @@ describe("keys, read when a question starts", () => {
     expect(options).toEqual({ apiKey: ANTHROPIC_KEY, fetch: h.anthropicFetch });
     expect(Object.keys(options)).toEqual(["apiKey", "fetch"]);
     expect(options.fetch).not.toBe(h.seatsFetch);
+  });
+});
+
+describe("permission to send data to Anthropic (release D10)", () => {
+  it("without it, reads no key, builds no client and sends nothing; once given, the same question runs", async () => {
+    const h = await harness({ consent: false, replies: [{ script: "text" }] });
+    const anthropicRead = vi.spyOn(h.anthropicKeys, "get");
+    const seatsRead = vi.spyOn(h.seatsKeys, "get");
+    const refused = await h.service.ask(QUESTION, false);
+
+    expect(refused.notice).toEqual({ kind: "no_consent", message: labels.NO_CONSENT });
+    expect(anthropicRead).not.toHaveBeenCalled();
+    expect(seatsRead).not.toHaveBeenCalled();
+    expect(h.createClient).not.toHaveBeenCalled();
+    expect(h.anthropicFetch).not.toHaveBeenCalled();
+    expect(h.send).not.toHaveBeenCalled();
+    expect(h.seatsFetch.calls).toHaveLength(0);
+    expect(refused.entries).toEqual([]);
+    expect(refused.running).toBeNull();
+    expect(await h.files.read(ASK_FILE)).toBeNull();
+
+    h.consent.granted = true;
+    const answered = await h.service.ask(QUESTION, false);
+    expect(answered.notice).toBeNull();
+    expect(answered.entries).toHaveLength(1);
+    expect(answered.entries[0]!.end).toMatchObject({ status: "answered", committed: true });
+    expect(h.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("withdrawn after a failure: Try again and Ask again send nothing, and Try again resends once it is given again", async () => {
+    const h = await harness({ replies: [{ error: errors.overloaded }, { script: "text" }] });
+    const failed = await h.service.ask(QUESTION, false);
+    const entryId = failed.entries[0]!.id;
+    expect(failed.retryEntryId).toBe(entryId);
+
+    h.consent.granted = false;
+    const retried = await h.service.retry();
+    expect(retried.notice).toEqual({ kind: "no_consent", message: labels.NO_CONSENT });
+    expect(retried.retryEntryId).toBe(entryId);
+    expect(retried.entries[0]!.end?.failure?.code).toBe("overloaded");
+    const again = await h.service.askAgain(entryId);
+    expect(again.notice).toEqual({ kind: "no_consent", message: labels.NO_CONSENT });
+    expect(again.entries).toHaveLength(1);
+    expect(h.send).toHaveBeenCalledTimes(1);
+
+    h.consent.granted = true;
+    const state = await h.service.retry();
+    expect(h.send).toHaveBeenCalledTimes(2);
+    expect(state.entries[0]!.end).toMatchObject({ status: "answered", committed: true });
   });
 });
 

@@ -45,6 +45,7 @@ async function service(replies: Message[], opts: { snapshot?: ResultSnapshot | n
   const runQuery = vi.fn(async (query: QueryObject) => query);
   let n = 0;
   const ask = createAskService({
+    consent: () => true,
     anthropicKeys,
     seatsKeys,
     anthropicFetch: seatsFetch,

@@ -1,0 +1,21 @@
+// The Cloudflare Worker that serves this site: static assets only, no script (DEPLOY.md). It was created in the
+// dashboard ("Upload your static files") on 2026-09-25; this file states the same deployment so `wrangler deploy`
+// would reproduce it, and so what is deployed is written down next to what is built.
+{
+  "name": "awardgrid-site",
+  "compatibility_date": "2026-09-25",
+  "assets": {
+    "directory": "./dist",
+    // /privacy serves privacy/index.html by a redirect to /privacy/; a path with no file is a plain 404.
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  },
+  // Only these paths of awardgrid.dowhiz.com; every other path stays the web app's (the tunnel to the Mac).
+  "routes": [
+    { "pattern": "awardgrid.dowhiz.com/ios*", "zone_name": "dowhiz.com" },
+    { "pattern": "awardgrid.dowhiz.com/privacy*", "zone_name": "dowhiz.com" },
+    { "pattern": "awardgrid.dowhiz.com/support*", "zone_name": "dowhiz.com" },
+    { "pattern": "awardgrid.dowhiz.com/_site/*", "zone_name": "dowhiz.com" }
+  ],
+  "workers_dev": true
+}

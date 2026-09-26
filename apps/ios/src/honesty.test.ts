@@ -37,7 +37,13 @@ const CORE_WATCH = path.join(import.meta.dirname, "..", "..", "..", "packages", 
 // Ask's system prompt, tool descriptions and failure copy are string literals in core, not in the shell. A
 // person reads the copy, and the model repeats what the prompt and the tools tell it, so both are scanned.
 const CORE_ASK = path.join(import.meta.dirname, "..", "..", "..", "packages", "core", "src", "lib", "ask");
-const LANDING = path.join(import.meta.dirname, "..", "..", "..", "sites", "landing", "index.html");
+const SITE = path.join(import.meta.dirname, "..", "..", "..", "sites", "landing");
+/** The app's landing page: /ios/ on awardgrid.dowhiz.com (release D7), where the web app keeps "/". */
+const LANDING = path.join(SITE, "ios", "index.html");
+/** The static site's pages with something to say: the landing page, the privacy policy and the support page. */
+const CONTENT_PAGES = ["ios/index.html", "privacy/index.html", "support/index.html"].map((page) => path.join(SITE, page));
+/** Every page of the static site, its root included. */
+const SITE_PAGES = [path.join(SITE, "index.html"), ...CONTENT_PAGES];
 
 /**
  * Phrases that promise a cadence or a next run. Each names the string it was derived from. `{x}` is how
@@ -303,6 +309,9 @@ function extract(file: string, code = readFileSync(file, "utf8")): Extracted {
 
 const landingHtml = () => readFileSync(LANDING, "utf8");
 
+/** What a reader sees on each page of the static site, with the page it is on. */
+const siteTexts = () => SITE_PAGES.flatMap((file) => landingTexts(readFileSync(file, "utf8")).map((text) => ({ page: path.relative(SITE, file), text })));
+
 /** What a reader of the landing page sees, block by block, plus the attributes a browser or a search result shows. */
 function landingTexts(html = landingHtml()): string[] {
   const markup = html
@@ -331,6 +340,7 @@ describe("no cadence is ever promised", () => {
   it("scans a real amount of source, so an empty glob cannot pass vacuously", () => {
     expect(files.length).toBeGreaterThan(10);
     expect(landingTexts().length).toBeGreaterThan(10);
+    for (const file of CONTENT_PAGES) expect(landingTexts(readFileSync(file, "utf8")).length, file).toBeGreaterThan(10);
   });
 
   it("no user-visible string in the shell, the watch module or the Ask module promises a cadence", () => {
@@ -355,12 +365,12 @@ describe("no cadence is ever promised", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("the landing page promises no cadence", () => {
-    expect(landingTexts().flatMap((text) => cadenceHits(text).map((hit) => `${JSON.stringify(text)} matches ${hit}`))).toEqual([]);
+  it("no page of the static site (landing, privacy policy, support) promises a cadence", () => {
+    expect(siteTexts().flatMap(({ page, text }) => cadenceHits(text).map((hit) => `${page} ${JSON.stringify(text)} matches ${hit}`))).toEqual([]);
   });
 
-  it("the landing page has no script, so its markup is everything a reader can see", () => {
-    expect(landingHtml()).not.toMatch(/<script\b/i);
+  it("no page of the static site has a script, so its markup is everything a reader can see", () => {
+    for (const file of SITE_PAGES) expect(readFileSync(file, "utf8"), file).not.toMatch(/<script\b/i);
   });
 
   it("the shell renders no translated strings, which this test could not see", () => {
@@ -576,8 +586,8 @@ describe("no background check is claimed while none is built", () => {
         for (const c of claims(text)) offenders.push(`${path.relative(SHELL_SRC, file)}:${line} ${JSON.stringify(text)} matches ${c}`);
       }
     }
-    for (const text of landingTexts()) {
-      for (const c of claims(text)) offenders.push(`sites/landing/index.html ${JSON.stringify(text)} matches ${c}`);
+    for (const { page, text } of siteTexts()) {
+      for (const c of claims(text)) offenders.push(`sites/landing/${page} ${JSON.stringify(text)} matches ${c}`);
     }
     expect(offenders).toEqual([]);
   });

@@ -37,9 +37,14 @@ src/watch/capabilities.ts   what a watch actually does here — the source of tr
 src/ask/ask-service.ts      runs a question (core's loop) and owns it while screens come and go
 src/ask/seats-port.ts       Ask's seats.aero calls, over the same transport, cache, routes and quota as search
 src/ask/labels.ts           the labels and sentences the shell adds to Ask and Settings' Anthropic section
-src/screens/AskScreen.tsx   #/ask, with components/AskEntry.tsx and components/AnswerText.tsx
+src/screens/AskScreen.tsx   #/ask, with components/AskEntry.tsx and components/AnswerText.tsx, and the consent sheet
+src/ask/consent-copy.ts     what the consent sheet and the Anthropic key page say about Ask's permission (release D10)
+src/screens/AcknowledgementsScreen.tsx  Settings › About › Licenses, from src/about/acknowledgements.json
+src/app/links.ts            the privacy policy and support pages (sites/landing), opened in Safari
 src/app/bootstrap.ts        launch order: restore snapshots, wire the observer, build the engine
-src/honesty.test.ts         fails CI on a cadence promise in this package, core's watch and Ask code, or the landing page
+src/honesty.test.ts         fails CI on a cadence promise in this package, core's watch and Ask code, or the static site's pages
+scripts/acknowledgements.mjs  writes and checks the licenses list from what the build ships
+scripts/app-icon.py         draws the app icon (release D6); not part of the build
 src/probes/                 the probe and e2e builds' code; compiled out of every other build
 ```
 
@@ -114,11 +119,15 @@ every bound are core's (`packages/core/src/lib/ask`); this package runs a questi
 reads none. Measurements are in `docs/PHASE5.md`, decisions in `DECISIONS.md` § "Phase 5 — Ask on the
 Messages API".
 
-**What has not been verified.** Every measurement so far ran on the Simulator with fake keys, against a
-scripted server and the seats.aero mock. The only requests that reached api.anthropic.com were A1b's, with
-a key Anthropic rejects, so none used a working Anthropic key. The checks on the owner's own keys
-(K1-K6, #12) have not run, so real latency, cache reads, billing after Stop and a device's handling of a
-request while the app is away are unmeasured. Ten of the twelve end-to-end verdicts pass, and E1 and E2 fail their own
+**Ask asks first (release D10).** Nothing goes to Anthropic until the person allows it on the consent sheet,
+which names Anthropic and lists what a question sends; the Anthropic key page says whether it was given and
+withdraws it. The service refuses a question and a Try again without it (`src/ask/ask-service.ts`), so the
+sheet is the way in, not the only guard.
+
+**What has not been verified.** On the owner's own keys, K1, K3 and the Stop half of K2 ran on the owner's
+Simulator on 2026-09-23, before UI/UX v1; K2's billing half, K4-K6 and anything on a physical device have
+not run (docs/release/APP_STORE_HANDOFF.md §5, V4). Everything else ran with fake keys, against a scripted
+server and the seats.aero mock. Ten of the twelve end-to-end verdicts pass, and E1 and E2 fail their own
 criteria, both from how the app checks which routes seats.aero monitors (`docs/PHASE5.md` §2).
 
 **Answers arrive whole.** The request goes out as a stream and the answer comes back in one piece,
@@ -199,18 +208,21 @@ normal `npm run build`, no chunk in `dist/assets/` may be named `*[Pp]robe*` or 
 
 ```bash
 pnpm install                       # from the repo root; this is a workspace member
-pnpm --filter @awardgrid/ios test  # 566 tests in 25 files, no device, no network
-cd apps/ios && npm run build && npx cap sync ios
+pnpm --filter @awardgrid/ios test  # 830 tests in 53 files, no device, no network
+cd apps/ios && npm run build && npx cap copy ios
 ```
 
-Then build and install on a booted simulator:
+`cap copy`, not `cap sync`: sync also runs `pod install` against the network, and the Pods are already
+installed and pinned by the committed `ios/App/Podfile.lock`. Then build and install on a Simulator made for
+this app, always by its UDID (never `booted`: another project's devices, or one holding real keys, may be
+booted too):
 
 ```bash
 xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug \
   -sdk iphonesimulator -destination "id=<UDID>" -derivedDataPath ios/DerivedData \
   CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES build
-xcrun simctl install booted ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app
-xcrun simctl launch booted com.dowhiz.awardgrid
+xcrun simctl install <UDID> ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app
+xcrun simctl launch <UDID> com.dowhiz.awardgrid
 ```
 
 **Signing is not optional, even on the simulator.** A `CODE_SIGNING_ALLOWED=NO` build has no
@@ -233,12 +245,10 @@ reproducibly on the xcframework download (`docs/PHASE0.md` §6).
 - **The main chunk has grown past the point where growth is investigated.** After Phase 5 it is
   746,386 bytes, 78,945 over the Phase 5 design's 667,441-byte baseline and past its 60 KB threshold
   (`docs/PHASE5.md` §2.12). Recorded, not investigated yet (#92).
-- **One route list that fails fails the whole search.** In E2 one route list answered 500, and a grid
-  search failed outright with "seats.aero unavailable (HTTP 500): {}" and drew no table
-  (`docs/PHASE5.md` §2.4). The app uses core's `RoutesCatalog` (`src/app/bootstrap.ts:149`), which does
-  not survive a failed list the way the web's `ResilientRoutesCatalog` does. Ask's searches use the same
-  catalog, so such a search reaches Claude as a failed tool call; no run exercised that
-  (#89).
+- **A failed route list costs its "not monitored" claim, no more (#89, fixed for 1.0).** The engine uses
+  core's `ResilientRoutesCatalog`: a seats.aero error on one program's list keeps the search's rows, names
+  the program in the results' warnings, and Ask's tool result says the same without blaming the quota. What
+  label such a pair should get is still open (#78), and E2 has not been rerun on the Simulator harness.
 - **Two layout defects Phase 5's measurements found.** The screenshots show scrolled pages passing
   under the transparent status bar and the Dynamic Island (#90), and the measured control
   sizes show some under 44 pt: the nav link "Ask" is 26.4 pt wide, and four Settings controls and
@@ -247,8 +257,45 @@ reproducibly on the xcframework download (`docs/PHASE0.md` §6).
 - **The grid is not yet the web app's virtualised component.** `src/components/GridTable.tsx` is a
   flat, phone-sized reading of the core's `Grid`; `src/search/search.ts` keeps the `ApiResult` /
   `ApiFailureCode` shape from `src/components/grid/api.ts` exactly so the full port stays a small diff.
-- **English only.** The shell has no i18n yet. When it does, the watch feature must not be called
-  定时查询 — 定时 means "on a timer" — and the honesty test will reject it if it is.
+- **English and Chinese.** The screens speak both (UI/UX v1 T11, T17); a question's steps and core's own
+  messages are English, marked so on a Chinese screen. The watch feature must not be called 定时查询 — 定时
+  means "on a timer" — and the honesty test rejects it anywhere, the static site included.
 - **No background check, and so no notifications.** See Watches above. If one is ever wanted, the
   honest route is a native Swift `BGAppRefreshTask` that reads the existing Keychain item — and the
   UI must still never print a next-run time.
+
+## Release (iOS 1.0)
+
+The plan, the decisions (D1-D14) and what is verified where are in `docs/release/IOS_1.0_RELEASE.md`; the
+account state and the rules for the session that ships it are in `docs/release/APP_STORE_HANDOFF.md`. Run
+everything from a worktree, never from the checkout production serves.
+
+1. **Gates:** `pnpm typecheck && pnpm lint && pnpm test`, then
+   `UIUX_WEB=0 pnpm exec playwright test --config=playwright.uiux.config.ts` (the iOS browser mock).
+2. **Bundle:** `env -u VITE_AG_PROBES pnpm --filter @awardgrid/ios build`. It fails on any fixture marker, on a
+   source map inside `dist/` (they are moved to `dist-sourcemaps/`), and on a licenses list that is not what
+   ships. Then R1 (above) over `dist/assets/*.js` and the maps beside them.
+3. **Copy:** `npx cap copy ios` (not `sync`).
+4. **Build number:** raise `CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` (both
+   configurations) in a commit before every archive after the first; 1.0 (1) is the first.
+5. **Archive**, once the App ID is registered and the signing identity is on this Mac (the owner's steps):
+
+   ```bash
+   xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
+     -destination 'generic/platform=iOS' -archivePath ~/Library/Developer/Xcode/Archives/<date>/awardgrid-1.0-<build>.xcarchive \
+     DEVELOPMENT_TEAM=232AGCYZ2Z archive
+   ```
+
+   `-allowProvisioningUpdates` lets xcodebuild create App IDs, certificates and profiles on the team: only
+   with the owner's OK for that run. Without signing (`CODE_SIGNING_ALLOWED=NO`) the same command makes an
+   archive to inspect, never to upload.
+6. **Inspect** the archive's `Products/Applications/App.app`: `Info.plist` (1.0, the build, `MinimumOSVersion`
+   18.0, `UIDeviceFamily` [1], `ITSAppUsesNonExemptEncryption` false, no `NSAppTransportSecurity`),
+   `PrivacyInfo.xcprivacy` at the root, no `*.map` and no probe chunk in `public/`, the new icon.
+7. **Export** for internal TestFlight only: `xcodebuild -exportArchive -archivePath <archive>
+   -exportOptionsPlist ios/App/ExportOptions-TestFlightInternal.plist -exportPath <dir>` (it keeps the build
+   number and writes an .ipa; it uploads nothing). The owner uploads it, or uses Organizer with "Manage Version
+   and Build Number" unticked. Or, with the owner's OK for that run, upload from this Mac: the same options with
+   `destination` set to `upload` (`sed 's|<string>export</string>|<string>upload</string>|'` into a scratch copy)
+   and `-allowProvisioningUpdates`, which authenticates with the account signed in to Xcode, so nothing is typed.
+   1.0 (1) went up this way.
