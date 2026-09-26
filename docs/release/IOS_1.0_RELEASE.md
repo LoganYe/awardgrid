@@ -11,19 +11,19 @@ left, most of it the owner's.
 
 ## 1. Where it stands
 
-The engineering for 1.0 is done on the branch and its gates pass. Build 1.0 (1) is archived, signed and exported as
-an internal-TestFlight-only `.ipa` (§5). Nothing has been uploaded or run on a physical iPhone. What stands between
-that `.ipa` and TestFlight is the owner's:
+The engineering for 1.0 is done on the branch and its gates pass. Build 1.0 (1) is archived, signed, exported as an
+internal-TestFlight-only `.ipa` (§5) and uploaded to App Store Connect (B7). Nothing has run on a physical iPhone.
+What is left is the owner's:
 
 | # | Blocking step | Who | State |
 |---|---|---|---|
-| B1 | Accept the updated Program License Agreement, **before 2026-10-01** | Account Holder | **Open** (read 2026-09-25: the account page and App Store Connect both still ask for it) |
-| B2 | Fix the membership renewal, **before 2026-10-10** | Account Holder | **Open** (read 2026-09-25: "wasn't renewed successfully") |
+| B1 | Accept the updated Program License Agreement, **before 2026-10-01** | Account Holder | **Open** (read 2026-09-25: the account page and App Store Connect both still ask for it; at 22:00 the account page was down for maintenance). It takes the Account Holder's own sign-in: Users and Access lists them as a different Apple account from the Admin signed in to the owner's browser |
+| B2 | Fix the membership renewal, **before 2026-10-10** | Account Holder | **Open** (read 2026-09-25: "wasn't renewed successfully"; App Store Connect at 22:00: expiration Oct 10, 2026, renewed on that date only if the Account Holder opted in to automatic renewal) |
 | B3 | Register the App ID `com.dowhiz.awardgrid` | Owner (Admin), or the agent with a per-action OK | **Done 2026-09-25** by the agent with the owner's OK: explicit, description "AwardGrid", no extra capabilities |
 | B4 | Create the App Store Connect record | Owner, or the agent with a per-action OK | **Done 2026-09-25** by the agent with the owner's OK: "AwardGrid", Apple ID `6816321841`, SKU `awardgrid-ios`, English (U.S.), Full Access; iOS 1.0 "Prepare for Submission" |
 | B5 | Sign in to Xcode › Settings › Accounts; confirm the team's certificates | Owner | **Done:** Xcode on this Mac signs for `232AGCYZ2Z`; the signed archive used the Apple Development and Apple Distribution: Curastone CORP. identities (§5) |
 | B6 | Choose the support e-mail, then deploy the privacy and support pages | Owner (address), agent (deploy) | **Done 2026-09-25:** Restful's public contact address; live at `/ios/`, `/privacy/`, `/support/` (`sites/landing/DEPLOY.md`) |
-| B7 | Upload build 1.0 (1) | Owner | The `.ipa` is ready (§5, §6.7). App Store Connect may refuse it until B1 |
+| B7 | Upload build 1.0 (1) | Owner, or the agent with a per-action OK | **Uploaded 2026-09-25 22:01** by the agent with the owner's OK (§6.7): "Upload succeeded"; App Store Connect listed 1.0 (1) as Processing. Whether processing finished was not checked |
 
 ---
 
@@ -92,8 +92,8 @@ Seen on the Simulator, already tracked: scrolled pages pass under the status bar
 ## 5. What build 1.0 (1) ships
 
 Archived, signed and exported on 2026-09-25 from `63887b8` (bundle built with `env -u VITE_AG_PROBES`, R1 0 hits over
-the chunks and their maps, `cap copy ios`), with the owner's OK for `-allowProvisioningUpdates` on that run. Uploaded:
-no.
+the chunks and their maps, `cap copy ios`), with the owner's OK for `-allowProvisioningUpdates` on that run. Uploaded the
+same day (§6.7).
 
 - **Archive:** `~/Library/Developer/Xcode/Archives/2026-09-25/awardgrid-1.0-1.xcarchive`, so it shows in Xcode's
   Organizer. Signed Apple Development with "iOS Team Provisioning Profile: com.dowhiz.awardgrid", which xcodebuild
@@ -128,7 +128,10 @@ an OK for that one action.
 
 1. **Account Holder (B1, B2).** Accept the updated Program License Agreement before 2026-10-01; fix the renewal
    before 2026-10-10. Read on 2026-09-25 in the owner's browser: both are still open, and App Store Connect says that
-   until the agreement is accepted, existing apps cannot be updated and new apps cannot be submitted.
+   until the agreement is accepted, existing apps cannot be updated and new apps cannot be submitted. Both are done at
+   `https://developer.apple.com/account` signed in as the Account Holder, a different Apple account from the owner's
+   Admin one: the agreement banner there, and the membership's renewal. The agent never signs in for anyone; with the
+   Account Holder signed in on this Mac's Chrome, it can open those pages and stop before Agree or payment.
 2. **Support e-mail and the site (B6), done.** The pages give the same public contact address as Restful's site, and
    name Curastone CORP. as publisher, as Restful's do. Live on 2026-09-25 at `https://awardgrid.dowhiz.com/ios/`,
    `/privacy/` and `/support/`, served by the static-assets Worker `awardgrid-site` on four routes beside the web app
@@ -141,10 +144,12 @@ an OK for that one action.
    and on this Mac, so later archives need `-allowProvisioningUpdates` again only if a profile is missing or revoked.
 6. **Archive, done for 1.0 (1)** (§5). For each later build: raise `CURRENT_PROJECT_VERSION` in a commit, then
    `apps/ios/README.md` › "Release" steps 1-7.
-7. **Upload (B7).** Either Transporter with `apps/ios/ios/App/output/awardgrid-1.0-1/App.ipa`, or Xcode › Window ›
-   Organizer › Archives › "App", 1.0 (1), 2026-09-25 › Distribute App › TestFlight Internal Only, with "Manage Version and Build
-   Number" unticked. App Store Connect may refuse any upload until B1 is done. `ITSAppUsesNonExemptEncryption` false
-   answers the per-build encryption question; if App Store Connect still asks, the owner answers it.
+7. **Upload (B7), done** on 2026-09-25 at 22:01 by the agent, with the owner's OK: `xcodebuild -exportArchive` from
+   the archive with the export options' `destination` set to `upload` and `-allowProvisioningUpdates`, which signs in
+   with the account in Xcode (nothing typed; `apps/ios/README.md` › "Release" step 7). xcodebuild reported "Upload
+   succeeded", and App Store Connect › TestFlight › Build Uploads listed 1.0 (1) as Processing. The pending agreement
+   did not stop the upload. Next: when processing ends, the build appears under iOS Builds (Apple also e-mails). If
+   it shows "Missing Compliance" despite `ITSAppUsesNonExemptEncryption` false, the owner answers it.
 8. **TestFlight.** An internal group with the owner; the test information in §7.4; install on the iPhone.
 9. **Device checks,** §8. Every step that sends a real request is the owner's, with the owner's own keys, typed by
    the owner.

@@ -295,4 +295,7 @@ everything from a worktree, never from the checkout production serves.
 7. **Export** for internal TestFlight only: `xcodebuild -exportArchive -archivePath <archive>
    -exportOptionsPlist ios/App/ExportOptions-TestFlightInternal.plist -exportPath <dir>` (it keeps the build
    number and writes an .ipa; it uploads nothing). The owner uploads it, or uses Organizer with "Manage Version
-   and Build Number" unticked.
+   and Build Number" unticked. Or, with the owner's OK for that run, upload from this Mac: the same options with
+   `destination` set to `upload` (`sed 's|<string>export</string>|<string>upload</string>|'` into a scratch copy)
+   and `-allowProvisioningUpdates`, which authenticates with the account signed in to Xcode, so nothing is typed.
+   1.0 (1) went up this way.
