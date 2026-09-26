@@ -1,6 +1,6 @@
 # AwardGrid iOS 1.0: release status
 
-Release mode **PUBLIC (App Store) since 2026-09-26, gated on seats.aero's written permission.** It was first
+Release mode **PUBLIC (App Store) since 2026-09-26.** The owner decided on 2026-09-26 not to ask seats.aero first (§0 P1). It was first
 written on 2026-09-25 for release mode INTERNAL_PRIVATE (the owner's own use through internal TestFlight), and §1-§9
 still describe that build. `release/ios-1.0` merged as `927b70b` ([PR #99](https://github.com/LoganYe/awardgrid/pull/99))
 and was deployed to the web app on 2026-09-26. The App Store work continues on `release/ios-1.0-appstore` in the
@@ -12,25 +12,31 @@ in `APP_STORE_HANDOFF.md`.
 ## 0. Public release (the owner's decision, 2026-09-26)
 
 The owner chose a public App Store release. This reverses D1 and D9 as first applied (internal TestFlight only, no
-review access). The repo's own rule stands: **no submission before seats.aero agrees in writing** (handoff D1).
+review access). The owner also set aside the handoff's rule of waiting for seats.aero's written permission (P1).
+The App Store Connect work below was done on the owner's OK. Submission waits for the Account Holder (P2).
 Meanwhile build 1.0 (1) is Ready to Test in TestFlight (internal; expires 90 days after upload). Create an internal
 group with the owner, then install it from the TestFlight app.
 
 | # | Step | Who | State |
 |---|---|---|---|
-| P1 | seats.aero's written permission: distribution, attribution, a review key, results sent to Anthropic | Owner | A draft to support@seats.aero is in the owner's Gmail drafts, **not sent** |
+| P1 | seats.aero's permission | Owner | **Not sought, by the owner's decision (2026-09-26):** every user brings their own Pro key, and the owner's own key is not used commercially. The draft to support@seats.aero stays unsent in the owner's Gmail. If App Review asks for authorization under 5.2.2, the answer is seats.aero's terms for Pro users, or that e-mail |
 | P2 | Accept the updated Program License Agreement (B1) | Account Holder | Open. App Store Connect refuses submissions until it is accepted |
 | P3 | The membership renewal (B2) | Account Holder | Open |
-| P4 | How App Review uses the app (D9): the owner's seats.aero key in the Review Notes if P1 allows it, or a synthetic demo mode (#80) | Owner decides and types any key | Open |
-| P5 | Build 1.0 (2), without the internal-only flag | Agent builds, owner uploads | Archived, exported and inspected (below); **not uploaded**: the agent's permission check refused its upload. Upload with Transporter (`apps/ios/ios/App/output/awardgrid-1.0-2/App.ipa`), or Organizer › "App" 1.0 (2) › Distribute App › App Store Connect, with "Manage Version and Build Number" unticked |
-| P6 | App Information: subtitle "Award seats in one table"; primary category Travel | Agent | **Saved 2026-09-26** |
-| P7 | Price: Free | Agent | **Saved 2026-09-26:** $0.00 in 175 countries or regions |
-| P8 | Availability: every country or region except China mainland. Apple silicon Mac and Vision Pro: off (D11) | Owner | Not set. The agent's permission check refused it partway, and the dialog was cancelled unsaved |
-| P9 | Version 1.0: screenshots, promotional text, description, keywords, support and marketing URLs, copyright | Owner | Text drafts in §7.1 and §7.6; screenshots in `docs/release/appstore/1.0/` |
-| P10 | App Privacy (§7.3), age rating, content rights, DSA | Owner | Not started; the owner's own declarations |
-| P11 | App Review information: contact, notes, access (P4) | Owner | Not started |
-| P12 | Select build 2 on version 1.0, then Submit for Review | Owner | After P1-P11 |
+| P4 | How App Review uses the app (D9) | Owner | **Decided: explained in the Review Notes** (no key, no demo mode). The notes say what works without a key and invite the reviewer to write to knowhiz.us@gmail.com for live results. Risk: a 2.1 rejection that asks for access |
+| P5 | Build 1.0 (2), without the internal-only flag | Agent | **Uploaded 2026-09-26 00:54** with the owner's OK; processed, and **selected on version 1.0** |
+| P6 | App Information: subtitle "Award seats in one table"; primary category Travel | Agent | **Saved** |
+| P7 | Price: Free | Agent | **Saved:** $0.00 in 175 countries or regions |
+| P8 | Availability: every country or region except China mainland. Apple silicon Mac and Vision Pro: off (D11) | Owner | Not set (the owner's step) |
+| P9 | Version 1.0: screenshots, promotional text, description, keywords, support and marketing URLs, copyright | Agent | **Saved:** the 7 en-US screenshots in the 6.9-inch set, in order (list, calendar, matrix, details, compare, watches, Ask; the 6.5-inch set uses them); the §7 texts; `https://awardgrid.dowhiz.com/support/` and `/ios/`; "2026 Curastone CORP."; release automatically after approval |
+| P10 | App Privacy; age rating; content rights; DSA; regulated medical device | Agent (privacy), owner (the rest) | **App Privacy published** (D8: Search History and Other User Content, app functionality, linked, no tracking; privacy policy URL set). **DSA:** the account already declares non-trader, as for Restful. **Medical device:** not asked of a Travel app with no medical content. **Age rating and content rights: the owner's.** The agent's permission check refused the age rating questionnaire partway, and nothing was saved. Answers below |
+| P11 | App Review information | Agent | **Saved:** contact Logan Ye with Restful's phone number, e-mail knowhiz.us@gmail.com; sign-in not required; the notes (P4) |
+| P12 | Submit for Review | Owner, or the agent with an allow rule | After P2, P8 and P10 |
 | P13 | Once approved: LEGAL.md, the landing page and the privacy policy stop saying the app is tested privately and not on the App Store | Agent, with the owner's OK | Later |
+
+**The owner's answers for P10, as the agent would give them** (the app's facts, 2026-09-26):
+
+- **Age rating** (App Information › Age Ratings › Set Up): Step 1, Features: every question **No**. That covers parental controls and age assurance; no web browsing inside the app, because links open Safari; no user-generated content, social media or advertising. Messaging and Chat is also No: Ask talks to an AI, and users never talk to each other. Steps 2-4 (mature themes, medical or wellness, sexuality or nudity): **None / No**. Violence and chance-based activities (gambling, contests, loot boxes): **None / No**. Any "made for kids" question: **No**. Take whatever rating the form gives; do not pick 4+ by hand.
+- **Content rights** (App Information › Content Rights): the app **does** show third-party content (seats.aero's availability data, fetched with each user's own key). Whether you "have the necessary rights" is the owner's answer. The owner's position is yes: seats.aero's terms allow Pro users' own use of their keys.
 
 **Build 1.0 (2)** (`183dcce`: `CURRENT_PROJECT_VERSION` 2, `ExportOptions-AppStore.plist`). Archived on 2026-09-26
 without `-allowProvisioningUpdates`, because the profiles from build 1 are on this Mac:
@@ -108,7 +114,8 @@ What is left is the owner's:
 | `a036899` | Build 1.0 (1) uploaded; the agreement and renewal need the Account Holder's own sign-in |
 | `927b70b` | PR #99 merged into main by the owner, and deployed to the web app |
 | `183dcce` | Build 2 for the App Store; `ExportOptions-AppStore.plist`; the spike's Podfile.lock ignored again |
-| (this commit) | §0 (public release); App Store screenshots and their generator |
+| `2c46f07` | §0 (public release); App Store screenshots and their generator |
+| (this commit) | §0 after the App Store Connect work: build 2 uploaded and selected, the listing, App Privacy, review information; the owner's answers for the age rating and content rights |
 
 ---
 
