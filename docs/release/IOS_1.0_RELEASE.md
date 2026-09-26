@@ -28,15 +28,10 @@ group with the owner, then install it from the TestFlight app.
 | P7 | Price: Free | Agent | **Saved:** $0.00 in 175 countries or regions |
 | P8 | Availability: every country or region except China mainland. Apple silicon Mac and Vision Pro: off (D11) | Owner | Not set (the owner's step) |
 | P9 | Version 1.0: screenshots, promotional text, description, keywords, support and marketing URLs, copyright | Agent | **Saved:** the 7 en-US screenshots in the 6.9-inch set, in order (list, calendar, matrix, details, compare, watches, Ask; the 6.5-inch set uses them); the §7 texts; `https://awardgrid.dowhiz.com/support/` and `/ios/`; "2026 Curastone CORP."; release automatically after approval |
-| P10 | App Privacy; age rating; content rights; DSA; regulated medical device | Agent (privacy), owner (the rest) | **App Privacy published** (D8: Search History and Other User Content, app functionality, linked, no tracking; privacy policy URL set). **DSA:** the account already declares non-trader, as for Restful. **Medical device:** not asked of a Travel app with no medical content. **Age rating and content rights: the owner's.** The agent's permission check refused the age rating questionnaire partway, and nothing was saved. Answers below |
+| P10 | App Privacy; age rating; content rights; DSA; regulated medical device | Agent, on the owner's OK | **Done 2026-09-26.** App Privacy published (D8: Search History and Other User Content, app functionality, linked, no tracking; privacy policy URL set). **Age rating 4+**: every question No or None, from the app's facts, and no override; Brazil shows ALL and Korea 00+. **Content rights**: the app shows third-party content (seats.aero's data), and the owner holds that it has the necessary rights. **DSA**: the account already declares non-trader, as for Restful. **Medical device**: not asked of a Travel app with no medical content |
 | P11 | App Review information | Agent | **Saved:** contact Logan Ye with Restful's phone number, e-mail knowhiz.us@gmail.com; sign-in not required; the notes (P4) |
-| P12 | Submit for Review | Owner, or the agent with an allow rule | After P2, P8 and P10 |
+| P12 | Submit for Review | Owner, or the agent with an allow rule | After P2 (the agreement) and P8 (availability); everything else is in place |
 | P13 | Once approved: LEGAL.md, the landing page and the privacy policy stop saying the app is tested privately and not on the App Store | Agent, with the owner's OK | Later |
-
-**The owner's answers for P10, as the agent would give them** (the app's facts, 2026-09-26):
-
-- **Age rating** (App Information › Age Ratings › Set Up): Step 1, Features: every question **No**. That covers parental controls and age assurance; no web browsing inside the app, because links open Safari; no user-generated content, social media or advertising. Messaging and Chat is also No: Ask talks to an AI, and users never talk to each other. Steps 2-4 (mature themes, medical or wellness, sexuality or nudity): **None / No**. Violence and chance-based activities (gambling, contests, loot boxes): **None / No**. Any "made for kids" question: **No**. Take whatever rating the form gives; do not pick 4+ by hand.
-- **Content rights** (App Information › Content Rights): the app **does** show third-party content (seats.aero's availability data, fetched with each user's own key). Whether you "have the necessary rights" is the owner's answer. The owner's position is yes: seats.aero's terms allow Pro users' own use of their keys.
 
 **Build 1.0 (2)** (`183dcce`: `CURRENT_PROJECT_VERSION` 2, `ExportOptions-AppStore.plist`). Archived on 2026-09-26
 without `-allowProvisioningUpdates`, because the profiles from build 1 are on this Mac:
@@ -115,7 +110,8 @@ What is left is the owner's:
 | `927b70b` | PR #99 merged into main by the owner, and deployed to the web app |
 | `183dcce` | Build 2 for the App Store; `ExportOptions-AppStore.plist`; the spike's Podfile.lock ignored again |
 | `2c46f07` | §0 (public release); App Store screenshots and their generator |
-| (this commit) | §0 after the App Store Connect work: build 2 uploaded and selected, the listing, App Privacy, review information; the owner's answers for the age rating and content rights |
+| `128af10` | §0 after the App Store Connect work: build 2 uploaded and selected, the listing, App Privacy, review information |
+| (this commit) | The age rating (4+) and the content rights, done on the owner's instruction |
 
 ---
 
