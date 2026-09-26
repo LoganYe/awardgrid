@@ -24,8 +24,8 @@ Written 2026-09-25 at the end of the UI/UX v1 session, for the session that ship
 | The owner's role | **Admin**, not Account Holder. The Account Holder is another person on the team. |
 | Program License Agreement | **Updated, not yet accepted.** The Account Holder must accept it **by October 1, 2026**, or the team loses access to Certificates, IDs & Profiles, App Store Connect and the App Store Connect API. App Store Connect also says that no new app can be submitted until it is accepted. |
 | Membership | Renewal date **October 10, 2026**. The portal says the renewal **"wasn't renewed successfully"**, and only the Account Holder can renew. |
-| App ID `com.dowhiz.awardgrid` | **Not registered.** The team has nine App IDs, mostly `com.curastone.*`, plus an Xcode wildcard (`*`). |
-| App Store Connect record | **None for AwardGrid.** The team has other apps (Restful, Lets ×3, MemCatch, KnoWhiz). |
+| App ID `com.dowhiz.awardgrid` | **Not registered.** The team has nine App IDs, mostly `com.curastone.*`, plus an Xcode wildcard (`*`). *Registered later on 2026-09-25 by the release session: `IOS_1.0_RELEASE.md` B3.* |
+| App Store Connect record | **None for AwardGrid.** The team has other apps (Restful, Lets ×3, MemCatch, KnoWhiz). *Created later on 2026-09-25 by the release session: `IOS_1.0_RELEASE.md` B4.* |
 | What an Admin may do | Register App IDs and devices, and create app records in App Store Connect. The Account Holder is needed for agreements and renewal. |
 | Signing on this Mac | The login keychain has one Apple Distribution and one Apple Development identity. The research pass reported the Distribution one as belonging to Curastone CORP.; confirm in Xcode › Settings › Accounts. There are 2 provisioning profiles; whether any matches the app was not checked. |
 
