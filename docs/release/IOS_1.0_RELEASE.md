@@ -1,6 +1,6 @@
 # AwardGrid iOS 1.0: release status
 
-Release mode **PUBLIC (App Store) since 2026-09-26.** The owner decided on 2026-09-26 not to ask seats.aero first (§0 P1). It was first
+Release mode **PUBLIC (App Store) since 2026-09-26; version 1.0 (build 3) submitted for review that evening.** The owner decided on 2026-09-26 not to ask seats.aero first (§0 P1). It was first
 written on 2026-09-25 for release mode INTERNAL_PRIVATE (the owner's own use through internal TestFlight), and §1-§9
 still describe that build. `release/ios-1.0` merged as `927b70b` ([PR #99](https://github.com/LoganYe/awardgrid/pull/99))
 and was deployed to the web app on 2026-09-26. The App Store work continues on `release/ios-1.0-appstore` in the
@@ -20,17 +20,18 @@ group with the owner, then install it from the TestFlight app.
 | # | Step | Who | State |
 |---|---|---|---|
 | P1 | seats.aero's permission | Owner | **Not sought, by the owner's decision (2026-09-26):** every user brings their own Pro key, and the owner's own key is not used commercially. The draft to support@seats.aero stays unsent in the owner's Gmail. If App Review asks for authorization under 5.2.2, the answer is seats.aero's terms for Pro users, or that e-mail |
-| P2 | Accept the updated Program License Agreement (B1) | Account Holder | Open. App Store Connect refuses submissions until it is accepted |
-| P3 | The membership renewal (B2) | Account Holder | Open |
+| P2 | Accept the updated Program License Agreement (B1) | Account Holder | **Done** (read 2026-09-26: App Store Connect no longer shows the agreement or the membership banner) |
+| P3 | The membership renewal (B2) | Account Holder | **Done, as far as App Store Connect shows** (the expiry banner is gone) |
 | P4 | How App Review uses the app (D9) | Owner | **Decided: explained in the Review Notes** (no key, no demo mode). The notes say what works without a key and invite the reviewer to write to knowhiz.us@gmail.com for live results. Risk: a 2.1 rejection that asks for access |
-| P5 | Build 1.0 (2), without the internal-only flag | Agent | **Uploaded 2026-09-26 00:54** with the owner's OK; processed, and **selected on version 1.0** |
+| P5 | The build for review | Agent | **Build 1.0 (3), with the new icon** (P14), archived, exported, inspected and uploaded 2026-09-26 20:10 on the owner's OK; it replaces build 2 on version 1.0 once processed. Build 2 (00:54, the first icon) stays in App Store Connect, unused |
 | P6 | App Information: subtitle "Award seats in one table"; primary category Travel | Agent | **Saved** |
 | P7 | Price: Free | Agent | **Saved:** $0.00 in 175 countries or regions |
 | P8 | Availability: every country or region except China mainland. Apple silicon Mac and Vision Pro: off (D11) | Agent, on the owner's OK | **Saved 2026-09-26:** 174 countries or regions, China mainland "Not Available"; Mac and Vision Pro off; distribution Public |
 | P9 | Version 1.0: screenshots, promotional text, description, keywords, support and marketing URLs, copyright | Agent | **Saved:** the 7 en-US screenshots in the 6.9-inch set, in order (list, calendar, matrix, details, compare, watches, Ask; the 6.5-inch set uses them); the §7 texts; `https://awardgrid.dowhiz.com/support/` and `/ios/`; "2026 Curastone CORP."; release automatically after approval |
 | P10 | App Privacy; age rating; content rights; DSA; regulated medical device | Agent, on the owner's OK | **Done 2026-09-26.** App Privacy published (D8: Search History and Other User Content, app functionality, linked, no tracking; privacy policy URL set). **Age rating 4+**: every question No or None, from the app's facts, and no override; Brazil shows ALL and Korea 00+. **Content rights**: the app shows third-party content (seats.aero's data), and the owner holds that it has the necessary rights. **DSA**: the account already declares non-trader, as for Restful. **Medical device**: not asked of a Travel app with no medical content |
 | P11 | App Review information | Agent | **Saved:** contact Logan Ye with Restful's phone number, e-mail knowhiz.us@gmail.com; sign-in not required; the notes (P4) |
-| P12 | Submit for Review | Owner, or the agent with an allow rule | **Only P2 (the agreement) remains.** Then: version 1.0 › Add for Review › Submit |
+| P12 | Submit for Review | Agent, on the owner's request | **Submitted 2026-09-26 20:24:** version 1.0 with build 3; App Store Connect shows "Waiting for Review" (up to 48 hours; Apple e-mails the result). It is released automatically once approved |
+| P14 | A new icon, based on what the app does | Agent; the owner chose it | **Done 2026-09-26:** a two-by-two table on the deep teal, the top-right cell lit amber with a top-down airliner in it, chosen from three directions; `apps/ios/scripts/app-icon.py`; PR #102 |
 | P13 | Once approved: LEGAL.md, the landing page and the privacy policy stop saying the app is tested privately and not on the App Store | Agent, with the owner's OK | Later |
 
 **Build 1.0 (2)** (`183dcce`: `CURRENT_PROJECT_VERSION` 2, `ExportOptions-AppStore.plist`). Archived on 2026-09-26
@@ -78,7 +79,7 @@ What is left is the owner's:
 | D3 | Store and display name AwardGrid; 1.0 (1) | `CFBundleDisplayName` AwardGrid; capacitor appName AwardGrid; MARKETING_VERSION 1.0, CURRENT_PROJECT_VERSION 1 | Store name is set in B4 |
 | D4 | iPhone only | `TARGETED_DEVICE_FAMILY = 1` | — |
 | D5 | Minimum iOS 18.0 | `IPHONEOS_DEPLOYMENT_TARGET = 18.0` (all four places) | — |
-| D6 | Original icon | `AppIcon-1024.png` from `apps/ios/scripts/app-icon.py`; the Capacitor splash replaced by the app's canvas colour, light and dark | — |
+| D6 | Original icon | `AppIcon-1024.png` from `apps/ios/scripts/app-icon.py`: since build 3, a plane in the table's lit cell (§0 P14); the Capacitor splash replaced by the app's canvas colour, light and dark | — |
 | D7 | Landing, privacy and support pages for `https://awardgrid.dowhiz.com` | `sites/landing` builds `/ios/`, `/privacy/`, `/support/`, served on that host by the Worker `awardgrid-site` beside the web app; the app links privacy and support from Settings › About | — |
 | D8 | App Privacy: Search History and Other User Content, linked, app functionality, no tracking | `PrivacyInfo.xcprivacy` says exactly that; the privacy policy says the same | Enter it in App Store Connect (§7.3) |
 | D9 | Internal TestFlight only; no review credentials | No review notes or demo mode prepared | — |
@@ -112,7 +113,11 @@ What is left is the owner's:
 | `2c46f07` | §0 (public release); App Store screenshots and their generator |
 | `128af10` | §0 after the App Store Connect work: build 2 uploaded and selected, the listing, App Privacy, review information |
 | `f4fbcab` | The age rating (4+) and the content rights, done on the owner's instruction |
-| (this commit) | Availability set (P8); the repository is public, so CI runs again |
+| `2976a57` | Availability set (P8); the repository is public, so CI runs again |
+| `397a375` | PR #101 merged by the agent on the owner's request |
+| `ea4bf2d` | The new icon and build 3 |
+| `1e84534` | §0: the agreement accepted, build 3 uploaded (PR #102) |
+| (this commit) | §0: build 3 selected and version 1.0 submitted for review |
 
 ---
 
