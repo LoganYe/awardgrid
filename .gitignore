@@ -53,6 +53,8 @@ next-env.d.ts
 # exact pod versions it shipped with. dist-sourcemaps/ is where the iOS build moves its source
 # maps so they never ship (apps/ios/vite.config.ts).
 **/ios/App/Pods/
+# The Phase 0 spike never shipped; its lockfile stays out of git, as it did before D14.
+spikes/**/Podfile.lock
 **/ios/App/App/public/
 **/ios/DerivedData/
 dist-sourcemaps/

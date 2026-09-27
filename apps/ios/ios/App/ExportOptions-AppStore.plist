@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  Export options for a build that may go to App Review (apps/ios/README.md, "Release"). The owner chose a public
+  App Store release on 2026-09-26 (docs/release/IOS_1.0_RELEASE.md, "Public release"). The same as
+  ExportOptions-TestFlightInternal.plist, without testFlightInternalTestingOnly: a build exported with this file can
+  be attached to an App Store version and offered to external testers, not only to the team.
+
+  - destination export: it writes an .ipa; it never uploads. The upload is a separate, per-build OK (README step 7).
+  - manageAppVersionAndBuildNumber false (D14): the build number stays CURRENT_PROJECT_VERSION from project.pbxproj.
+  - No teamID: the export uses the team the archive was signed with, which keeps it out of git.
+-->
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>export</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>

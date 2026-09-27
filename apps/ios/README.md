@@ -299,3 +299,5 @@ everything from a worktree, never from the checkout production serves.
    `destination` set to `upload` (`sed 's|<string>export</string>|<string>upload</string>|'` into a scratch copy)
    and `-allowProvisioningUpdates`, which authenticates with the account signed in to Xcode, so nothing is typed.
    1.0 (1) went up this way.
+   For App Review, export with `ios/App/ExportOptions-AppStore.plist` instead: the same options without
+   `testFlightInternalTestingOnly`, so the build can be attached to an App Store version (1.0 (2) onwards).

@@ -1,11 +1,53 @@
 # AwardGrid iOS 1.0: release status
 
-Release mode **INTERNAL_PRIVATE**: the owner's own use, on the owner's own seats.aero and Anthropic keys, through
-internal TestFlight. Written 2026-09-25 by the release session, on branch `release/ios-1.0` in the worktree
-`/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`, branched from `docs/app-store-handoff` (`26fc6cc`). **Pushed;
-open as [PR #99](https://github.com/LoganYe/awardgrid/pull/99), not merged.** The account state, the rules and the
-background are in `APP_STORE_HANDOFF.md`; this file says what the branch does, what is verified where, and what is
-left, most of it the owner's.
+Release mode **PUBLIC (App Store) since 2026-09-26.** The owner decided on 2026-09-26 not to ask seats.aero first (§0 P1). It was first
+written on 2026-09-25 for release mode INTERNAL_PRIVATE (the owner's own use through internal TestFlight), and §1-§9
+still describe that build. `release/ios-1.0` merged as `927b70b` ([PR #99](https://github.com/LoganYe/awardgrid/pull/99))
+and was deployed to the web app on 2026-09-26. The App Store work continues on `release/ios-1.0-appstore` in the
+worktree `/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`. The account state, the rules and the background are
+in `APP_STORE_HANDOFF.md`.
+
+---
+
+## 0. Public release (the owner's decision, 2026-09-26)
+
+The owner chose a public App Store release. This reverses D1 and D9 as first applied (internal TestFlight only, no
+review access). The owner also set aside the handoff's rule of waiting for seats.aero's written permission (P1).
+The App Store Connect work below was done on the owner's OK. Submission waits for the Account Holder (P2).
+Meanwhile build 1.0 (1) is Ready to Test in TestFlight (internal; expires 90 days after upload). Create an internal
+group with the owner, then install it from the TestFlight app.
+
+| # | Step | Who | State |
+|---|---|---|---|
+| P1 | seats.aero's permission | Owner | **Not sought, by the owner's decision (2026-09-26):** every user brings their own Pro key, and the owner's own key is not used commercially. The draft to support@seats.aero stays unsent in the owner's Gmail. If App Review asks for authorization under 5.2.2, the answer is seats.aero's terms for Pro users, or that e-mail |
+| P2 | Accept the updated Program License Agreement (B1) | Account Holder | Open. App Store Connect refuses submissions until it is accepted |
+| P3 | The membership renewal (B2) | Account Holder | Open |
+| P4 | How App Review uses the app (D9) | Owner | **Decided: explained in the Review Notes** (no key, no demo mode). The notes say what works without a key and invite the reviewer to write to knowhiz.us@gmail.com for live results. Risk: a 2.1 rejection that asks for access |
+| P5 | Build 1.0 (2), without the internal-only flag | Agent | **Uploaded 2026-09-26 00:54** with the owner's OK; processed, and **selected on version 1.0** |
+| P6 | App Information: subtitle "Award seats in one table"; primary category Travel | Agent | **Saved** |
+| P7 | Price: Free | Agent | **Saved:** $0.00 in 175 countries or regions |
+| P8 | Availability: every country or region except China mainland. Apple silicon Mac and Vision Pro: off (D11) | Agent, on the owner's OK | **Saved 2026-09-26:** 174 countries or regions, China mainland "Not Available"; Mac and Vision Pro off; distribution Public |
+| P9 | Version 1.0: screenshots, promotional text, description, keywords, support and marketing URLs, copyright | Agent | **Saved:** the 7 en-US screenshots in the 6.9-inch set, in order (list, calendar, matrix, details, compare, watches, Ask; the 6.5-inch set uses them); the §7 texts; `https://awardgrid.dowhiz.com/support/` and `/ios/`; "2026 Curastone CORP."; release automatically after approval |
+| P10 | App Privacy; age rating; content rights; DSA; regulated medical device | Agent, on the owner's OK | **Done 2026-09-26.** App Privacy published (D8: Search History and Other User Content, app functionality, linked, no tracking; privacy policy URL set). **Age rating 4+**: every question No or None, from the app's facts, and no override; Brazil shows ALL and Korea 00+. **Content rights**: the app shows third-party content (seats.aero's data), and the owner holds that it has the necessary rights. **DSA**: the account already declares non-trader, as for Restful. **Medical device**: not asked of a Travel app with no medical content |
+| P11 | App Review information | Agent | **Saved:** contact Logan Ye with Restful's phone number, e-mail knowhiz.us@gmail.com; sign-in not required; the notes (P4) |
+| P12 | Submit for Review | Owner, or the agent with an allow rule | **Only P2 (the agreement) remains.** Then: version 1.0 › Add for Review › Submit |
+| P13 | Once approved: LEGAL.md, the landing page and the privacy policy stop saying the app is tested privately and not on the App Store | Agent, with the owner's OK | Later |
+
+**Build 1.0 (2)** (`183dcce`: `CURRENT_PROJECT_VERSION` 2, `ExportOptions-AppStore.plist`). Archived on 2026-09-26
+without `-allowProvisioningUpdates`, because the profiles from build 1 are on this Mac:
+`~/Library/Developer/Xcode/Archives/2026-09-26/awardgrid-1.0-2.xcarchive`. Exported with `testFlightInternalTestingOnly`
+false. Signed Apple Distribution: Curastone CORP. with the team's store profile; `codesign --verify --deep --strict`
+passes. `get-task-allow` false; 1.0 (2); `MinimumOSVersion` 18.0; `UIDeviceFamily` [1]. No maps, R1 0 hits, and
+`public/` is byte-identical to build 1.
+
+**Screenshots:** `docs/release/appstore/1.0/en-US` (7) and `zh-Hans` (6), 1320×2868 (the 6.9-inch size), RGB.
+`e2e/uiux/appstore-screenshots.spec.ts` renders them from the real app with the fixture's synthetic data, at that
+phone's safe areas (`UIUX_STORE_SHOTS=<dir>`). The Ask screenshot (en-US 07) shows the scripted answer, and "Claude"
+in the app's own title. Using it is the owner's choice.
+
+**Web:** main `927b70b` deployed on 2026-09-26 after its CI passed. `/legal` shows the new LEGAL.md; the static
+assets and `/ios/`, `/privacy/` and `/support/` answer 200. Backup: `~/Desktop/workspace/awardgrid-deploy-backup-20260926/`
+(`.next`, the database, the previous HEAD `26fc6cc`, the build log).
 
 ---
 
@@ -63,7 +105,14 @@ What is left is the owner's:
 | `caae87d` | CI: gitleaks allows `Podfile.lock` (its podspec checksums matched the generic-key rule) |
 | `7c0b37b` | The site mounted beside the web app: the landing page moves to `/ios/`, a root page for the Worker's own address |
 | `63887b8` | The site deployed as the static-assets Worker `awardgrid-site`; `sites/landing/DEPLOY.md`; B6 done |
-| (this commit) | B3, B4, the signed archive and its export (§5) |
+| `082a527` | B3, B4, the signed archive and its export (§5) |
+| `a036899` | Build 1.0 (1) uploaded; the agreement and renewal need the Account Holder's own sign-in |
+| `927b70b` | PR #99 merged into main by the owner, and deployed to the web app |
+| `183dcce` | Build 2 for the App Store; `ExportOptions-AppStore.plist`; the spike's Podfile.lock ignored again |
+| `2c46f07` | §0 (public release); App Store screenshots and their generator |
+| `128af10` | §0 after the App Store Connect work: build 2 uploaded and selected, the listing, App Privacy, review information |
+| `f4fbcab` | The age rating (4+) and the content rights, done on the owner's instruction |
+| (this commit) | Availability set (P8); the repository is public, so CI runs again |
 
 ---
 
@@ -207,7 +256,7 @@ an OK for that one action.
 `ITSAppUsesNonExemptEncryption` is false in the Info.plist: the app's only encryption is HTTPS through URLSession
 and the Keychain, both provided by the OS. The declaration is the owner's to make if App Store Connect asks.
 
-### 7.6 Listing drafts, for a public release only
+### 7.6 Listing drafts, for the public release (§0 P9)
 
 Not needed for internal TestFlight. Trademark rule (2.3.7): no seats.aero, airline, Claude or Anthropic in the name,
 subtitle or keywords; the description names them only to say what the app works with.
@@ -215,6 +264,7 @@ subtitle or keywords; the description names them only to say what the app works 
 - **Keywords** (97 of 100): `award,miles,points,award seats,award flights,business class,first class,frequent flyer,redemption`
 - **Keywords, Chinese:** `里程票,里程,积分,兑换,商务舱,头等舱,奖励机票,航空里程,常旅客`
 - **Promotional text:** One table of award seats for the routes and dates you choose, on your own seats.aero key.
+- **Copyright:** 2026 Curastone CORP.
 - **Description:**
 
   > AwardGrid puts award availability for your routes and dates into one table: the cheapest award seat in each
