@@ -1,6 +1,6 @@
 # AwardGrid iOS 1.0: release status
 
-Release mode **PUBLIC (App Store) since 2026-09-26.** The owner decided on 2026-09-26 not to ask seats.aero first (§0 P1). It was first
+Release mode **PUBLIC (App Store) since 2026-09-26; version 1.0 (build 3) submitted for review that evening.** The owner decided on 2026-09-26 not to ask seats.aero first (§0 P1). It was first
 written on 2026-09-25 for release mode INTERNAL_PRIVATE (the owner's own use through internal TestFlight), and §1-§9
 still describe that build. `release/ios-1.0` merged as `927b70b` ([PR #99](https://github.com/LoganYe/awardgrid/pull/99))
 and was deployed to the web app on 2026-09-26. The App Store work continues on `release/ios-1.0-appstore` in the
@@ -30,7 +30,7 @@ group with the owner, then install it from the TestFlight app.
 | P9 | Version 1.0: screenshots, promotional text, description, keywords, support and marketing URLs, copyright | Agent | **Saved:** the 7 en-US screenshots in the 6.9-inch set, in order (list, calendar, matrix, details, compare, watches, Ask; the 6.5-inch set uses them); the §7 texts; `https://awardgrid.dowhiz.com/support/` and `/ios/`; "2026 Curastone CORP."; release automatically after approval |
 | P10 | App Privacy; age rating; content rights; DSA; regulated medical device | Agent, on the owner's OK | **Done 2026-09-26.** App Privacy published (D8: Search History and Other User Content, app functionality, linked, no tracking; privacy policy URL set). **Age rating 4+**: every question No or None, from the app's facts, and no override; Brazil shows ALL and Korea 00+. **Content rights**: the app shows third-party content (seats.aero's data), and the owner holds that it has the necessary rights. **DSA**: the account already declares non-trader, as for Restful. **Medical device**: not asked of a Travel app with no medical content |
 | P11 | App Review information | Agent | **Saved:** contact Logan Ye with Restful's phone number, e-mail knowhiz.us@gmail.com; sign-in not required; the notes (P4) |
-| P12 | Submit for Review | Agent, on the owner's request | After build 3 is processed and selected |
+| P12 | Submit for Review | Agent, on the owner's request | **Submitted 2026-09-26 20:24:** version 1.0 with build 3; App Store Connect shows "Waiting for Review" (up to 48 hours; Apple e-mails the result). It is released automatically once approved |
 | P14 | A new icon, based on what the app does | Agent; the owner chose it | **Done 2026-09-26:** a two-by-two table on the deep teal, the top-right cell lit amber with a top-down airliner in it, chosen from three directions; `apps/ios/scripts/app-icon.py`; PR #102 |
 | P13 | Once approved: LEGAL.md, the landing page and the privacy policy stop saying the app is tested privately and not on the App Store | Agent, with the owner's OK | Later |
 
@@ -116,7 +116,8 @@ What is left is the owner's:
 | `2976a57` | Availability set (P8); the repository is public, so CI runs again |
 | `397a375` | PR #101 merged by the agent on the owner's request |
 | `ea4bf2d` | The new icon and build 3 |
-| (this commit) | §0: the agreement accepted, build 3 uploaded (PR #102) |
+| `1e84534` | §0: the agreement accepted, build 3 uploaded (PR #102) |
+| (this commit) | §0: build 3 selected and version 1.0 submitted for review |
 
 ---
 
