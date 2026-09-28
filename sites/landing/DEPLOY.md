@@ -70,7 +70,9 @@ check it with a signed-in session: `/` shows the static page, and its `/grid` li
 max-age=31536000` (no includeSubDomains, no preload) and `X-Content-Type-Options: nosniff` on every path;
 `Cache-Control: public, max-age=31536000, immutable` on `/_site/*` (the file names carry a content hash); and
 `X-Robots-Tag: noindex` on the workers.dev address, whose pages also carry a canonical link to
-`https://awardgrid.dowhiz.com/…`.
+`https://awardgrid.dowhiz.com/…`. It also pins `Content-Type: image/x-icon` on `/favicon.ico`. Cloudflare serves the
+type given at upload (wrangler sets it from the file's extension); the dashboard upload of 2026-09-28 gave none for
+`.ico`, so the Worker served it as `content-type: null`.
 
 ## Build
 
