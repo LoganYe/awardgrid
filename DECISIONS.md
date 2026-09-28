@@ -1253,6 +1253,9 @@ Full rationale in `packages/tokens/README.md`.
   `LEGAL.md` promises "no telemetry or analytics", and a marketing page is exactly where that
   promise usually quietly dies, so there is no script tag at all to argue about later.
 
+  Amended 2026-09-28: zero executable JavaScript. The only `<script>` allowed is `type=application/ld+json` without
+  `src`, and the honesty test scans its strings. Favicons are same-origin.
+
 - **The landing page carries NO App Store badge, and says why on the page.** `docs/PIVOT.md` §0 is
   unanswered: seats.aero's Partner API is licensed for non-commercial personal use and nobody has
   confirmed that permits a distributed app. A "Download on the App Store" button would assert a

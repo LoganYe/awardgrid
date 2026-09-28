@@ -65,6 +65,61 @@ jobs:
           fi
           echo "OK: no .env or SQLite files tracked"
 
+  # The static site (sites/landing) as it is deployed, and the public-claims gate over it. The gate reads the built
+  # pages (their text, comments, scripts, attribution links and JSON-LD) and the registered public files against
+  # growth/product-facts.json, at the release status the registry records; its other status modes are covered by its
+  # tests. Each check is its own step, and the tests run with the verbose reporter, so the log names every test that
+  # ran rather than only a green tick. The two test steps build nothing into dist/ and still run when the build or
+  # the gate fails, so a red run shows them too.
+  landing:
+    name: landing site · public-claims gate
+    runs-on: ubuntu-latest
+    env:
+      # Tests must pass with no network and no keys (Definition of done).
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - id: install
+        run: pnpm install --frozen-lockfile
+
+      # A placeholder address: the build refuses to run without one (sites/landing/vite.config.ts).
+      - name: Build the landing site
+        run: AWARDGRID_SUPPORT_EMAIL=support@example.com pnpm build:landing
+
+      - name: Public-claims gate on the built site (the registry's release status)
+        run: node scripts/growth/validate-public-claims.mjs --dist sites/landing/dist
+
+      - name: No HTML comment in the built pages
+        run: |
+          set -euo pipefail
+          grep -rc '<!--' sites/landing/dist --include='*.html' || true
+          if grep -rq '<!--' sites/landing/dist --include='*.html'; then
+            echo "HTML comments found in sites/landing/dist"; exit 1
+          fi
+          echo "OK: no HTML comment in sites/landing/dist"
+
+      # `pnpm --filter … test -- --reporter=verbose` hands vitest a literal `--`, after which vitest ignores the flag,
+      # and pnpm reads a bare `--reporter` as its own option; `exec` passes it through to vitest.
+      - name: Landing tests (the built pages, comment stripping, root and publicDir)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm --filter @awardgrid/landing exec vitest run --reporter=verbose
+
+      - name: Public-claims gate tests (every rule, each release status, today's pages)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm exec vitest run scripts/growth --reporter=verbose
+
+      # Store metadata, once scripts/aso/validate_metadata.py and apps/ios/store-metadata/ exist:
+      # - name: Store metadata validator
+      #   run: python3 scripts/aso/validate_metadata.py --strict
+
   e2e:
     name: e2e (Playwright, demo mock)
     runs-on: ubuntu-latest

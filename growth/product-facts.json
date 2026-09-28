@@ -1,0 +1,698 @@
+{
+  "schema_version": 2,
+  "about": "Facts about the AwardGrid iPhone app that public copy may use. Every public sentence is built from allowed_copy; scripts/growth/validate-public-claims.mjs checks this file and every public surface in CI.",
+  "released": {
+    "status": "submitted_not_live",
+    "name": "AwardGrid",
+    "app_id": "6816321841",
+    "bundle_id": "com.dowhiz.awardgrid",
+    "seller": "Curastone CORP.",
+    "version": "1.0",
+    "build": "3",
+    "build_source_revision": "ea4bf2d",
+    "main_revision": "10c8e36",
+    "submitted_at_utc": "2026-09-27T03:24:00Z",
+    "platforms": [
+      "iPhone"
+    ],
+    "minimum_ios": "18.0",
+    "interface_languages": [
+      "en",
+      "zh-Hans"
+    ],
+    "price": "free, no in-app purchase",
+    "territories": {
+      "count": 174,
+      "excluded": [
+        "China mainland"
+      ]
+    },
+    "checked_at": "2026-09-28",
+    "evidence_level": "observed",
+    "evidence_ref": [
+      "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\"",
+      "docs/release/IOS_1.0_RELEASE.md:66-67 \"B3 | Register the App ID `com.dowhiz.awardgrid`\"",
+      "docs/release/IOS_1.0_RELEASE.md:158 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
+      "docs/release/IOS_1.0_RELEASE.md:119 \"`ea4bf2d` | The new icon and build 3\"",
+      "docs/release/IOS_1.0_RELEASE.md:81-82 \"D4 | iPhone only\"",
+      "apps/ios/ios/App/App.xcodeproj/project.pbxproj:366-374 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
+      "apps/ios/ios/App/App.xcodeproj/project.pbxproj:387-394 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
+      "docs/release/IOS_1.0_RELEASE.md:28-29 \"P7 | Price: Free\"",
+      "apps/ios/ios/App/App/Info.plist:9-13 \"<key>CFBundleLocalizations</key>\"",
+      "apps/ios/src/app/locale.ts:11-19 \"Chinese for any zh-* language tag, English otherwise.\"",
+      "docs/release/APP_STORE_HANDOFF.md:184 \"the keys are credentials for the user's own third-party accounts: nothing is sold\"",
+      "[external] https://itunes.apple.com/lookup?id=6816321841&country=us&cb=<epoch> (read 2026-09-28): resultCount 0 in us, gb, hk, tw, sg, jp, ca and au",
+      "[external] https://itunes.apple.com/lookup?id=6816321841&country=<cc>&cb=<epoch> (pattern): the cache-busted lookup that decides the switch to released; resultCount of 1 or more means the app is live in that storefront"
+    ],
+    "notes": [
+      "submitted_at_utc: docs/release/IOS_1.0_RELEASE.md:33 records the submission at 20:24 on 2026-09-26 without a time zone; the zone (Pacific, UTC-7) is from commit 334ecef, which recorded it at 2026-09-26T20:25:44-07:00. Release is automatic once Apple approves.",
+      "build_source_revision is the commit that built 1.0 (3), as the release record lists it (the `ea4bf2d` evidence ref above); main_revision is the origin/main revision the 2026-09-28 source fixtures were taken at (scripts/growth/fixtures/2026-09-28/src-10c8e36).",
+      "minimum_ios and platforms are also the App target's build settings: IPHONEOS_DEPLOYMENT_TARGET = 18.0 and TARGETED_DEVICE_FAMILY = 1 in apps/ios/ios/App/App.xcodeproj/project.pbxproj.",
+      "App Store Connect prices the app at $0.00 in 175 countries or regions and makes it available in 174 (not China mainland): docs/release/IOS_1.0_RELEASE.md:28-29."
+    ],
+    "released_at_utc": null,
+    "withdrawn_at_utc": null,
+    "t0_lookup_receipt": null
+  },
+  "candidate": null,
+  "claims": [
+    {
+      "claim_id": "identity",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "observed",
+      "evidence_ref": [
+        "docs/release/IOS_1.0_RELEASE.md:67 \"B4 | Create the App Store Connect record\"",
+        "docs/release/IOS_1.0_RELEASE.md:81 \"D4 | iPhone only\"",
+        "docs/release/IOS_1.0_RELEASE.md:158 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
+        "docs/release/IOS_1.0_RELEASE.md:273 \"**Copyright:** 2026 Curastone CORP.\"",
+        "apps/ios/ios/App/App/Info.plist:7-8 \"<key>CFBundleDisplayName</key>\""
+      ],
+      "allowed_copy": "AwardGrid is an iPhone app by Curastone CORP.",
+      "limitations": [
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "release_status",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "observed",
+      "evidence_ref": [
+        "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\"",
+        "[external] https://itunes.apple.com/lookup?id=6816321841&country=us&cb=<epoch> (read 2026-09-28): resultCount 0 in us, gb, hk, tw, sg, jp, ca and au"
+      ],
+      "allowed_copy_by_status": {
+        "submitted_not_live": "AwardGrid for iPhone has been submitted to the App Store.",
+        "released": "AwardGrid is free on the App Store (App ID 6816321841).",
+        "withdrawn": "AwardGrid for iPhone was removed from the App Store on <date>."
+      },
+      "limitations": [
+        "Exactly one version is used, the one for released.status.",
+        "The released version is used only after a cache-busted App Store lookup returns the app; the withdrawn version replaces <date> with the date of removal.",
+        "The released version says free, so, like the price claim, it goes in the same sentence group as the prerequisite sentence (FREE_WITHOUT_PRO): in README.md the status, price and prerequisite sentences are one paragraph.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "history",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "docs/PIVOT.md:45-47 \"grounds this entire product on that basis\"",
+        "docs/DEPLOYMENT.md:51-54 \"Cloudflare Access is NOT set up.\"",
+        "src/app/api/auth/register/route.ts:2-4 \"POST /api/auth/register { inviteCode, username, password }\"",
+        "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\""
+      ],
+      "allowed_copy_by_status": {
+        "submitted_not_live": "AwardGrid began as a private, invite-only web app for its developer and a small group of friends. The iPhone app has been submitted to the App Store as a separate public release.",
+        "released": "AwardGrid began as a private, invite-only web app for its developer and a small group of friends. The iPhone app is a separate, public release."
+      },
+      "limitations": [
+        "Used verbatim, as whole sentences: these sentences are exempt from PRIVATE_WEBAPP only when they appear exactly (exact_copy_exempt_claims).",
+        "The released version is used only once released.status is released. There is no withdrawn version yet.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "webapp_note",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "src/app/api/auth/register/route.ts:2-4 \"POST /api/auth/register { inviteCode, username, password }\"",
+        "docs/DEPLOYMENT.md:49-56 \"## Not done\"",
+        "sites/landing/DEPLOY.md:9-18 \"## Shape\""
+      ],
+      "allowed_copy_variants": {
+        "kept_host": "The web app at this address is private and invite-only; it is separate from the iPhone app.",
+        "kept_repo": "This repo also holds a private, invite-only web app, separate from the iPhone app.",
+        "retired": "The earlier private web app at this address has been shut down."
+      },
+      "in_use": [
+        "kept_host",
+        "kept_repo"
+      ],
+      "limitations": [
+        "The web app was running on 2026-09-28, so the kept variants are in use; the retired variant is used only once the web app is shut down.",
+        "Apart from history, only these sentences may call anything on this host or in this repo private or invite-only (PRIVATE_WEBAPP).",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "dependency",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "external",
+      "evidence_ref": [
+        "docs/reference/seatsaero/getting-started-p.md:25-27 \"Seats.aero Pro users may be able to access the partner API\"",
+        "[external] https://seats.aero/terms (read 2026-08-12)",
+        "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
+      ],
+      "allowed_copy": "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.",
+      "limitations": [
+        "Approved for public use on 2026-09-28.",
+        "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "prerequisite",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "apps/ios/src/search/search.ts:160-161 \"async parseText(text: string, apiKey: string | null)\"",
+        "apps/ios/src/search/search.ts:183-184 \"async searchQuery(query: QueryObject, apiKey: string | null)\"",
+        "apps/ios/src/search/search.ts:337-339 \"function noKey(): ApiFailure {\"",
+        "apps/ios/src/screens/SearchScreen.tsx:544-546 \") : hasKey === false ? (\"",
+        "apps/ios/src/screens/OnboardingScreen.tsx:24-28 \"Find award seats across programs with your own seats.aero key.\"",
+        "docs/reference/seatsaero/getting-started-p.md:25-27 \"Seats.aero Pro users may be able to access the partner API\"",
+        "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
+      ],
+      "allowed_copy": "It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.",
+      "limitations": [
+        "Not every seats.aero Pro account or country gets API access (docs/reference/seatsaero/getting-started-p.md:27).",
+        "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "price",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "observed",
+      "evidence_ref": [
+        "docs/release/IOS_1.0_RELEASE.md:28 \"P7 | Price: Free\"",
+        "docs/release/APP_STORE_HANDOFF.md:184 \"the keys are credentials for the user's own third-party accounts: nothing is sold\"",
+        "apps/ios/package.json:16-26 \"\"dependencies\": {\""
+      ],
+      "allowed_copy_by_status": {
+        "submitted_not_live": "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase.",
+        "released": "The app is free, with no in-app purchase."
+      },
+      "limitations": [
+        "Always in the same sentence group as the prerequisite sentence, so free never reads as free of a paid seats.aero Pro subscription (FREE_WITHOUT_PRO).",
+        "The released version is used only once released.status is released. No seats.aero Pro or Anthropic price is stated.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "grid",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "packages/core/src/lib/query/schema.ts:52 \"export const MAX_SPAN_DAYS = 92;\"",
+        "packages/core/src/lib/query/schema.ts:58-64 \"export const QueryObject = z\"",
+        "apps/ios/src/components/results/AvailabilityMatrix.tsx:5-7 \"Rows are the search's dates, columns its routes; each cell holds one slot per cabin asked\"",
+        "apps/ios/src/components/results/AvailabilityMatrix.tsx:116-122 \"<span className=\"ag-mx-miles\">\"",
+        "apps/ios/src/components/results/copy.ts:143 \"matrixCaption: \"Each cell shows its lowest miles\"",
+        "apps/ios/src/components/results/AvailabilityCard.tsx:94 \"<p className=\"ag-result-fees\">\"",
+        "apps/ios/src/components/results/AvailabilityCard.tsx:102 \"<p className=\"ag-result-time\">\""
+      ],
+      "allowed_copy": "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.",
+      "limitations": [
+        "Decided 2026-09-28: the earlier wording (retired_copy) described the web app's table (packages/core/src/lib/grid/types.ts GridCell, rendered only by the web app). In the iPhone app the table is the Matrix: rows are the dates, columns the routes, and each cell holds one slot per cabin asked with its lowest miles, the program and the seats; fees and data age are on each option's card (AvailabilityMatrix.tsx:5-7, AvailabilityCard.tsx:94, :102).",
+        "Where coverage is incomplete, a cell's number is the lowest retrieved, and miles in different programs are not equivalent (the Matrix caption says both).",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved",
+      "retired_copy": [
+        "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table, with the cheapest award seat in each cell and its miles, fees, seats left, program and data age."
+      ]
+    },
+    {
+      "claim_id": "query_input",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "apps/ios/src/search/search.ts:154-166 \"Check the key and parse free text, sending nothing.\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:4-11 \"A full-height page, outside the tab chrome\"",
+        "packages/core/src/lib/query/deterministic.ts:2-5 \"Deterministic NL → partial QueryObject\"",
+        "packages/core/data/places.json:3 \"\"cities\": {\"",
+        "packages/core/data/places.json:75 \"\"aliases\": {\"",
+        "packages/core/src/lib/query/places.ts:132 \"const RAW_CODE_RE =\"",
+        "packages/core/src/lib/query/dates.ts:106-107 \"const HOLIDAY_RE =\"",
+        "apps/ios/src/app/locale.ts:11-19 \"Chinese for any zh-* language tag, English otherwise.\"",
+        "apps/ios/ios/App/App/Info.plist:9-13 \"<key>CFBundleLocalizations</key>\""
+      ],
+      "allowed_copy": "Type the routes and dates in English or Chinese, or set them in the editor.",
+      "allowed_copy_extra": [
+        "The app's interface is in English or Simplified Chinese."
+      ],
+      "limitations": [
+        "Places come from a fixed list of 70 metro areas and 210 aliases (packages/core/data/places.json); a bare airport code is read only in upper case (places.ts:132); holiday names are not read as dates (dates.ts:106-107); queries in Traditional Chinese characters are not tested.",
+        "The interface sentence is released.interface_languages: Simplified Chinese for a zh-* language, English otherwise (locale.ts:11-19; Info.plist CFBundleLocalizations).",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "views",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "apps/ios/src/components/results/copy.ts:136-138 \"list: \"List\",\"",
+        "apps/ios/src/components/results/copy.ts:243-245 \"list: \"列表\",\"",
+        "packages/core/src/lib/workspace/selection.ts:18-19 \"Options a comparison can hold\"",
+        "packages/core/src/lib/workspace/favorites-store.ts:4-10 \"A favourite is a copy of what a search showed when it was saved\""
+      ],
+      "allowed_copy": "List, Calendar and Matrix views; compare up to four options; save results on the device.",
+      "limitations": [
+        "The iPhone app has no CSV export and no share sheet.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "scope",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "BACKLOG.md:18 \"Round-trip / multi-city queries (v1 is one-way grid only)\"",
+        "packages/core/src/lib/query/schema.ts:58-67 \"export const QueryObject = z\""
+      ],
+      "allowed_copy": "Searches are one-way: no round trips, multi-city or passenger count.",
+      "limitations": [
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "programs",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "packages/core/src/lib/seatsaero/types.ts:15-74 \"Mileage-program source codes from the Concepts page (updated 2026-08-28)\"",
+        "packages/core/src/lib/workspace/present.ts:28 \"\"result.unmonitored\": { en: \"These routes are not monitored by the data source.\"\"",
+        "apps/ios/src/components/results/copy.ts:193 \"unmonitored: \"not monitored by the data source\",\"",
+        "apps/ios/src/components/results/AvailabilityCalendar.tsx:91 \"const MARK: Record<EmptyDayKind, string>\""
+      ],
+      "allowed_copy": "It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\".",
+      "allowed_copy_extra": [
+        "The 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\"."
+      ],
+      "limitations": [
+        "Coverage is whatever seats.aero monitors; the program list is seats.aero's as of 2026-08-28 (types.ts:15).",
+        "In the app the words are \"not monitored by the data source\" and \"These routes are not monitored by the data source.\"",
+        "The extra sentence is the same fact as the answer to a question (growth/geo/accuracy-answer.md).",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "data_cached",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "packages/core/src/lib/seatsaero/types.ts:6-10 \"Endpoints used (Live Search is out of scope — Pro keys cannot use it)\"",
+        "packages/core/src/lib/workspace/present.ts:175-187 \"export function timeLabel(\"",
+        "packages/core/src/lib/workspace/present.ts:33-34 \"\"time.provider_unknown\": { en: \"Source update time unknown\"\"",
+        "packages/core/src/lib/workspace/present.ts:146-150 \"\"38 min\" / \"38 分钟\", in whole units\"",
+        "packages/core/src/lib/seatsaero/normalize.ts:46 \"const timeBasis =\"",
+        "apps/ios/src/components/results/AvailabilityCard.tsx:102 \"<p className=\"ag-result-time\">\"",
+        "LEGAL.md:17-18 \"**Live Search is never used**\"",
+        "LEGAL.md:76-77 \"Cached award data can be stale and awards disappear.\""
+      ],
+      "allowed_copy": "Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points.",
+      "allowed_copy_extra": [
+        "Illustrative figures, not seats.aero data. In the app, results come from seats.aero."
+      ],
+      "limitations": [
+        "\"How old it is\" is the source's update time where seats.aero gives one; where it gives none, the option says the source update time is unknown and shows when this device fetched it (present.ts:175-187, normalize.ts:46). The Matrix view shows no age; each option in the List does (AvailabilityCard.tsx:102).",
+        "The caption sentence is for the example table on sites/landing/ios/index.html, whose figures are made up.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "watches",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "apps/ios/src/watch/capabilities.ts:29-44 \"export const WATCH_CHECKS = {\"",
+        "apps/ios/src/app/App.tsx:261-269 \"Check watches now that the app is open\"",
+        "packages/core/src/lib/watch/watch.ts:154 \"export const DEFAULT_MIN_QUOTA = 25;\"",
+        "packages/core/src/lib/watch/watch.ts:163-178 \"export function dueForCheck(watch: Watch, opts: DueOptions)\"",
+        "apps/ios/src/watch/runner.ts:93 \"quotaRemaining: quota.remaining,\"",
+        "packages/core/src/lib/seatsaero/quota.ts:106-108 \"/** Calls left before the SOFT limit\""
+      ],
+      "allowed_copy": "Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.",
+      "limitations": [
+        "A watch is skipped when it was checked in the last 45 minutes, or when fewer than 25 calls are left before the app's 950-call stop (the watch runner reads Quota.remaining, which counts to that stop: quota.ts:106-108), i.e. once more than 925 calls are used that UTC day.",
+        "The only calls to checkWatches are when the app opens and when it becomes visible again (App.tsx:261-269).",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "quota",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "packages/core/src/lib/seatsaero/quota.ts:36-37 \"export const SEATS_AERO_DAILY_LIMIT = 1000;\"",
+        "packages/core/src/lib/seatsaero/quota.ts:64-72 \"/** UTC calendar day key used by the store\"",
+        "packages/core/src/lib/seatsaero/quota.ts:90 \"this.softLimit = opts.softLimit ?? DEFAULT_SOFT_LIMIT;\"",
+        "apps/ios/src/store/quota-store.ts:10 \"used(day) = max(locally counted calls, DAILY_LIMIT - X-RateLimit-Remaining)\"",
+        "apps/ios/src/store/quota-store.ts:20-23 \"**It is keyed by UTC day**\"",
+        "apps/ios/src/app/bootstrap.ts:323 \"quota: new Quota({ store: quotaStore, now }),\"",
+        "packages/core/src/lib/seatsaero/cache.ts:17 \"export const DEFAULT_CACHE_TTL_MINUTES = 45;\"",
+        "packages/core/src/lib/seatsaero/cache.ts:406-410 \"/** Parse CACHE_TTL_MINUTES, falling back to 45 on garbage. */\"",
+        "apps/ios/src/search/search.ts:195-204 \"const result = await runFind({\"",
+        "docs/reference/seatsaero/getting-started-p.md:25 \"Seats.aero Pro users may be able to access the partner API for up to 1,000 API calls per day\"",
+        "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
+      ],
+      "allowed_copy": "The app stops at 950 of the 1,000 daily calls a Pro key allows and keeps results on the device for 45 minutes, so repeating a search costs no calls. The app's own count restarts at midnight UTC.",
+      "allowed_copy_zh": "应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。",
+      "allowed_copy_extra": [
+        "The app's own count restarts at midnight UTC, when seats.aero resets usage."
+      ],
+      "limitations": [
+        "The app passes no cache lifetime to the search (apps/ios/src/search/search.ts:195-204), so the core default of 45 minutes applies: the app's Vite build replaces process.env with an empty object.",
+        "seats.aero's help centre says usage resets daily at midnight UTC; the comment at packages/core/src/lib/seatsaero/quota.ts:5-7 still calls that undocumented.",
+        "The app counts calls by UTC day and raises its count to what seats.aero's X-RateLimit-Remaining header says has been used (apps/ios/src/store/quota-store.ts:10, :20-23).",
+        "The Chinese sentence (sites/landing/support/index.html) is pending a native speaker's review.",
+        "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "ask",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "apps/ios/src/ask/consent-copy.ts:50-58 \"title: \"Allow Ask to send data to Anthropic?\",\"",
+        "packages/core/src/lib/ask/limits.ts:16 \"export const ASK_MODEL = \"claude-opus-5\";\"",
+        "apps/ios/src/ask/ask-service.ts:558-559 \"Release D10: without the person's permission nothing goes to Anthropic\"",
+        "LEGAL.md:35-36 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\"",
+        "LEGAL.md:44-49 \"sent to Anthropic; the app makes every seats.aero call itself.\"",
+        "apps/ios/src/search/search.ts:156-157 \"No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key\""
+      ],
+      "allowed_copy": "Ask is optional: it answers questions about your results with Claude, on your own Anthropic API key, after you allow it. Anthropic bills each question to that key.",
+      "allowed_copy_extra": [
+        "Only for Ask, which is optional.",
+        "Search runs on your seats.aero key alone."
+      ],
+      "limitations": [
+        "Search runs on your seats.aero key alone: the search parser is deterministic and needs no Anthropic key (apps/ios/src/search/search.ts:156-157).",
+        "No per-question cost is stated.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "privacy",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "apps/ios/package.json:16-26 \"\"dependencies\": {\"",
+        "apps/ios/ios/App/Podfile:12-15 \"pod 'Capacitor'\"",
+        "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
+        "apps/ios/src/native/webview-fetch-guard.ts:22 \"const NATIVE_ONLY_HOSTS: ReadonlySet<string> = new Set([\"api.anthropic.com\", \"seats.aero\"]);\"",
+        "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\"",
+        "LEGAL.md:35-36 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\""
+      ],
+      "allowed_copy": "The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches go to seats.aero and, only for Ask, to Anthropic.",
+      "limitations": [
+        "The subject is always the iPhone app (NO_SERVER_SUBJECT): the private web app on the same host has accounts and a server.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "developer_data",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "observed",
+      "evidence_ref": [
+        "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
+        "sites/landing/privacy/index.html:167-173 \"<h2 id=\"site-h\">This website</h2>\"",
+        "sites/landing/DEPLOY.md:28-30 \"**Cloudflare Web Analytics** is on for the hostname.\"",
+        "apps/ios/package.json:16-26 \"\"dependencies\": {\""
+      ],
+      "allowed_copy": "Neither app has telemetry or analytics of its own; the pages on awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no cookies.",
+      "limitations": [
+        "The wording is the owner's (PR #104, merged 2026-09-28): the website keeps Cloudflare Web Analytics and discloses it. The earlier draft's sentence about the pages (retired_copy) said they run no scripts, which is not true of the served pages.",
+        "Observed 2026-09-28T07:14Z: browser-style requests to /ios/, /privacy/ and /support/ each carried one Cloudflare Web Analytics beacon, added at the edge; the built files carry none.",
+        "The /privacy/ \"This website\" section is the full disclosure; this sentence is the short form used in LEGAL.md.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved",
+      "retired_copy": [
+        "The pages at /ios/, /privacy/ and /support/ run no scripts; Cloudflare, which serves them, keeps aggregate request statistics the developer can view."
+      ]
+    },
+    {
+      "claim_id": "keys",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "apps/ios/src/native/keychain.ts:35 \"const ACCESSIBILITY = KeychainAccess.afterFirstUnlockThisDeviceOnly;\"",
+        "apps/ios/src/native/keychain.ts:64-69 \"async set(value: string) {\"",
+        "apps/ios/src/native/anthropic-key.ts:27-35 \"export const ANTHROPIC_KEY_ITEM = \"anthropic_api_key\";\"",
+        "apps/ios/src/native/anthropic-key.ts:48-52 \"async set(value: string) {\""
+      ],
+      "allowed_copy": "Keys stay in this iPhone's Keychain, with iCloud Keychain sync off.",
+      "limitations": [
+        "iOS may keep the keys in the Keychain after the app is deleted.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "program_link",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "packages/core/src/lib/grid/deeplinks/trusted.ts:46-59 \"The details' outbound link: seats.aero's primary booking link for this option\"",
+        "packages/core/src/lib/grid/deeplinks/index.ts:26-45 \"Programs whose award-search URL shape is NOT implemented yet\"",
+        "apps/ios/src/screens/DetailScreen.tsx:12-13 \"**One way out to the program**, and only on a trusted link\"",
+        "apps/ios/src/screens/DetailScreen.tsx:172 \"const link = loaded?.link ?? detailLink(row, []);\"",
+        "apps/ios/src/screens/DetailScreen.tsx:314-328 \"<footer className=\"ag-detail-actions\"\""
+      ],
+      "allowed_copy": "For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.",
+      "limitations": [
+        "The only program search link the app builds itself is American's (deeplinks/index.ts:42-45); for any other program it is seats.aero's link or none.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "not_offered",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "LEGAL.md:17-18 \"**Live Search is never used**\"",
+        "LEGAL.md:21-23 \"**No scraping.** awardgrid never automates, crawls or scrapes\"",
+        "LEGAL.md:56-57 \"No airline, alliance or loyalty-program logos, wordmarks or brand imagery are displayed.\"",
+        "LEGAL.md:63-66 \"awardgrid never accepts, stores, or transmits airline, bank or travel-portal usernames\"",
+        "BACKLOG.md:18 \"Round-trip / multi-city queries (v1 is one-way grid only)\"",
+        "apps/ios/src/watch/capabilities.ts:40-44 \"export const IOS_WATCH_CAPABILITIES: WatchCapabilities = {\""
+      ],
+      "allowed_copy": "No live search, no booking, no round trips, no alerts or notifications, no scraping of airline or bank sites, no airline or bank passwords, no logos.",
+      "limitations": [
+        "Describes the iPhone app.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "affiliation",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "apps/ios/src/screens/settings-copy.ts:136 \"notAffiliated: \"AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero\"",
+        "apps/ios/src/screens/settings-copy.ts:217 \"notAffiliated: \"AwardGrid 与 seats.aero、Anthropic\"",
+        "LEGAL.md:57-59 \"Programs are referred to by their plain text names.\"",
+        "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
+        "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\""
+      ],
+      "allowed_copy": "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.",
+      "allowed_copy_zh": "AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
+      "allowed_copy_extra": [
+        "Its data comes from seats.aero."
+      ],
+      "limitations": [
+        "Used verbatim; the Chinese sentence is the app's own (settings-copy.ts:217).",
+        "\"Its data comes from seats.aero\": every search goes to the seats.aero Partner API through the native HTTP adapter (http.ts:2-11; types.ts:4).",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "availability",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "observed",
+      "evidence_ref": [
+        "docs/release/IOS_1.0_RELEASE.md:29 \"P8 | Availability: every country or region except China mainland.\""
+      ],
+      "allowed_copy_by_status": {
+        "submitted_not_live": "AwardGrid for iPhone will be offered in 174 countries or regions; not in mainland China.",
+        "released": "Available in 174 countries or regions; not in mainland China."
+      },
+      "limitations": [
+        "The released version is used only once released.status is released.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    }
+  ],
+  "public_files": [
+    {
+      "path": "sites/landing/index.html"
+    },
+    {
+      "path": "sites/landing/ios/index.html"
+    },
+    {
+      "path": "sites/landing/privacy/index.html"
+    },
+    {
+      "path": "sites/landing/support/index.html"
+    },
+    {
+      "glob": "sites/landing/**/index.html",
+      "discovery": true,
+      "note": "Finds every page of the static site; each one must also be listed here."
+    },
+    {
+      "path": "LEGAL.md"
+    },
+    {
+      "path": "README.md#public-claims",
+      "note": "Only the text between the public-claims:start and public-claims:end markers."
+    },
+    {
+      "path": "growth/geo/accuracy-answer.md"
+    },
+    {
+      "path": "sites/landing/public/llms.txt",
+      "reserved": true,
+      "note": "Checked once it exists."
+    },
+    {
+      "path": "sites/landing/public/robots.txt",
+      "reserved": true,
+      "note": "Checked once it exists."
+    },
+    {
+      "glob": "apps/ios/store-metadata/**",
+      "reserved": true,
+      "note": "Checked once it exists; name, subtitle and keywords also get TRADEMARK_ASO."
+    }
+  ],
+  "nonmarketing_files": [
+    {
+      "path": "README.md",
+      "scope": "everything outside the public-claims markers",
+      "reason": "Developer documentation for the repository and its private web app (lanes, requirements, setup, environment). Outside the markers, the only sentences that state the iPhone app's release status are the history claim's, verbatim, under the web app heading; this part is not scanned, so they are updated by hand when released.status changes."
+    },
+    {
+      "path": "package.json",
+      "reason": "The root package's description names the package for developers; it is not copy about the iPhone app."
+    }
+  ],
+  "historical_allowlist": [
+    {
+      "file": "sites/landing/privacy/index.html",
+      "text": "AwardGrid has no accounts and no server of its own.",
+      "rules": [
+        "NO_SERVER_SUBJECT"
+      ],
+      "reason": "sites/landing/privacy/ is pending a separate change (its developer-data wording). The page is the iPhone app's privacy policy, so the app is the subject.",
+      "expires_when": "this sentence names the iPhone app as its subject; remove this exemption then"
+    },
+    {
+      "file": "sites/landing/privacy/index.html",
+      "text": "AwardGrid 没有账号，也没有自己的服务器。",
+      "rules": [
+        "NO_SERVER_SUBJECT"
+      ],
+      "reason": "The Chinese version of the same sentence, pending a separate change to sites/landing/privacy/ (its developer-data wording).",
+      "expires_when": "this sentence names the iPhone app (iPhone App) as its subject; remove this exemption then"
+    },
+    {
+      "file": "sites/landing/privacy/index.html",
+      "text": "Data: seats.aero.",
+      "rules": [
+        "ATTRIBUTION_LINK"
+      ],
+      "reason": "The footer of sites/landing/privacy/, which is pending a separate change; the other pages already link seats.aero here.",
+      "expires_when": "the pending change to sites/landing/privacy/ lands with the link; remove this exemption then"
+    }
+  ],
+  "exact_copy_exempt_claims": [
+    "history",
+    "webapp_note"
+  ]
+}

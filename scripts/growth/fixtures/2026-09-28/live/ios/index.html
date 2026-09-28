@@ -6,26 +6,25 @@
     <title>AwardGrid — one table of award seats, on your own key</title>
     <meta
       name="description"
-      content="Type the routes and dates in English or Chinese, or set them in the editor. AwardGrid puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table."
+      content="Ask in Chinese or English for a set of origins, destinations and dates. AwardGrid returns one table of award availability, running entirely on your own seats.aero Pro key."
     />
     <!--
-      No script in this file and no webfont request (honesty.test.ts scans it). Cloudflare adds its Web
-      Analytics beacon at the edge, for browsers; the privacy policy says so ("This website"), and LEGAL.md
-      says neither app has telemetry or analytics of its own. A marketing page is where such promises
-      usually drift, so this one says what the pages do.
+      No analytics, no telemetry, no third-party script, no webfont request. LEGAL.md commits to
+      "no paywall, cost-sharing, subscription, advertising, telemetry or analytics", and a
+      marketing page is exactly where that promise usually quietly dies.
     -->
-    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" crossorigin href="../_site/styles-DN8akfGg.css">
   </head>
   <body>
     <main>
       <header class="hero">
         <p class="eyebrow">Award search</p>
         <h1>One table. Your own key.</h1>
+        <!-- home.lead, verbatim from the app's dictionary: the voice does not change (PIVOT §4). -->
         <p class="lead">
-          Type the routes and dates in English or Chinese, or set them in the editor. It puts seats.aero's
-          cached award availability for several origins, several destinations and up to 92 days into one
-          table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats
-          left; each option also shows its fees and how old the data is.
+          Ask in Chinese or English for a set of origins, destinations and dates. AwardGrid returns
+          one table: the cheapest award seat in each cell, with the miles, the fees, the seats left,
+          the program that sells it, and how old the data is.
         </p>
       </header>
 
@@ -68,9 +67,7 @@
             </tbody>
           </table>
         </div>
-        <p class="attribution">
-          Illustrative figures, not seats.aero data. In the app, results come from seats.aero.
-        </p>
+        <p class="attribution">Data: seats.aero. Example figures, not live availability.</p>
       </section>
 
       <section class="facts" aria-label="How it works">
@@ -143,10 +140,9 @@
                 </td>
               </tr>
               <tr>
-                <th scope="row">No accounts, no analytics in the app</th>
+                <th scope="row">No accounts, no analytics</th>
                 <td>
-                  No telemetry, no advertising, no tracking. There is no server to collect any of it. These web pages
-                  count visits with Cloudflare Web Analytics, without cookies (<a href="../privacy/#site-h">privacy policy</a>).
+                  No telemetry, no advertising, no tracking. There is no server to collect any of it.
                 </td>
               </tr>
             </tbody>
@@ -154,14 +150,21 @@
         </div>
       </section>
 
+      <!--
+        NO App Store badge, and this is deliberate.
+        docs/PIVOT.md §0: seats.aero's Partner API is licensed for non-commercial personal use, and
+        whether they permit distributing an app built on it is UNANSWERED. A "Download on the App
+        Store" button would assert a listing that may not be permitted to exist. Saying so plainly
+        is both the honest option and the one that needs no rewrite when the answer arrives.
+      -->
       <section class="status" aria-labelledby="status-h">
         <h2 id="status-h">Where this is up to</h2>
         <p>
-          AwardGrid is an iPhone app that runs on your own keys. AwardGrid for iPhone has been
-          submitted to the App Store and is waiting for Apple's review. This page will link to the
-          listing once Apple approves it. seats.aero's Partner API is licensed for non-commercial
-          personal use, and whether that permits a distributed app is a question for them, not for us
-          to assume. What the app sends, and to whom, is in its
+          AwardGrid is an iPhone app that runs on your own keys. It is not on the App Store: its
+          developer is testing it privately, through TestFlight. seats.aero's Partner API is licensed
+          for non-commercial personal use, and whether that permits a distributed app is a question
+          for them, not for us to assume. Until that is answered, this page describes what exists
+          rather than offering a download. What the app sends, and to whom, is in its
           <a href="../privacy/">privacy policy</a>.
         </p>
       </section>
@@ -169,10 +172,11 @@
 
     <footer>
       <p>
-        <a href="../privacy/">Privacy policy</a> · <a href="../support/">Support</a> ·
-        Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by,
-        or sponsored by seats.aero, any airline, or any loyalty program. © 2026 Curastone CORP.
+        <a href="../privacy/">Privacy policy</a> · <a href="../support/">Support</a> · Data: seats.aero.
+        AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any
+        loyalty program. © 2026 Curastone CORP.
       </p>
     </footer>
-  </body>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"REDACTED","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
 </html>

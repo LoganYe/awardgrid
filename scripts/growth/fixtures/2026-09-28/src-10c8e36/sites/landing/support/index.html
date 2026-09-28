@@ -11,7 +11,7 @@
     <!--
       The support page for the iOS app (release decision D7): App Store Connect's Support URL. Facts only, in the
       product's own voice (docs/COPY.md); every one of them is true of the code (docs/release/APP_STORE_HANDOFF.md §6).
-      No script in this file, no webfont request (honesty.test.ts scans this page). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the privacy policy says so ("This website").
+      No script, no analytics, no webfont request (honesty.test.ts scans this page).
     -->
     <link rel="stylesheet" href="../styles.css" />
   </head>
@@ -55,7 +55,7 @@
         <p>
           Each search goes to seats.aero with your key, and seats.aero counts calls against your plan's daily limit.
           The app stops at 950 of the 1,000 a Pro key allows, and keeps results on the device for 45 minutes, so
-          repeating a search costs nothing. The app's own count restarts at midnight UTC, when seats.aero resets usage.
+          repeating a search costs nothing. The count starts again at midnight UTC.
         </p>
 
         <h3>What does "not monitored" mean?</h3>
@@ -86,9 +86,9 @@
       <section aria-labelledby="about-h">
         <h2 id="about-h">About</h2>
         <p>
-          Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by, or sponsored
-          by seats.aero, Anthropic, any airline, or any loyalty program. It never asks for an airline, bank or
-          loyalty-program password, and it never books anything.
+          Data: seats.aero. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any
+          airline, or any loyalty program. It never asks for an airline, bank or loyalty-program password, and it never
+          books anything.
         </p>
       </section>
 
@@ -113,7 +113,7 @@
         <h4>为什么查票会消耗 seats.aero 调用？</h4>
         <p>
           每次查票都会携带你的密钥发往 seats.aero，seats.aero 按你套餐的每日上限计数。Pro 密钥每天允许 1,000 次，应用在 950 次时停止；结果在本机保留 45
-          分钟，重复查询不消耗调用。应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。
+          分钟，重复查询不消耗调用。计数在 UTC 午夜重新开始。
         </p>
         <h4>“未监控”是什么意思？</h4>
         <p>seats.aero 没有为你所查的里程计划跟踪这条航线，所以那里没有结果不等于没有座位。航线列表无法加载时，应用会如实说明。</p>
@@ -126,16 +126,16 @@
 
         <h3>关于</h3>
         <p>
-          数据：<a href="https://seats.aero">seats.aero</a>。AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。它从不索要航空公司、银行或里程计划的密码，也从不预订任何东西。
+          数据：seats.aero。AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。它从不索要航空公司、银行或里程计划的密码，也从不预订任何东西。
         </p>
       </section>
     </main>
 
     <footer>
       <p>
-        <a href="../ios/">AwardGrid</a> · <a href="../privacy/">Privacy policy</a> ·
-        Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by, or sponsored
-        by seats.aero, any airline, or any loyalty program. © 2026 Curastone CORP.
+        <a href="../ios/">AwardGrid</a> · <a href="../privacy/">Privacy policy</a> · Data: seats.aero. AwardGrid is not
+        affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program. © 2026 Curastone
+        CORP.
       </p>
     </footer>
   </body>
