@@ -1,0 +1,11 @@
+{
+  "about": "The static site's pages. vite.config.ts builds exactly these and writes sitemap.xml from them, one <url> per page with its lastmod. lastmod is the date the page's content last changed, set by hand, never later than the build date (the build refuses a later one). indexnow_key names the key file in public/ (<key>.txt, whose content is the key): public by design, it lets IndexNow check that a submission comes from this host (scripts/indexnow.mjs).",
+  "host": "awardgrid.dowhiz.com",
+  "pages": [
+    { "path": "/", "file": "index.html", "lastmod": "2026-09-28" },
+    { "path": "/ios/", "file": "ios/index.html", "lastmod": "2026-09-28" },
+    { "path": "/privacy/", "file": "privacy/index.html", "lastmod": "2026-09-28" },
+    { "path": "/support/", "file": "support/index.html", "lastmod": "2026-09-28" }
+  ],
+  "indexnow_key": "665e809ddf84f9e36cd81d6f8842eaf6"
+}
