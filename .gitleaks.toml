@@ -1,4 +1,4 @@
-# gitleaks (CI job "gitleaks"): the default rules, with one path allowed.
+# gitleaks (CI job "gitleaks"): the default rules, with one path and three public values allowed.
 #
 # A CocoaPods lockfile holds pod names, versions, local paths and the SHA-1 checksums of public podspecs, never a
 # secret. `KeychainSwift: 4a71a45c…` (apps/ios/ios/App/Podfile.lock, committed for release D14) matched
@@ -6,8 +6,16 @@
 [extend]
 useDefault = true
 
+# The IndexNow key (sites/landing/pages.json, public/<key>.txt) is public by design: IndexNow proves a host by serving
+# the key at https://awardgrid.dowhiz.com/<key>.txt, so it is no secret. The tests use two placeholder keys. All three
+# matched generic-api-key beside the word "key". Only these exact values are allowed, not the files.
 [allowlist]
-description = "CocoaPods lockfiles: pod names, versions, paths and public podspec checksums"
+description = "CocoaPods lockfiles; the public IndexNow key and the tests' placeholder keys"
 paths = [
   '''(^|/)Podfile\.lock$''',
+]
+regexes = [
+  '''^665e809ddf84f9e36cd81d6f8842eaf6$''',
+  '''^0123456789abcdef0123456789abcdef$''',
+  '''^f{32}$''',
 ]

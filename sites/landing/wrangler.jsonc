@@ -12,10 +12,25 @@
   },
   // Only these paths of awardgrid.dowhiz.com; every other path stays the web app's (the tunnel to the Mac).
   "routes": [
+    // Prefix routes: each page and everything under it, query strings included.
     { "pattern": "awardgrid.dowhiz.com/ios*", "zone_name": "dowhiz.com" },
     { "pattern": "awardgrid.dowhiz.com/privacy*", "zone_name": "dowhiz.com" },
     { "pattern": "awardgrid.dowhiz.com/support*", "zone_name": "dowhiz.com" },
-    { "pattern": "awardgrid.dowhiz.com/_site/*", "zone_name": "dowhiz.com" }
+    { "pattern": "awardgrid.dowhiz.com/_site/*", "zone_name": "dowhiz.com" },
+    // Exact routes, no wildcard: the home page and the root files. A route pattern matches the whole URL, query string
+    // included, and only a pattern ending in "*" matches a URL that has a query string. So "awardgrid.dowhiz.com/"
+    // serves "/" alone, and "/?utm_source=…" or any other "/?…" still reaches the web app's home page; likewise
+    // "/robots.txt?x" is the web app's. Links with parameters point at /ios/ instead (DEPLOY.md, "Routes").
+    { "pattern": "awardgrid.dowhiz.com/", "zone_name": "dowhiz.com" },
+    { "pattern": "awardgrid.dowhiz.com/robots.txt", "zone_name": "dowhiz.com" },
+    { "pattern": "awardgrid.dowhiz.com/sitemap.xml", "zone_name": "dowhiz.com" },
+    { "pattern": "awardgrid.dowhiz.com/llms.txt", "zone_name": "dowhiz.com" },
+    // The IndexNow key file: sites/landing/pages.json indexnow_key, public/<key>.txt.
+    { "pattern": "awardgrid.dowhiz.com/665e809ddf84f9e36cd81d6f8842eaf6.txt", "zone_name": "dowhiz.com" },
+    { "pattern": "awardgrid.dowhiz.com/favicon.ico", "zone_name": "dowhiz.com" },
+    { "pattern": "awardgrid.dowhiz.com/favicon.svg", "zone_name": "dowhiz.com" }
   ],
+  // The workers.dev address serves the same files; _headers gives it X-Robots-Tag: noindex, and every page's canonical
+  // link names awardgrid.dowhiz.com.
   "workers_dev": true
 }

@@ -8,23 +8,12 @@
       name="description"
       content="Help for the AwardGrid iPhone app: what it needs, how its keys and calls work, and how to reach its developer."
     />
-    <link rel="canonical" href="https://awardgrid.dowhiz.com/support/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://awardgrid.dowhiz.com/support/" />
-    <meta property="og:title" content="AwardGrid support" />
-    <meta
-      property="og:description"
-      content="Help for the AwardGrid iPhone app: what it needs, how its keys and calls work, and how to reach its developer."
-    />
-    <meta name="twitter:card" content="summary" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <!--
       The support page for the iOS app (release decision D7): App Store Connect's Support URL. Facts only, in the
       product's own voice (docs/COPY.md); every one of them is true of the code (docs/release/APP_STORE_HANDOFF.md §6).
-      No script in this file, no webfont request (honesty.test.ts scans this page). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the privacy policy says so ("This website").
+      No script, no analytics, no webfont request (honesty.test.ts scans this page).
     -->
-    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" crossorigin href="../_site/styles-DN8akfGg.css">
   </head>
   <body>
     <main class="doc">
@@ -38,7 +27,7 @@
         <p class="eyebrow">Support</p>
         <h1>AwardGrid for iPhone</h1>
         <p class="lead">
-          Write to <a href="mailto:%AWARDGRID_SUPPORT_EMAIL%">%AWARDGRID_SUPPORT_EMAIL%</a>. Say what you tapped, what
+          Write to <a href="mailto:support@example.com">support@example.com</a>. Say what you tapped, what
           you expected and what happened. Never send an API key: the app shows only a key's last four characters, and
           that is all anyone helping you needs.
         </p>
@@ -66,7 +55,7 @@
         <p>
           Each search goes to seats.aero with your key, and seats.aero counts calls against your plan's daily limit.
           The app stops at 950 of the 1,000 a Pro key allows, and keeps results on the device for 45 minutes, so
-          repeating a search costs nothing. The app's own count restarts at midnight UTC, when seats.aero resets usage.
+          repeating a search costs nothing. The count starts again at midnight UTC.
         </p>
 
         <h3>What does "not monitored" mean?</h3>
@@ -97,9 +86,9 @@
       <section aria-labelledby="about-h">
         <h2 id="about-h">About</h2>
         <p>
-          Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by, or sponsored
-          by seats.aero, Anthropic, any airline, or any loyalty program. It never asks for an airline, bank or
-          loyalty-program password, and it never books anything.
+          Data: seats.aero. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any
+          airline, or any loyalty program. It never asks for an airline, bank or loyalty-program password, and it never
+          books anything.
         </p>
       </section>
 
@@ -109,7 +98,7 @@
         <p class="eyebrow">支持</p>
         <h2 id="zh-h">AwardGrid iPhone 版</h2>
         <p>
-          请发邮件至 <a href="mailto:%AWARDGRID_SUPPORT_EMAIL%">%AWARDGRID_SUPPORT_EMAIL%</a>，说明你点了什么、预期是什么、实际发生了什么。不要发送任何 API
+          请发邮件至 <a href="mailto:support@example.com">support@example.com</a>，说明你点了什么、预期是什么、实际发生了什么。不要发送任何 API
           密钥：应用只显示密钥的末四位，帮助你的人只需要这些。
         </p>
 
@@ -124,7 +113,7 @@
         <h4>为什么查票会消耗 seats.aero 调用？</h4>
         <p>
           每次查票都会携带你的密钥发往 seats.aero，seats.aero 按你套餐的每日上限计数。Pro 密钥每天允许 1,000 次，应用在 950 次时停止；结果在本机保留 45
-          分钟，重复查询不消耗调用。应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。
+          分钟，重复查询不消耗调用。计数在 UTC 午夜重新开始。
         </p>
         <h4>“未监控”是什么意思？</h4>
         <p>seats.aero 没有为你所查的里程计划跟踪这条航线，所以那里没有结果不等于没有座位。航线列表无法加载时，应用会如实说明。</p>
@@ -137,17 +126,18 @@
 
         <h3>关于</h3>
         <p>
-          数据：<a href="https://seats.aero">seats.aero</a>。AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。它从不索要航空公司、银行或里程计划的密码，也从不预订任何东西。
+          数据：seats.aero。AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。它从不索要航空公司、银行或里程计划的密码，也从不预订任何东西。
         </p>
       </section>
     </main>
 
     <footer>
       <p>
-        <a href="../ios/">AwardGrid</a> · <a href="../privacy/">Privacy policy</a> ·
-        Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by, or sponsored
-        by seats.aero, any airline, or any loyalty program. © 2026 Curastone CORP.
+        <a href="../ios/">AwardGrid</a> · <a href="../privacy/">Privacy policy</a> · Data: seats.aero. AwardGrid is not
+        affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program. © 2026 Curastone
+        CORP.
       </p>
     </footer>
-  </body>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"REDACTED","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
 </html>

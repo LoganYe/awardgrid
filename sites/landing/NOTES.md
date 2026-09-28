@@ -41,17 +41,41 @@ The privacy and support pages carry `%AWARDGRID_SUPPORT_EMAIL%`. The build repla
 `AWARDGRID_SUPPORT_EMAIL` and refuses to build without a plausible address (`vite.config.ts`), so the address is not
 kept in git. CI and the tests use `support@example.com`.
 
+## The workers.dev copy
+
+The Worker serves the same files at its own address, `awardgrid-site.logan-yegaoyang.workers.dev`. `_headers` gives
+them `X-Robots-Tag: noindex` there, and each page's canonical link names `https://awardgrid.dowhiz.com/…`. That keeps
+search engines to the hostname. It does not stop a reader, or an answer engine, that fetches the workers.dev copy.
+
+`index.html`, `public/llms.txt` and `public/robots.txt` carry the web app note in the form that names the hostname
+(`webapp_note`, `kept_named_host`: "The web app at awardgrid.dowhiz.com is private and invite-only; …"), because they are
+also served on the workers.dev address, where no web app runs and "at this address" would not be true. LEGAL.md, which only
+the web app serves (at /legal), keeps `kept_host`.
+
 ## What the source comments say, page by page
 
 The comments stay in the source for whoever edits the page; the build drops them.
 
-### `index.html`: the site's own root
+### `index.html`: the home page
 
-- On awardgrid.dowhiz.com the web app keeps `/`; the Worker `awardgrid-site` serves only `/ios/`, `/privacy/`,
-  `/support/` and `/_site/` from this build (`DEPLOY.md`, `wrangler.jsonc`). This page is what the Worker's own
-  `workers.dev` address shows at its root (`DEPLOY.md`). The source comment still calls it "the Pages project's own
-  address"; the site has been a Worker since 2026-09-25 (`DEPLOY.md`).
-- No script and no webfont request; `apps/ios/src/honesty.test.ts` scans the page.
+- `/` on awardgrid.dowhiz.com, by an exact Worker route: a route without a wildcard does not match a query string, so
+  `/?…` is still the web app's home page (`DEPLOY.md`, "Routes"; `wrangler.jsonc`). It is also the root of the
+  Worker's own `workers.dev` address.
+- Every sentence is registry copy (`growth/product-facts.json`): the lead is `grid`'s extra sentence (query_input, grid
+  and prerequisite in one), then `release_status` for the current status, the web app's `webapp_note` (`kept_host`)
+  as plain text, and `affiliation`. No "Log in" link: whoever uses the web app keeps its `/login` or `/grid` address.
+- Its links are relative (`./ios/`), so they work on the hostname and on workers.dev.
+- No script but JSON-LD (the organization and the website) and no webfont request; `apps/ios/src/honesty.test.ts`
+  scans the page.
+
+### Head tags on every page
+
+Each page listed in `pages.json` carries a canonical link to itself on `https://awardgrid.dowhiz.com`, `og:type`
+`website`, `og:url` (the canonical), `og:title` (its title), `og:description` (its meta description),
+`twitter:card` `summary`, and the favicons `/favicon.svg` and `/favicon.ico` (the build writes them relative to the
+page). No `og:image` yet. `/` and `/ios/` carry the JSON-LD graph (Organization, WebSite); nothing claims
+`MobileApplication` before the app is released, and no `FAQPage` until the questions are on the page.
+`sites/landing/test/crawl.test.ts` checks all of it, in the source and in the built pages.
 
 ### `ios/index.html`: the iPhone app's page
 
