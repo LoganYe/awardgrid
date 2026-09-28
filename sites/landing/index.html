@@ -22,7 +22,8 @@
     <!--
       The home page: "/" on awardgrid.dowhiz.com by an exact Worker route (so only "/" with no query string; "/?…"
       is still the web app's), and the root of the Worker's workers.dev address. Every sentence is registry copy
-      (growth/product-facts.json). No "Log in" link. No script but JSON-LD, no webfont request (honesty.test.ts
+      (growth/product-facts.json). No "Log in" or register link; the one link into the web app is /grid, for its users,
+      because "/" no longer sends a signed-in user to /grid (the web app's home did; this page cannot know who is signed in). No script but JSON-LD, no webfont request (honesty.test.ts
       scans it). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the privacy policy says so
       ("This website").
     -->
@@ -64,7 +65,10 @@
           <a href="./support/">Support</a>
         </p>
       </nav>
-      <p class="doc-meta">The web app at awardgrid.dowhiz.com is private and invite-only; it is separate from the iPhone app.</p>
+      <p class="doc-meta">
+        The web app at awardgrid.dowhiz.com is private and invite-only; it is separate from the iPhone app. Web app
+        users: <a href="https://awardgrid.dowhiz.com/grid">open the grid</a>.
+      </p>
     </main>
     <footer>
       <p>

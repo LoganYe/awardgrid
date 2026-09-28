@@ -61,6 +61,11 @@ files: a crawler asks for `/robots.txt` without one.
 The web app keeps every other path: `/?…`, `/login`, `/register`, `/grid`, `/legal`, `/api/…`. They do not pass
 through the Worker, so `_headers` does not apply to them.
 
+**`/` no longer takes a signed-in web-app user into the app.** The web app's home redirected a signed-in user to
+`/grid`; the Worker's home page cannot know who is signed in. Its one link into the web app, "Web app users: open the
+grid", goes to `https://awardgrid.dowhiz.com/grid`, which sends a signed-out visitor to `/login`. After the deploy,
+check it with a signed-in session: `/` shows the static page, and its `/grid` link opens the grid.
+
 `_headers` (in `public/`, copied into `dist/`) sets, for the Worker's responses: `Strict-Transport-Security:
 max-age=31536000` (no includeSubDomains, no preload) and `X-Content-Type-Options: nosniff` on every path;
 `Cache-Control: public, max-age=31536000, immutable` on `/_site/*` (the file names carry a content hash); and

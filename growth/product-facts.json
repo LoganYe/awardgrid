@@ -160,7 +160,9 @@
       "evidence_ref": [
         "src/app/api/auth/register/route.ts:2-4 \"POST /api/auth/register { inviteCode, username, password }\"",
         "docs/DEPLOYMENT.md:49-56 \"## Not done\"",
-        "sites/landing/DEPLOY.md:10-21 \"## Shape\""
+        "sites/landing/DEPLOY.md:10-21 \"## Shape\"",
+        "src/app/page.tsx:24 \"if (user) redirect(\"/grid\");\"",
+        "src/lib/auth/next.ts:40 \"if (!user) redirect(\"/login\");\""
       ],
       "allowed_copy_variants": {
         "kept_host": "The web app at this address is private and invite-only; it is separate from the iPhone app.",
@@ -176,10 +178,14 @@
       "limitations": [
         "The web app was running on 2026-09-28, so the kept variants are in use; the retired variant is used only once the web app is shut down.",
         "kept_named_host is for files that are also served on the Worker's own workers.dev address (the home page, llms.txt, robots.txt), where \"at this address\" would not be true; kept_host stays in LEGAL.md, which only the web app serves (/legal).",
+        "allowed_copy_extra is the home page's one link into the web app (to https://awardgrid.dowhiz.com/grid, which sends a signed-out visitor to /login): with the Worker serving \"/\", the web app's own home no longer redirects its signed-in users to /grid.",
         "Apart from history, only these sentences may call anything on this host or in this repo private or invite-only (PRIVATE_WEBAPP).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "approved"
+      "public_use": "approved",
+      "allowed_copy_extra": [
+        "Web app users: open the grid."
+      ]
     },
     {
       "claim_id": "dependency",

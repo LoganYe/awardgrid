@@ -311,9 +311,13 @@ describe("the home page", () => {
   const text = html.replace(/<!--[\s\S]*?-->/g, " ").replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const hrefs = tags(html.replace(/<!--[\s\S]*?-->/g, ""), "a").map((a) => a.get("href"));
 
-  it("links the three pages relatively, so it works on the hostname and on workers.dev, and has no log-in link", () => {
-    expect(hrefs).toEqual(["./ios/", "./privacy/", "./support/", "https://seats.aero"]);
-    expect(html).not.toMatch(/\/(?:login|register|grid)\b/);
+  it("links the three pages relatively, so it works on the hostname and on workers.dev; into the web app only /grid, no log-in link", () => {
+    // "/" is the Worker's now, so the web app's home no longer redirects its signed-in users to /grid: the home page
+    // gives them that link (absolute, so it also works from the workers.dev copy). /grid sends a signed-out visitor to /login.
+    expect(hrefs).toEqual(["./ios/", "./privacy/", "./support/", "https://awardgrid.dowhiz.com/grid", "https://seats.aero"]);
+    expect(html).not.toMatch(/\/(?:login|register)\b/);
+    expect(text.replace(/\s+([.,;])/g, "$1")).toContain(`Web app users: open the grid.`);
+    expect(claim("webapp_note").allowed_copy_extra).toEqual(["Web app users: open the grid."]);
   });
 
   it("says the registry's words: the status for the current status, the web app note as plain text, the affiliation", () => {
