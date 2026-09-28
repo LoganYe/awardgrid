@@ -566,7 +566,11 @@ describe("_headers", () => {
   it("caches the hashed stylesheet for good, and keeps the workers.dev address out of search results", () => {
     expect(rules.get("/_site/*")).toEqual(["Cache-Control: public, max-age=31536000, immutable"]);
     expect(rules.get("https://awardgrid-site.logan-yegaoyang.workers.dev/*")).toEqual(["X-Robots-Tag: noindex"]);
-    expect([...rules.keys()]).toHaveLength(3);
+    expect([...rules.keys()]).toHaveLength(4);
+  });
+
+  it("pins favicon.ico's type, which a dashboard upload leaves empty (the page's nosniff would otherwise stand)", () => {
+    expect(rules.get("/favicon.ico")).toEqual(["Content-Type: image/x-icon"]);
   });
 });
 

@@ -7,3 +7,8 @@
 
 https://awardgrid-site.logan-yegaoyang.workers.dev/*
   X-Robots-Tag: noindex
+
+# Cloudflare serves the type given at upload; the dashboard upload of 2026-09-28 gave none for .ico
+# ("content-type: null", with nosniff above). wrangler sets it from the extension. Pin it either way.
+/favicon.ico
+  Content-Type: image/x-icon
