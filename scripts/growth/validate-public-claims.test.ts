@@ -507,6 +507,23 @@ describe("status modes", () => {
     expect(inEach("AwardGrid 已上架 App Store。").released).toEqual([]);
   });
 
+  it("a claim's Chinese for another status is caught like its English (allowed_copy_zh_by_status)", () => {
+    // Pinned by a registry of its own, so the test does not depend on today's wording.
+    const registry = structuredClone(REGISTRY);
+    const availability = registry.claims.find((c: { claim_id: string }) => c.claim_id === "availability");
+    availability.allowed_copy_zh_by_status = { submitted_not_live: "它将在 174 个国家或地区提供，中国大陆除外。", released: "已在 174 个国家或地区提供，中国大陆除外。" };
+    const inEachZh = (text: string) =>
+      Object.fromEntries((["submitted", "released", "withdrawn"] as const).map((s) => [s, rules(text, { status: s, registry })]));
+    // The submitted Chinese: no explicit pattern knows "将在 174 …", so only the registry's sentence catches it.
+    expect(inEachZh("它将在 174 个国家或地区提供，中国大陆除外。")).toEqual({ submitted: [], released: ["STALE_STATUS"], withdrawn: ["STALE_STATUS"] });
+    // The released Chinese is premature before the release, and passes once released.
+    expect(inEachZh("已在 174 个国家或地区提供，中国大陆除外。").submitted).toEqual(["PREMATURE_STATUS"]);
+    expect(inEachZh("已在 174 个国家或地区提供，中国大陆除外。").released).toEqual([]);
+    // Without the registry's Chinese, the submitted sentence would pass in every status.
+    delete availability.allowed_copy_zh_by_status;
+    expect(inEachZh("它将在 174 个国家或地区提供，中国大陆除外。").released).toEqual([]);
+  });
+
   // Paraphrases of a listing, not only the registry's own sentences.
   const LISTING = [
     "Download AwardGrid from the App Store today.",
@@ -883,6 +900,26 @@ describe("registry checks", () => {
         expect.stringMatching(/public_use is missing/),
       ]),
     );
+  });
+
+  it("checks the Chinese copy's shape: a sentence, a list, and the Chinese of a status only where the English has it", () => {
+    const bad = structuredClone(REGISTRY);
+    const byId = (id: string) => bad.claims.find((c: { claim_id: string }) => c.claim_id === id);
+    byId("scope").allowed_copy_zh = "";
+    byId("views").allowed_copy_zh_extra = "一句话";
+    byId("watches").allowed_copy_zh_by_status = { submitted_not_live: "句子。" };
+    byId("availability").allowed_copy_zh_by_status = { released: "句子。", live: "句子。" };
+    const problems = checkRegistry(bad, { root: ROOT }).map((f: { match: string }) => f.match);
+    expect(problems).toEqual(
+      expect.arrayContaining([
+        "claim scope: allowed_copy_zh must be a sentence",
+        "claim views: allowed_copy_zh_extra must be a list of sentences",
+        "claim watches: allowed_copy_zh_by_status needs allowed_copy_by_status",
+        "claim availability: allowed_copy_zh_by_status needs submitted_not_live",
+        'claim availability: allowed_copy_zh_by_status key "live" is not a status of allowed_copy_by_status',
+      ]),
+    );
+    expect(checkRegistry(REGISTRY, { root: ROOT }).filter((f: { match: string }) => /allowed_copy_zh/.test(f.match))).toEqual([]);
   });
 
   it("fails an unregistered public surface, and skips build output and dependencies", () => {
