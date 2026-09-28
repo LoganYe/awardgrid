@@ -113,8 +113,12 @@ the visible questions, never the JSON-LD.
   rather than shorter, after Restful's page (docs/PIVOT.md §4; DECISIONS.md, same entry). Its rows are kept as they
   were, the "No accounts, no analytics in the app" row word for word as the owner wrote it (PR #104); "No round trips"
   (the scope claim) was added.
-- "Where this is up to" is the status text of PR #103, unchanged. At release it is rewritten by hand: it is not one
-  registry sentence (`scripts/growth/current-tree.test.ts` pins what the gate finds in it then).
+- "Where this is up to" is the released status (the switch to released), all registry copy: release_status's
+  released sentence for this page, the prerequisite, the dependency, the prerequisite's released sentence from
+  seats.aero's help centre (not every Pro account or country gets API access), a link to the listing with the campaign
+  token `ct=awardgrid-ios` and the provider token `pt=124116782`, and the pointer to the privacy policy. Before the day
+  the app is first found on the App Store the gate finds all of it premature (`--status submitted`;
+  `scripts/growth/current-tree.test.ts` pins the list).
 - Known mismatches, kept as the spec says until the owner decides:
   - The example table is laid out the web app's way: one row per route, one column per date, and a bare "—" in an
     empty cell. The iPhone app's Matrix, which "How the table works" describes right below it, has the dates as rows

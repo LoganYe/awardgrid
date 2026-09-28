@@ -7,10 +7,18 @@
  *   node scripts/growth/validate-public-claims.mjs --dist <dir>      … plus every *.html and *.txt of a built site
  *   node scripts/growth/validate-public-claims.mjs --status released run the content rules as if the registry said so
  *   node scripts/growth/validate-public-claims.mjs --file draft.md   scan only these files (a draft kept elsewhere)
+ *   node scripts/growth/validate-public-claims.mjs --t0-merge-check  … and fail on T0_UNRECORDED (so does T0_MERGE_CHECK=1)
  *   options: --registry <path>  --root <dir>  --json
  *
  * Exit 0 when clean, 1 with one line per finding (`RULE file:line "excerpt"`), 2 on a usage error. A summary line
  * with the count per rule and the files scanned is always printed, so a CI log shows the gate really ran.
+ *
+ * T0_UNRECORDED is the one deferred finding: a registry whose status is released but whose released_at_utc or
+ * t0_lookup_receipt is still empty. The T0 switch is prepared before T0 with those two left empty, since only the
+ * lookup that first returns the app can fill them (scripts/growth/set-t0.mjs does, on T0 day). Until then the gate
+ * prints it as a DEFERRED line and does not fail on it, so CI on the prepared switch stays green; with
+ * --t0-merge-check or T0_MERGE_CHECK=1 it is a finding like any other, and the switch is not merged until that run
+ * exits 0.
  *
  * Pages are read the way `apps/ios/src/honesty.test.ts` (`landingTexts`) reads them, so both scanners see the same
  * text: comments, the doctype and <style> are dropped; the strings of <script type="application/ld+json"> are kept;
@@ -872,7 +880,9 @@ export const RULE_IDS = [
     "TRADEMARK_ASO",
   ]),
 ];
-export const REGISTRY_RULE_IDS = ["REGISTRY", "EVIDENCE_REF", "PUBLIC_FILE_MISSING", "PUBLIC_CLAIMS_MARKERS", "UNREGISTERED_SURFACE", "EXEMPTION_INVALID", "EXEMPTION_UNUSED"];
+export const REGISTRY_RULE_IDS = ["REGISTRY", "EVIDENCE_REF", "PUBLIC_FILE_MISSING", "PUBLIC_CLAIMS_MARKERS", "UNREGISTERED_SURFACE", "EXEMPTION_INVALID", "EXEMPTION_UNUSED", "T0_UNRECORDED"];
+/** Findings the gate reports without failing on, unless the T0 merge check asks for them (see the header). */
+export const DEFERRED_RULE_IDS = ["T0_UNRECORDED"];
 
 /** The iPhone app as a subject: "the app", "iPhone app", "iOS app"; not "App Store", "App ID", "App Review". */
 const SUBJECT_EN = /\b(?:iPhone|iOS|the) app\b(?!\s*(?:Store|ID|Review|Clip)\b)/i;
@@ -947,6 +957,25 @@ function excerptOf(text, start, end) {
 }
 
 /**
+ * A claim's status-dependent copy as [status, sentence] pairs: allowed_copy_by_status and allowed_copy_zh_by_status
+ * (one text per status), and allowed_copy_extra_by_status and allowed_copy_zh_extra_by_status (more sentences per
+ * status, e.g. a page's own wording of the released status).
+ */
+export function statusCopies(claim) {
+  const out = [];
+  for (const key of ["allowed_copy_by_status", "allowed_copy_zh_by_status"]) {
+    const map = claim[key];
+    if (map && typeof map === "object" && !Array.isArray(map)) for (const [status, text] of Object.entries(map)) out.push([status, text]);
+  }
+  for (const key of ["allowed_copy_extra_by_status", "allowed_copy_zh_extra_by_status"]) {
+    const map = claim[key];
+    if (!map || typeof map !== "object" || Array.isArray(map)) continue;
+    for (const [status, list] of Object.entries(map)) if (Array.isArray(list)) for (const text of list) out.push([status, text]);
+  }
+  return out.filter(([, text]) => typeof text === "string");
+}
+
+/**
  * Every sentence of a claim's copy, in every status, variant and language: the Chinese of a claim is allowed_copy_zh
  * (the sentence), allowed_copy_zh_extra (more sentences) and allowed_copy_zh_by_status (the status-dependent ones).
  */
@@ -956,8 +985,7 @@ export function claimCopies(claim) {
   if (typeof claim.allowed_copy_zh === "string") out.push(claim.allowed_copy_zh);
   if (Array.isArray(claim.allowed_copy_extra)) out.push(...claim.allowed_copy_extra);
   if (Array.isArray(claim.allowed_copy_zh_extra)) out.push(...claim.allowed_copy_zh_extra);
-  if (claim.allowed_copy_by_status && typeof claim.allowed_copy_by_status === "object") out.push(...Object.values(claim.allowed_copy_by_status));
-  if (claim.allowed_copy_zh_by_status && typeof claim.allowed_copy_zh_by_status === "object") out.push(...Object.values(claim.allowed_copy_zh_by_status));
+  out.push(...statusCopies(claim).map(([, text]) => text));
   if (claim.allowed_copy_variants && typeof claim.allowed_copy_variants === "object") out.push(...Object.values(claim.allowed_copy_variants));
   return out.filter((s) => typeof s === "string");
 }
@@ -979,15 +1007,15 @@ export function exactCopySentences(registry) {
 }
 
 /**
- * The sentences of every status-dependent claim (allowed_copy_by_status, and its Chinese, allowed_copy_zh_by_status),
- * each with a pattern that finds it in page text: the final full stop is optional (a page may go on "… and is
- * waiting"), and <date> stands for any date. A Chinese full stop ends a sentence with or without a space after it.
+ * The sentences of every status-dependent claim (allowed_copy_by_status, and its Chinese, allowed_copy_zh_by_status,
+ * and the extra sentences per status, allowed_copy_extra_by_status and allowed_copy_zh_extra_by_status), each with a
+ * pattern that finds it in page text: the final full stop is optional (a page may go on "… and is waiting"), and
+ * <date> stands for any date. A Chinese full stop ends a sentence with or without a space after it.
  */
 export function statusSentences(registry) {
   const out = [];
   for (const claim of registry.claims ?? []) {
-    const copies = [...Object.entries(claim.allowed_copy_by_status ?? {}), ...Object.entries(claim.allowed_copy_zh_by_status ?? {})];
-    for (const [status, text] of copies) {
+    for (const [status, text] of statusCopies(claim)) {
       const sentences = String(text).replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+|(?<=[。！？])\s*/);
       for (const sentence of sentences.filter(Boolean)) {
         const body = sentence.replace(/[.。]$/, "");
@@ -1493,6 +1521,34 @@ export function checkEvidenceRef(ref, root, fileLines = new Map()) {
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A UTC instant written as released_at_utc is: YYYY-MM-DDTHH:MM:SSZ, a real date and time. */
+export function isUtcInstant(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)) return false;
+  const t = new Date(value);
+  return !Number.isNaN(t.getTime()) && t.toISOString().replace(".000Z", "Z") === value;
+}
+
+/**
+ * Why `value` is not the receipt of a T0 lookup for app `appId`, or null when it is: an https URL of Apple's lookup
+ * endpoint (itunes.apple.com/lookup, or /<storefront>/lookup) whose id is the app's, cache-busted (a parameter besides
+ * id, country and entity), so the answer it recorded did not come from a cache.
+ */
+export function lookupProblem(value, appId) {
+  let url;
+  try {
+    url = new URL(String(value));
+  } catch {
+    return `"${value}" is not a URL`;
+  }
+  if (url.protocol !== "https:" || url.hostname !== "itunes.apple.com" || !/^\/(?:[a-z]{2}\/)?lookup$/.test(url.pathname)) {
+    return `"${value}" is not an https://itunes.apple.com/lookup URL`;
+  }
+  if (url.searchParams.get("id") !== appId) return `"${value}" does not look up id=${appId}`;
+  if (![...url.searchParams.keys()].some((k) => !["id", "country", "entity"].includes(k))) return `"${value}" is not cache-busted (add a parameter such as &cb=<epoch>)`;
+  return null;
+}
+
 const RELEASED_FIELDS = [
   "status", "app_id", "bundle_id", "seller", "name", "version", "build", "build_source_revision", "main_revision", "submitted_at_utc",
   "platforms", "minimum_ios", "interface_languages", "price", "territories", "checked_at", "evidence_level", "evidence_ref",
@@ -1523,7 +1579,21 @@ export function checkRegistry(registry, { root = DEFAULT_ROOT, registryFile = "g
   const rel = registry.released ?? {};
   for (const f of RELEASED_FIELDS) if (!(f in rel)) add("REGISTRY", `released.${f} is missing`, '"released"');
   if (!STATUSES.includes(rel.status)) add("REGISTRY", `released.status "${rel.status}" is not one of ${STATUSES.join(", ")}`, '"status"');
-  if (rel.status === "released" && (!rel.released_at_utc || !rel.t0_lookup_receipt)) add("REGISTRY", "released.status is released but released_at_utc or t0_lookup_receipt is empty", '"status"');
+  if (rel.status === "released") {
+    const empty = ["released_at_utc", "t0_lookup_receipt"].filter((f) => !rel[f]);
+    if (empty.length) {
+      add(
+        "T0_UNRECORDED",
+        `released.status is released but ${empty.join(" and ")} ${empty.length > 1 ? "are" : "is"} empty: on T0 day run node scripts/growth/set-t0.mjs --released-at <ISO> --receipt <lookup URL>, before the switch is merged`,
+        '"status"',
+      );
+    }
+  }
+  if (rel.released_at_utc && !isUtcInstant(rel.released_at_utc)) add("REGISTRY", `released.released_at_utc "${rel.released_at_utc}" is not a UTC time (YYYY-MM-DDTHH:MM:SSZ)`, '"released_at_utc"');
+  if (rel.t0_lookup_receipt) {
+    const problem = lookupProblem(rel.t0_lookup_receipt, String(rel.app_id ?? ""));
+    if (problem) add("REGISTRY", `released.t0_lookup_receipt: ${problem}`, '"t0_lookup_receipt"');
+  }
   if (rel.status === "withdrawn" && !rel.withdrawn_at_utc) add("REGISTRY", "released.status is withdrawn but withdrawn_at_utc is empty", '"status"');
   if (rel.status === "submitted_not_live" && rel.released_at_utc) add("REGISTRY", "released.status is submitted_not_live but released_at_utc is set", '"released_at_utc"');
   if (rel.evidence_level !== undefined && !EVIDENCE_LEVELS.includes(rel.evidence_level)) add("REGISTRY", `released.evidence_level "${rel.evidence_level}" is not one of ${EVIDENCE_LEVELS.join(", ")}`);
@@ -1564,6 +1634,18 @@ export function checkRegistry(registry, { root = DEFAULT_ROOT, registryFile = "g
       if (!c.allowed_copy_by_status) add("REGISTRY", `claim ${id}: allowed_copy_zh_by_status needs allowed_copy_by_status`, needle);
       if (!keys.includes("submitted_not_live")) add("REGISTRY", `claim ${id}: allowed_copy_zh_by_status needs submitted_not_live`, needle);
       for (const k of keys) if (!(k in (c.allowed_copy_by_status ?? {}))) add("REGISTRY", `claim ${id}: allowed_copy_zh_by_status key "${k}" is not a status of allowed_copy_by_status`, needle);
+    }
+    for (const key of ["allowed_copy_extra_by_status", "allowed_copy_zh_extra_by_status"]) {
+      if (!(key in c)) continue;
+      const map = c[key];
+      if (!map || typeof map !== "object" || Array.isArray(map)) {
+        add("REGISTRY", `claim ${id}: ${key} must map a status to a list of sentences`, needle);
+        continue;
+      }
+      for (const [k, list] of Object.entries(map)) {
+        if (!STATUSES.includes(k)) add("REGISTRY", `claim ${id}: ${key} key "${k}" is not a status`, needle);
+        if (!Array.isArray(list) || !list.length || !list.every((x) => typeof x === "string" && x.trim())) add("REGISTRY", `claim ${id}: ${key}.${k} must be a list of sentences`, needle);
+      }
     }
     if (c.allowed_copy_variants) {
       const keys = Object.keys(c.allowed_copy_variants);
@@ -1646,8 +1728,9 @@ export function distFiles(dir) {
 }
 
 /**
- * Run the gate.
- * @param {{ root?: string, registryPath?: string, status?: string, dist?: string, files?: string[], registry?: object }} options
+ * Run the gate. `t0MergeCheck` makes a T0_UNRECORDED finding fail like any other; without it the finding is returned
+ * in `deferred`, not in `findings`.
+ * @param {{ root?: string, registryPath?: string, status?: string, dist?: string, files?: string[], registry?: object, t0MergeCheck?: boolean }} options
  */
 export function validate(options = {}) {
   const root = path.resolve(options.root ?? DEFAULT_ROOT);
@@ -1713,7 +1796,11 @@ export function validate(options = {}) {
       });
     });
   }
-  const result = [...registryFindings, ...findings, ...unused].sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.rule.localeCompare(b.rule) || a.start - b.start);
+  const order = (a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.rule.localeCompare(b.rule) || a.start - b.start;
+  const isDeferred = (f) => !options.t0MergeCheck && DEFERRED_RULE_IDS.includes(f.rule);
+  const reported = [...registryFindings, ...findings, ...unused];
+  const result = reported.filter((f) => !isDeferred(f)).sort(order);
+  const deferred = reported.filter(isDeferred).sort(order);
   const counts = Object.fromEntries([...REGISTRY_RULE_IDS, ...RULE_IDS].map((id) => [id, 0]));
   for (const f of result) counts[f.rule] = (counts[f.rule] ?? 0) + 1;
   return {
@@ -1721,6 +1808,7 @@ export function validate(options = {}) {
     registryStatus: registry.released?.status,
     files: docs.map((d) => d.file),
     findings: result,
+    deferred,
     counts,
     exemptions: allowlist.map((e, k) => ({ file: e.file, text: e.text, rules: e.rules, used: used[k] })),
   };
@@ -1741,22 +1829,30 @@ export function summaryLines(result) {
     .map(([id, n]) => `${id}=${n}`)
     .join(" ");
   const usedCount = result.exemptions.filter((e) => e.used > 0).length;
-  return [
+  const deferred = result.deferred ?? [];
+  const lines = [
     `public-claims: status=${result.status}${result.status !== result.registryStatus ? ` (registry: ${result.registryStatus})` : ""} files=${result.files.length} findings=${result.findings.length} exemptions used=${usedCount}/${result.exemptions.length}${nonzero.length ? "" : " (clean)"}`,
     `public-claims: rules ${counts}`,
-    `public-claims: scanned ${result.files.join(", ")}`,
   ];
+  if (deferred.length) {
+    const byRule = new Map();
+    for (const f of deferred) byRule.set(f.rule, (byRule.get(f.rule) ?? 0) + 1);
+    const tally = [...byRule].map(([id, n]) => `${id}=${n}`).join(" ");
+    lines.push(`public-claims: deferred ${tally} (not failing: the T0 merge check, T0_MERGE_CHECK=1 or --t0-merge-check, fails on it)`);
+  }
+  lines.push(`public-claims: scanned ${result.files.join(", ")}`);
+  return lines;
 }
 
 const USAGE = `usage: node scripts/growth/validate-public-claims.mjs [--dist <dir>] [--status submitted|released|withdrawn]
-       [--file <path>]... [--registry <path>] [--root <dir>] [--json]`;
+       [--file <path>]... [--registry <path>] [--root <dir>] [--json] [--t0-merge-check]`;
 
 /**
  * @param {string[]} argv
- * @returns {{ files: string[], dist?: string, status?: string, registryPath?: string, root?: string, json?: boolean, help?: boolean }}
+ * @returns {{ files: string[], dist?: string, status?: string, registryPath?: string, root?: string, json?: boolean, help?: boolean, t0MergeCheck?: boolean }}
  */
 export function parseArgs(argv) {
-  /** @type {{ files: string[], dist?: string, status?: string, registryPath?: string, root?: string, json?: boolean, help?: boolean }} */
+  /** @type {{ files: string[], dist?: string, status?: string, registryPath?: string, root?: string, json?: boolean, help?: boolean, t0MergeCheck?: boolean }} */
   const opts = { files: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -1771,13 +1867,19 @@ export function parseArgs(argv) {
     else if (a === "--registry") opts.registryPath = value();
     else if (a === "--root") opts.root = value();
     else if (a === "--json") opts.json = true;
+    else if (a === "--t0-merge-check") opts.t0MergeCheck = true;
     else if (a === "--help" || a === "-h") opts.help = true;
     else throw new Error(`unknown argument ${a}`);
   }
   return opts;
 }
 
-export function main(argv = process.argv.slice(2), io = { log: console.log, error: console.error }) {
+/**
+ * @param {string[]} argv
+ * @param {{ log: (s: string) => void, error: (s: string) => void }} io
+ * @param {Record<string, string | undefined>} env  T0_MERGE_CHECK=1 turns the T0 merge check on, as --t0-merge-check does
+ */
+export function main(argv = process.argv.slice(2), io = { log: console.log, error: console.error }, env = process.env) {
   let opts;
   try {
     opts = parseArgs(argv);
@@ -1789,6 +1891,7 @@ export function main(argv = process.argv.slice(2), io = { log: console.log, erro
     io.log(USAGE);
     return 0;
   }
+  if (env.T0_MERGE_CHECK === "1") opts.t0MergeCheck = true;
   let result;
   try {
     result = validate(opts);
@@ -1796,9 +1899,11 @@ export function main(argv = process.argv.slice(2), io = { log: console.log, erro
     io.error(`public-claims: ${error instanceof Error ? error.message : error}`);
     return 2;
   }
-  if (opts.json) io.log(JSON.stringify({ ...result, findings: result.findings.map(({ hay: _h, start: _s, end: _e, ...f }) => f) }, null, 2));
+  const bare = ({ hay: _h, start: _s, end: _e, ...f }) => f;
+  if (opts.json) io.log(JSON.stringify({ ...result, findings: result.findings.map(bare), deferred: result.deferred.map(bare) }, null, 2));
   else {
     for (const f of result.findings) io.log(formatFinding(f));
+    for (const f of result.deferred) io.log(`DEFERRED ${formatFinding(f)}`);
     for (const line of summaryLines(result)) io.log(line);
   }
   return result.findings.length ? 1 : 0;

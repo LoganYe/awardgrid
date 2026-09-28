@@ -10,9 +10,10 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { build } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import config, { type Manifest, isDate, localDate, manifestProblems, readManifest, siteOrigin, sitemapXml } from "../vite.config";
+import config, { type Manifest, buildDate, isDate, localDate, manifestProblems, readManifest, siteOrigin, sitemapXml } from "../vite.config";
 
 const SITE = path.join(import.meta.dirname, "..");
 const REPO = path.join(SITE, "..", "..");
@@ -20,7 +21,8 @@ const PUBLIC = path.join(SITE, "public");
 const CONFIG_FILE = path.join(SITE, "vite.config.ts");
 const MANIFEST = readManifest();
 const ORIGIN = "https://awardgrid.dowhiz.com";
-const TODAY = localDate();
+/** The build's "today" (the later of the local and the UTC date), as the build checks lastmod against it. */
+const TODAY = buildDate();
 const REGISTRY = JSON.parse(readFileSync(path.join(REPO, "growth", "product-facts.json"), "utf8"));
 const claim = (id: string) => REGISTRY.claims.find((c: { claim_id: string }) => c.claim_id === id);
 const KEY = MANIFEST.indexnow_key;
@@ -215,6 +217,30 @@ describe("pages.json, the page manifest", () => {
     expect(isDate("2026-9-28")).toBe(false);
     expect(localDate(new Date(2026, 0, 5, 12))).toBe("2026-01-05");
   });
+
+  it("takes the build's today as the later of the local and the UTC date, so a UTC date written today is never later", () => {
+    // A release at 03:00Z on the 30th is written as 2026-09-30; in California it is still the evening of the 29th.
+    for (const instant of ["2026-09-30T03:00:00Z", "2026-09-30T04:00:00Z", "2026-09-29T20:00:00Z", "2026-09-29T23:59:59Z", "2026-09-30T00:00:00Z"]) {
+      const now = new Date(instant);
+      const today = buildDate(now);
+      expect([localDate(now), instant.slice(0, 10)]).toContain(today);
+      expect(today >= instant.slice(0, 10) && today >= localDate(now), instant).toBe(true);
+    }
+    expect(buildDate(new Date("2026-09-30T04:00:00Z")) >= "2026-09-30").toBe(true);
+  });
+
+  it("in California on the evening of the 29th, a lastmod of the 30th (the UTC date of a release at 03:00Z) builds", () => {
+    // In a process of its own, so the time zone is that process's and nothing else's.
+    const script = `
+      const { buildDate, localDate, manifestProblems, readManifest } = await import(${JSON.stringify(pathToFileURL(CONFIG_FILE).href)});
+      const now = new Date("2026-09-30T04:00:00Z");
+      const manifest = readManifest();
+      manifest.pages[1].lastmod = "2026-09-30";
+      console.log(JSON.stringify({ local: localDate(now), build: buildDate(now), problems: manifestProblems(manifest, buildDate(now)) }));`;
+    const run = spawnSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8", env: { ...process.env, TZ: "America/Los_Angeles" } });
+    expect(run.status, run.stderr).toBe(0);
+    expect(JSON.parse(run.stdout.trim().split("\n").at(-1)!)).toEqual({ local: "2026-09-29", build: "2026-09-30", problems: [] });
+  });
 });
 
 describe("sitemap.xml", () => {
@@ -385,7 +411,11 @@ describe("the home page", () => {
   });
 
   it("says the registry's words: the status for the current status, the web app note as plain text, the affiliation", () => {
-    expect(text).toContain(claim("release_status").allowed_copy_by_status[REGISTRY.released.status]);
+    const status: string = claim("release_status").allowed_copy_by_status[REGISTRY.released.status];
+    expect(text).toContain(status);
+    // A status that says free has the prerequisite after it, in the same paragraph (release_status's limitation).
+    const paragraphs = [...html.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => m[1]!.replace(/\s+/g, " ").trim());
+    if (/\bfree\b/.test(status)) expect(paragraphs).toContain(`${status} ${claim("prerequisite").allowed_copy}`);
     expect(text).toContain(claim("webapp_note").allowed_copy_variants.kept_named_host);
     expect(text).toContain(claim("affiliation").allowed_copy);
     expect(text).toContain(claim("grid").allowed_copy_extra[0]);

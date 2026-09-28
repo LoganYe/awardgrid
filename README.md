@@ -4,8 +4,8 @@
 ## AwardGrid for iPhone
 
 AwardGrid is an iPhone app by Curastone CORP.
-AwardGrid for iPhone has been submitted to the App Store.
-AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.
+AwardGrid is free on the App Store (App ID 6816321841).
+The app is free, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.
 AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.
 
 It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
@@ -34,7 +34,7 @@ AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthr
 This repo also holds a private, invite-only web app, separate from the iPhone app.
 
 AwardGrid began as a private, invite-only web app for its developer and a small group of friends. The iPhone app
-has been submitted to the App Store as a separate public release. Every user brings their **own** seats.aero Pro key.
+is a separate, public release. Every user brings their **own** seats.aero Pro key.
 **Data: seats.aero.**
 
 The web app's scheduler (the **worker** lane below) is not running in the current deployment (`docs/DEPLOYMENT.md`).

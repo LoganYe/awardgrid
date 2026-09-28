@@ -5,7 +5,10 @@
  *   - Every approved sentence passes the gate in its own status, so the registry cannot hold copy the gate refuses.
  *   - The registered public files pass in the registry's status, with the registered exemptions, and every exemption
  *     is used: one that matches nothing any more fails here, so it gets removed.
- *   - In released and withdrawn mode the same files fail on exactly today's submission wording, and nothing else.
+ *   - The registry says released (the T0 switch): in submitted mode the same files fail on exactly the released
+ *     wording, all of it PREMATURE_STATUS, so the switch is true only after T0; in withdrawn mode on the same wording,
+ *     as WITHDRAWN_STATUS. T0 itself (released_at_utc, t0_lookup_receipt) is recorded on T0 day by set-t0.mjs; until
+ *     then the gate defers T0_UNRECORDED (t0-switch.test.ts).
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -28,6 +31,8 @@ interface Claim {
   allowed_copy_zh_extra?: string[];
   allowed_copy_by_status?: Record<string, string>;
   allowed_copy_zh_by_status?: Record<string, string>;
+  allowed_copy_extra_by_status?: Record<string, string[]>;
+  allowed_copy_zh_extra_by_status?: Record<string, string[]>;
   allowed_copy_variants?: Record<string, string>;
   in_use?: string[];
   retired_copy?: string[];
@@ -37,10 +42,22 @@ const claim = (id: string) => CLAIMS.find((c) => c.claim_id === id)!;
 const MODE: Record<string, "submitted" | "released" | "withdrawn"> = { submitted_not_live: "submitted", released: "released", withdrawn: "withdrawn" };
 /** Sentences: an English one ends at . ! or ? and a space, a Chinese one at 。！？ with or without one. */
 const splitSentences = (text: string) => text.split(/(?<=[.!?])\s+|(?<=[。！？])\s*/).filter(Boolean);
+/** A claim's status-dependent sentences as [status, sentence]: by status, and the extra sentences per status. */
+const byStatus = (c: Claim): Array<[string, string]> => [
+  ...Object.entries(c.allowed_copy_by_status ?? {}),
+  ...Object.entries(c.allowed_copy_zh_by_status ?? {}),
+  ...Object.entries(c.allowed_copy_extra_by_status ?? {}).flatMap(([status, list]) => list.map((s): [string, string] => [status, s])),
+  ...Object.entries(c.allowed_copy_zh_extra_by_status ?? {}).flatMap(([status, list]) => list.map((s): [string, string] => [status, s])),
+];
+/** T0 is recorded: released_at_utc and t0_lookup_receipt are set (scripts/growth/set-t0.mjs does it on T0 day). */
+const T0_RECORDED = Boolean(REGISTRY.released.released_at_utc && REGISTRY.released.t0_lookup_receipt);
 
 describe("the facts registry", () => {
   it("passes every registry check: fields, enums, evidence refs, public files, markers, surfaces, exemptions", () => {
-    expect(checkRegistry(REGISTRY, { root: ROOT, registryText: REGISTRY_TEXT }).map(formatFinding)).toEqual([]);
+    // T0_UNRECORDED is the gate's deferred finding until T0 is recorded (t0-switch.test.ts); anything else fails here.
+    const found = checkRegistry(REGISTRY, { root: ROOT, registryText: REGISTRY_TEXT });
+    expect(found.filter((f: { rule: string }) => f.rule !== "T0_UNRECORDED").map(formatFinding)).toEqual([]);
+    expect(found.filter((f: { rule: string }) => f.rule === "T0_UNRECORDED")).toHaveLength(T0_RECORDED ? 0 : 1);
   });
 
   it("holds exactly the claims the public copy is built from", () => {
@@ -76,14 +93,22 @@ describe("the facts registry", () => {
     expect(REGISTRY.exact_copy_exempt_claims).toEqual(["history", "webapp_note"]);
   });
 
+  it("words the released status of /ios/ as released copy: extra sentences for the released status only", () => {
+    expect(claim("release_status").allowed_copy_extra_by_status).toEqual({
+      released: ["AwardGrid is free on the App Store for iPhone (iOS 18 or later).", "View AwardGrid on the App Store"],
+    });
+    expect(Object.keys(claim("prerequisite").allowed_copy_extra_by_status ?? {})).toEqual(["released"]);
+    expect(CLAIMS.filter((c) => c.allowed_copy_extra_by_status || c.allowed_copy_zh_extra_by_status).map((c) => c.claim_id)).toEqual(["release_status", "prerequisite"]);
+  });
+
   it("registers Q6's sentence under ask, with its evidence", () => {
     expect(claim("ask").allowed_copy_extra).toContain("Search runs on your seats.aero key alone.");
     expect(claim("ask").limitations.join(" ")).toMatch(/seats\.aero key alone.*search\.ts/);
   });
 
-  it("records the release as submitted, not live, with nothing that only a release can fill", () => {
+  it("records the release as released (the T0 switch), with T0 itself empty until set-t0.mjs records it", () => {
     expect(REGISTRY.released).toMatchObject({
-      status: "submitted_not_live",
+      status: "released",
       app_id: "6816321841",
       bundle_id: "com.dowhiz.awardgrid",
       seller: "Curastone CORP.",
@@ -93,10 +118,10 @@ describe("the facts registry", () => {
       minimum_ios: "18.0",
       interface_languages: ["en", "zh-Hans"],
       territories: { count: 174, excluded: ["China mainland"] },
-      released_at_utc: null,
       withdrawn_at_utc: null,
-      t0_lookup_receipt: null,
     });
+    if (T0_RECORDED) expect(REGISTRY.released.released_at_utc > REGISTRY.released.submitted_at_utc).toBe(true);
+    else expect(REGISTRY.released).toMatchObject({ released_at_utc: null, t0_lookup_receipt: null });
     expect(REGISTRY.candidate).toBeNull();
   });
 
@@ -107,8 +132,7 @@ describe("the facts registry", () => {
     for (const c of CLAIMS.filter((x) => x.public_use === "approved")) {
       const versions: Array<[string, string]> = [];
       for (const s of [c.allowed_copy, c.allowed_copy_zh, ...(c.allowed_copy_extra ?? []), ...(c.allowed_copy_zh_extra ?? [])]) if (s) versions.push([REGISTRY.released.status, s]);
-      for (const [status, s] of Object.entries(c.allowed_copy_by_status ?? {})) versions.push([status, s.replace("<date>", "1 November 2026")]);
-      for (const [status, s] of Object.entries(c.allowed_copy_zh_by_status ?? {})) versions.push([status, s.replace("<date>", "2026 年 11 月 1 日")]);
+      for (const [status, s] of byStatus(c)) versions.push([status, s.replace("<date>", /[㐀-鿿]/.test(s) ? "2026 年 11 月 1 日" : "1 November 2026")]);
       for (const key of c.in_use ?? []) versions.push([REGISTRY.released.status, c.allowed_copy_variants![key]!]);
       for (const [status, text] of versions) {
         const withPrerequisite = /\bfree\b/.test(text) ? `${text} ${prerequisite}` : /免费/.test(text) ? `${text}${prerequisiteZh}` : text;
@@ -144,9 +168,10 @@ describe("the facts registry", () => {
 describe("the current tree", () => {
   const result = validate({ root: ROOT });
 
-  it("the CLI exits 0 on it and says so in its summary", () => {
-    const out = spawnSync(process.execPath, [path.join(import.meta.dirname, "validate-public-claims.mjs")], { cwd: ROOT, encoding: "utf8" });
+  it("the CLI exits 0 on it and says so in its summary (and, until T0 is recorded, that T0_UNRECORDED is deferred)", () => {
+    const out = spawnSync(process.execPath, [path.join(import.meta.dirname, "validate-public-claims.mjs")], { cwd: ROOT, encoding: "utf8", env: { ...process.env, T0_MERGE_CHECK: "" } });
     expect(out.stdout).toMatch(new RegExp(`^public-claims: status=${REGISTRY.released.status} files=\\d+ findings=0 exemptions used=(\\d+)/\\1 \\(clean\\)$`, "m"));
+    expect(/^DEFERRED T0_UNRECORDED /m.test(out.stdout)).toBe(!T0_RECORDED);
     expect(out.status).toBe(0);
   });
 
@@ -176,53 +201,97 @@ describe("the current tree", () => {
     expect(result.exemptions.filter((e: { used: number }) => e.used === 0)).toEqual([]);
   });
 
-  // What has to change when the registry's status moves on from submitted_not_live, pinned so that the change of
-  // status fixes exactly these and nothing slips through. All are the submission wording, correct today: the
-  // release_status and price sentences at the top of README.md, the price answer in growth/geo/accuracy-answer.md,
-  // the history sentence in LEGAL.md, the /ios/ status paragraph and its price answer (on the page and in its FAQPage
-  // JSON-LD, so twice), the home page's status line, the status line of /ios/award-grid/, the Status, Price and
-  // Availability lines of llms.txt, and on /ios/zh-hans/ the price and "where to download" answers in Chinese (each on
-  // the page and in its JSON-LD). Once released, each takes its claim's released copy (allowed_copy_by_status, or
-  // allowed_copy_zh_by_status in Chinese); once withdrawn, the withdrawn copy (release_status) or none. Line numbers
-  // are left out, so an unrelated edit above them does not break this.
-  const AFTER_SUBMISSION = [
-    'STALE_STATUS LEGAL.md "has been submitted to the App Store"',
-    'STALE_STATUS README.md "submitted as a free app"',
-    'STALE_STATUS README.md "has been submitted to the App Store"',
-    'STALE_STATUS growth/geo/accuracy-answer.md "submitted as a free app"',
-    'STALE_STATUS sites/landing/index.html "has been submitted to the App Store"',
-    'STALE_STATUS sites/landing/ios/award-grid/index.html "has been submitted to the App Store"',
-    'STALE_STATUS sites/landing/ios/index.html "has been submitted to the App Store"',
-    'STALE_STATUS sites/landing/ios/index.html "submitted as a free app"',
-    'STALE_STATUS sites/landing/ios/index.html "submitted as a free app"',
-    `STALE_STATUS sites/landing/ios/index.html "waiting for Apple's review"`,
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "它将在 174 个国家或地区提供，中国大陆除外"',
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "它将在 174 个国家或地区提供，中国大陆除外"',
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "等待苹果审核"',
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "等待苹果审核"',
-    'STALE_STATUS sites/landing/public/llms.txt "has been submitted to the App Store"',
-    'STALE_STATUS sites/landing/public/llms.txt "submitted as a free app"',
-    'STALE_STATUS sites/landing/public/llms.txt "will be offered in 174"',
+  // The released wording of the T0 switch, pinned: in submitted mode (--status submitted, before T0) every piece of it
+  // is premature, and in withdrawn mode untrue, and nothing else is reported. The release_status sentence, and on /ios/
+  // its status paragraph (with the listing's link), on the home page, /ios/award-grid/, README.md and llms.txt; the
+  // price sentence in README.md, the short answers, /ios/'s question 1 (on the page and in its FAQPage JSON-LD, so
+  // twice) and llms.txt; the history sentence in LEGAL.md (its only status wording); llms.txt's App Store and
+  // availability lines; on /ios/zh-hans/ the answers to 免费吗 and 哪里能下载 (each on the page and in its JSON-LD) and
+  // the listing's link. Line numbers are left out, so an unrelated edit above them does not break this.
+  const RELEASED_WORDING: ReadonlyArray<readonly [string, string, string?]> = [
+    // In withdrawn mode the history sentence is found whole (the registry's released copy, which has no withdrawn one).
+    ["LEGAL.md", "is a separate, public release", "The iPhone app is a separate, public release"],
+    ["README.md", "AwardGrid is free"],
+    ["README.md", "app is free"],
+    ["README.md", "on the App Store"],
+    ["growth/geo/accuracy-answer.md", "app is free"],
+    ["sites/landing/index.html", "AwardGrid is free"],
+    ["sites/landing/index.html", "on the App Store"],
+    ["sites/landing/ios/award-grid/index.html", "AwardGrid is free"],
+    ["sites/landing/ios/award-grid/index.html", "on the App Store"],
+    ["sites/landing/ios/index.html", "AwardGrid is free"],
+    ["sites/landing/ios/index.html", "app is free"],
+    ["sites/landing/ios/index.html", "app is free"],
+    ["sites/landing/ios/index.html", "apps.apple.com/app/apple-store/id6816321841"],
+    ["sites/landing/ios/index.html", "on the App Store"],
+    ["sites/landing/ios/index.html", "on the App Store"],
+    ["sites/landing/ios/index.html", "seats.aero notes that not every Pro account or country gets API access, so check that your seats.aero settings show an API tab before you subscribe or download"],
+    ["sites/landing/ios/zh-hans/index.html", "App 免费，没有内购"],
+    ["sites/landing/ios/zh-hans/index.html", "App 免费，没有内购"],
+    ["sites/landing/ios/zh-hans/index.html", "apps.apple.com/app/apple-store/id6816321841"],
+    ["sites/landing/ios/zh-hans/index.html", "在 App Store 免费"],
+    ["sites/landing/ios/zh-hans/index.html", "在 App Store 免费"],
+    ["sites/landing/ios/zh-hans/index.html", "已在 174 个国家或地区提供，中国大陆除外"],
+    ["sites/landing/ios/zh-hans/index.html", "已在 174 个国家或地区提供，中国大陆除外"],
+    ["sites/landing/public/llms.txt", "Available in 174"],
+    ["sites/landing/public/llms.txt", "AwardGrid is free"],
+    ["sites/landing/public/llms.txt", "app is free"],
+    ["sites/landing/public/llms.txt", "apps.apple.com/app/id6816321841"],
+    ["sites/landing/public/llms.txt", "on the App Store"],
   ];
-  it.each(["released", "withdrawn"] as const)("in %s mode it finds exactly the submission wording, and nothing else", (status) => {
-    const found = validate({ root: ROOT, status }).findings.map((f: { rule: string; logical: string; match: string }) => `${f.rule} ${f.logical} ${JSON.stringify(f.match)}`);
-    expect(found.sort()).toEqual([...AFTER_SUBMISSION].sort());
+  // The Smart App Banner and the MobileApplication node, when this tree has them: they come and go together, in a
+  // change of their own, and without them /ios/ links the listing as text only. What each adds, when it is there: the
+  // banner's meta on /ios/ and /ios/zh-hans/; the node (only once released: SCHEMA_JSON) and its two links to the
+  // listing (offers.url, sameAs).
+  const source = (file: string) => readFileSync(path.join(ROOT, file), "utf8");
+  const BADGE: ReadonlyArray<readonly [string, string, string]> = [
+    ...["sites/landing/ios/index.html", "sites/landing/ios/zh-hans/index.html"].filter((f) => /<meta name="apple-itunes-app"/.test(source(f))).map((f) => ["STATUS", f, "apple-itunes-app"] as const),
+    ...(/"@type": "MobileApplication"/.test(source("sites/landing/ios/index.html"))
+      ? ([
+          ["SCHEMA_JSON", "sites/landing/ios/index.html", "<script"],
+          ["STATUS", "sites/landing/ios/index.html", "apps.apple.com/app/id6816321841"],
+          ["STATUS", "sites/landing/ios/index.html", "apps.apple.com/app/id6816321841"],
+        ] as const)
+      : []),
+  ];
+  const expected = (status: "submitted" | "withdrawn") => {
+    const rule = status === "submitted" ? "PREMATURE_STATUS" : "WITHDRAWN_STATUS";
+    return [
+      ...RELEASED_WORDING.map(([file, match, whole]) => `${rule} ${file} ${JSON.stringify(status === "withdrawn" && whole ? whole : match)}`),
+      ...BADGE.map(([r, file, match]) => `${r === "STATUS" ? rule : r} ${file} ${JSON.stringify(match)}`),
+    ].sort();
+  };
+  const found = (status: "submitted" | "withdrawn") =>
+    validate({ root: ROOT, status }).findings.map((f: { rule: string; logical: string; match: string }) => `${f.rule} ${f.logical} ${JSON.stringify(f.match)}`).sort();
+
+  it("before T0 (--status submitted) it finds exactly the released wording, all of it premature, and nothing else", () => {
+    expect(found("submitted")).toEqual(expected("submitted"));
+    expect(found("submitted").filter((f: string) => !/^(?:PREMATURE_STATUS|SCHEMA_JSON) /.test(f))).toEqual([]);
   });
 
-  // The switch at release swaps each status sentence for its claim's copy for the new status. The layout of each file
-  // below must take that swap as it is: the released release_status sentence says "free", so it has to sit next to the
-  // prerequisite (FREE_WITHOUT_PRO), and nothing else may need rewording.
-  const swapped = (text: string, status: "released" | "withdrawn") => {
+  it("once withdrawn it finds exactly the same wording, as WITHDRAWN_STATUS, and nothing else", () => {
+    expect(found("withdrawn")).toEqual(expected("withdrawn"));
+  });
+
+  it("the CLI exits 1 in submitted mode and lists the premature wording", () => {
+    const out = spawnSync(process.execPath, [path.join(import.meta.dirname, "validate-public-claims.mjs"), "--status", "submitted"], { cwd: ROOT, encoding: "utf8", env: { ...process.env, T0_MERGE_CHECK: "" } });
+    expect(out.status).toBe(1);
+    expect(out.stdout).toMatch(new RegExp(`^public-claims: status=submitted_not_live \\(registry: released\\) files=\\d+ findings=${expected("submitted").length} `, "m"));
+    expect(out.stdout.split("\n").filter((l: string) => l.startsWith("PREMATURE_STATUS ")).length).toBe(expected("submitted").filter((f) => f.startsWith("PREMATURE_STATUS ")).length);
+  });
+
+  // The switch to a later status swaps each status sentence for its claim's copy for that status. The layout of each
+  // file below must take that swap as it is (a sentence with no copy for the new status goes): the withdrawn
+  // release_status sentence says the app was removed, and nothing else may need rewording. llms.txt is left out once
+  // released: the switch to withdrawn also removes its App Store line.
+  const LATER: Record<string, ReadonlyArray<"released" | "withdrawn">> = { submitted_not_live: ["released", "withdrawn"], released: ["withdrawn"], withdrawn: [] };
+  const swapped = (text: string, from: string, to: "released" | "withdrawn") => {
     let out = text;
     for (const c of CLAIMS) {
       for (const copy of [c.allowed_copy_by_status, c.allowed_copy_zh_by_status]) {
-        if (!copy) continue;
-        const next = copy[status]?.replace("<date>", "1 November 2026") ?? "";
-        out = out.split(copy.submitted_not_live!).join(next);
+        if (!copy?.[from]) continue;
+        const next = copy[to]?.replace("<date>", "1 November 2026") ?? "";
+        out = out.split(copy[from]!).join(next);
       }
     }
     return out;
@@ -232,11 +301,12 @@ describe("the current tree", () => {
     ["growth/geo/accuracy-answer.md", false],
     ["sites/landing/index.html", false],
     ["sites/landing/ios/award-grid/index.html", false],
-    ["sites/landing/public/llms.txt", false],
-  ] as const)("%s passes in released and withdrawn mode once its status sentences take that status's copy", (file, section) => {
+  ] as const)("%s passes in each later status once its status sentences take that status's copy", (file, section) => {
     const text = readFileSync(path.join(ROOT, file), "utf8");
-    for (const status of ["released", "withdrawn"] as const) {
-      const found = scanContent(swapped(text, status), { logical: file, section, status, registry: REGISTRY, root: ROOT });
+    const from = REGISTRY.released.status as string;
+    expect(LATER[from]!.length).toBeGreaterThan(0);
+    for (const status of LATER[from]!) {
+      const found = scanContent(swapped(text, from, status), { logical: file, section, status, registry: REGISTRY, root: ROOT });
       expect(found.map(formatFinding), `${file} (${status})`).toEqual([]);
     }
   });
@@ -252,8 +322,7 @@ describe("the public copy is the registry's", () => {
       c.allowed_copy_zh,
       ...(c.allowed_copy_extra ?? []),
       ...(c.allowed_copy_zh_extra ?? []),
-      ...Object.values(c.allowed_copy_by_status ?? {}),
-      ...Object.values(c.allowed_copy_zh_by_status ?? {}),
+      ...byStatus(c).map(([, s]) => s),
       ...Object.values(c.allowed_copy_variants ?? {}),
     ])
       .filter((s): s is string => typeof s === "string")
@@ -301,17 +370,18 @@ describe("the public copy is the registry's", () => {
     expect(REGISTRY.released.minimum_ios).toBe("18.0");
   });
 
-  it("sites/landing/ios/index.html: the lead, what you need, the example's caption and every answer", () => {
-    // "What it does not do" and "Where this is up to" are the page's copy from before the registry, kept as it was.
-    // The example table's cells are illustrative figures drawn as the app's Matrix, not claims; its visible caption
-    // ("Illustrative figures, not seats.aero data…") is outside the table and is checked.
-    const blocks = pageBlocks("sites/landing/ios/index.html", [
-      /<section class="limits"[\s\S]*?<\/section>/i,
-      /<section class="status"[\s\S]*?<\/section>/i,
-      /<table class="ag-preview"[\s\S]*?<\/table>/i,
-    ]);
+  it("sites/landing/ios/index.html: the lead, what you need, the example's caption, every answer and where this is up to", () => {
+    // "What it does not do" is the page's copy from before the registry, kept as it was. The example table's cells are
+    // illustrative figures drawn as the app's Matrix, not claims; its visible caption ("Illustrative figures, not
+    // seats.aero data…") is outside the table and is checked. The link to the listing is a paragraph that is only a
+    // link; its words are release_status's released copy too.
+    const blocks = pageBlocks("sites/landing/ios/index.html", [/<section class="limits"[\s\S]*?<\/section>/i, /<table class="ag-preview"[\s\S]*?<\/table>/i]);
     expect(loose(blocks)).toEqual([]);
     expect(sentences(blocks).length).toBeGreaterThan(20);
+    expect(blocks).toEqual(expect.arrayContaining([expect.stringMatching(/^AwardGrid is free on the App Store for iPhone \(iOS 18 or later\)\. /)]));
+    expect(readFileSync(path.join(ROOT, "sites/landing/ios/index.html"), "utf8")).toContain(
+      '<a href="https://apps.apple.com/app/apple-store/id6816321841?pt=124116782&amp;ct=awardgrid-ios&amp;mt=8">View AwardGrid on the App Store</a>',
+    );
   });
 
   it("sites/landing/ios/award-grid/index.html: every sentence", () => {
@@ -324,6 +394,9 @@ describe("the public copy is the registry's", () => {
     const blocks = pageBlocks("sites/landing/ios/zh-hans/index.html");
     expect(loose(blocks)).toEqual([]);
     expect(sentences(blocks).length).toBeGreaterThan(20);
+    expect(readFileSync(path.join(ROOT, "sites/landing/ios/zh-hans/index.html"), "utf8")).toContain(
+      'AwardGrid 可在 <a href="https://apps.apple.com/app/apple-store/id6816321841?pt=124116782&amp;ct=awardgrid-ios&amp;mt=8">App Store</a> 免费下载（App ID 6816321841）。',
+    );
   });
 
   it.each(["sites/landing/ios/index.html", "sites/landing/ios/award-grid/index.html", "sites/landing/ios/zh-hans/index.html"])(

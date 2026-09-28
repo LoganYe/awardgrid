@@ -36,6 +36,17 @@ export function localDate(now = new Date()): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+/**
+ * The build's "today", as YYYY-MM-DD: the later of the date where the build runs and the UTC date. A lastmod is a UTC
+ * date (scripts/growth/set-t0.mjs writes the UTC date of the release), so one written today is never later than this,
+ * whatever the time zone of the machine that builds.
+ */
+export function buildDate(now = new Date()): string {
+  const local = localDate(now);
+  const utc = now.toISOString().slice(0, 10);
+  return local > utc ? local : utc;
+}
+
 /** Is `s` a real calendar date written YYYY-MM-DD? */
 export function isDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -83,7 +94,7 @@ export function sitemapXml(manifest: Manifest): string {
 
 /**
  * Writes sitemap.xml into the build from pages.json, and stops the build when the manifest is wrong (a lastmod later
- * than today, a page file that does not exist). The sitemap is built, not kept in public/, so it cannot disagree with
+ * than today, buildDate, a page file that does not exist). The sitemap is built, not kept in public/, so it cannot disagree with
  * the pages the build makes.
  */
 function sitemap(): Plugin {
@@ -92,7 +103,7 @@ function sitemap(): Plugin {
     apply: "build",
     generateBundle() {
       const manifest = readManifest();
-      const problems = manifestProblems(manifest, localDate());
+      const problems = manifestProblems(manifest, buildDate());
       if (problems.length) throw new Error(`sites/landing/pages.json: ${problems.join("; ")}`);
       this.emitFile({ type: "asset", fileName: "sitemap.xml", source: sitemapXml(manifest) });
     },

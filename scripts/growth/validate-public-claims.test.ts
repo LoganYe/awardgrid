@@ -524,6 +524,20 @@ describe("status modes", () => {
     expect(inEachZh("它将在 174 个国家或地区提供，中国大陆除外。").released).toEqual([]);
   });
 
+  it("an extra sentence for a status (allowed_copy_extra_by_status, and its Chinese) is that status's copy", () => {
+    // Pinned by a registry of its own. The sentences carry no listing words, so only the registry's copy catches them.
+    const registry = structuredClone(REGISTRY);
+    const scope = registry.claims.find((c: { claim_id: string }) => c.claim_id === "scope");
+    scope.allowed_copy_extra_by_status = { released: ["Check the one-way rule before you subscribe or install it."] };
+    scope.allowed_copy_zh_extra_by_status = { released: ["安装之前请先确认只能查单程。"] };
+    const inEachReg = (text: string) => Object.fromEntries((["submitted", "released", "withdrawn"] as const).map((s) => [s, rules(text, { status: s, registry })]));
+    expect(inEachReg("Check the one-way rule before you subscribe or install it.")).toEqual({ submitted: ["PREMATURE_STATUS"], released: [], withdrawn: ["WITHDRAWN_STATUS"] });
+    expect(inEachReg("安装之前请先确认只能查单程。")).toEqual({ submitted: ["PREMATURE_STATUS"], released: [], withdrawn: ["WITHDRAWN_STATUS"] });
+    delete scope.allowed_copy_extra_by_status;
+    delete scope.allowed_copy_zh_extra_by_status;
+    expect(inEachReg("Check the one-way rule before you subscribe or install it.")).toEqual({ submitted: [], released: [], withdrawn: [] });
+  });
+
   // Paraphrases of a listing, not only the registry's own sentences.
   const LISTING = [
     "Download AwardGrid from the App Store today.",
@@ -922,6 +936,25 @@ describe("registry checks", () => {
     expect(checkRegistry(REGISTRY, { root: ROOT }).filter((f: { match: string }) => /allowed_copy_zh/.test(f.match))).toEqual([]);
   });
 
+  it("checks the extra sentences per status: keyed by a status, each a list of sentences", () => {
+    const bad = structuredClone(REGISTRY);
+    const byId = (id: string) => bad.claims.find((c: { claim_id: string }) => c.claim_id === id);
+    byId("scope").allowed_copy_extra_by_status = { live: ["A sentence."] };
+    byId("views").allowed_copy_extra_by_status = { released: "one sentence" };
+    byId("watches").allowed_copy_zh_extra_by_status = ["句子。"];
+    byId("quota").allowed_copy_zh_extra_by_status = { withdrawn: [] };
+    const problems = checkRegistry(bad, { root: ROOT }).map((f: { match: string }) => f.match);
+    expect(problems).toEqual(
+      expect.arrayContaining([
+        'claim scope: allowed_copy_extra_by_status key "live" is not a status',
+        "claim views: allowed_copy_extra_by_status.released must be a list of sentences",
+        "claim watches: allowed_copy_zh_extra_by_status must map a status to a list of sentences",
+        "claim quota: allowed_copy_zh_extra_by_status.withdrawn must be a list of sentences",
+      ]),
+    );
+    expect(checkRegistry(REGISTRY, { root: ROOT }).filter((f: { match: string }) => /extra_by_status/.test(f.match))).toEqual([]);
+  });
+
   it("fails an unregistered public surface, and skips build output and dependencies", () => {
     const root = tempDir();
     const put = (rel: string, text = "<p>Text</p>") => {
@@ -1021,7 +1054,7 @@ describe("the CLI", () => {
     expect(out.status).toBe(1);
     expect(out.stdout).toMatch(/^LIVE .*draft\.md:3 ".*real-time.*"$/m);
     expect(out.stdout).toMatch(/^ALERT .*draft\.md:3 /m);
-    expect(out.stdout).toMatch(/^public-claims: status=submitted_not_live files=1 findings=2 /m);
+    expect(out.stdout).toMatch(new RegExp(`^public-claims: status=${REGISTRY.released.status} files=1 findings=2 `, "m"));
     expect(out.stdout).toMatch(/^public-claims: rules .*LIVE=1 .*ALERT=1 /m);
     expect(out.stdout).toMatch(/^public-claims: scanned .*draft\.md$/m);
   });
@@ -1033,7 +1066,7 @@ describe("the CLI", () => {
     expect(run(["--file", draft]).status).toBe(0);
     expect(run(["--file", draft, "--status", "released"]).status).toBe(0);
     const json = JSON.parse(run(["--file", draft, "--json"]).stdout);
-    expect(json).toMatchObject({ status: "submitted_not_live", findings: [] });
+    expect(json).toMatchObject({ status: REGISTRY.released.status, findings: [], deferred: [] });
   });
 
   it("scans every page and every text file of a built site with --dist, in dot-directories too", () => {
@@ -1061,7 +1094,7 @@ describe("the CLI", () => {
     writeFileSync(draft, "Real-time alerts for every airline.\n");
     const out = spawnSync(process.execPath, [link, "--file", draft], { cwd: dir, encoding: "utf8" });
     expect(out.status).toBe(1);
-    expect(out.stdout).toMatch(/^public-claims: status=submitted_not_live files=1 findings=3 /m);
+    expect(out.stdout).toMatch(new RegExp(`^public-claims: status=${REGISTRY.released.status} files=1 findings=3 `, "m"));
   });
 
   it("exits 2 on a usage error", () => {

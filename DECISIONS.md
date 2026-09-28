@@ -1263,6 +1263,10 @@ Full rationale in `packages/tokens/README.md`.
   the position plainly instead — which is both the honest option and the one that needs no rewrite
   when the answer arrives.
 
+  Amended <date>: after the release of 1.0 on <date>, /ios/ and /ios/zh-hans/ link the listing as text, and /ios/
+  states the licence in the dependency sentence (seats.aero licenses its Partner API for non-commercial use and can
+  limit or withdraw it).
+
 - **"Invite only" is gone from the copy and nothing else is.** PIVOT §4: "The voice does not
   change." The front door's blocks carry over almost verbatim; the one that had to go said there is
   no public signup and you need an invite from whoever runs the server, which was true of a shared
