@@ -32,6 +32,7 @@ group with the owner, then install it from the TestFlight app.
 | P11 | App Review information | Agent | **Saved:** contact Logan Ye with Restful's phone number, e-mail knowhiz.us@gmail.com; sign-in not required; the notes (P4) |
 | P12 | Submit for Review | Agent, on the owner's request | **Submitted 2026-09-26 20:24:** version 1.0 with build 3; App Store Connect shows "Waiting for Review" (up to 48 hours; Apple e-mails the result). It is released automatically once approved |
 | P14 | A new icon, based on what the app does | Agent; the owner chose it | **Done 2026-09-26:** a two-by-two table on the deep teal, the top-right cell lit amber with a top-down airliner in it, chosen from three directions; `apps/ios/scripts/app-icon.py`; PR #102 |
+| P15 | Cloudflare Web Analytics on the site | Owner decided; agent | **Found 2026-09-27** by the growth session: Cloudflare injects its Web Analytics beacon into every HTML page on awardgrid.dowhiz.com, for browsers only (a plain curl gets none). The owner chose to keep it and **disclose** it: the privacy policy's "This website" section (EN/ZH), the /ios/ row, LEGAL.md. PR on `site/analytics-disclosure`, stacked on #103; deploy the Worker and the web app after merge, on the owner's OK |
 | P13 | Once approved: LEGAL.md, the landing page and the privacy policy stop saying the app is tested privately and not on the App Store | Agent, with the owner's OK | Later |
 
 **Build 1.0 (2)** (`183dcce`: `CURRENT_PROJECT_VERSION` 2, `ExportOptions-AppStore.plist`). Archived on 2026-09-26
@@ -136,7 +137,7 @@ What is left is the owner's:
 | Icon, launch screen | — | — | Home screen shows the icon named AwardGrid; launch screen #F6F7F9 in light (dark frame not captured) | not run | — |
 | About rows, Licenses page | markup tests | onboarding spec, incl. the 320 pt audit | Rows, the Licenses page and an opened license seen in WKWebView (iOS 18.3) | not run | — |
 | iPad compatibility (D4) | — | — | New "awardgrid iPad 13 (V12)" (iOS 26.5): opens in the iPhone window, welcome screen correct | not run | — |
-| Privacy and support pages | honesty scan (cadence, background claims, no script) | — | — | — | Rendered over HTTP at 390 pt, light and dark: no overflow, no outside request |
+| Privacy and support pages | honesty scan (cadence, background claims, no script) | — | — | — | Rendered over HTTP at 390 pt, light and dark: no overflow, no outside request Live, a browser also gets Cloudflare's Web Analytics beacon, added at the edge; the source has no script (§0 P15) |
 | Bundle hygiene (R1) | `check-fixture-free-bundle` (maps, fixture markers), `acknowledgements --check` | — | R1 over the bundle and its maps, and over `public/` in the exported `.ipa`: 0 hits (§5) | — | — |
 
 Seen on the Simulator, already tracked: scrolled pages pass under the status bar (#90).
