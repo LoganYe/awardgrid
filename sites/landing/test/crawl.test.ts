@@ -46,6 +46,16 @@ const SITE_GRAPH = {
   ],
 };
 
+/** The Worker's own address, which serves every file of the build (the hostname serves only what a route claims). */
+const WORKERS_DEV_ORIGIN = "https://awardgrid-site.logan-yegaoyang.workers.dev";
+/**
+ * The widest meta description a search result shows whole, in the width of a Latin character: Google cuts a snippet
+ * at about 155-160 of them on desktop, and a CJK character takes about two. Past it, the end of the sentence (on
+ * these pages, the prerequisite) is what a searcher never sees.
+ */
+const DESCRIPTION_MAX = 155;
+const displayWidth = (text: string) => [...text].reduce((n, ch) => n + (/[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/.test(ch) ? 2 : 1), 0);
+
 /** Every file under `dir`, as a relative path with forward slashes. */
 function listFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -122,6 +132,7 @@ function headProblems(html: string, pagePath: string): string[] {
   one("og:title", metas(head, "property", "og:title"), title);
   const description = metas(head, "name", "description");
   if (description.length !== 1 || !description[0]) out.push("needs exactly one meta description");
+  else if (displayWidth(description[0]) > DESCRIPTION_MAX) out.push(`meta description: ${displayWidth(description[0])} wide, want at most ${DESCRIPTION_MAX} (a search result cuts the rest)`);
   one("og:description", metas(head, "property", "og:description"), description[0]);
   one("twitter:card", metas(head, "name", "twitter:card"), "summary");
   const icons = links(head, "icon").map((a) => ({ href: new URL(a.get("href") ?? "", url).href, type: a.get("type"), sizes: a.get("sizes") }));
@@ -168,7 +179,7 @@ describe("pages.json, the page manifest", () => {
   it("is well formed: paths, files that exist, lastmod dates that are real and not later than today, the key", () => {
     expect(siteOrigin(MANIFEST)).toBe(ORIGIN);
     expect(manifestProblems(MANIFEST, TODAY)).toEqual([]);
-    expect(MANIFEST.pages.map((p) => p.path)).toEqual(["/", "/ios/", "/privacy/", "/support/"]);
+    expect(MANIFEST.pages.map((p) => p.path)).toEqual(["/", "/ios/", "/ios/award-grid/", "/ios/zh-hans/", "/privacy/", "/support/"]);
   });
 
   it("lists every page of the site's source, and the build's inputs are exactly its pages", () => {
@@ -281,21 +292,44 @@ describe("head tags", () => {
     expect(headProblems(good.replace('content="summary"', 'content="summary_large_image"'), "/support/").join("\n")).toMatch(/twitter:card/);
     expect(headProblems(good.replace('<meta property="og:type" content="website" />', '<meta property="og:type" content="website" /><meta property="og:image" content="x.png" />'), "/support/").join("\n")).toMatch(/og:image/);
     expect(headProblems(good.replace('href="/favicon.svg"', 'href="favicon.svg"'), "/support/").join("\n")).toMatch(/favicon.svg/);
+    const long = "Help for the AwardGrid iPhone app. ".repeat(5).trim();
+    expect(headProblems(good.replace(/content="Help for the AwardGrid[^"]*"/g, `content="${long}"`), "/support/").join("\n")).toMatch(/meta description: 174 wide, want at most 155/);
+    expect(displayWidth("一张表 AB")).toBe(9);
   });
 });
 
 describe("JSON-LD", () => {
-  it.each(["/", "/ios/"])("%s carries the organization and the website, and nothing else", (pagePath) => {
-    const file = MANIFEST.pages.find((p) => p.path === pagePath)!.file;
-    for (const html of [readFileSync(path.join(SITE, file), "utf8"), read(file)]) {
+  const fileOf = (pagePath: string) => MANIFEST.pages.find((p) => p.path === pagePath)!.file;
+  /** A page shows questions when it has a section in the FAQ convention (scripts/growth/sync-faq-schema.mjs). */
+  const showsQuestions = (html: string) => /<section\b[^>]*\sdata-faq\b/i.test(html.replace(/<!--[\s\S]*?-->/g, ""));
+
+  it.each(["/", "/ios/award-grid/"])("%s carries the organization and the website, and nothing else", (pagePath) => {
+    for (const html of [readFileSync(path.join(SITE, fileOf(pagePath)), "utf8"), read(fileOf(pagePath))]) {
       expect(jsonLd(html)).toEqual([SITE_GRAPH]);
     }
   });
 
-  it("no page says FAQPage (the questions are not on the pages yet) or MobileApplication (the app is not released)", () => {
+  it.each(["/ios/", "/ios/zh-hans/"])("%s carries the organization, the website and the FAQPage of its questions", (pagePath) => {
+    for (const html of [readFileSync(path.join(SITE, fileOf(pagePath)), "utf8"), read(fileOf(pagePath))]) {
+      expect(showsQuestions(html)).toBe(true);
+      const blocks = jsonLd(html);
+      expect(blocks).toHaveLength(1);
+      const graph = blocks[0]["@graph"] as Array<Record<string, unknown>>;
+      expect({ "@context": blocks[0]["@context"], "@graph": graph.slice(0, 2) }).toEqual(SITE_GRAPH);
+      expect(graph.slice(2).map((node) => node["@type"])).toEqual(["FAQPage"]);
+      expect(graph[2]!["@id"]).toBe(`${ORIGIN}${pagePath}#faq`);
+      expect((graph[2]!.mainEntity as unknown[]).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("FAQPage only where the page shows its questions, and no MobileApplication (the app is not released)", () => {
     const types = MANIFEST.pages.flatMap((p) => jsonLd(read(p.file)).flatMap(typesIn));
     expect(types.length).toBeGreaterThan(0);
-    expect(new Set(types)).toEqual(new Set(["Organization", "WebSite"]));
+    expect(new Set(types)).toEqual(new Set(["Organization", "WebSite", "FAQPage", "Question", "Answer"]));
+    for (const p of MANIFEST.pages) {
+      const html = read(p.file);
+      expect(jsonLd(html).flatMap(typesIn).includes("FAQPage"), p.path).toBe(showsQuestions(html));
+    }
   });
 
   it("no JSON-LD block has a src", () => {
@@ -303,6 +337,36 @@ describe("JSON-LD", () => {
       const scripts = [...read(p.file).matchAll(/<script\b([^>]*)>/gi)].map((m) => attributes(m[1] ?? ""));
       expect(scripts.filter((a) => a.has("src")), p.file).toEqual([]);
     }
+  });
+});
+
+describe("hreflang", () => {
+  /** The alternates a page names: hreflang → absolute URL, in its order. */
+  const alternates = (html: string) =>
+    links(headOf(html), "alternate")
+      .filter((a) => a.has("hreflang"))
+      .map((a) => [a.get("hreflang"), a.get("href")]);
+  /** The English page and its Simplified Chinese version name each other, and the English page is the default. */
+  const PAIR = [
+    ["en", `${ORIGIN}/ios/`],
+    ["zh-Hans", `${ORIGIN}/ios/zh-hans/`],
+    ["x-default", `${ORIGIN}/ios/`],
+  ];
+
+  it.each(["/ios/", "/ios/zh-hans/"])("%s names both versions and the default, in the source and the built page", (pagePath) => {
+    const file = MANIFEST.pages.find((p) => p.path === pagePath)!.file;
+    for (const html of [readFileSync(path.join(SITE, file), "utf8"), read(file)]) expect(alternates(html)).toEqual(PAIR);
+  });
+
+  it("gives each version the language it names: <html lang>", () => {
+    const lang = (file: string) => /<html\b[^>]*\blang="([^"]+)"/i.exec(read(file))?.[1];
+    expect(lang("ios/index.html")).toBe("en");
+    expect(lang("ios/zh-hans/index.html")).toBe("zh-Hans");
+  });
+
+  it("no other page names alternates: each has one version (/privacy/ and /support/ hold their Chinese on the same page)", () => {
+    const others = MANIFEST.pages.filter((p) => !["/ios/", "/ios/zh-hans/"].includes(p.path));
+    for (const p of others) expect(alternates(read(p.file)), p.path).toEqual([]);
   });
 });
 
@@ -329,6 +393,59 @@ describe("the home page", () => {
   });
 });
 
+describe("links between the pages", () => {
+  // wrangler.jsonc's comments are whole lines; JSON.parse reads the rest.
+  const routes: string[] = JSON.parse(readFileSync(path.join(SITE, "wrangler.jsonc"), "utf8").replace(/^\s*\/\/.*$/gm, "")).routes.map(
+    (r: { pattern: string }) => r.pattern.slice("awardgrid.dowhiz.com".length),
+  );
+  /** Whether a route sends this path to the Worker on the hostname: a prefix route (`/ios*`) or an exact one. */
+  const routed = (pathname: string) => routes.some((r) => (r.endsWith("*") ? pathname.startsWith(r.slice(0, -1)) : pathname === r));
+  const idsOf = (html: string) => new Set([...html.matchAll(/\sid\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi)].map((m) => m[1] ?? m[2] ?? m[3]));
+
+  /**
+   * What is wrong with a built page's links, on the hostname and on workers.dev. Each <a href> and <link href> that
+   * stays on the origin the page is served from must name a file of the build (a path ending in "/" serves its
+   * index.html) that the Worker answers there (on the hostname a route must claim the path; workers.dev serves every
+   * file), and a #fragment must be an id on the page it points to. No <a href> names the hostname itself: on
+   * workers.dev it would leave for the hostname. (canonical and hreflang are absolute on purpose.)
+   */
+  function linkProblems(pagePath: string, html: string, files: Set<string>, htmlOf: (file: string) => string): string[] {
+    const out: string[] = [];
+    const markup = html.replace(/<!--[\s\S]*?-->/g, "");
+    const refs = [...tags(markup, "a").map((a) => ["a", a.get("href")] as const), ...tags(markup, "link").map((a) => ["link", a.get("href")] as const)];
+    for (const [tag, href] of refs) {
+      if (href === undefined || /^(?:mailto|tel):/i.test(href)) continue;
+      if (tag === "a" && /^(?:https?:)?\/\/awardgrid\.dowhiz\.com(?:[/?#]|$)/i.test(href)) out.push(`${pagePath}: <a href="${href}"> names the hostname, so it leaves workers.dev`);
+      for (const origin of [ORIGIN, WORKERS_DEV_ORIGIN]) {
+        const url = new URL(href, origin + pagePath);
+        if (url.origin !== origin) continue;
+        const pathname = decodeURIComponent(url.pathname);
+        const file = pathname.endsWith("/") ? `${pathname.slice(1)}index.html` : pathname.slice(1);
+        if (!files.has(file)) out.push(`${pagePath}: ${href} on ${origin} is ${pathname}, which the build does not have`);
+        else if (origin === ORIGIN && !routed(pathname)) out.push(`${pagePath}: ${href} is ${pathname}, which no Worker route claims on the hostname`);
+        else if (url.hash && !idsOf(htmlOf(file)).has(decodeURIComponent(url.hash.slice(1)))) out.push(`${pagePath}: ${href} names #${url.hash.slice(1)}, which ${pathname} does not have`);
+      }
+    }
+    return out;
+  }
+
+  it.each(MANIFEST.pages.map((p) => [p.path, p.file] as const))("%s: every same-site link of the built page resolves, on the hostname and on workers.dev", (pagePath, file) => {
+    const html = read(file);
+    expect(linkProblems(pagePath, html, new Set(built), read)).toEqual([]);
+    expect(tags(html, "a").length, "the page links somewhere").toBeGreaterThan(0);
+  });
+
+  it("catches a link that goes nowhere (the check above is not vacuous)", () => {
+    const files = new Set(built);
+    const problems = (anchor: string) => linkProblems("/ios/award-grid/", `<main>${anchor}</main>`, files, read).join("\n");
+    expect(problems('<a href="../support/">x</a>')).toMatch(/\/ios\/support\/, which the build does not have/);
+    expect(problems('<a href="../../privacy/#nope">x</a>')).toMatch(/names #nope/);
+    expect(problems('<a href="https://awardgrid.dowhiz.com/support/">x</a>')).toMatch(/names the hostname/);
+    expect(problems('<a href="../../sitemap.xml">x</a>')).toBe("");
+    expect(problems('<a href="../../support/">x</a> <a href="../../privacy/#zh">x</a> <a href="https://seats.aero">x</a>')).toBe("");
+  });
+});
+
 describe("robots.txt", () => {
   const robots = readFileSync(path.join(PUBLIC, "robots.txt"), "utf8");
   const lines = robots.split("\n");
@@ -344,6 +461,11 @@ describe("robots.txt", () => {
   it("blocks no page, no root file, and not /login or /register (their noindex has to stay visible to crawlers)", () => {
     const paths = [...MANIFEST.pages.map((p) => p.path), ...ROOT_FILES.map((f) => `/${f}`), "/sitemap.xml", "/login", "/register"];
     expect(paths.filter((p) => disallowed.some((rule) => rule !== "" && p.startsWith(rule)))).toEqual([]);
+  });
+
+  it("lists exactly the manifest's pages in its comment", () => {
+    const listed = /^# Public pages: (.*) \(static files\)\.$/m.exec(robots)?.[1]?.split(", ");
+    expect(listed).toEqual(MANIFEST.pages.map((p) => p.path));
   });
 
   it("has comments only as robots comments, with the web app note", () => {

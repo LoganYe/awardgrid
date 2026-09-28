@@ -99,7 +99,9 @@ main {
 }
 
 .status h2,
-.limits h2 {
+.limits h2,
+.needs h2,
+.faq h2 {
   font-family: var(--font-display);
   font-size: clamp(20px, 3.5vw, 26px);
   letter-spacing: var(--tracking-display);
@@ -190,6 +192,12 @@ main {
   margin: var(--space-2) 0 0;
 }
 
+/* A plain link under the example table, to /ios/award-grid/. */
+.more {
+  font-size: var(--type-meta);
+  margin: var(--space-2) 0 0;
+}
+
 footer {
   border-top: 1px solid var(--line);
   margin-top: var(--space-8);
@@ -229,7 +237,9 @@ main.doc {
   margin: var(--space-8) 0 var(--space-3);
 }
 
-.doc h3 {
+/* The questions of an FAQ (<section class="faq" data-faq>), on a document page or on /ios/. */
+.doc h3,
+.faq h3 {
   font-size: 17px;
   font-weight: 600;
   margin: var(--space-6) 0 var(--space-2);
@@ -242,20 +252,29 @@ main.doc {
 }
 
 .doc p,
-.doc ul {
+.doc ul,
+.doc ol,
+.faq p,
+.needs ul {
   margin: 0 0 var(--space-3);
 }
 
-.doc ul {
+.doc ul,
+.doc ol,
+.needs ul {
   padding-left: 1.25em;
 }
 
-.doc li + li {
+.doc li + li,
+.needs li + li {
   margin-top: var(--space-2);
 }
 
 .doc a,
 .status a,
+.faq a,
+.needs a,
+.more a,
 footer a {
   color: var(--accent);
   text-decoration: underline;

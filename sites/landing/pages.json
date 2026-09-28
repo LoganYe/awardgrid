@@ -4,6 +4,8 @@
   "pages": [
     { "path": "/", "file": "index.html", "lastmod": "2026-09-28" },
     { "path": "/ios/", "file": "ios/index.html", "lastmod": "2026-09-28" },
+    { "path": "/ios/award-grid/", "file": "ios/award-grid/index.html", "lastmod": "2026-09-28" },
+    { "path": "/ios/zh-hans/", "file": "ios/zh-hans/index.html", "lastmod": "2026-09-28" },
     { "path": "/privacy/", "file": "privacy/index.html", "lastmod": "2026-09-28" },
     { "path": "/support/", "file": "support/index.html", "lastmod": "2026-09-28" }
   ],

@@ -25,7 +25,9 @@ interface Claim {
   allowed_copy?: string;
   allowed_copy_zh?: string;
   allowed_copy_extra?: string[];
+  allowed_copy_zh_extra?: string[];
   allowed_copy_by_status?: Record<string, string>;
+  allowed_copy_zh_by_status?: Record<string, string>;
   allowed_copy_variants?: Record<string, string>;
   in_use?: string[];
   retired_copy?: string[];
@@ -33,6 +35,8 @@ interface Claim {
 const CLAIMS: Claim[] = REGISTRY.claims;
 const claim = (id: string) => CLAIMS.find((c) => c.claim_id === id)!;
 const MODE: Record<string, "submitted" | "released" | "withdrawn"> = { submitted_not_live: "submitted", released: "released", withdrawn: "withdrawn" };
+/** Sentences: an English one ends at . ! or ? and a space, a Chinese one at 。！？ with or without one. */
+const splitSentences = (text: string) => text.split(/(?<=[.!?])\s+|(?<=[。！？])\s*/).filter(Boolean);
 
 describe("the facts registry", () => {
   it("passes every registry check: fields, enums, evidence refs, public files, markers, surfaces, exemptions", () => {
@@ -42,14 +46,16 @@ describe("the facts registry", () => {
   it("holds exactly the claims the public copy is built from", () => {
     expect(CLAIMS.map((c) => c.claim_id)).toEqual([
       "identity", "domain_collision", "release_status", "history", "webapp_note", "dependency", "prerequisite", "price", "grid",
-      "query_input", "query_zh_hant", "views", "scope", "programs", "data_cached", "watches", "quota", "ask", "privacy",
-      "developer_data", "keys", "program_link", "not_offered", "affiliation", "availability",
+      "query_input", "query_zh_hant", "filters", "views", "cell_fields", "scope", "programs", "data_cached", "watches", "quota",
+      "ask", "privacy", "developer_data", "keys", "program_link", "not_offered", "affiliation", "availability",
     ]);
   });
 
   it("holds only the pending claims listed here, and approves the rest", () => {
     // dependency, grid (reworded for the iPhone app's Matrix), developer_data (the owner's PR #104 wording) and
     // domain_collision were approved on 2026-09-28; a claim set back to pending_owner must be listed here on purpose.
+    // filters and cell_fields were registered on 2026-09-28 for /ios/award-grid/, from the app's source and its copy;
+    // filters was reworded the same day (cabins are always asked, business and first by default), for the owner to see.
     // query_zh_hant: 1.0 does not read 飛 on its own, 下禮拜 or 桃園 (its limitations), so its sentence waits.
     expect(CLAIMS.filter((c) => c.public_use === "pending_owner").map((c) => c.claim_id)).toEqual(["query_zh_hant"]);
     expect(CLAIMS.filter((c) => c.public_use !== "pending_owner").every((c) => c.public_use === "approved")).toBe(true);
@@ -96,14 +102,16 @@ describe("the facts registry", () => {
 
   it("every approved sentence passes the gate in its own status (price and the listing next to the prerequisite)", () => {
     const prerequisite = claim("prerequisite").allowed_copy!;
+    const prerequisiteZh = claim("prerequisite").allowed_copy_zh!;
     const offenders: string[] = [];
     for (const c of CLAIMS.filter((x) => x.public_use === "approved")) {
       const versions: Array<[string, string]> = [];
-      for (const s of [c.allowed_copy, c.allowed_copy_zh, ...(c.allowed_copy_extra ?? [])]) if (s) versions.push([REGISTRY.released.status, s]);
+      for (const s of [c.allowed_copy, c.allowed_copy_zh, ...(c.allowed_copy_extra ?? []), ...(c.allowed_copy_zh_extra ?? [])]) if (s) versions.push([REGISTRY.released.status, s]);
       for (const [status, s] of Object.entries(c.allowed_copy_by_status ?? {})) versions.push([status, s.replace("<date>", "1 November 2026")]);
+      for (const [status, s] of Object.entries(c.allowed_copy_zh_by_status ?? {})) versions.push([status, s.replace("<date>", "2026 年 11 月 1 日")]);
       for (const key of c.in_use ?? []) versions.push([REGISTRY.released.status, c.allowed_copy_variants![key]!]);
       for (const [status, text] of versions) {
-        const withPrerequisite = /\bfree\b/.test(text) ? `${text} ${prerequisite}` : text;
+        const withPrerequisite = /\bfree\b/.test(text) ? `${text} ${prerequisite}` : /免费/.test(text) ? `${text}${prerequisiteZh}` : text;
         for (const f of scanContent(withPrerequisite, { status: MODE[status], registry: REGISTRY, root: ROOT })) {
           offenders.push(`${c.claim_id} (${status}): ${f.rule} ${JSON.stringify(f.match)}`);
         }
@@ -119,7 +127,7 @@ describe("the facts registry", () => {
       }
     }
     const retired = CLAIMS.flatMap((c) => (c.retired_copy ?? []).map((text) => [c.claim_id, text] as const));
-    expect(retired.map(([id]) => id).sort()).toEqual(["developer_data", "grid", "grid"]);
+    expect(retired.map(([id]) => id).sort()).toEqual(["developer_data", "filters", "grid", "grid"]);
     for (const [id, text] of retired) {
       expect(scanContent(text, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), id).toContain("PENDING_CLAIM_TEXT");
     }
@@ -147,6 +155,8 @@ describe("the current tree", () => {
       expect.arrayContaining([
         "sites/landing/index.html",
         "sites/landing/ios/index.html",
+        "sites/landing/ios/award-grid/index.html",
+        "sites/landing/ios/zh-hans/index.html",
         "sites/landing/privacy/index.html",
         "sites/landing/support/index.html",
         "LEGAL.md",
@@ -167,20 +177,33 @@ describe("the current tree", () => {
   });
 
   // What has to change when the registry's status moves on from submitted_not_live, pinned so that the change of
-  // status fixes exactly these and nothing slips through. All ten are the submission wording, correct today: the
+  // status fixes exactly these and nothing slips through. All are the submission wording, correct today: the
   // release_status and price sentences at the top of README.md, the price answer in growth/geo/accuracy-answer.md,
-  // the history sentence in LEGAL.md, the /ios/ status paragraph, the home page's status line, and the Status, Price
-  // and Availability lines of llms.txt. Once released, each takes its claim's released copy; once withdrawn, the
-  // withdrawn copy (release_status) or none. Line numbers are left out, so an unrelated edit above them does not
-  // break this.
+  // the history sentence in LEGAL.md, the /ios/ status paragraph and its price answer (on the page and in its FAQPage
+  // JSON-LD, so twice), the home page's status line, the status line of /ios/award-grid/, the Status, Price and
+  // Availability lines of llms.txt, and on /ios/zh-hans/ the price and "where to download" answers in Chinese (each on
+  // the page and in its JSON-LD). Once released, each takes its claim's released copy (allowed_copy_by_status, or
+  // allowed_copy_zh_by_status in Chinese); once withdrawn, the withdrawn copy (release_status) or none. Line numbers
+  // are left out, so an unrelated edit above them does not break this.
   const AFTER_SUBMISSION = [
     'STALE_STATUS LEGAL.md "has been submitted to the App Store"',
     'STALE_STATUS README.md "submitted as a free app"',
     'STALE_STATUS README.md "has been submitted to the App Store"',
     'STALE_STATUS growth/geo/accuracy-answer.md "submitted as a free app"',
     'STALE_STATUS sites/landing/index.html "has been submitted to the App Store"',
+    'STALE_STATUS sites/landing/ios/award-grid/index.html "has been submitted to the App Store"',
     'STALE_STATUS sites/landing/ios/index.html "has been submitted to the App Store"',
+    'STALE_STATUS sites/landing/ios/index.html "submitted as a free app"',
+    'STALE_STATUS sites/landing/ios/index.html "submitted as a free app"',
     `STALE_STATUS sites/landing/ios/index.html "waiting for Apple's review"`,
+    'STALE_STATUS sites/landing/ios/zh-hans/index.html "它将在 174 个国家或地区提供，中国大陆除外"',
+    'STALE_STATUS sites/landing/ios/zh-hans/index.html "它将在 174 个国家或地区提供，中国大陆除外"',
+    'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
+    'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
+    'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
+    'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
+    'STALE_STATUS sites/landing/ios/zh-hans/index.html "等待苹果审核"',
+    'STALE_STATUS sites/landing/ios/zh-hans/index.html "等待苹果审核"',
     'STALE_STATUS sites/landing/public/llms.txt "has been submitted to the App Store"',
     'STALE_STATUS sites/landing/public/llms.txt "submitted as a free app"',
     'STALE_STATUS sites/landing/public/llms.txt "will be offered in 174"',
@@ -196,10 +219,11 @@ describe("the current tree", () => {
   const swapped = (text: string, status: "released" | "withdrawn") => {
     let out = text;
     for (const c of CLAIMS) {
-      const copy = c.allowed_copy_by_status;
-      if (!copy) continue;
-      const next = copy[status]?.replace("<date>", "1 November 2026") ?? "";
-      out = out.split(copy.submitted_not_live!).join(next);
+      for (const copy of [c.allowed_copy_by_status, c.allowed_copy_zh_by_status]) {
+        if (!copy) continue;
+        const next = copy[status]?.replace("<date>", "1 November 2026") ?? "";
+        out = out.split(copy.submitted_not_live!).join(next);
+      }
     }
     return out;
   };
@@ -207,6 +231,7 @@ describe("the current tree", () => {
     ["README.md", true],
     ["growth/geo/accuracy-answer.md", false],
     ["sites/landing/index.html", false],
+    ["sites/landing/ios/award-grid/index.html", false],
     ["sites/landing/public/llms.txt", false],
   ] as const)("%s passes in released and withdrawn mode once its status sentences take that status's copy", (file, section) => {
     const text = readFileSync(path.join(ROOT, file), "utf8");
@@ -218,14 +243,91 @@ describe("the current tree", () => {
 });
 
 describe("the public copy is the registry's", () => {
-  // Every sentence of the README's public section and of the short answers is a registered sentence (in some status,
-  // variant or language), so a public sentence cannot drift from the facts it stands for.
+  // Every sentence of the README's public section, of the short answers and of the pages written from the registry is
+  // a registered sentence (in some status, variant or language), so a public sentence cannot drift from the facts it
+  // stands for.
   const registered = new Set(
-    CLAIMS.flatMap((c) => [c.allowed_copy, c.allowed_copy_zh, ...(c.allowed_copy_extra ?? []), ...Object.values(c.allowed_copy_by_status ?? {}), ...Object.values(c.allowed_copy_variants ?? {})])
+    CLAIMS.flatMap((c) => [
+      c.allowed_copy,
+      c.allowed_copy_zh,
+      ...(c.allowed_copy_extra ?? []),
+      ...(c.allowed_copy_zh_extra ?? []),
+      ...Object.values(c.allowed_copy_by_status ?? {}),
+      ...Object.values(c.allowed_copy_zh_by_status ?? {}),
+      ...Object.values(c.allowed_copy_variants ?? {}),
+    ])
       .filter((s): s is string => typeof s === "string")
-      .flatMap((s) => s.split(/(?<=[.!?。！？])\s+/)),
+      .flatMap(splitSentences),
   );
-  const sentences = (runs: string[]) => runs.flatMap((run) => run.split(/(?<=[.!?。！？])\s+/)).filter(Boolean);
+  const sentences = (runs: string[]) => runs.flatMap(splitSentences);
+  /** One-word answers that open an answer ("No. Watches are checked …"); the sentence after them is what is checked. */
+  const SHORT_ANSWERS = new Set(["No.", "Yes.", "没有。", "不会。", "不是。", "可以。", "不能。", "不支持。"]);
+  /**
+   * The platform line, which is released.platforms and released.minimum_ios rather than a claim's copy (the same line
+   * is on /support/, in both languages).
+   */
+  const PLATFORM = new Set(["An iPhone with iOS 18 or later.", "iPhone only, iOS 18 or later.", "运行 iOS 18 或更高版本的 iPhone。"]);
+  const ENTITIES: Record<string, string> = { amp: "&", quot: '"', apos: "'", nbsp: " ", lt: "<", gt: ">" };
+  /**
+   * The text of each <p> and <li> of a page's <main>, tags read through: its navigation, its eyebrow labels, and a
+   * paragraph that is only a link left out. `drop` removes whole sections first (copy kept from before the registry).
+   */
+  const pageBlocks = (file: string, drop: RegExp[] = []) => {
+    let main = /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(readFileSync(path.join(ROOT, file), "utf8"))?.[1] ?? "";
+    main = main.replace(/<!--[\s\S]*?-->/g, " ").replace(/<nav\b[\s\S]*?<\/nav>/gi, " ");
+    for (const re of drop) main = main.replace(re, " ");
+    return [...main.matchAll(/<(p|li)\b([^>]*)>([\s\S]*?)<\/\1>/gi)]
+      .filter((m) => !/\bclass="[^"]*\beyebrow\b/.test(m[2]!) && !/^\s*<a\b[^>]*>[^<]*<\/a>\s*$/.test(m[3]!))
+      .map((m) => m[3]!.replace(/<[^>]+>/g, "").replace(/&([a-z]+);/gi, (x, name: string) => ENTITIES[name.toLowerCase()] ?? x).replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+  };
+  const loose = (blocks: string[]) => sentences(blocks).filter((s) => !SHORT_ANSWERS.has(s) && !PLATFORM.has(s) && !registered.has(s));
+  /**
+   * A page's headlines, as a search result or a reader first sees them: its <title>, its meta description and its
+   * <h1>s (og:title and og:description are the same text; sites/landing/test/crawl.test.ts checks that).
+   */
+  const headlines = (file: string) => {
+    const html = readFileSync(path.join(ROOT, file), "utf8").replace(/<!--[\s\S]*?-->/g, " ");
+    const title = /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1];
+    const description = /<meta\s+name="description"\s+content="([^"]*)"/i.exec(html)?.[1];
+    const h1 = [...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map((m) => m[1]!);
+    return [title, description, ...h1]
+      .filter((s): s is string => typeof s === "string")
+      .map((s) => s.replace(/<[^>]+>/g, "").replace(/&([a-z]+);/gi, (x, name: string) => ENTITIES[name.toLowerCase()] ?? x).replace(/\s+/g, " ").trim());
+  };
+
+  it("the platform line is the registry's released platform and minimum iOS", () => {
+    expect(REGISTRY.released.platforms).toEqual(["iPhone"]);
+    expect(REGISTRY.released.minimum_ios).toBe("18.0");
+  });
+
+  it("sites/landing/ios/index.html: the lead, what you need, the example's caption and every answer", () => {
+    // "What it does not do" and "Where this is up to" are the page's copy from before the registry, kept as it was.
+    const blocks = pageBlocks("sites/landing/ios/index.html", [/<section class="limits"[\s\S]*?<\/section>/i, /<section class="status"[\s\S]*?<\/section>/i]);
+    expect(loose(blocks)).toEqual([]);
+    expect(sentences(blocks).length).toBeGreaterThan(20);
+  });
+
+  it("sites/landing/ios/award-grid/index.html: every sentence", () => {
+    const blocks = pageBlocks("sites/landing/ios/award-grid/index.html");
+    expect(loose(blocks)).toEqual([]);
+    expect(sentences(blocks).length).toBeGreaterThan(20);
+  });
+
+  it("sites/landing/ios/zh-hans/index.html: every sentence, in Chinese (allowed_copy_zh and its kin)", () => {
+    const blocks = pageBlocks("sites/landing/ios/zh-hans/index.html");
+    expect(loose(blocks)).toEqual([]);
+    expect(sentences(blocks).length).toBeGreaterThan(20);
+  });
+
+  it.each(["sites/landing/ios/index.html", "sites/landing/ios/award-grid/index.html", "sites/landing/ios/zh-hans/index.html"])(
+    "%s: the <title>, the meta description and the H1 are registry copy too",
+    (file) => {
+      const runs = headlines(file);
+      expect(runs).toHaveLength(3);
+      expect(loose(runs)).toEqual([]);
+    },
+  );
 
   it("README.md: every sentence between the public-claims markers, links aside", () => {
     const doc = markdownDocument(readFileSync(path.join(ROOT, "README.md"), "utf8"), { section: true });

@@ -27,6 +27,8 @@ AwardGrid (one word, capital G) is this iPhone app. The web app at awardgrid.dow
 ## Pages
 
 - [AwardGrid for iPhone](https://awardgrid.dowhiz.com/ios/)
+- [How the table works](https://awardgrid.dowhiz.com/ios/award-grid/)
+- [AwardGrid for iPhone, in Simplified Chinese](https://awardgrid.dowhiz.com/ios/zh-hans/)
 - [Support](https://awardgrid.dowhiz.com/support/)
 - [Privacy policy](https://awardgrid.dowhiz.com/privacy/)
 

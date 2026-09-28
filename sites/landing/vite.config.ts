@@ -176,7 +176,8 @@ function stripComments(): Plugin {
  * Static output only. PIVOT §2: "sites/landing — static, on Cloudflare Pages, makes no API calls at all." Vite is
  * here to resolve the `@awardgrid/tokens` workspace import and inline the result, so the palette has one source rather
  * than a copy that drifts, and to build the pages pages.json lists (release decision D7): the home page at /, the
- * iPhone app's page at /ios/, the privacy policy at /privacy/ and the support page at /support/. public/ adds the root
+ * iPhone app's page at /ios/ with /ios/award-grid/ (how the table works) and /ios/zh-hans/ (its Chinese version) under
+ * it, the privacy policy at /privacy/ and the support page at /support/. public/ adds the root
  * files (robots.txt, llms.txt, the IndexNow key, the favicons, _headers), and the build writes sitemap.xml.
  *
  * On awardgrid.dowhiz.com the Worker `awardgrid-site` serves /ios/, /privacy/, /support/ and /_site/ from this build,

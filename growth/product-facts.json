@@ -118,10 +118,16 @@
         "released": "AwardGrid is free on the App Store (App ID 6816321841).",
         "withdrawn": "AwardGrid for iPhone was removed from the App Store on <date>."
       },
+      "allowed_copy_zh_by_status": {
+        "submitted_not_live": "AwardGrid iPhone 版已提交 App Store，正在等待苹果审核。",
+        "released": "AwardGrid 可在 App Store 免费下载（App ID 6816321841）。",
+        "withdrawn": "AwardGrid iPhone 版已于 <date> 从 App Store 下架。"
+      },
       "limitations": [
         "Exactly one version is used, the one for released.status.",
         "The released version is used only after a cache-busted App Store lookup returns the app; the withdrawn version replaces <date> with the date of removal.",
         "The released version says free, so, like the price claim, it goes in the same sentence group as the prerequisite sentence (FREE_WITHOUT_PRO): in README.md the status, price and prerequisite sentences are one paragraph.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. The submitted sentence also says the app is waiting for Apple's review, as the English status paragraph of /ios/ does. The released and withdrawn sentences are on no page yet; the released one says 免费, so it goes next to the prerequisite's Chinese.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -200,9 +206,12 @@
         "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
       ],
       "allowed_copy": "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.",
+      "allowed_copy_zh": "AwardGrid 依赖 seats.aero 的 Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。订阅之前，请先确认你的 seats.aero 设置里有 API 页。",
       "limitations": [
         "Approved for public use on 2026-09-28.",
+        "In Chinese the API tab is API 页, the app's word (apps/ios/src/screens/settings-copy.ts); the same Chinese sentence is on /ios/zh-hans/ and /support/#zh. 只许可 states seats.aero's restriction; 授权 would read as an endorsement (the gate's AFFILIATION rule refuses \"seats.aero 授权\").",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -221,12 +230,27 @@
         "apps/ios/src/screens/SearchScreen.tsx:544-546 \") : hasKey === false ? (\"",
         "apps/ios/src/screens/OnboardingScreen.tsx:24-28 \"Find award seats across programs with your own seats.aero key.\"",
         "docs/reference/seatsaero/getting-started-p.md:25-27 \"Seats.aero Pro users may be able to access the partner API\"",
-        "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
+        "[external] https://docs.seats.aero/article/68 (read 2026-09-28)",
+        "apps/ios/src/screens/settings-copy.ts:151 \"where: \"Create one on the API tab of your seats.aero settings.\",\"",
+        "docs/reference/seatsaero/getting-started-p.md:27 \"Not all Pro users can access the partner API key or retrieve an API key.\"",
+        "apps/ios/src/components/results/copy.ts:217 \"no_key: \"Add your seats.aero Pro API key in Settings.\",\""
       ],
       "allowed_copy": "It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.",
+      "allowed_copy_zh": "它需要你自己付费的 seats.aero Pro 订阅，并且账户要有 API 权限；没有 API 密钥，它什么也搜不到。",
+      "allowed_copy_extra": [
+        "Your own paid seats.aero Pro subscription with API access, and its API key from the API tab of your seats.aero settings. Without it the app searches nothing.",
+        "In the API tab of your seats.aero settings. It needs a paid seats.aero Pro subscription with API access.",
+        "seats.aero says not every Pro account or country gets API access; without a key AwardGrid searches nothing.",
+        "Add your seats.aero Pro API key, from the API tab of your seats.aero settings."
+      ],
+      "allowed_copy_zh_extra": [
+        "你自己付费的 seats.aero Pro 订阅，账户要有 API 权限；API 密钥在 seats.aero 设置的 API 页里。没有这个密钥，App 什么也搜不到。"
+      ],
       "limitations": [
         "Not every seats.aero Pro account or country gets API access (docs/reference/seatsaero/getting-started-p.md:27).",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
+        "The extra sentences: the \"What you need\" item of /ios/, the first step of /ios/award-grid/ (the app says \"Add your seats.aero Pro API key in Settings.\", copy.ts:217), and the answers to \"Where do I find my seats.aero API key?\" and \"My seats.aero settings show no API tab. Will AwardGrid work?\" on /support/. The key is made on the API tab of the seats.aero settings page (settings-copy.ts:151; getting-started-p.md:25), and seats.aero may limit API access by location or for any reason (getting-started-p.md:27).",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -247,9 +271,14 @@
         "submitted_not_live": "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase.",
         "released": "The app is free, with no in-app purchase."
       },
+      "allowed_copy_zh_by_status": {
+        "submitted_not_live": "AwardGrid iPhone 版已提交 App Store，定价为免费，没有内购。",
+        "released": "App 免费，没有内购。"
+      },
       "limitations": [
         "Always in the same sentence group as the prerequisite sentence, so free never reads as free of a paid seats.aero Pro subscription (FREE_WITHOUT_PRO).",
         "The released version is used only once released.status is released. No seats.aero Pro or Anthropic price is stated.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. Like the English, each is used in the same sentence group as the prerequisite's Chinese (FREE_WITHOUT_PRO: 免费 needs Pro within 60 characters). The released sentence is on no page yet.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -271,14 +300,33 @@
         "apps/ios/src/components/results/AvailabilityCard.tsx:102 \"<p className=\"ag-result-time\">\""
       ],
       "allowed_copy": "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.",
+      "allowed_copy_zh": "AwardGrid 把 seats.aero 缓存的里程票数据排进一张表，可以同时包含多个出发地、多个目的地，日期范围最长 92 天。每一格为你所查的每个舱位分别列出最低里程，并注明所属里程计划和剩余座位；税费和数据时间显示在每个选项里。",
       "allowed_copy_extra": [
-        "Type the routes and dates in English or Chinese, and AwardGrid puts seats.aero's cached award availability into one table, on your own seats.aero Pro key."
+        "Type the routes and dates in English or Chinese, and AwardGrid puts seats.aero's cached award availability into one table, on your own seats.aero Pro key.",
+        "AwardGrid puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table.",
+        "On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for many routes and up to 92 days into one table.",
+        "On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for several origins, destinations and dates in one table.",
+        "AwardGrid: award seats for many routes and dates in one table, on iPhone, on your own seats.aero Pro key.",
+        "AwardGrid for iPhone: award seats for many routes and dates in one table",
+        "One table. Your own key.",
+        "Award seats for many origins, destinations and dates in one table — AwardGrid",
+        "See award seats for several origins, destinations and dates in one table"
+      ],
+      "allowed_copy_zh_extra": [
+        "用中文或英文输入航线和日期，AwardGrid 就会用你自己的 seats.aero Pro 密钥，把 seats.aero 缓存的里程票数据排进一张表。",
+        "AwardGrid：iPhone 上用你自己的 seats.aero Pro 密钥，把多条航线、多个日期的里程票排进一张表。",
+        "AwardGrid iPhone 版：把多条航线、多个日期的里程票排进一张表",
+        "一张表，用你自己的密钥"
       ],
       "limitations": [
         "Decided 2026-09-28: the earlier wording (retired_copy) described the web app's table (packages/core/src/lib/grid/types.ts GridCell, rendered only by the web app). In the iPhone app the table is the Matrix: rows are the dates, columns the routes, and each cell holds one slot per cabin asked with its lowest miles, the program and the seats; fees and data age are on each option's card (AvailabilityMatrix.tsx:5-7, AvailabilityCard.tsx:94, :102).",
         "Version 1.0's App Store description opens with the same description of a cell in other words (the second retired_copy sentence). It stays word for word in apps/ios/store-metadata/en-US/description.txt, the text as submitted, under a historical_allowlist exemption; the next version's descriptions use allowed_copy.",
         "Where coverage is incomplete, a cell's number is the lowest retrieved, and miles in different programs are not equivalent (the Matrix caption says both).",
         "The extra sentence is the lead of the home page (sites/landing/index.html) and its meta description: query_input, this claim and prerequisite in one sentence. \"Your own seats.aero Pro key\" is the prerequisite claim's key (a paid seats.aero Pro subscription with API access).",
+        "The other extra sentences are on sites/landing/ios/: the first sentence of the /ios/ lead (this claim with AwardGrid as the subject), and the meta descriptions of /ios/ and /ios/award-grid/ (this claim, released.platforms and prerequisite, the prerequisite first and each 155 characters or fewer, so a search result does not cut it off).",
+        "The product in one sentence (\"AwardGrid: award seats for many routes and dates in one table, …\", and its Chinese) is docs/COPY.md's, for a heading, a profile or a listing: this claim, prerequisite and released.platforms. \"Many routes\" are the several origins times the several destinations of one search.",
+        "Headlines are registered too, so every title, meta description and H1 of /ios/, /ios/award-grid/ and /ios/zh-hans/ is registry copy (scripts/growth/current-tree.test.ts): the <title> of /ios/ (also the home page's), the H1 of /ios/ (\"One table. Your own key.\", kept from before; the key is the prerequisite's), and the <title> and H1 of /ios/award-grid/. They say only what this claim says.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. The extra sentences are the meta description of /ios/zh-hans/ (the home page's lead in Chinese), the product in one sentence (docs/COPY.md), and the <title> and H1 of /ios/zh-hans/.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
@@ -306,12 +354,18 @@
         "apps/ios/ios/App/App/Info.plist:9-13 \"<key>CFBundleLocalizations</key>\""
       ],
       "allowed_copy": "Type the routes and dates in English or Chinese, or set them in the editor.",
+      "allowed_copy_zh": "用中文或英文输入航线和日期，也可以在编辑器里逐项设置。",
       "allowed_copy_extra": [
         "The app's interface is in English or Simplified Chinese."
+      ],
+      "allowed_copy_zh_extra": [
+        "航线和日期可以用中文或英文输入，也可以在编辑器里逐项设置。",
+        "App 的界面是英文或简体中文。"
       ],
       "limitations": [
         "Places come from a fixed list of 70 metro areas and 210 aliases (packages/core/data/places.json); a bare airport code is read only in upper case (places.ts:132); holiday names are not read as dates (dates.ts:106-107); queries in traditional characters are tested, and what they may say is query_zh_hant.",
         "The interface sentence is released.interface_languages: Simplified Chinese for a zh-* language, English otherwise (locale.ts:11-19; Info.plist CFBundleLocalizations).",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -347,6 +401,43 @@
       "public_use": "pending_owner"
     },
     {
+      "claim_id": "filters",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "packages/core/src/lib/query/schema.ts:45 \"export const DEFAULT_CABINS: Cabin[] = [\"J\", \"F\"];\"",
+        "packages/core/src/lib/query/schema.ts:64 \"cabins: z.array(Cabin).min(1),\"",
+        "packages/core/src/lib/query/schema.ts:66 \"programs: z.array(z.string()).optional(),\"",
+        "packages/core/src/lib/query/schema.ts:67 \"direct_only: z.boolean().default(false),\"",
+        "packages/core/src/lib/query/schema.ts:87 \"max_miles: z.number().int().optional(),\"",
+        "packages/core/src/lib/query/deterministic.ts:184-188 \"const { programs, masked } = scanPrograms(text);\"",
+        "packages/core/src/lib/query/deterministic.ts:214-230 \"const cabins = parseCabins(masked);\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:284-287 \"<div className=\"ag-field query-field\" role=\"group\" aria-labelledby=\"query-cabins-label\">\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:312-317 \"<div className=\"query-row\">\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:344-350 \"<button id=\"query-programs-row\"\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:362-365 \"<TextField\"",
+        "apps/ios/src/components/query/labels.ts:89-90 \"cabins: \"Cabins\",\"",
+        "apps/ios/src/components/query/labels.ts:100-101 \"programs: \"Programs\",\"",
+        "apps/ios/src/components/query/labels.ts:107-108 \"miles: \"Mileage cap\",\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:67 \"cabins: [...DEFAULT_CABINS],\""
+      ],
+      "allowed_copy": "Programs, nonstop only and a mileage cap are optional filters; a search asks for business and first unless you choose other cabins.",
+      "limitations": [
+        "Reworded on 2026-09-28 after review: the earlier sentence (retired_copy) called cabins an optional filter, which reads as \"every cabin when none is set\". Cabins are always asked: at least one (schema.ts:64), and without one named a typed search and the editor's blank query both ask for business and first (DEFAULT_CABINS; deterministic.ts:219; QueryEditorScreen.tsx:67), so economy and premium economy appear only when chosen. The owner approved the earlier sentence with the spec; this one needs the owner's look too (the PR says so).",
+        "Programs, nonstop only and the mileage cap are truly optional: without programs a search asks for every program the key can access (schema.ts:65), nonstop only is off (schema.ts:67) and there is no mileage cap (the editor's hint: \"Leave empty for no limit.\").",
+        "The query editor sets all four (labels \"Cabins\", \"Nonstop only\", \"Programs\", \"Mileage cap\"; apps/ios/src/components/query/labels.ts); a typed search sets them when it names them (deterministic.ts:184-230). The app's words are \"nonstop only\" and \"mileage cap\", so public copy uses them rather than \"direct-only\" or \"miles ceiling\".",
+        "The editor also has a mixed-cabin rule and dynamic pricing (include_filtered); this sentence does not name them.",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved",
+      "retired_copy": [
+        "Cabins, programs, nonstop only and a mileage cap are optional filters."
+      ]
+    },
+    {
       "claim_id": "views",
       "released_version": "1.0",
       "candidate_version": null,
@@ -360,8 +451,51 @@
         "packages/core/src/lib/workspace/favorites-store.ts:4-10 \"A favourite is a copy of what a search showed when it was saved\""
       ],
       "allowed_copy": "List, Calendar and Matrix views; compare up to four options; save results on the device.",
+      "allowed_copy_extra": [
+        "Read the result as a List, a Calendar or a Matrix; compare up to four options and save results on the device."
+      ],
       "limitations": [
         "The iPhone app has no CSV export and no share sheet.",
+        "The extra sentence is the same fact as a step of a list (the third step of \"How it works\" on /ios/award-grid/).",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "cell_fields",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "apps/ios/src/components/results/AvailabilityMatrix.tsx:5-8 \"Rows are the search's dates, columns its routes; each cell holds one slot per cabin asked\"",
+        "apps/ios/src/components/results/AvailabilityMatrix.tsx:116-122 \"<span className=\"ag-mx-miles\">{formatMiles(row.miles)}</span>\"",
+        "apps/ios/src/components/results/AvailabilityMatrix.tsx:134-135 \"<span className=\"ag-mx-cabin\">{s.cabin}</span>\"",
+        "apps/ios/src/components/results/copy.ts:143 \"matrixCaption: \"Each cell shows its lowest miles; miles in different programs are not equivalent.\",\"",
+        "apps/ios/src/components/results/AvailabilityCard.tsx:57-60 \"<Heading className=\"ag-result-route\">{route}</Heading>\"",
+        "apps/ios/src/components/results/AvailabilityCard.tsx:91-98 \"<p className=\"ag-result-miles\" data-testid=\"card-miles\">\"",
+        "apps/ios/src/components/results/AvailabilityCard.tsx:102 \"<p className=\"ag-result-time\">{timeLabel(row.time, now, locale)}</p>\"",
+        "packages/core/src/lib/workspace/present.ts:30 \"\"fees.unknown\": { en: \"Fees not yet confirmed\", zh: \"税费待确认\" },\"",
+        "packages/core/src/lib/workspace/present.ts:32-33 \"\"seats.unknown\": { en: \"Seat count not provided\", zh: \"席位未提供\" },\"",
+        "packages/core/src/lib/workspace/present.ts:139-142 \"/** \"2 seats\" / \"2 席\"; 0 or nothing is \"not provided\". */\"",
+        "packages/core/src/lib/workspace/present.ts:175-185 \"export function timeLabel(\"",
+        "packages/core/src/lib/workspace/present.ts:389-390 \"complete: { en: \"no matches\", zh: \"无匹配\" },\"",
+        "apps/ios/src/components/results/AvailabilityMatrix.tsx:135 \"<span className=\"ag-mx-reason\">{capitalise(emptyDayLabel(kind, locale))}</span>\"",
+        "packages/core/src/lib/seatsaero/normalize.ts:60-62 \"fees_cents: typeof taxes === \"number\" ? taxes : null,\""
+      ],
+      "allowed_copy": "In the Matrix, rows are the dates and columns the routes. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left.",
+      "allowed_copy_extra": [
+        "Miles in different programs are not equivalent.",
+        "Each option's card shows the route, the date, the cabin, the miles, the fees, the program, the seats left and how old the data is.",
+        "Where seats.aero does not give the fees, the card says \"Fees not yet confirmed\"; where it does not give a seat count, \"Seat count not provided\"; where it does not give an update time, \"Source update time unknown\".",
+        "An empty line in a cell says why, such as \"No matches\" or \"Not monitored\"."
+      ],
+      "limitations": [
+        "The table in the iPhone app is the Matrix (AvailabilityMatrix.tsx). A cell's line per cabin holds the lowest miles in full, the cabin, the program's short name and the seats; fees and data age are not in the cell but on each option's card (AvailabilityCard.tsx:94, :102), as grid.allowed_copy says. Where coverage is not complete, the caption says the number is the lowest retrieved (AvailabilityMatrix.tsx:103).",
+        "The words in quotes are the app's English (present.ts COPY and emptyDayLabel), as the Matrix shows them: it capitalises an empty line's reason (\"No matches\", \"Not monitored\"; AvailabilityMatrix.tsx:135), while the Calendar shows it in lower case (AvailabilityCalendar.tsx). In Chinese they are 税费待确认, 席位未提供, 来源更新时间未知, 无匹配 and 未监测. \"Seat count not provided\" also stands for a count of 0, which is how seats.aero leaves it out (normalize.ts:62; semantics.ts knownSeats).",
+        "\"How old the data is\" is the source's update time where seats.aero gives one (\"Source updated 38 min ago\"); otherwise the card says the source update time is unknown and shows when this device fetched it (present.ts:175-185), as data_cached says.",
+        "An empty line's other reasons are \"not checked to the end\", \"coverage unknown\" and \"hidden by your view filter\" (present.ts:386-393).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -378,7 +512,9 @@
         "packages/core/src/lib/query/schema.ts:58-67 \"export const QueryObject = z\""
       ],
       "allowed_copy": "Searches are one-way: no round trips, multi-city or passenger count.",
+      "allowed_copy_zh": "只能查单程，不能查往返或多段行程，也不能设置乘客人数。",
       "limitations": [
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -397,6 +533,7 @@
         "apps/ios/src/components/results/AvailabilityCalendar.tsx:91 \"const MARK: Record<EmptyDayKind, string>\""
       ],
       "allowed_copy": "It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\".",
+      "allowed_copy_zh": "seats.aero 列出的 26 个里程计划，前提是 seats.aero 监测这条航线；它没有监测的航线会标为“未监测”。",
       "allowed_copy_extra": [
         "The 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\"."
       ],
@@ -404,6 +541,7 @@
         "Coverage is whatever seats.aero monitors; the program list is seats.aero's as of 2026-08-28 (types.ts:15).",
         "In the app the words are \"not monitored by the data source\" and \"These routes are not monitored by the data source.\"",
         "The extra sentence is the same fact as the answer to a question (growth/geo/accuracy-answer.md).",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. 未监测 is the app's own Chinese for an unmonitored route (packages/core/src/lib/workspace/present.ts emptyDayLabel).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -426,12 +564,15 @@
         "LEGAL.md:76-77 \"Cached award data can be stale and awards disappear.\""
       ],
       "allowed_copy": "Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points.",
+      "allowed_copy_zh": "结果来自 seats.aero 的缓存，并非实时查询；每条结果都标明了数据时间。转点之前，请先到该里程计划的官网确认。",
       "allowed_copy_extra": [
         "Illustrative figures, not seats.aero data. In the app, results come from seats.aero."
       ],
       "limitations": [
         "\"How old it is\" is the source's update time where seats.aero gives one; where it gives none, the option says the source update time is unknown and shows when this device fetched it (present.ts:175-187, normalize.ts:46). The Matrix view shows no age; each option in the List does (AvailabilityCard.tsx:102).",
         "The caption sentence is for the example table on sites/landing/ios/index.html, whose figures are made up.",
+        "In Chinese, the program's own site is 里程计划官网 (the docs/COPY.md glossary, and /support/#zh); 数据时间 is the glossary's word for how old the data is.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -452,9 +593,11 @@
         "packages/core/src/lib/seatsaero/quota.ts:106-108 \"/** Calls left before the SOFT limit\""
       ],
       "allowed_copy": "Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.",
+      "allowed_copy_zh": "你关注的查询只在你打开或回到 App 时检查，其他时间都不检查；没有后台检查，也没有通知。",
       "limitations": [
         "A watch is skipped when it was checked in the last 45 minutes, or when fewer than 25 calls are left before the app's 950-call stop (the watch runner reads Quota.remaining, which counts to that stop: quota.ts:106-108), i.e. once more than 925 calls are used that UTC day.",
         "The only calls to checkWatches are when the app opens and when it becomes visible again (App.tsx:261-269).",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -510,13 +653,20 @@
         "apps/ios/src/search/search.ts:156-157 \"No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key\""
       ],
       "allowed_copy": "Ask is optional: it answers questions about your results with Claude, on your own Anthropic API key, after you allow it. Anthropic bills each question to that key.",
+      "allowed_copy_zh": "AI 辅助（Ask）是可选功能，需要你自己的 Anthropic API 密钥。每次提问由 Anthropic 按此密钥计费。",
       "allowed_copy_extra": [
         "Only for Ask, which is optional.",
-        "Search runs on your seats.aero key alone."
+        "Search runs on your seats.aero key alone.",
+        "For Ask, which is optional: your own Anthropic API key."
+      ],
+      "allowed_copy_zh_extra": [
+        "只有 AI 辅助（Ask）需要，它是可选功能。查票只需要你的 seats.aero 密钥。"
       ],
       "limitations": [
         "Search runs on your seats.aero key alone: the search parser is deterministic and needs no Anthropic key (apps/ios/src/search/search.ts:156-157).",
         "No per-question cost is stated.",
+        "In Chinese the feature is AI 辅助, as the app names it (apps/ios/src/components/results/copy.ts ai, consent-copy.ts, settings-copy.ts) and as /support/#zh does; the Chinese copy says AI 辅助（Ask） so a reader can match it to the English pages. 每次提问由 Anthropic 按此密钥计费 is the app's own sentence (settings-copy.ts), which bills to the key without implying a flat price per question.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -582,8 +732,12 @@
         "apps/ios/src/native/anthropic-key.ts:48-52 \"async set(value: string) {\""
       ],
       "allowed_copy": "Keys stay in this iPhone's Keychain, with iCloud Keychain sync off.",
+      "allowed_copy_extra": [
+        "Keys stay in your iPhone's Keychain, with iCloud Keychain sync off."
+      ],
       "limitations": [
         "iOS may keep the keys in the Keychain after the app is deleted.",
+        "\"This iPhone\" is for copy read on the phone (the app, its store listing); the extra sentence says \"your iPhone\" for a web page, which may be read on any device (the first step of \"How it works\" on /ios/award-grid/).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -603,8 +757,14 @@
         "apps/ios/src/screens/DetailScreen.tsx:314-328 \"<footer className=\"ag-detail-actions\"\""
       ],
       "allowed_copy": "For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.",
+      "allowed_copy_zh": "某个选项有 seats.aero 提供的跳转链接时，App 会打开这个链接；没有时，你可以复制查询条件。App 从不订票。",
+      "allowed_copy_extra": [
+        "For an option, AwardGrid opens seats.aero's booking link when there is one; otherwise you copy the search. It never books."
+      ],
       "limitations": [
         "The only program search link the app builds itself is American's (deeplinks/index.ts:42-45); for any other program it is seats.aero's link or none.",
+        "The extra sentence names AwardGrid as the subject, for a list where \"it\" has nothing to refer to (the fourth step of \"How it works\" on /ios/award-grid/).",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. \"Booking link\" is 跳转链接, the glossary's word for a link to a program's site (docs/COPY.md; 预订 would read as the app booking, which the gate refuses, and 兑换链接 as a link that redeems for you). 复制查询条件 is the app's own label.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -625,8 +785,13 @@
         "apps/ios/src/watch/capabilities.ts:40-44 \"export const IOS_WATCH_CAPABILITIES: WatchCapabilities = {\""
       ],
       "allowed_copy": "No live search, no booking, no round trips, no alerts or notifications, no scraping of airline or bank sites, no airline or bank passwords, no logos.",
+      "allowed_copy_extra": [
+        "AwardGrid has no live search, no round trips and no alerts or notifications.",
+        "If you need any of these, a tool built for them will suit you better."
+      ],
       "limitations": [
         "Describes the iPhone app.",
+        "The extra sentences close /ios/award-grid/ (\"When something else suits you better\"). No other tool is named there: the registry holds no claim about any other tool.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -650,9 +815,13 @@
       "allowed_copy_extra": [
         "Its data comes from seats.aero."
       ],
+      "allowed_copy_zh_extra": [
+        "它的数据来自 seats.aero。"
+      ],
       "limitations": [
         "Used verbatim; the Chinese sentence is the app's own (settings-copy.ts:217).",
         "\"Its data comes from seats.aero\": every search goes to the seats.aero Partner API through the native HTTP adapter (http.ts:2-11; types.ts:4).",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status): the sentence is the app's own; the extra sentence (\"Its data comes from seats.aero.\") is the wording of /ios/zh-hans/, written on 2026-09-28 and pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -671,8 +840,13 @@
         "submitted_not_live": "AwardGrid for iPhone will be offered in 174 countries or regions; not in mainland China.",
         "released": "Available in 174 countries or regions; not in mainland China."
       },
+      "allowed_copy_zh_by_status": {
+        "submitted_not_live": "它将在 174 个国家或地区提供，中国大陆除外。",
+        "released": "已在 174 个国家或地区提供，中国大陆除外。"
+      },
       "limitations": [
         "The released version is used only once released.status is released.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. The released sentence is on no page yet; neither sentence contains the other, so the gate can tell them apart.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -684,6 +858,12 @@
     },
     {
       "path": "sites/landing/ios/index.html"
+    },
+    {
+      "path": "sites/landing/ios/zh-hans/index.html"
+    },
+    {
+      "path": "sites/landing/ios/award-grid/index.html"
     },
     {
       "path": "sites/landing/privacy/index.html"

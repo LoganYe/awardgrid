@@ -3,18 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>AwardGrid — one table of award seats, on your own key</title>
+    <title>AwardGrid for iPhone: award seats for many routes and dates in one table</title>
     <meta
       name="description"
-      content="Type the routes and dates in English or Chinese, or set them in the editor. AwardGrid puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table."
+      content="On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for many routes and up to 92 days into one table."
     />
     <link rel="canonical" href="https://awardgrid.dowhiz.com/ios/" />
+    <link rel="alternate" hreflang="en" href="https://awardgrid.dowhiz.com/ios/" />
+    <link rel="alternate" hreflang="zh-Hans" href="https://awardgrid.dowhiz.com/ios/zh-hans/" />
+    <link rel="alternate" hreflang="x-default" href="https://awardgrid.dowhiz.com/ios/" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://awardgrid.dowhiz.com/ios/" />
-    <meta property="og:title" content="AwardGrid — one table of award seats, on your own key" />
+    <meta property="og:title" content="AwardGrid for iPhone: award seats for many routes and dates in one table" />
     <meta
       property="og:description"
-      content="Type the routes and dates in English or Chinese, or set them in the editor. AwardGrid puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table."
+      content="On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for many routes and up to 92 days into one table."
     />
     <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -34,6 +37,86 @@
             "name": "AwardGrid",
             "url": "https://awardgrid.dowhiz.com/",
             "publisher": { "@id": "https://awardgrid.dowhiz.com/#org" }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://awardgrid.dowhiz.com/ios/#faq",
+            "inLanguage": "en",
+            "isPartOf": { "@id": "https://awardgrid.dowhiz.com/#website" },
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is AwardGrid free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is AwardGrid affiliated with seats.aero?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program. Its data comes from seats.aero."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Will it alert me when award seats open up?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is the availability live?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Which programs does it cover?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\"."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Do I need an AI key?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Only for Ask, which is optional. Search runs on your seats.aero key alone."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I search in Chinese?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Type the routes and dates in English or Chinese, or set them in the editor. The app's interface is in English or Simplified Chinese."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does it book tickets?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Could AwardGrid stop working?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe."
+                }
+              }
+            ]
           }
         ]
       }
@@ -43,21 +126,43 @@
       Analytics beacon at the edge, for browsers; the privacy policy says so ("This website"), and LEGAL.md
       says neither app has telemetry or analytics of its own. A marketing page is where such promises
       usually drift, so this one says what the pages do.
+
+      Every sentence is registry copy (growth/product-facts.json), apart from the rows of "What it does not do" and
+      the "Where this is up to" paragraph, which are kept as they were. The FAQPage node of the JSON-LD is generated
+      from the "Questions" section (data-faq) by scripts/growth/sync-faq-schema.mjs --write: edit the questions, then
+      run it. "Ask" names only the AI feature; searching is "type". hreflang: this page (en and x-default) and
+      /ios/zh-hans/, its Chinese version (zh-Hans).
     -->
     <link rel="stylesheet" href="../styles.css" />
   </head>
   <body>
     <main>
       <header class="hero">
-        <p class="eyebrow">Award search</p>
+        <p class="eyebrow">Award seat search for iPhone</p>
         <h1>One table. Your own key.</h1>
         <p class="lead">
-          Type the routes and dates in English or Chinese, or set them in the editor. It puts seats.aero's
-          cached award availability for several origins, several destinations and up to 92 days into one
-          table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats
-          left; each option also shows its fees and how old the data is.
+          Type the routes and dates in English or Chinese, or set them in the editor. AwardGrid puts seats.aero's
+          cached award availability for several origins, several destinations and up to 92 days into one table. Each
+          cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option
+          also shows its fees and how old the data is.
         </p>
       </header>
+
+      <section class="needs" aria-labelledby="needs-h">
+        <h2 id="needs-h">What you need</h2>
+        <ul>
+          <li>An iPhone with iOS 18 or later.</li>
+          <li>
+            Your own paid seats.aero Pro subscription with API access, and its API key from the API tab of your
+            seats.aero settings. Without it the app searches nothing.
+          </li>
+          <li>For Ask, which is optional: your own Anthropic API key. Anthropic bills each question to that key.</li>
+          <li>
+            AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can
+            limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+          </li>
+        </ul>
+      </section>
 
       <!--
         The grid preview is data, so it switches the glass off: data-surface="flat". This is the
@@ -101,35 +206,67 @@
         <p class="attribution">
           Illustrative figures, not seats.aero data. In the app, results come from seats.aero.
         </p>
+        <p class="more"><a href="./award-grid/">How the table works</a></p>
       </section>
 
-      <section class="facts" aria-label="How it works">
-        <!--
-          "Invite only" is gone: it was true of a shared server and is false of an app. Everything
-          else here is the front door's copy, adjusted only where the pivot made it untrue.
-        -->
-        <article>
-          <p class="eyebrow">No account</p>
-          <p>
-            There is no signup, no login and no server of ours. The app runs on your device and
-            keeps its results there.
-          </p>
-        </article>
-        <article>
-          <p class="eyebrow">Your own keys</p>
-          <p>
-            Every search runs on your own seats.aero Pro key, and Ask, if you use it, on your own
-            Anthropic key, both stored in your device's Keychain. There is no shared key and no server
-            key.
-          </p>
-        </article>
-        <article>
-          <p class="eyebrow">Bilingual</p>
-          <p>
-            Ask in Chinese or English. The table, the dates and the program names read the same in
-            both.
-          </p>
-        </article>
+      <!--
+        The questions and answers are growth/geo/accuracy-answer.md's, word for word and in the same order. The
+        section follows the FAQ convention every page uses: <section class="faq" data-faq>, each question an <h3>
+        and its answer the <p> after it.
+      -->
+      <section class="faq" data-faq aria-labelledby="faq-h">
+        <h2 id="faq-h">Questions</h2>
+
+        <h3>Is AwardGrid free?</h3>
+        <p>
+          AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. It needs your own paid
+          seats.aero Pro subscription with API access; without that key it searches nothing.
+        </p>
+
+        <h3>Is AwardGrid affiliated with seats.aero?</h3>
+        <p>
+          No. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any
+          loyalty program. Its data comes from seats.aero.
+        </p>
+
+        <h3>Will it alert me when award seats open up?</h3>
+        <p>
+          No. Watches are checked when you open or return to the app, and at no other time; there is no background
+          check and no notification.
+        </p>
+
+        <h3>Is the availability live?</h3>
+        <p>
+          No. Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on
+          the program's own site before you transfer points.
+        </p>
+
+        <h3>Which programs does it cover?</h3>
+        <p>
+          The 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked
+          "not monitored".
+        </p>
+
+        <h3>Do I need an AI key?</h3>
+        <p>Only for Ask, which is optional. Search runs on your seats.aero key alone.</p>
+
+        <h3>Can I search in Chinese?</h3>
+        <p>
+          Yes. Type the routes and dates in English or Chinese, or set them in the editor. The app's interface is in
+          English or Simplified Chinese.
+        </p>
+
+        <h3>Does it book tickets?</h3>
+        <p>
+          No. For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It
+          never books.
+        </p>
+
+        <h3>Could AwardGrid stop working?</h3>
+        <p>
+          AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit
+          or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+        </p>
       </section>
 
       <!--
@@ -173,6 +310,10 @@
                 </td>
               </tr>
               <tr>
+                <th scope="row">No round trips</th>
+                <td>Searches are one-way: no round trips, multi-city or passenger count.</td>
+              </tr>
+              <tr>
                 <th scope="row">No accounts, no analytics in the app</th>
                 <td>
                   No telemetry, no advertising, no tracking. There is no server to collect any of it. These web pages
@@ -200,8 +341,9 @@
     <footer>
       <p>
         <a href="../privacy/">Privacy policy</a> · <a href="../support/">Support</a> ·
-        Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by,
-        or sponsored by seats.aero, any airline, or any loyalty program. © 2026 Curastone CORP.
+        <a href="./zh-hans/" hreflang="zh-Hans" lang="zh-Hans">简体中文</a> ·
+        Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by, or sponsored
+        by seats.aero, Anthropic, any airline, or any loyalty program. © 2026 Curastone CORP.
       </p>
     </footer>
   </body>
