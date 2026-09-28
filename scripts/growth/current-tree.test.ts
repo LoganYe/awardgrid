@@ -41,15 +41,15 @@ describe("the facts registry", () => {
 
   it("holds exactly the claims the public copy is built from", () => {
     expect(CLAIMS.map((c) => c.claim_id)).toEqual([
-      "identity", "release_status", "history", "webapp_note", "dependency", "prerequisite", "price", "grid", "query_input", "views",
+      "identity", "domain_collision", "release_status", "history", "webapp_note", "dependency", "prerequisite", "price", "grid", "query_input", "views",
       "scope", "programs", "data_cached", "watches", "quota", "ask", "privacy", "developer_data", "keys", "program_link",
       "not_offered", "affiliation", "availability",
     ]);
   });
 
   it("has no claim pending the owner, and approves the rest", () => {
-    // dependency, grid (reworded for the iPhone app's Matrix) and developer_data (the owner's PR #104 wording) were
-    // approved on 2026-09-28; a claim set back to pending_owner must be listed here on purpose.
+    // dependency, grid (reworded for the iPhone app's Matrix), developer_data (the owner's PR #104 wording) and
+    // domain_collision were approved on 2026-09-28; a claim set back to pending_owner must be listed here on purpose.
     expect(CLAIMS.filter((c) => c.public_use === "pending_owner").map((c) => c.claim_id)).toEqual([]);
     expect(CLAIMS.filter((c) => c.public_use !== "pending_owner").every((c) => c.public_use === "approved")).toBe(true);
   });
@@ -64,8 +64,8 @@ describe("the facts registry", () => {
       expect(claim(id).allowed_copy, id).toBeUndefined();
     }
     expect(claim("release_status").allowed_copy_by_status?.withdrawn).toContain("<date>");
-    expect(Object.keys(claim("webapp_note").allowed_copy_variants ?? {})).toEqual(["kept_host", "kept_repo", "retired"]);
-    expect(claim("webapp_note").in_use).toEqual(["kept_host", "kept_repo"]);
+    expect(Object.keys(claim("webapp_note").allowed_copy_variants ?? {})).toEqual(["kept_host", "kept_named_host", "kept_repo", "retired"]);
+    expect(claim("webapp_note").in_use).toEqual(["kept_host", "kept_named_host", "kept_repo"]);
     expect(REGISTRY.exact_copy_exempt_claims).toEqual(["history", "webapp_note"]);
   });
 
@@ -113,7 +113,9 @@ describe("the facts registry", () => {
 
   it("refuses the copy still waiting for the owner, and every retired wording", () => {
     for (const c of CLAIMS.filter((x) => x.public_use === "pending_owner")) {
-      expect(scanContent(c.allowed_copy!, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), c.claim_id).toContain("PENDING_CLAIM_TEXT");
+      for (const text of [c.allowed_copy!, ...(c.allowed_copy_extra ?? [])]) {
+        expect(scanContent(text, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), `${c.claim_id}: ${text}`).toContain("PENDING_CLAIM_TEXT");
+      }
     }
     const retired = CLAIMS.flatMap((c) => (c.retired_copy ?? []).map((text) => [c.claim_id, text] as const));
     expect(retired.map(([id]) => id).sort()).toEqual(["developer_data", "grid"]);
@@ -164,26 +166,31 @@ describe("the current tree", () => {
   });
 
   // What has to change when the registry's status moves on from submitted_not_live, pinned so that the change of
-  // status fixes exactly these and nothing slips through. All six are the submission wording, correct today: the
+  // status fixes exactly these and nothing slips through. All ten are the submission wording, correct today: the
   // release_status and price sentences at the top of README.md, the price answer in growth/geo/accuracy-answer.md,
-  // the history sentence in LEGAL.md, and the /ios/ status paragraph. Once released, each takes its claim's released
-  // copy; once withdrawn, the withdrawn copy (release_status) or none. Line numbers are left out, so an unrelated
-  // edit above them does not break this.
+  // the history sentence in LEGAL.md, the /ios/ status paragraph, the home page's status line, and the Status, Price
+  // and Availability lines of llms.txt. Once released, each takes its claim's released copy; once withdrawn, the
+  // withdrawn copy (release_status) or none. Line numbers are left out, so an unrelated edit above them does not
+  // break this.
   const AFTER_SUBMISSION = [
     'STALE_STATUS LEGAL.md "has been submitted to the App Store"',
     'STALE_STATUS README.md "submitted as a free app"',
     'STALE_STATUS README.md "has been submitted to the App Store"',
     'STALE_STATUS growth/geo/accuracy-answer.md "submitted as a free app"',
+    'STALE_STATUS sites/landing/index.html "has been submitted to the App Store"',
     'STALE_STATUS sites/landing/ios/index.html "has been submitted to the App Store"',
     `STALE_STATUS sites/landing/ios/index.html "waiting for Apple's review"`,
+    'STALE_STATUS sites/landing/public/llms.txt "has been submitted to the App Store"',
+    'STALE_STATUS sites/landing/public/llms.txt "submitted as a free app"',
+    'STALE_STATUS sites/landing/public/llms.txt "will be offered in 174"',
   ];
   it.each(["released", "withdrawn"] as const)("in %s mode it finds exactly the submission wording, and nothing else", (status) => {
     const found = validate({ root: ROOT, status }).findings.map((f: { rule: string; logical: string; match: string }) => `${f.rule} ${f.logical} ${JSON.stringify(f.match)}`);
     expect(found.sort()).toEqual([...AFTER_SUBMISSION].sort());
   });
 
-  // The switch at release swaps each status sentence for its claim's copy for the new status. The README's layout must
-  // take that swap as it is: the released release_status sentence says "free", so it has to sit next to the
+  // The switch at release swaps each status sentence for its claim's copy for the new status. The layout of each file
+  // below must take that swap as it is: the released release_status sentence says "free", so it has to sit next to the
   // prerequisite (FREE_WITHOUT_PRO), and nothing else may need rewording.
   const swapped = (text: string, status: "released" | "withdrawn") => {
     let out = text;
@@ -198,6 +205,8 @@ describe("the current tree", () => {
   it.each([
     ["README.md", true],
     ["growth/geo/accuracy-answer.md", false],
+    ["sites/landing/index.html", false],
+    ["sites/landing/public/llms.txt", false],
   ] as const)("%s passes in released and withdrawn mode once its status sentences take that status's copy", (file, section) => {
     const text = readFileSync(path.join(ROOT, file), "utf8");
     for (const status of ["released", "withdrawn"] as const) {

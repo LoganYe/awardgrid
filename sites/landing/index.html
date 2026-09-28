@@ -3,13 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>AwardGrid for iPhone</title>
-    <meta name="description" content="AwardGrid for iPhone: the app's page, its privacy policy and its support page." />
+    <title>AwardGrid for iPhone: award seats for many routes and dates in one table</title>
+    <meta
+      name="description"
+      content="Type the routes and dates in English or Chinese, and AwardGrid puts seats.aero's cached award availability into one table, on your own seats.aero Pro key."
+    />
+    <link rel="canonical" href="https://awardgrid.dowhiz.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://awardgrid.dowhiz.com/" />
+    <meta property="og:title" content="AwardGrid for iPhone: award seats for many routes and dates in one table" />
+    <meta
+      property="og:description"
+      content="Type the routes and dates in English or Chinese, and AwardGrid puts seats.aero's cached award availability into one table, on your own seats.aero Pro key."
+    />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <!--
-      The static site's own root. On awardgrid.dowhiz.com the web app keeps "/", and only /ios/, /privacy/, /support/
-      and /_site/ are served from this site (sites/landing/DEPLOY.md); this page is what the Pages project's own
-      address shows at its root. No script in this file, no webfont request (honesty.test.ts scans it). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the privacy policy says so ("This website").
+      The home page: "/" on awardgrid.dowhiz.com by an exact Worker route (so only "/" with no query string; "/?…"
+      is still the web app's), and the root of the Worker's workers.dev address. Every sentence is registry copy
+      (growth/product-facts.json). No "Log in" link. No script but JSON-LD, no webfont request (honesty.test.ts
+      scans it). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the privacy policy says so
+      ("This website").
     -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://awardgrid.dowhiz.com/#org",
+            "name": "Curastone CORP."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://awardgrid.dowhiz.com/#website",
+            "name": "AwardGrid",
+            "url": "https://awardgrid.dowhiz.com/",
+            "publisher": { "@id": "https://awardgrid.dowhiz.com/#org" }
+          }
+        ]
+      }
+    </script>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -17,18 +52,24 @@
       <header>
         <p class="eyebrow">AwardGrid</p>
         <h1>AwardGrid for iPhone</h1>
-        <p class="lead">One table of award seats, on your own seats.aero key.</p>
+        <p class="lead">
+          Type the routes and dates in English or Chinese, and AwardGrid puts seats.aero's cached award availability
+          into one table, on your own seats.aero Pro key.
+        </p>
       </header>
-      <ul>
-        <li><a href="./ios/">About the app</a></li>
-        <li><a href="./privacy/">Privacy policy</a></li>
-        <li><a href="./support/">Support</a></li>
-      </ul>
+      <p>AwardGrid for iPhone has been submitted to the App Store.</p>
+      <nav aria-label="Site">
+        <p>
+          <a href="./ios/">About the app</a> · <a href="./privacy/">Privacy policy</a> ·
+          <a href="./support/">Support</a>
+        </p>
+      </nav>
+      <p class="doc-meta">The web app at awardgrid.dowhiz.com is private and invite-only; it is separate from the iPhone app.</p>
     </main>
     <footer>
       <p>
         Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by, or sponsored
-        by seats.aero, any airline, or any loyalty program. © 2026 Curastone CORP.
+        by seats.aero, Anthropic, any airline, or any loyalty program. © 2026 Curastone CORP.
       </p>
     </footer>
   </body>

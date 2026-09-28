@@ -71,7 +71,33 @@
         "apps/ios/ios/App/App/Info.plist:7-8 \"<key>CFBundleDisplayName</key>\""
       ],
       "allowed_copy": "AwardGrid is an iPhone app by Curastone CORP.",
+      "allowed_copy_extra": [
+        "AwardGrid (one word, capital G) is this iPhone app."
+      ],
       "limitations": [
+        "The extra sentence is in the Name section of sites/landing/public/llms.txt. The name is the app's display name (Info.plist CFBundleDisplayName).",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "approved"
+    },
+    {
+      "claim_id": "domain_collision",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "external",
+      "evidence_ref": [
+        "[external] https://rdap.verisign.com/com/v1/domain/awardgrid.com (read 2026-09-28): registered 2026-03-31 through Registrar.eu, nameservers ns1.afternic.com and ns2.afternic.com"
+      ],
+      "allowed_copy": "The domain awardgrid.com is not owned by Curastone CORP.",
+      "allowed_copy_extra": [
+        "The domain awardgrid.com is not ours."
+      ],
+      "limitations": [
+        "Approved 2026-09-28: awardgrid.com is parked with a for-sale listing (afternic nameservers; registered 2026-03-31) and Curastone CORP. has not bought it. RDAP does not name the registrant, so the sentence rests on Curastone CORP. not having registered or bought it; re-check before each publication.",
+        "Used in the Name section of sites/landing/public/llms.txt in the third person (allowed_copy), as the rest of that file is.",
+        "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -134,19 +160,22 @@
       "evidence_ref": [
         "src/app/api/auth/register/route.ts:2-4 \"POST /api/auth/register { inviteCode, username, password }\"",
         "docs/DEPLOYMENT.md:49-56 \"## Not done\"",
-        "sites/landing/DEPLOY.md:9-18 \"## Shape\""
+        "sites/landing/DEPLOY.md:10-21 \"## Shape\""
       ],
       "allowed_copy_variants": {
         "kept_host": "The web app at this address is private and invite-only; it is separate from the iPhone app.",
+        "kept_named_host": "The web app at awardgrid.dowhiz.com is private and invite-only; it is separate from the iPhone app.",
         "kept_repo": "This repo also holds a private, invite-only web app, separate from the iPhone app.",
         "retired": "The earlier private web app at this address has been shut down."
       },
       "in_use": [
         "kept_host",
+        "kept_named_host",
         "kept_repo"
       ],
       "limitations": [
         "The web app was running on 2026-09-28, so the kept variants are in use; the retired variant is used only once the web app is shut down.",
+        "kept_named_host is for files that are also served on the Worker's own workers.dev address (the home page, llms.txt, robots.txt), where \"at this address\" would not be true; kept_host stays in LEGAL.md, which only the web app serves (/legal).",
         "Apart from history, only these sentences may call anything on this host or in this repo private or invite-only (PRIVATE_WEBAPP).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
@@ -236,9 +265,13 @@
         "apps/ios/src/components/results/AvailabilityCard.tsx:102 \"<p className=\"ag-result-time\">\""
       ],
       "allowed_copy": "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.",
+      "allowed_copy_extra": [
+        "Type the routes and dates in English or Chinese, and AwardGrid puts seats.aero's cached award availability into one table, on your own seats.aero Pro key."
+      ],
       "limitations": [
         "Decided 2026-09-28: the earlier wording (retired_copy) described the web app's table (packages/core/src/lib/grid/types.ts GridCell, rendered only by the web app). In the iPhone app the table is the Matrix: rows are the dates, columns the routes, and each cell holds one slot per cabin asked with its lowest miles, the program and the seats; fees and data age are on each option's card (AvailabilityMatrix.tsx:5-7, AvailabilityCard.tsx:94, :102).",
         "Where coverage is incomplete, a cell's number is the lowest retrieved, and miles in different programs are not equivalent (the Matrix caption says both).",
+        "The extra sentence is the lead of the home page (sites/landing/index.html) and its meta description: query_input, this claim and prerequisite in one sentence. \"Your own seats.aero Pro key\" is the prerequisite claim's key (a paid seats.aero Pro subscription with API access).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
@@ -481,8 +514,8 @@
       "evidence_level": "observed",
       "evidence_ref": [
         "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
-        "sites/landing/privacy/index.html:167-173 \"<h2 id=\"site-h\">This website</h2>\"",
-        "sites/landing/DEPLOY.md:28-30 \"**Cloudflare Web Analytics** is on for the hostname.\"",
+        "sites/landing/privacy/index.html:178-184 \"<h2 id=\"site-h\">This website</h2>\"",
+        "sites/landing/DEPLOY.md:30-32 \"**Cloudflare Web Analytics** is on for the hostname.\"",
         "apps/ios/package.json:16-26 \"\"dependencies\": {\""
       ],
       "allowed_copy": "Neither app has telemetry or analytics of its own; the pages on awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no cookies.",
@@ -636,14 +669,11 @@
       "path": "growth/geo/accuracy-answer.md"
     },
     {
-      "path": "sites/landing/public/llms.txt",
-      "reserved": true,
-      "note": "Checked once it exists."
+      "path": "sites/landing/public/llms.txt"
     },
     {
       "path": "sites/landing/public/robots.txt",
-      "reserved": true,
-      "note": "Checked once it exists."
+      "note": "Its comment lines are public text: the web app note (webapp_note, kept_host) and the pages it lists."
     },
     {
       "glob": "apps/ios/store-metadata/**",
@@ -660,6 +690,26 @@
     {
       "path": "package.json",
       "reason": "The root package's description names the package for developers; it is not copy about the iPhone app."
+    },
+    {
+      "path": "sites/landing/public/665e809ddf84f9e36cd81d6f8842eaf6.txt",
+      "reason": "The IndexNow key file: its whole content is the key named in sites/landing/pages.json (indexnow_key), public by design so IndexNow engines can check a submission comes from this host. No copy."
+    },
+    {
+      "path": "sites/landing/public/favicon.svg",
+      "reason": "The favicon: shapes only (a two-by-two table, one cell lit), no text, drawn by sites/landing/scripts/favicon.mjs."
+    },
+    {
+      "path": "sites/landing/public/favicon.ico",
+      "reason": "The same favicon as a 32x32 image, drawn by sites/landing/scripts/favicon.mjs. No text."
+    },
+    {
+      "path": "sites/landing/public/_headers",
+      "reason": "Response headers for the Worker (HSTS, nosniff, cache lifetime of /_site/, noindex on the workers.dev address); read by Cloudflare, not shown to readers. No copy."
+    },
+    {
+      "path": "sites/landing/pages.json",
+      "reason": "The site's page list: URL paths, source files and lastmod dates, from which the build writes sitemap.xml (so sitemap.xml holds URLs and dates only), plus the IndexNow key. No copy."
     }
   ],
   "historical_allowlist": [
