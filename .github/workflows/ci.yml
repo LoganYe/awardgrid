@@ -128,6 +128,42 @@ jobs:
         if: ${{ !cancelled() }}
         run: python3 -m unittest discover -s scripts/aso -p 'test_*.py' -v
 
+  # The T0 merge check, on every pull request and every push to main. The T0 switch (growth/product-facts.json
+  # released.status "released") is prepared before the app is live, with T0 itself left empty; the landing job's gate
+  # reports that as T0_UNRECORDED and defers it, so this is the check that fails on it. It stays red on the switch, and
+  # on any branch that carries it, until scripts/growth/set-t0.mjs records T0 and the owner's re-read of seats.aero's
+  # help article 68, and the dates of the switch's DECISIONS.md amendments are filled in
+  # (scripts/growth/t0-switch.test.ts). A change without the switch passes it: T0_UNRECORDED is reported only for a
+  # registry that says released, or withdrawn. The change to withdrawn (the app removed from the App Store) is held the
+  # same way: it goes on a tree whose T0 is recorded, and the gate defers WITHDRAWN_UNRECORDED until
+  # scripts/growth/set-withdrawn.mjs records the removal and dates its sentences.
+  t0-merge-check:
+    name: T0 merge check (red on the T0 switch until set-t0)
+    runs-on: ubuntu-latest
+    env:
+      # Tests must pass with no network and no keys (Definition of done).
+      CI: "true"
+      T0_MERGE_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - id: install
+        run: pnpm install --frozen-lockfile
+
+      - name: Public-claims gate with the T0 merge check (T0_UNRECORDED fails)
+        run: node scripts/growth/validate-public-claims.mjs --t0-merge-check
+
+      - name: T0 merge check tests (T0 recorded, article 68 re-read, DECISIONS.md dates filled in)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm exec vitest run scripts/growth/t0-switch.test.ts --reporter=verbose
+
   e2e:
     name: e2e (Playwright, demo mock)
     runs-on: ubuntu-latest

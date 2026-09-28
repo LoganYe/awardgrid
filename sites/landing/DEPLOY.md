@@ -96,6 +96,18 @@ route if its path is not under one already.
 
 Upload and routes go together: the new files first, then the routes that send the new paths to them.
 
+**First, the gate on the build, with the merge check (`T0_MERGE_CHECK=1`).** It must exit 0:
+
+```bash
+T0_MERGE_CHECK=1 node scripts/growth/validate-public-claims.mjs --dist sites/landing/dist
+```
+
+A registry that says released before `scripts/growth/set-t0.mjs` has recorded the day the app was first found on the
+App Store fails it (T0_UNRECORDED), so pages that say the app is on the App Store are not deployed before the app is.
+Likewise a registry that says withdrawn before `scripts/growth/set-withdrawn.mjs` has recorded the day of the removal
+fails it (WITHDRAWN_UNRECORDED), so pages whose withdrawn sentence still says `<date>` are not deployed; so does one
+whose T0 was never recorded (T0_UNRECORDED), since the app is removed only after it is released.
+
 **CLI.** `npx wrangler deploy` from `sites/landing` after `wrangler login` (an OAuth grant on the owner's
 Cloudflare account, the owner's call). It uploads `dist/` and sets every route in `wrangler.jsonc` in one step.
 
@@ -142,6 +154,22 @@ passes there and is listed as expected to answer 200 after it; after the deploy 
 A 5xx is Cloudflare's own error page (a 530 while the Mac sleeps and the tunnel is down). The Worker does not answer
 one, so who would serve that path is reported as `unknown`, and no page check runs on it. Where the Worker should
 answer (after the deploy, `/` and the root files too) it is a failure; on a web app path, a warning.
+
+**The words.** verify-live checks scripts, headers and routes, not copy. After a deploy that changes what the pages
+say (the release above all), save the live pages as a browser gets them and run the gate on the copies:
+
+```bash
+dir=$(mktemp -d)
+for p in / /ios/ /ios/award-grid/ /ios/zh-hans/ /support/; do
+  curl -s -A 'Mozilla/5.0' -H 'Accept: text/html' "https://awardgrid.dowhiz.com$p" -o "$dir/$(echo "${p%/}" | tr / _)_index.html"
+done
+curl -s https://awardgrid.dowhiz.com/llms.txt -o "$dir/llms.txt"
+node scripts/growth/validate-public-claims.mjs $(for f in "$dir"/*; do printf -- '--file %s ' "$f"; done)
+```
+
+Each page's one finding is SCRIPT_NOT_LD_JSON for Cloudflare's beacon (`static.cloudflareinsights.com/beacon.min.js`),
+which verify-live counts; any other finding means the live words are not what the registry says. The web app's
+`/legal` renders `LEGAL.md` from the production checkout at request time, so it changes when that checkout is updated.
 
 The quick version by hand:
 
