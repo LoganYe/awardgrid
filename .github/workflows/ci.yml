@@ -116,9 +116,17 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm exec vitest run scripts/growth --reporter=verbose
 
-      # Store metadata, once scripts/aso/validate_metadata.py and apps/ios/store-metadata/ exist:
-      # - name: Store metadata validator
-      #   run: python3 scripts/aso/validate_metadata.py --strict
+      # The App Store listing (apps/ios/store-metadata): the next version's drafts under next/, strictly (a warning
+      # fails too), and the tests of the ASO tools, verbose so the log names each one. The runner's own python3 and the
+      # standard library only; the name check's tests mock the network. Neither needs the build, so both run when it
+      # fails.
+      - name: Store metadata validator (apps/ios/store-metadata/next, strict)
+        if: ${{ !cancelled() }}
+        run: python3 scripts/aso/validate_metadata.py --strict
+
+      - name: ASO tool tests (metadata validator and name check)
+        if: ${{ !cancelled() }}
+        run: python3 -m unittest discover -s scripts/aso -p 'test_*.py' -v
 
   e2e:
     name: e2e (Playwright, demo mock)

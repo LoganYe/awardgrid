@@ -276,13 +276,15 @@
       ],
       "limitations": [
         "Decided 2026-09-28: the earlier wording (retired_copy) described the web app's table (packages/core/src/lib/grid/types.ts GridCell, rendered only by the web app). In the iPhone app the table is the Matrix: rows are the dates, columns the routes, and each cell holds one slot per cabin asked with its lowest miles, the program and the seats; fees and data age are on each option's card (AvailabilityMatrix.tsx:5-7, AvailabilityCard.tsx:94, :102).",
+        "Version 1.0's App Store description opens with the same description of a cell in other words (the second retired_copy sentence). It stays word for word in apps/ios/store-metadata/en-US/description.txt, the text as submitted, under a historical_allowlist exemption; the next version's descriptions use allowed_copy.",
         "Where coverage is incomplete, a cell's number is the lowest retrieved, and miles in different programs are not equivalent (the Matrix caption says both).",
         "The extra sentence is the lead of the home page (sites/landing/index.html) and its meta description: query_input, this claim and prerequisite in one sentence. \"Your own seats.aero Pro key\" is the prerequisite claim's key (a paid seats.aero Pro subscription with API access).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
       "retired_copy": [
-        "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table, with the cheapest award seat in each cell and its miles, fees, seats left, program and data age."
+        "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table, with the cheapest award seat in each cell and its miles, fees, seats left, program and data age.",
+        "AwardGrid puts award availability for your routes and dates into one table: the cheapest award seat in each cell, with the miles, the fees, the seats left, the program that sells it, and how old the data is."
       ]
     },
     {
@@ -308,11 +310,41 @@
         "The app's interface is in English or Simplified Chinese."
       ],
       "limitations": [
-        "Places come from a fixed list of 70 metro areas and 210 aliases (packages/core/data/places.json); a bare airport code is read only in upper case (places.ts:132); holiday names are not read as dates (dates.ts:106-107); queries in Traditional Chinese characters are not tested.",
+        "Places come from a fixed list of 70 metro areas and 210 aliases (packages/core/data/places.json); a bare airport code is read only in upper case (places.ts:132); holiday names are not read as dates (dates.ts:106-107); queries in traditional characters are tested, and what they may say is query_zh_hant.",
         "The interface sentence is released.interface_languages: Simplified Chinese for a zh-* language, English otherwise (locale.ts:11-19; Info.plist CFBundleLocalizations).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
+    },
+    {
+      "claim_id": "query_zh_hant",
+      "released_version": "1.0",
+      "candidate_version": null,
+      "market": "all storefronts where offered",
+      "checked_at": "2026-09-28",
+      "evidence_level": "source-verified",
+      "evidence_ref": [
+        "packages/core/src/lib/query/zh-hant.test.ts:193 \"describe(\"Traditional Chinese: whole queries, parsed as the iPhone app parses them (no LLM client)\"\"",
+        "packages/core/src/lib/query/zh-hant.test.ts:196 \"text: \"臺北到東京 10月 頭等\",\"",
+        "packages/core/src/lib/query/zh-hant.test.ts:262 \"describe(\"Traditional Chinese: forms the parser does not read today\"\"",
+        "packages/core/src/lib/query/zh-hant.test.ts:319 \"it(\"哩程 is not a sort word (里程 is); the sort still defaults to miles_asc\"\"",
+        "packages/core/src/lib/query/dates.ts:122 \"{ re: /未来一周|未來一週|接下来一周|接下來一週|一周内|一週內|下周|下週|下星期|\"",
+        "packages/core/data/places.json:84 \"\"台北\": \"TPE\", \"臺北\": \"TPE\"\"",
+        "packages/core/src/lib/query/deterministic.ts:102-104 \"[\"F\", /头等|頭等|\"",
+        "packages/core/src/lib/query/dates.ts:134 \"re: /未来一个月|未來一個月|\"",
+        "packages/core/src/lib/query/places.ts:170 \"const TO_WORD_RE =\"",
+        "apps/ios/src/search/search.ts:165 \"const parsed = await parseQuery(trimmed, { today:\"",
+        "apps/ios/src/app/locale.ts:11-19 \"Chinese for any zh-* language tag, English otherwise.\""
+      ],
+      "allowed_copy": "You can also type a query in traditional characters, such as 臺北到東京 10月 頭等.",
+      "limitations": [
+        "Pending: 飛 on its own, the shortest way to write a route (香港飛東京, 臺北飛紐約), is not read in 1.0, and neither are 下禮拜 or 桃園 (below). A query written that way fails in the iPhone app while the same route in simplified characters (香港飞东京) is read (zh-hant.test.ts:263-269), so this sentence is not used on a public surface until the parser reads those forms or the sentence is approved with these limits.",
+        "Tested (packages/core/src/lib/query/zh-hant.test.ts): the place names 臺北, 台北, 東京, 倫敦, 紐約 and 香港 and the other Traditional aliases in packages/core/data/places.json; the cabins 頭等, 商務, 公務艙 and 經濟, with or without 艙; dates such as 10月, 下個月, 12月1日到12月15日, 12月1號, 未來兩週 and 下週; the direction words 到, 至, 往, 飛往, 前往, 從 and 由. 下個月, like 下个月, is read as the 30 days from today, not the calendar month, and 下週, like 下周, as the 7 days from today, not the calendar week (dates.ts:122, :134).",
+        "Not read in 1.0: 飛 on its own as a direction word (香港飛東京 names no destination, while 香港飛往東京 and 香港到東京 are read); 兩周 written with 周, 兩週之內 and 下禮拜; the spellings 伊斯坦堡, 伊斯坦布爾, 西貢, 休士頓, 蒙特利爾, 卡爾加里, 巴塞羅那 and 希思羅; 桃園, 松山, 高雄 and 澳門, which are not in the place list in either script; and 哩程 as a sort word (哩程最低 is not read, 里程最低 is; the sort defaults to the lowest miles either way). The iPhone app parses without an LLM (apps/ios/src/search/search.ts:165), so a query whose places or dates are not read is a parse failure that names the missing fields.",
+        "The interface is in English or Simplified Chinese, not Traditional Chinese (released.interface_languages). A Traditional Chinese surface that uses this claim also carries the sentence App 介面為簡體中文與英文。",
+        "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
+      ],
+      "public_use": "pending_owner"
     },
     {
       "claim_id": "views",
@@ -683,8 +715,7 @@
     },
     {
       "glob": "apps/ios/store-metadata/**",
-      "reserved": true,
-      "note": "Checked once it exists; name, subtitle and keywords also get TRADEMARK_ASO."
+      "note": "The App Store listing, one file per field: en-US/ is version 1.0 as submitted on 2026-09-26; next/<locale>/ holds drafts for the next version (apps/ios/store-metadata/README.md). TRADEMARK_ASO reads the name, subtitle and keyword files (keywords_fallback.txt too) of <locale>/ and next/<locale>/; scripts/aso/validate_metadata.py checks limits, repeats, keyword use, third-party names and unsupported features in next/ (CI, --strict)."
     }
   ],
   "nonmarketing_files": [
@@ -745,6 +776,24 @@
       ],
       "reason": "The footer of sites/landing/privacy/, which is pending a separate change; the other pages already link seats.aero here.",
       "expires_when": "the pending change to sites/landing/privacy/ lands with the link; remove this exemption then"
+    },
+    {
+      "file": "apps/ios/store-metadata/en-US/description.txt",
+      "text": "There are no accounts, no analytics, no ads and no tracking.",
+      "rules": [
+        "NO_SERVER_SUBJECT"
+      ],
+      "reason": "Version 1.0's App Store description, word for word as submitted on 2026-09-26 (docs/release/IOS_1.0_RELEASE.md section 7.6); App Store Connect keeps it until a new version replaces it, and on the app's own store page the app is the subject. The next version's text is pending a separate change: apps/ios/store-metadata/next/en-US/description.txt names the iPhone app.",
+      "expires_when": "a new version's description replaces version 1.0's in apps/ios/store-metadata/en-US/; remove this exemption then"
+    },
+    {
+      "file": "apps/ios/store-metadata/en-US/description.txt",
+      "text": "AwardGrid puts award availability for your routes and dates into one table: the cheapest award seat in each cell, with the miles, the fees, the seats left, the program that sells it, and how old the data is.",
+      "rules": [
+        "PENDING_CLAIM_TEXT"
+      ],
+      "reason": "Version 1.0's App Store description, word for word as submitted on 2026-09-26 (docs/release/IOS_1.0_RELEASE.md section 7.6). Its first sentence describes a cell as the web app's table does (grid.retired_copy); App Store Connect keeps it until a new version replaces it. The next version's text is pending a separate change: apps/ios/store-metadata/next/<locale>/description.txt uses grid.allowed_copy.",
+      "expires_when": "a new version's description replaces version 1.0's in apps/ios/store-metadata/en-US/; remove this exemption then"
     }
   ],
   "exact_copy_exempt_claims": [

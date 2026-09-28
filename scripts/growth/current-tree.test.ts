@@ -41,16 +41,17 @@ describe("the facts registry", () => {
 
   it("holds exactly the claims the public copy is built from", () => {
     expect(CLAIMS.map((c) => c.claim_id)).toEqual([
-      "identity", "domain_collision", "release_status", "history", "webapp_note", "dependency", "prerequisite", "price", "grid", "query_input", "views",
-      "scope", "programs", "data_cached", "watches", "quota", "ask", "privacy", "developer_data", "keys", "program_link",
-      "not_offered", "affiliation", "availability",
+      "identity", "domain_collision", "release_status", "history", "webapp_note", "dependency", "prerequisite", "price", "grid",
+      "query_input", "query_zh_hant", "views", "scope", "programs", "data_cached", "watches", "quota", "ask", "privacy",
+      "developer_data", "keys", "program_link", "not_offered", "affiliation", "availability",
     ]);
   });
 
-  it("has no claim pending the owner, and approves the rest", () => {
+  it("holds only the pending claims listed here, and approves the rest", () => {
     // dependency, grid (reworded for the iPhone app's Matrix), developer_data (the owner's PR #104 wording) and
     // domain_collision were approved on 2026-09-28; a claim set back to pending_owner must be listed here on purpose.
-    expect(CLAIMS.filter((c) => c.public_use === "pending_owner").map((c) => c.claim_id)).toEqual([]);
+    // query_zh_hant: 1.0 does not read 飛 on its own, 下禮拜 or 桃園 (its limitations), so its sentence waits.
+    expect(CLAIMS.filter((c) => c.public_use === "pending_owner").map((c) => c.claim_id)).toEqual(["query_zh_hant"]);
     expect(CLAIMS.filter((c) => c.public_use !== "pending_owner").every((c) => c.public_use === "approved")).toBe(true);
   });
 
@@ -118,7 +119,7 @@ describe("the facts registry", () => {
       }
     }
     const retired = CLAIMS.flatMap((c) => (c.retired_copy ?? []).map((text) => [c.claim_id, text] as const));
-    expect(retired.map(([id]) => id).sort()).toEqual(["developer_data", "grid"]);
+    expect(retired.map(([id]) => id).sort()).toEqual(["developer_data", "grid", "grid"]);
     for (const [id, text] of retired) {
       expect(scanContent(text, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), id).toContain("PENDING_CLAIM_TEXT");
     }
