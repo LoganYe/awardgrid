@@ -37,7 +37,8 @@
  * In --before-deploy mode the checks that the deploy changes (the "/" route, the root files, canonical links, HSTS,
  * comments, the workers.dev X-Robots-Tag) expect the state before it and report the state expected after it; the
  * checks that hold either way (no script but JSON-LD and the beacon, noindex on the web app's sign-in pages) are the
- * same in both modes.
+ * same in both modes. A page of pages.json that the Worker answers with a 404 before the deploy is a page the deploy
+ * adds: it passes, and is listed as expected to answer 200 after it.
  *
  * Node built-ins only. The checks are exported as pure functions for sites/landing/test/verify-live.test.ts, which
  * runs them on recorded and synthetic responses; no test reaches the network.
@@ -547,6 +548,12 @@ export function evaluate(probe, res, ctx) {
   let checks;
   switch (probe.kind) {
     case "page":
+      // Before the deploy, a page of pages.json that the Worker answers with a 404 is one this deploy adds (the Worker
+      // has not_found_handling "none"): expected, and listed with what the deploy should change. After it, a failure.
+      if (ctx.mode === "before" && served === "worker" && res.status === 404) {
+        checks = [check("status", "pass", "HTTP 404 from the Worker: not deployed yet, a page this deploy adds", { after_deploy: "HTTP 200 from the Worker, text/html" })];
+        break;
+      }
       checks = workerPage(true);
       break;
     case "workers-dev":
