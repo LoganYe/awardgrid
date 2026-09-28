@@ -25,6 +25,9 @@ awardgrid.dowhiz.com/_site/*   ─┘
   web app as before. Failure mode: fail closed. Nothing on the web app answered those prefixes before (they
   redirected to its 404).
 - **No DNS change:** `awardgrid.dowhiz.com` stays the tunnel's record.
+- **Cloudflare Web Analytics** is on for the hostname. Cloudflare adds its beacon script to HTML responses for
+  browsers, not for a plain curl. The source pages have no script (honesty.test.ts). The privacy policy's "This
+  website" section discloses the analytics: the owner's decision, 2026-09-27.
 - `wrangler.jsonc` states the same deployment, for `wrangler deploy`.
 - Restful's site is the model (`restful.dowhiz.com`, a Pages project on its own hostname). AwardGrid's hostname
   already belongs to the web app, so the site takes paths instead.
@@ -57,6 +60,7 @@ for p in /ios/ /privacy/ /support/; do curl -s -o /dev/null -w "%{http_code} $p\
 curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" https://awardgrid.dowhiz.com/privacy                           # 307 …/privacy/
 curl -s https://awardgrid.dowhiz.com/privacy/ | grep -c 'knowhiz.us@gmail.com'                                        # > 0
 for p in / /legal /api/health; do curl -s -o /dev/null -w "%{http_code} $p\n" https://awardgrid.dowhiz.com$p; done  # the web app, 200
+curl -s -A 'Mozilla/5.0' -H 'Accept: text/html' https://awardgrid.dowhiz.com/privacy/ | grep -c cloudflareinsights  # 1 while Web Analytics is on (disclosed); a plain curl gets 0
 ```
 
 ## Roll back
