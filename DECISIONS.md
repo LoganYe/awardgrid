@@ -1256,12 +1256,22 @@ Full rationale in `packages/tokens/README.md`.
   Amended 2026-09-28: zero executable JavaScript. The only `<script>` allowed is `type=application/ld+json` without
   `src`, and the honesty test scans its strings. Favicons are same-origin.
 
+  Amended <date>: no executable script in the pages' source (Cloudflare adds its Web Analytics beacon at the edge,
+  as the privacy policy says); Safari may fetch the Smart App Banner from Apple.
+
 - **The landing page carries NO App Store badge, and says why on the page.** `docs/PIVOT.md` §0 is
   unanswered: seats.aero's Partner API is licensed for non-commercial personal use and nobody has
   confirmed that permits a distributed app. A "Download on the App Store" button would assert a
   listing that may not be permitted to exist. The page has a "Where this is up to" section stating
   the position plainly instead — which is both the honest option and the one that needs no rewrite
   when the answer arrives.
+
+  Amended <date>: after the release of 1.0 on <date>, /ios/ and /ios/zh-hans/ link the listing as text, and /ios/
+  states the licence in the dependency sentence (seats.aero licenses its Partner API for non-commercial use and can
+  limit or withdraw it).
+
+  Amended <date>: After Apple approved 1.0 on <date>, /ios/ links the listing; the earlier no-badge decision is
+  superseded.
 
 - **"Invite only" is gone from the copy and nothing else is.** PIVOT §4: "The voice does not
   change." The front door's blocks carry over almost verbatim; the one that had to go said there is

@@ -2,7 +2,7 @@
   "schema_version": 2,
   "about": "Facts about the AwardGrid iPhone app that public copy may use. Every public sentence is built from allowed_copy; scripts/growth/validate-public-claims.mjs checks this file and every public surface in CI.",
   "released": {
-    "status": "submitted_not_live",
+    "status": "released",
     "name": "AwardGrid",
     "app_id": "6816321841",
     "bundle_id": "com.dowhiz.awardgrid",
@@ -48,7 +48,8 @@
       "submitted_at_utc: docs/release/IOS_1.0_RELEASE.md:33 records the submission at 20:24 on 2026-09-26 without a time zone; the zone (Pacific, UTC-7) is from commit 334ecef, which recorded it at 2026-09-26T20:25:44-07:00. Release is automatic once Apple approves.",
       "build_source_revision is the commit that built 1.0 (3), as the release record lists it (the `ea4bf2d` evidence ref above); main_revision is the origin/main revision the 2026-09-28 source fixtures were taken at (scripts/growth/fixtures/2026-09-28/src-10c8e36).",
       "minimum_ios and platforms are also the App target's build settings: IPHONEOS_DEPLOYMENT_TARGET = 18.0 and TARGETED_DEVICE_FAMILY = 1 in apps/ios/ios/App/App.xcodeproj/project.pbxproj.",
-      "App Store Connect prices the app at $0.00 in 175 countries or regions and makes it available in 174 (not China mainland): docs/release/IOS_1.0_RELEASE.md:28-29."
+      "App Store Connect prices the app at $0.00 in 175 countries or regions and makes it available in 174 (not China mainland): docs/release/IOS_1.0_RELEASE.md:28-29.",
+      "status is released from T0, the first cache-busted lookup that returns the app (resultCount 1 or more). released_at_utc is that lookup's time and t0_lookup_receipt its URL; scripts/growth/set-t0.mjs writes both on T0 day. Until both are set, the gate reports T0_UNRECORDED, deferred unless the T0 merge check runs (T0_MERGE_CHECK=1), and the switch to released is not merged."
     ],
     "released_at_utc": null,
     "withdrawn_at_utc": null,
@@ -123,11 +124,18 @@
         "released": "AwardGrid 可在 App Store 免费下载（App ID 6816321841）。",
         "withdrawn": "AwardGrid iPhone 版已于 <date> 从 App Store 下架。"
       },
+      "allowed_copy_extra_by_status": {
+        "released": [
+          "AwardGrid is free on the App Store for iPhone (iOS 18 or later).",
+          "View AwardGrid on the App Store"
+        ]
+      },
       "limitations": [
         "Exactly one version is used, the one for released.status.",
         "The released version is used only after a cache-busted App Store lookup returns the app; the withdrawn version replaces <date> with the date of removal.",
         "The released version says free, so, like the price claim, it goes in the same sentence group as the prerequisite sentence (FREE_WITHOUT_PRO): in README.md the status, price and prerequisite sentences are one paragraph.",
-        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. The submitted sentence also says the app is waiting for Apple's review, as the English status paragraph of /ios/ does. The released and withdrawn sentences are on no page yet; the released one says 免费, so it goes next to the prerequisite's Chinese.",
+        "The released extra sentences are the status paragraph of /ios/ (\"Where this is up to\"): the status with released.platforms and released.minimum_ios, and the words of its link to the listing (https://apps.apple.com/app/apple-store/id6816321841 with the campaign token ct=awardgrid-ios and the provider token pt=124116782). They are released copy: the gate reports them before the release (PREMATURE_STATUS) and once withdrawn (WITHDRAWN_STATUS).",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. The submitted sentence also says the app is waiting for Apple's review, as the English status paragraph of /ios/ did. The released sentence answers 哪里能下载？ on /ios/zh-hans/, where App Store links to the listing (ct=awardgrid-ios); it says 免费, so the prerequisite's Chinese follows it. The withdrawn sentence is on no page yet.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -246,8 +254,14 @@
       "allowed_copy_zh_extra": [
         "你自己付费的 seats.aero Pro 订阅，账户要有 API 权限；API 密钥在 seats.aero 设置的 API 页里。没有这个密钥，App 什么也搜不到。"
       ],
+      "allowed_copy_extra_by_status": {
+        "released": [
+          "seats.aero notes that not every Pro account or country gets API access, so check that your seats.aero settings show an API tab before you subscribe or download."
+        ]
+      },
       "limitations": [
         "Not every seats.aero Pro account or country gets API access (docs/reference/seatsaero/getting-started-p.md:27).",
+        "The released extra sentence is in the status paragraph of /ios/, next to the link to the listing: seats.aero's help centre says not every Pro account or country gets API access ([external] docs.seats.aero article 68, read 2026-09-28; getting-started-p.md:27), so a reader checks for the API tab before paying for Pro or installing the app. \"Or download\" is true only once the app can be downloaded, so the sentence is released copy (PREMATURE_STATUS before the release). The article is re-read on the day the switch is merged.",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
         "The extra sentences: the \"What you need\" item of /ios/, the first step of /ios/award-grid/ (the app says \"Add your seats.aero Pro API key in Settings.\", copy.ts:217), and the answers to \"Where do I find my seats.aero API key?\" and \"My seats.aero settings show no API tab. Will AwardGrid work?\" on /support/. The key is made on the API tab of the seats.aero settings page (settings-copy.ts:151; getting-started-p.md:25), and seats.aero may limit API access by location or for any reason (getting-started-p.md:27).",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
@@ -278,7 +292,7 @@
       "limitations": [
         "Always in the same sentence group as the prerequisite sentence, so free never reads as free of a paid seats.aero Pro subscription (FREE_WITHOUT_PRO).",
         "The released version is used only once released.status is released. No seats.aero Pro or Anthropic price is stated.",
-        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. Like the English, each is used in the same sentence group as the prerequisite's Chinese (FREE_WITHOUT_PRO: 免费 needs Pro within 60 characters). The released sentence is on no page yet.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. Like the English, each is used in the same sentence group as the prerequisite's Chinese (FREE_WITHOUT_PRO: 免费 needs Pro within 60 characters). The released sentence answers AwardGrid 免费吗？ on /ios/zh-hans/.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -684,11 +698,16 @@
         "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
         "apps/ios/src/native/webview-fetch-guard.ts:22 \"const NATIVE_ONLY_HOSTS: ReadonlySet<string> = new Set([\"api.anthropic.com\", \"seats.aero\"]);\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\"",
-        "LEGAL.md:35-36 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\""
+        "LEGAL.md:35-36 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\"",
+        "sites/landing/privacy/index.html:66 \"<h2 id=\"sent-h\">What the app sends, and to whom</h2>\""
       ],
       "allowed_copy": "The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches go to seats.aero and, only for Ask, to Anthropic.",
+      "allowed_copy_extra": [
+        "What the app sends, and to whom, is in its privacy policy."
+      ],
       "limitations": [
         "The subject is always the iPhone app (NO_SERVER_SUBJECT): the private web app on the same host has accounts and a server.",
+        "The extra sentence ends the status paragraph of /ios/ and links the privacy policy's section of that name (sites/landing/privacy/index.html, \"What the app sends, and to whom\").",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -846,7 +865,7 @@
       },
       "limitations": [
         "The released version is used only once released.status is released.",
-        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. The released sentence is on no page yet; neither sentence contains the other, so the gate can tell them apart.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. The released sentence is in the answer to 哪里能下载？ on /ios/zh-hans/; neither sentence contains the other, so the gate can tell them apart.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"

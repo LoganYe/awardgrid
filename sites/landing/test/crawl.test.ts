@@ -10,9 +10,10 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { build } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import config, { type Manifest, isDate, localDate, manifestProblems, readManifest, siteOrigin, sitemapXml } from "../vite.config";
+import config, { type Manifest, buildDate, isDate, localDate, manifestProblems, readManifest, siteOrigin, sitemapXml } from "../vite.config";
 
 const SITE = path.join(import.meta.dirname, "..");
 const REPO = path.join(SITE, "..", "..");
@@ -20,7 +21,8 @@ const PUBLIC = path.join(SITE, "public");
 const CONFIG_FILE = path.join(SITE, "vite.config.ts");
 const MANIFEST = readManifest();
 const ORIGIN = "https://awardgrid.dowhiz.com";
-const TODAY = localDate();
+/** The build's "today" (the later of the local and the UTC date), as the build checks lastmod against it. */
+const TODAY = buildDate();
 const REGISTRY = JSON.parse(readFileSync(path.join(REPO, "growth", "product-facts.json"), "utf8"));
 const claim = (id: string) => REGISTRY.claims.find((c: { claim_id: string }) => c.claim_id === id);
 const KEY = MANIFEST.indexnow_key;
@@ -45,6 +47,11 @@ const SITE_GRAPH = {
     { "@type": "WebSite", "@id": `${ORIGIN}/#website`, name: "AwardGrid", url: `${ORIGIN}/`, publisher: { "@id": `${ORIGIN}/#org` } },
   ],
 };
+
+/** The pages that may carry the Smart App Banner once the app is released: the app's page and its Chinese version. */
+const BANNER_PAGES = ["/ios/", "/ios/zh-hans/"];
+/** The page whose JSON-LD may describe the app (a MobileApplication node, after its FAQPage) once it is released. */
+const APP_PAGE = "/ios/";
 
 /** The Worker's own address, which serves every file of the build (the hostname serves only what a route claims). */
 const WORKERS_DEV_ORIGIN = "https://awardgrid-site.logan-yegaoyang.workers.dev";
@@ -113,10 +120,11 @@ const typesIn = (value: unknown): string[] => {
 /**
  * The head tags a page must carry, checked against its URL: a canonical link to itself on the hostname, og:url the
  * same, og:type website, og:title its title, og:description its meta description, twitter:card summary, and the two
- * favicons (an href that resolves, from the page, to /favicon.svg and /favicon.ico). No og:image yet, no Smart App
- * Banner before release. Returns what is wrong.
+ * favicons (an href that resolves, from the page, to /favicon.svg and /favicon.ico). No og:image yet. A Smart App
+ * Banner only once the registry says released, only on /ios/ and /ios/zh-hans/, and only the app's id (no
+ * app-argument or affiliate data). Returns what is wrong.
  */
-function headProblems(html: string, pagePath: string): string[] {
+function headProblems(html: string, pagePath: string, status: string = REGISTRY.released.status): string[] {
   const head = headOf(html);
   const out: string[] = [];
   const url = ORIGIN + pagePath;
@@ -140,7 +148,14 @@ function headProblems(html: string, pagePath: string): string[] {
   expectIcon(icons, `${ORIGIN}/favicon.ico`, (i) => i.sizes === "32x32", out);
   if (icons.length !== 2) out.push(`${icons.length} icon links, want 2`);
   for (const property of ["og:image", "twitter:image"]) if (metas(head, "property", property).length || metas(head, "name", property).length) out.push(`${property}: none yet`);
-  if (/apple-itunes-app/i.test(head)) out.push("apple-itunes-app: only once the app is released");
+  const banner = metas(head, "name", "apple-itunes-app");
+  if (/apple-itunes-app/i.test(head)) {
+    if (status !== "released") out.push("apple-itunes-app: only once the app is released");
+    else if (!BANNER_PAGES.includes(pagePath)) out.push(`apple-itunes-app: only on ${BANNER_PAGES.join(" and ")}`);
+    else if (banner.length !== 1 || banner[0] !== `app-id=${REGISTRY.released.app_id}`) {
+      out.push(`apple-itunes-app: ${JSON.stringify(banner)}, want one meta whose content is "app-id=${REGISTRY.released.app_id}"`);
+    }
+  }
   return out;
 }
 
@@ -214,6 +229,30 @@ describe("pages.json, the page manifest", () => {
     expect(isDate("2026-02-29")).toBe(false);
     expect(isDate("2026-9-28")).toBe(false);
     expect(localDate(new Date(2026, 0, 5, 12))).toBe("2026-01-05");
+  });
+
+  it("takes the build's today as the later of the local and the UTC date, so a UTC date written today is never later", () => {
+    // A release at 03:00Z on the 30th is written as 2026-09-30; in California it is still the evening of the 29th.
+    for (const instant of ["2026-09-30T03:00:00Z", "2026-09-30T04:00:00Z", "2026-09-29T20:00:00Z", "2026-09-29T23:59:59Z", "2026-09-30T00:00:00Z"]) {
+      const now = new Date(instant);
+      const today = buildDate(now);
+      expect([localDate(now), instant.slice(0, 10)]).toContain(today);
+      expect(today >= instant.slice(0, 10) && today >= localDate(now), instant).toBe(true);
+    }
+    expect(buildDate(new Date("2026-09-30T04:00:00Z")) >= "2026-09-30").toBe(true);
+  });
+
+  it("in California on the evening of the 29th, a lastmod of the 30th (the UTC date of a release at 03:00Z) builds", () => {
+    // In a process of its own, so the time zone is that process's and nothing else's.
+    const script = `
+      const { buildDate, localDate, manifestProblems, readManifest } = await import(${JSON.stringify(pathToFileURL(CONFIG_FILE).href)});
+      const now = new Date("2026-09-30T04:00:00Z");
+      const manifest = readManifest();
+      manifest.pages[1].lastmod = "2026-09-30";
+      console.log(JSON.stringify({ local: localDate(now), build: buildDate(now), problems: manifestProblems(manifest, buildDate(now)) }));`;
+    const run = spawnSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8", env: { ...process.env, TZ: "America/Los_Angeles" } });
+    expect(run.status, run.stderr).toBe(0);
+    expect(JSON.parse(run.stdout.trim().split("\n").at(-1)!)).toEqual({ local: "2026-09-29", build: "2026-09-30", problems: [] });
   });
 });
 
@@ -296,6 +335,21 @@ describe("head tags", () => {
     expect(headProblems(good.replace(/content="Help for the AwardGrid[^"]*"/g, `content="${long}"`), "/support/").join("\n")).toMatch(/meta description: 174 wide, want at most 155/);
     expect(displayWidth("一张表 AB")).toBe(9);
   });
+
+  it("allows the Smart App Banner only once released, only on /ios/ and /ios/zh-hans/, and only with the app's id", () => {
+    const ios = readFileSync(path.join(SITE, "ios", "index.html"), "utf8").replace(/\s*<meta name="apple-itunes-app"[^>]*>/, "");
+    const withBanner = (content: string) => ios.replace('<meta name="twitter:card" content="summary" />', `<meta name="twitter:card" content="summary" /><meta name="apple-itunes-app" content="${content}" />`);
+    const good = withBanner("app-id=6816321841");
+    expect(headProblems(ios, "/ios/", "released")).toEqual([]);
+    expect(headProblems(good, "/ios/", "released")).toEqual([]);
+    expect(headProblems(good, "/ios/", "submitted_not_live")).toEqual(["apple-itunes-app: only once the app is released"]);
+    expect(headProblems(good, "/ios/", "withdrawn")).toEqual(["apple-itunes-app: only once the app is released"]);
+    expect(headProblems(withBanner("app-id=6816321841, app-argument=https://example.com/"), "/ios/", "released").join("\n")).toMatch(/want one meta whose content is "app-id=6816321841"/);
+    expect(headProblems(withBanner("app-id=123"), "/ios/", "released").join("\n")).toMatch(/app-id=6816321841/);
+    const support = readFileSync(path.join(SITE, "support", "index.html"), "utf8");
+    const supportBanner = support.replace('<meta name="twitter:card" content="summary" />', '<meta name="twitter:card" content="summary" /><meta name="apple-itunes-app" content="app-id=6816321841" />');
+    expect(headProblems(supportBanner, "/support/", "released")).toEqual(["apple-itunes-app: only on /ios/ and /ios/zh-hans/"]);
+  });
 });
 
 describe("JSON-LD", () => {
@@ -316,16 +370,24 @@ describe("JSON-LD", () => {
       expect(blocks).toHaveLength(1);
       const graph = blocks[0]["@graph"] as Array<Record<string, unknown>>;
       expect({ "@context": blocks[0]["@context"], "@graph": graph.slice(0, 2) }).toEqual(SITE_GRAPH);
-      expect(graph.slice(2).map((node) => node["@type"])).toEqual(["FAQPage"]);
+      // After the FAQPage, /ios/ may describe the app (a MobileApplication node) once it is released; nothing else.
+      const rest = graph.slice(2).map((node) => node["@type"]);
+      const app = pagePath === APP_PAGE && REGISTRY.released.status === "released" && rest.length === 2 ? ["MobileApplication"] : [];
+      expect(rest).toEqual(["FAQPage", ...app]);
       expect(graph[2]!["@id"]).toBe(`${ORIGIN}${pagePath}#faq`);
       expect((graph[2]!.mainEntity as unknown[]).length).toBeGreaterThan(0);
     }
   });
 
-  it("FAQPage only where the page shows its questions, and no MobileApplication (the app is not released)", () => {
+  it("FAQPage only where the page shows its questions, and MobileApplication only on /ios/ once the app is released", () => {
     const types = MANIFEST.pages.flatMap((p) => jsonLd(read(p.file)).flatMap(typesIn));
     expect(types.length).toBeGreaterThan(0);
-    expect(new Set(types)).toEqual(new Set(["Organization", "WebSite", "FAQPage", "Question", "Answer"]));
+    const app = types.includes("MobileApplication") ? ["MobileApplication", "Offer"] : [];
+    expect(new Set(types)).toEqual(new Set(["Organization", "WebSite", "FAQPage", "Question", "Answer", ...app]));
+    for (const p of MANIFEST.pages) {
+      const has = jsonLd(read(p.file)).flatMap(typesIn).includes("MobileApplication");
+      expect(has && (p.path !== APP_PAGE || REGISTRY.released.status !== "released"), `${p.path}: MobileApplication`).toBe(false);
+    }
     for (const p of MANIFEST.pages) {
       const html = read(p.file);
       expect(jsonLd(html).flatMap(typesIn).includes("FAQPage"), p.path).toBe(showsQuestions(html));
@@ -385,7 +447,11 @@ describe("the home page", () => {
   });
 
   it("says the registry's words: the status for the current status, the web app note as plain text, the affiliation", () => {
-    expect(text).toContain(claim("release_status").allowed_copy_by_status[REGISTRY.released.status]);
+    const status: string = claim("release_status").allowed_copy_by_status[REGISTRY.released.status];
+    expect(text).toContain(status);
+    // A status that says free has the prerequisite after it, in the same paragraph (release_status's limitation).
+    const paragraphs = [...html.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => m[1]!.replace(/\s+/g, " ").trim());
+    if (/\bfree\b/.test(status)) expect(paragraphs).toContain(`${status} ${claim("prerequisite").allowed_copy}`);
     expect(text).toContain(claim("webapp_note").allowed_copy_variants.kept_named_host);
     expect(text).toContain(claim("affiliation").allowed_copy);
     expect(text).toContain(claim("grid").allowed_copy_extra[0]);

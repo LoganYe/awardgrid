@@ -74,7 +74,13 @@ Each page listed in `pages.json` carries a canonical link to itself on `https://
 `website`, `og:url` (the canonical), `og:title` (its title), `og:description` (its meta description),
 `twitter:card` `summary`, and the favicons `/favicon.svg` and `/favicon.ico` (the build writes them relative to the
 page). No `og:image` yet. `/`, `/ios/`, `/ios/award-grid/` and `/ios/zh-hans/` carry the JSON-LD graph (Organization,
-WebSite); nothing claims `MobileApplication` before the app is released.
+WebSite); nothing claims `MobileApplication` before the app is released. Once it is (DECISIONS.md, the App Store
+listing amendment), `/ios/` ends its graph with a `MobileApplication` node whose `offers.url` is the listing with no
+slug, and `/ios/` and `/ios/zh-hans/` carry the Smart App Banner,
+`<meta name="apple-itunes-app" content="app-id=6816321841">` (`scripts/growth/store-listing.test.ts`). The node says
+which app the site is about. Google's software-app rich result also requires `aggregateRating` or `review`, and the
+node has neither, so Search Console may list `/ios/` as an invalid "Software apps" item once it is crawled. That is
+expected and needs no action: a rating or a review goes into the node only from real App Store data, with its source.
 
 A page that shows questions carries a `FAQPage` node in that graph, generated from the questions it shows:
 `/ios/` and `/ios/zh-hans/`. The questions follow one convention, `<section class="faq" data-faq
@@ -113,8 +119,12 @@ the visible questions, never the JSON-LD.
   rather than shorter, after Restful's page (docs/PIVOT.md §4; DECISIONS.md, same entry). Its rows are kept as they
   were, the "No accounts, no analytics in the app" row word for word as the owner wrote it (PR #104); "No round trips"
   (the scope claim) was added.
-- "Where this is up to" is the status text of PR #103, unchanged. At release it is rewritten by hand: it is not one
-  registry sentence (`scripts/growth/current-tree.test.ts` pins what the gate finds in it then).
+- "Where this is up to" is the released status (the switch to released), all registry copy: release_status's
+  released sentence for this page, the prerequisite, the dependency, the prerequisite's released sentence from
+  seats.aero's help centre (not every Pro account or country gets API access), a link to the listing with the campaign
+  token `ct=awardgrid-ios` and the provider token `pt=124116782`, and the pointer to the privacy policy. Before the day
+  the app is first found on the App Store the gate finds all of it premature (`--status submitted`;
+  `scripts/growth/current-tree.test.ts` pins the list).
 - Known mismatches, kept as the spec says until the owner decides:
   - The example table is laid out the web app's way: one row per route, one column per date, and a bare "—" in an
     empty cell. The iPhone app's Matrix, which "How the table works" describes right below it, has the dates as rows
