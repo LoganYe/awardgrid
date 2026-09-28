@@ -34,3 +34,7 @@ Yes. Type the routes and dates in English or Chinese, or set them in the editor.
 ## Does it book tickets?
 
 No. For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.
+
+## Could AwardGrid stop working?
+
+AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.

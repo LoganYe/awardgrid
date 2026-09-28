@@ -57,8 +57,11 @@ The comments stay in the source for whoever edits the page; the build drops them
 
 - No third-party script and no webfont request. The reason is recorded in DECISIONS.md, "The landing site ships zero
   JavaScript…".
-- The lead paragraph is the web app's `home.lead` (`packages/core/src/lib/i18n/dictionaries/en.ts`), with the
-  product name written AwardGrid: docs/PIVOT.md §4, "The voice does not change."
+- The lead paragraph was the web app's `home.lead` until 2026-09-28. It described the web app's table (every cell with
+  miles, fees, seats, program and data age) and used "Ask" for searching, which is the name of the iPhone app's AI
+  feature. It is now the registry's query_input and grid copy (growth/product-facts.json): in the iPhone app's Matrix
+  each cell holds the lowest miles for each cabin asked, with the program and the seats; fees and data age are on each
+  option's card (apps/ios/src/components/results/AvailabilityMatrix.tsx, AvailabilityCard.tsx).
 - The example table's section sets `data-surface="flat"`: it is data, so the glass effect is off behind it, as it is
   behind restful.dowhiz.com's `.fact-table` and `.compare-table`. Blur behind a column of mileage figures makes them
   harder to read.
