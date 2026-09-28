@@ -42,8 +42,26 @@ const SITE = path.join(import.meta.dirname, "..", "..", "..", "sites", "landing"
 const LANDING = path.join(SITE, "ios", "index.html");
 /** The static site's pages with something to say: the landing page, the privacy policy and the support page. */
 const CONTENT_PAGES = ["ios/index.html", "privacy/index.html", "support/index.html"].map((page) => path.join(SITE, page));
-/** Every page of the static site, its root included. */
-const SITE_PAGES = [path.join(SITE, "index.html"), ...CONTENT_PAGES];
+/** Directories under sites/landing that hold no page source: build output and dependencies. */
+const NOT_SOURCE = new Set(["dist", "node_modules"]);
+
+/**
+ * Every `index.html` under `dir`, found by walking it rather than listed, so a page added later is scanned without
+ * anyone remembering to add it here. Build output, dependencies and dot-directories are skipped; symlinks are not
+ * followed.
+ */
+function sitePages(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true })
+    .flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return NOT_SOURCE.has(entry.name) || entry.name.startsWith(".") ? [] : sitePages(full);
+      return entry.isFile() && entry.name === "index.html" ? [full] : [];
+    })
+    .sort();
+}
+
+/** Every page of the static site, its root included: each `index.html` in its source. */
+const SITE_PAGES = sitePages(SITE);
 
 /**
  * Phrases that promise a cadence or a next run. Each names the string it was derived from. `{x}` is how
@@ -193,7 +211,15 @@ interface Extracted {
 /** Tags a sentence runs through. Any other element starts a new block of text. */
 const INLINE_TAGS = new Set(["a", "abbr", "b", "code", "em", "i", "kbd", "mark", "small", "span", "strong", "sub", "sup", "time"]);
 
-const ENTITIES: Record<string, string> = { amp: "&", apos: "'", gt: ">", lt: "<", nbsp: " ", quot: '"' };
+/** Named entities a page or JSX is likely to use; the same table as scripts/growth/validate-public-claims.mjs. */
+const ENTITIES: Record<string, string> = {
+  amp: "&", apos: "'", gt: ">", lt: "<", nbsp: " ", quot: '"',
+  shy: "", zwj: "", zwnj: "", zerowidthspace: "", wj: "",
+  hyphen: "-", dash: "-", minus: "-", ndash: "–", mdash: "—", horbar: "—",
+  lsquo: "'", rsquo: "'", sbquo: "'", ldquo: '"', rdquo: '"', bdquo: '"', laquo: "«", raquo: "»", lsaquo: "‹", rsaquo: "›",
+  hellip: "…", middot: "·", bull: "•", copy: "©", reg: "®", trade: "™", times: "×", rarr: "→", larr: "←",
+  thinsp: " ", ensp: " ", emsp: " ", deg: "°", euro: "€", pound: "£", yen: "¥", cent: "¢",
+};
 
 /** TypeScript leaves JSX entities raw (`seats.aero&apos;s`); a reader sees them decoded. One pass, so `&amp;#39;` stays `&#39;`. */
 function decodeEntities(text: string): string {
@@ -312,15 +338,119 @@ const landingHtml = () => readFileSync(LANDING, "utf8");
 /** What a reader sees on each page of the static site, with the page it is on. */
 const siteTexts = () => SITE_PAGES.flatMap((file) => landingTexts(readFileSync(file, "utf8")).map((text) => ({ page: path.relative(SITE, file), text })));
 
-/** What a reader of the landing page sees, block by block, plus the attributes a browser or a search result shows. */
+/** The attributes of an opening tag, by lower-case name. The first of a repeated name wins, as in a browser. */
+function tagAttributes(text: string): Map<string, string> {
+  const found = new Map<string, string>();
+  for (const m of text.matchAll(/([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g)) {
+    const name = m[1]!.toLowerCase();
+    if (!found.has(name)) found.set(name, m[2] ?? m[3] ?? m[4] ?? "");
+  }
+  return found;
+}
+
+/** A `<script>` a browser never runs: JSON-LD data, `type="application/ld+json"` with no `src`. */
+function isJsonLd(scriptAttributes: string): boolean {
+  const attrs = tagAttributes(scriptAttributes);
+  return !attrs.has("src") && attrs.get("type")?.trim().toLowerCase() === "application/ld+json";
+}
+
+/** A tag, with a `>` inside a quoted attribute value kept in it (the same pattern as the public-claims gate's). */
+const TAG = /<[a-zA-Z/!?](?:[^'">]|=\s*"[^"]*"|=\s*'[^']*')*>/g;
+
+/** Every opening tag of a piece of markup: its lower-case name and its attributes. */
+function openingTags(markup: string): Array<{ tag: string; name: string; attrs: Map<string, string> }> {
+  return [...markup.matchAll(TAG)].flatMap((m) => {
+    const head = /^<([a-zA-Z][^\s/>]*)/.exec(m[0]);
+    if (!head) return [];
+    const inner = m[0].slice(head[0].length, m[0].length - (m[0].endsWith("/>") ? 2 : 1));
+    return [{ tag: m[0], name: head[1]!.toLowerCase(), attrs: tagAttributes(inner) }];
+  });
+}
+
+/**
+ * Every opening tag on a page that could run code: a script that is not JSON-LD data, and any tag with an event
+ * handler (`onload=`), a `javascript:` URL or an iframe `srcdoc`. Comments are not tags.
+ */
+function executableScripts(html: string): string[] {
+  const markup = html.replace(/<!--[\s\S]*?-->/g, " ");
+  const scripts = [...markup.matchAll(/<script\b([^>]*)>/gi)].filter((m) => !isJsonLd(m[1] ?? "")).map((m) => m[0]);
+  const inline = openingTags(markup.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " "))
+    .filter(({ name, attrs }) =>
+      [...attrs].some(
+        ([attr, value]) =>
+          /^on[a-z]+$/.test(attr) ||
+          /^javascript:/i.test(decodeEntities(value).replace(/[\s\u0000-\u001f]/g, "")) ||
+          (name === "iframe" && attr === "srcdoc"),
+      ),
+    )
+    .map(({ tag }) => tag);
+  return [...scripts, ...inline];
+}
+
+/** Every string value in parsed JSON. Keys are schema vocabulary (`acceptedAnswer`), not text anyone is shown. */
+function jsonStrings(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(jsonStrings);
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(jsonStrings);
+  return [];
+}
+
+/**
+ * The strings of every JSON-LD block on a page. A search result shows them and an answer engine reads them, so they are
+ * scanned like the page's own text. A block that does not parse fails loudly: its text could not be scanned.
+ */
+function jsonLdStrings(markup: string): string[] {
+  return [...markup.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)]
+    .filter((m) => isJsonLd(m[1] ?? ""))
+    .flatMap((m) => {
+      try {
+        return jsonStrings(JSON.parse(m[2] ?? ""));
+      } catch (error) {
+        throw new Error(`A JSON-LD block does not parse, so its text cannot be scanned: ${(error as Error).message}`);
+      }
+    });
+}
+
+/** Inline (phrasing) tags: read through ("Get <u>real</u>-time"). The same list as the public-claims gate's. */
+const INLINE_TAG = /<\/?(?:a|abbr|b|bdi|bdo|big|cite|code|data|del|dfn|em|font|i|ins|kbd|label|mark|q|s|samp|small|span|strike|strong|sub|sup|time|tt|u|var|wbr)\b(?:[^'">]|=\s*"[^"]*"|=\s*'[^']*')*>/gi;
+
+/** Text runs of a piece of markup: inline tags are read through, any other tag starts a new run. */
+const textRuns = (markup: string): string[] => markup.replace(INLINE_TAG, "").split(TAG);
+
+/** Attributes a reader or a search result is shown, and the input types whose value is a button's label. */
+const SHOWN_ATTRIBUTES = new Set(["content", "alt", "title", "aria-label", "placeholder"]);
+const BUTTON_INPUT = new Set(["submit", "button", "reset"]);
+
+/**
+ * Text as it is read: typographic apostrophes and quotes as ' and ", hyphens that are not dashes as -, an en dash
+ * inside a word as -, and no invisible characters (soft hyphen, zero-width space). The gate reads text the same way.
+ */
+function readAsShown(text: string): string {
+  return text
+    .replace(/[‘’‛ʼ＇]/g, "'")
+    .replace(/[“-‟]/g, '"')
+    .replace(/[‐-‒−]/g, "-")
+    .replace(/[­​-‍⁠﻿]/g, "")
+    .replace(/(?<=[\p{L}\p{N}])–(?=[\p{L}\p{N}])/gu, "-");
+}
+
+/**
+ * What a reader of the landing page sees, block by block, plus the attributes a browser or a search result shows
+ * (quoted either way or unquoted, and a submit or button input's label), plus the strings of its JSON-LD. A JSON-LD
+ * string may carry markup of its own (an FAQ answer may), so it is read the way the page is. Any other script is
+ * dropped here, and the script test below fails the page for having it.
+ */
 function landingTexts(html = landingHtml()): string[] {
-  const markup = html
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<!doctype[^>]*>/gi, " ")
-    .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ");
-  const shown = [...markup.matchAll(/\s(?:content|alt|title|aria-label|placeholder)\s*=\s*"([^"]*)"/gi)].map((m) => m[1] ?? "");
-  const blocks = markup.replace(/<\/?(?:a|abbr|b|code|em|i|kbd|mark|small|span|strong|sub|sup|time)\b[^>]*>/gi, "").split(/<[^>]*>/);
-  return [...blocks, ...shown].map((t) => decodeEntities(t).replace(/\s+/g, " ").trim()).filter(Boolean);
+  const page = html.replace(/<!--[\s\S]*?-->/g, " ").replace(/<!doctype[^>]*>/gi, " ");
+  const structured = jsonLdStrings(page).flatMap(textRuns);
+  const markup = page.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ");
+  const shown = openingTags(markup).flatMap(({ name, attrs }) =>
+    [...attrs]
+      .filter(([attr]) => SHOWN_ATTRIBUTES.has(attr) || (attr === "value" && name === "input" && BUTTON_INPUT.has((attrs.get("type") ?? "").trim().toLowerCase())))
+      .map(([, value]) => value),
+  );
+  const blocks = textRuns(markup);
+  return [...blocks, ...structured, ...shown].map((t) => readAsShown(decodeEntities(t)).replace(/\s+/g, " ").trim()).filter(Boolean);
 }
 
 function cadenceHits(text: string): string[] {
@@ -341,6 +471,13 @@ describe("no cadence is ever promised", () => {
     expect(files.length).toBeGreaterThan(10);
     expect(landingTexts().length).toBeGreaterThan(10);
     for (const file of CONTENT_PAGES) expect(landingTexts(readFileSync(file, "utf8")).length, file).toBeGreaterThan(10);
+  });
+
+  it("finds every page of the static site by walking it, and no build output", () => {
+    expect(SITE_PAGES.length).toBeGreaterThanOrEqual(4);
+    expect(SITE_PAGES).toEqual(expect.arrayContaining([path.join(SITE, "index.html"), ...CONTENT_PAGES]));
+    const relative = SITE_PAGES.map((file) => path.relative(SITE, file).split(path.sep));
+    expect(relative.filter((parts) => parts.some((part) => NOT_SOURCE.has(part) || part.startsWith(".")))).toEqual([]);
   });
 
   it("no user-visible string in the shell, the watch module or the Ask module promises a cadence", () => {
@@ -369,8 +506,10 @@ describe("no cadence is ever promised", () => {
     expect(siteTexts().flatMap(({ page, text }) => cadenceHits(text).map((hit) => `${page} ${JSON.stringify(text)} matches ${hit}`))).toEqual([]);
   });
 
-  it("no page of the static site has a script, so its markup is everything a reader can see", () => {
-    for (const file of SITE_PAGES) expect(readFileSync(file, "utf8"), file).not.toMatch(/<script\b/i);
+  it("no page of the static site runs a script: the only <script> allowed is JSON-LD without src, whose strings are scanned", () => {
+    // So the markup, and the JSON-LD read above, is everything a reader or a search result can see.
+    const offenders = SITE_PAGES.flatMap((file) => executableScripts(readFileSync(file, "utf8")).map((tag) => `${path.relative(SITE, file)} ${tag}`));
+    expect(offenders).toEqual([]);
   });
 
   it("the shell renders no translated strings, which this test could not see", () => {
@@ -551,6 +690,79 @@ describe("the deny-list is precise in both directions", () => {
     const html = '<meta name="description" content="Checks every 3 hours"><p>No <em>guaranteed</em> schedule</p>';
     expect(landingTexts(html)).toEqual(["No guaranteed schedule", "Checks every 3 hours"]);
   });
+
+  /** A page with an FAQ in JSON-LD, the way a search result or an answer engine reads it. */
+  const withJsonLd = (answer: string) =>
+    "<p>No guaranteed schedule</p>" +
+    '<script type="application/ld+json">' +
+    JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [{ "@type": "Question", name: "When does it check?", acceptedAnswer: { "@type": "Answer", text: answer } }],
+    }) +
+    "</script>";
+
+  it("reads the string values of JSON-LD, markup in them included, and not its keys", () => {
+    const texts = landingTexts(withJsonLd("When you open the app, and at <b>no</b> other time."));
+    expect(texts).toEqual(expect.arrayContaining(["No guaranteed schedule", "When does it check?", "When you open the app, and at no other time."]));
+    expect(texts).not.toContain("acceptedAnswer");
+    expect(texts.flatMap(cadenceHits)).toEqual([]);
+  });
+
+  it("catches a cadence promise inside JSON-LD", () => {
+    expect(landingTexts(withJsonLd("It checks <b>every</b> 3 hours.")).flatMap(cadenceHits)).not.toEqual([]);
+    expect(landingTexts(withJsonLd("每隔 3 小时检查一次")).flatMap(cadenceHits)).not.toEqual([]);
+  });
+
+  it("fails loudly on JSON-LD that does not parse, rather than skip its text", () => {
+    expect(() => landingTexts('<script type="application/ld+json">{"text": "every 3 hours",}</script>')).toThrow(/JSON-LD/);
+  });
+
+  it("reads a shown attribute however it is quoted, and a submit or button input's label, not a text input's value", () => {
+    const texts = landingTexts(
+      `<meta name="description" content='Checks every 3 hours'><meta property="og:description" content=Hourly>` +
+        `<img alt='Checks every hour' src=x.png><input type="submit" value="Check every hour"><input type="text" value="every 6 hours">`,
+    );
+    expect(texts).toEqual(expect.arrayContaining(["Checks every 3 hours", "Hourly", "Checks every hour", "Check every hour"]));
+    expect(texts).not.toContain("every 6 hours");
+    expect(landingTexts("<meta content='Checks every 3 hours'>").flatMap(cadenceHits)).not.toEqual([]);
+  });
+
+  it("reads through phrasing tags, entities and invisible characters the way a reader sees the text", () => {
+    expect(landingTexts("<p>Checks <u>every</u> 3 <ins>hours</ins></p><p>Ev&shy;ery 3 hours</p><p>We’ll check it</p>")).toEqual([
+      "Checks every 3 hours",
+      "Every 3 hours",
+      "We'll check it",
+    ]);
+  });
+
+  it.each([
+    "<script>document.title = 'x'</script>",
+    '<script src="/x.js"></script>',
+    '<script type="module">import "./x.js"</script>',
+    "<SCRIPT TYPE=text/javascript>1</SCRIPT>",
+    '<script type="application/ld+json" src="/data.json"></script>',
+    '<script defer src="https://third-party.example/tag.js" data-config="{}"></script>',
+    '<body onload="fetch(\'https://example.com/b\')">',
+    '<img src="x.png" alt="" onerror="fetch(1)">',
+    '<a href="javascript:void(navigator.sendBeacon(\'/b\'))">AwardGrid</a>',
+    '<a href="jav&#x61;script:void(0)">AwardGrid</a>',
+    '<iframe srcdoc="<p>x</p>"></iframe>',
+  ])("the script check fails a page with the executable script %j", (html) => {
+    expect(executableScripts(`<main><p>Text</p>${html}</main>`)).toHaveLength(1);
+  });
+
+  it("the script check passes ordinary links, attributes that only mention 'on', and a commented-out handler", () => {
+    expect(executableScripts('<a href="https://seats.aero">seats.aero</a><p data-on="x" class="online">on</p><!-- <p onclick="x"> -->')).toEqual([]);
+  });
+
+  it.each([
+    '<script type="application/ld+json">{"@type":"Organization","name":"x"}</script>',
+    "<script type='application/ld+json'>{}</script>",
+    "<script type=application/ld+json>{}</script>",
+  ])("the script check passes JSON-LD without src: %j", (html) => {
+    expect(executableScripts(`<main><p>Text</p>${html}</main>`)).toEqual([]);
+  });
 });
 
 describe("no background check is claimed while none is built", () => {
@@ -645,6 +857,12 @@ describe("no background check is claimed while none is built", () => {
     "有新座位时通知你",
   ])("catches the claim %j", (phrase) => {
     expect(claims(phrase)).not.toEqual([]);
+  });
+
+  it("catches a background claim inside a page's JSON-LD", () => {
+    const page = (text: string) => `<p>Text</p><script type="application/ld+json">${JSON.stringify({ "@type": "WebPage", description: text })}</script>`;
+    expect(landingTexts(page("We'll alert you when prices drop.")).flatMap(claims)).not.toEqual([]);
+    expect(landingTexts(page("There is no background check.")).flatMap(claims)).toEqual([]);
   });
 
   // The web app can message you when seats appear, because it has a server; this app cannot.
