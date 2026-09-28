@@ -715,14 +715,23 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertEqual(v.read_field(self.V1, "description"), blockquote(listing, "- **Description:**", "- **Description, Chinese:**"))
         self.assertFalse((self.V1 / "release_notes.txt").exists())
 
-    def test_zh_hans_is_the_release_doc_draft_with_two_changes(self):
+    def test_zh_hans_is_the_release_doc_draft_with_three_changes(self):
         listing = release_doc_section("### 7.6 Listing drafts", "\n---")
         draft = blockquote(listing, "- **Description, Chinese:**", "")
         caption = re.findall(r'matrixCaption: "([^"]+)"', APP_COPY.read_text(encoding="utf-8"))[1]
         self.assertEqual(caption, "每格显示最低里程数；不同计划的里程不等值。")
         first = draft.split("\n\n")[0]
         cell = first[first.index("：") + 1:]
-        expected = draft.replace("：" + cell, "。" + caption, 1).replace("。没有账号", "。App 没有账号", 1)
+        # Third change: Ask's billing in the app's own words (apps/ios/src/screens/settings-copy.ts), not a flat price.
+        billing_old = "，并由 Anthropic 按每次提问向你的账户计费。"
+        billing_new = "；每次提问由 Anthropic 按此密钥计费。"
+        self.assertIn(billing_old, draft)
+        self.assertIn("每次提问由 Anthropic 按此密钥计费", (v.REPO_ROOT / "apps" / "ios" / "src" / "screens" / "settings-copy.ts").read_text(encoding="utf-8"))
+        expected = (
+            draft.replace("：" + cell, "。" + caption, 1)
+            .replace("。没有账号", "。App 没有账号", 1)
+            .replace(billing_old, billing_new, 1)
+        )
         self.assertNotEqual(expected, draft)
         self.assertEqual(v.read_field(self.NEXT / "zh-Hans", "description"), expected)
         promo = v.read_field(self.NEXT / "zh-Hans", "promotional_text")
