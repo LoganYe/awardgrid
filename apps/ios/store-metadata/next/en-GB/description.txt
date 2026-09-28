@@ -1,0 +1,18 @@
+AwardGrid is an iPhone app by Curastone CORP. It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
+
+• Type the routes and dates in English or Chinese, or set them in the editor.
+• List, Calendar and Matrix views; compare up to four options; save results on the device.
+• Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.
+• Ask is optional: it answers questions about your results with Claude, on your own Anthropic API key, after you allow it. Anthropic bills each question to that key.
+
+It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing. AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+
+It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked "not monitored". Searches are one-way: no round trips, multi-city or passenger count. The app stops at 950 of the 1,000 daily calls a Pro key allows and keeps results on the device for 45 minutes, so repeating a search costs no calls. The app's own count restarts at midnight UTC.
+
+Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points. For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.
+
+Keys stay in this iPhone's Keychain, with iCloud Keychain sync off. The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches go to seats.aero and, only for Ask, to Anthropic.
+
+The app's interface is in English or Simplified Chinese.
+
+AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.

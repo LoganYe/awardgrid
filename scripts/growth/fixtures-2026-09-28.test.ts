@@ -45,6 +45,11 @@ const LIVE_ALWAYS = [
   // /ios/ still said "It is not on the App Store: its developer is testing it privately, through TestFlight."
   // Version 1.0 was submitted for review on 2026-09-26; the source was corrected in 5e36109 (PR #103).
   "STALE_STATUS sites/landing/ios/index.html:164 testing it privately",
+  // Its lead described a cell as the web app's table does ("the cheapest award seat in each cell, with the miles, the
+  // fees, the seats left, the program that sells it, …"), the wording grid.retired_copy holds; version 1.0's App
+  // Store description says the same.
+  "PENDING_CLAIM_TEXT sites/landing/ios/index.html:26 the cheapest award seat in each cell",
+  "PENDING_CLAIM_TEXT sites/landing/ios/index.html:26 the miles, the fees, the seats left, the program that sells it",
   // The "No accounts, no analytics" row names no subject; the web app on the same host has accounts and a server.
   "NO_SERVER_SUBJECT sites/landing/ios/index.html:143 No accounts",
   "NO_SERVER_SUBJECT sites/landing/ios/index.html:145 no server",
@@ -85,6 +90,8 @@ const SOURCE_ALWAYS = [
   // injected script; plus the site's root page, which the live capture did not include (on the host, "/" is the web app).
   "ATTRIBUTION_LINK sites/landing/index.html:30 Data: seats.aero",
   "STALE_STATUS sites/landing/ios/index.html:164 testing it privately",
+  "PENDING_CLAIM_TEXT sites/landing/ios/index.html:26 the cheapest award seat in each cell",
+  "PENDING_CLAIM_TEXT sites/landing/ios/index.html:26 the miles, the fees, the seats left, the program that sells it",
   "NO_SERVER_SUBJECT sites/landing/ios/index.html:143 No accounts",
   "NO_SERVER_SUBJECT sites/landing/ios/index.html:145 no server",
   "ATTRIBUTION_LINK sites/landing/ios/index.html:70 Data: seats.aero",

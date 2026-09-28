@@ -1,0 +1,12 @@
+AwardGrid puts award availability for your routes and dates into one table: the cheapest award seat in each cell, with the miles, the fees, the seats left, the program that sells it, and how old the data is.
+
+• Search in English or Chinese, for several origins and destinations over a range of dates.
+• List, calendar and matrix views, and a side-by-side comparison of up to four options.
+• Watches check your saved searches when you open the app. There is no background checking and there are no notifications.
+• Ask, which is optional: questions about your results, answered by Claude on your own Anthropic API key, once you allow it.
+
+What it needs: your own seats.aero Pro subscription and API key; without one, AwardGrid searches nothing. Ask needs your own Anthropic API key, and Anthropic bills your account for each question.
+
+Your keys stay in your iPhone's Keychain. There are no accounts, no analytics, no ads and no tracking. Results are seats.aero's cached data: confirm on the program's own site before you transfer points.
+
+AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.
