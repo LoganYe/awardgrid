@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en" data-surface="rich">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>AwardGrid — one table of award seats, on your own key</title>
+    <meta
+      name="description"
+      content="Ask in Chinese or English for a set of origins, destinations and dates. AwardGrid returns one table of award availability, running entirely on your own seats.aero Pro key."
+    />
+    <!--
+      No analytics, no telemetry, no third-party script, no webfont request. LEGAL.md commits to
+      "no paywall, cost-sharing, subscription, advertising, telemetry or analytics", and a
+      marketing page is exactly where that promise usually quietly dies.
+    -->
+    <link rel="stylesheet" crossorigin href="../_site/styles-DN8akfGg.css">
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <p class="eyebrow">Award search</p>
+        <h1>One table. Your own key.</h1>
+        <!-- home.lead, verbatim from the app's dictionary: the voice does not change (PIVOT §4). -->
+        <p class="lead">
+          Ask in Chinese or English for a set of origins, destinations and dates. AwardGrid returns
+          one table: the cheapest award seat in each cell, with the miles, the fees, the seats left,
+          the program that sells it, and how old the data is.
+        </p>
+      </header>
+
+      <!--
+        The grid preview is data, so it switches the glass off: data-surface="flat". This is the
+        instinct copied from restful.dowhiz.com, whose .fact-table and .compare-table do exactly
+        the same thing. Blur behind a column of mileage numbers costs legibility and buys nothing.
+      -->
+      <section class="preview" data-surface="flat" aria-labelledby="preview-h">
+        <h2 id="preview-h" class="sr-only">What the table looks like</h2>
+        <div class="ag-scroll">
+          <table class="ag-preview">
+            <caption class="sr-only">
+              Example award availability: Hong Kong and Shanghai to Seattle, business class.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Route</th>
+                <th scope="col">Oct 3</th>
+                <th scope="col">Oct 4</th>
+                <th scope="col">Oct 5</th>
+                <th scope="col">Oct 6</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">HKG → SEA</th>
+                <td><b>80,000</b><span>Alaska · 2 seats</span></td>
+                <td class="none">—</td>
+                <td><b>85,000</b><span>Alaska · 1 seat</span></td>
+                <td><b>77,500</b><span>Aeroplan · 4 seats</span></td>
+              </tr>
+              <tr>
+                <th scope="row">PVG → SEA</th>
+                <td><b>87,500</b><span>Aeroplan · 2 seats</span></td>
+                <td><b>90,000</b><span>United · 3 seats</span></td>
+                <td class="none">—</td>
+                <td class="none">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="attribution">Data: seats.aero. Example figures, not live availability.</p>
+      </section>
+
+      <section class="facts" aria-label="How it works">
+        <!--
+          "Invite only" is gone: it was true of a shared server and is false of an app. Everything
+          else here is the front door's copy, adjusted only where the pivot made it untrue.
+        -->
+        <article>
+          <p class="eyebrow">No account</p>
+          <p>
+            There is no signup, no login and no server of ours. The app runs on your device and
+            keeps its results there.
+          </p>
+        </article>
+        <article>
+          <p class="eyebrow">Your own keys</p>
+          <p>
+            Every search runs on your own seats.aero Pro key, and Ask, if you use it, on your own
+            Anthropic key, both stored in your device's Keychain. There is no shared key and no server
+            key.
+          </p>
+        </article>
+        <article>
+          <p class="eyebrow">Bilingual</p>
+          <p>
+            Ask in Chinese or English. The table, the dates and the program names read the same in
+            both.
+          </p>
+        </article>
+      </section>
+
+      <!--
+        The "what it does not do" table. Restful has one; awardgrid's front door already had one.
+        This is the block that makes a marketing page trustworthy, so it is longer here than the
+        front door's single sentence, not shorter.
+      -->
+      <section class="limits" aria-labelledby="limits-h">
+        <h2 id="limits-h">What it does not do</h2>
+        <div class="ag-scroll">
+          <table class="fact-table">
+            <tbody>
+              <tr>
+                <th scope="row">No airline sites</th>
+                <td>
+                  It reads the seats.aero cache. If you add your own Anthropic key, Ask also sends
+                  your question and the results it reads to Anthropic. It never opens an airline site
+                  for you, and it never asks for an airline or bank password.
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">No guaranteed schedule</th>
+                <td>
+                  iOS cannot promise to run anything on a cadence, so AwardGrid does not claim one.
+                  It checks your watches when you open the app, and at no other time. There is no
+                  background check.
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">No key of its own</th>
+                <td>
+                  Without your seats.aero Pro key the app does nothing at all. It cannot search on
+                  someone else's behalf, and nobody can search on yours.
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">No live search</th>
+                <td>
+                  Only seats.aero's cached availability. Cached data goes stale and awards disappear;
+                  confirm on the program's own site before transferring points.
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">No accounts, no analytics</th>
+                <td>
+                  No telemetry, no advertising, no tracking. There is no server to collect any of it.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!--
+        NO App Store badge, and this is deliberate.
+        docs/PIVOT.md §0: seats.aero's Partner API is licensed for non-commercial personal use, and
+        whether they permit distributing an app built on it is UNANSWERED. A "Download on the App
+        Store" button would assert a listing that may not be permitted to exist. Saying so plainly
+        is both the honest option and the one that needs no rewrite when the answer arrives.
+      -->
+      <section class="status" aria-labelledby="status-h">
+        <h2 id="status-h">Where this is up to</h2>
+        <p>
+          AwardGrid is an iPhone app that runs on your own keys. It is not on the App Store: its
+          developer is testing it privately, through TestFlight. seats.aero's Partner API is licensed
+          for non-commercial personal use, and whether that permits a distributed app is a question
+          for them, not for us to assume. Until that is answered, this page describes what exists
+          rather than offering a download. What the app sends, and to whom, is in its
+          <a href="../privacy/">privacy policy</a>.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        <a href="../privacy/">Privacy policy</a> · <a href="../support/">Support</a> · Data: seats.aero.
+        AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any
+        loyalty program. © 2026 Curastone CORP.
+      </p>
+    </footer>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"REDACTED","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
