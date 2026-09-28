@@ -1,8 +1,38 @@
-# awardgrid
+# AwardGrid
+
+<!-- public-claims:start -->
+## AwardGrid for iPhone
+
+AwardGrid is an iPhone app by Curastone CORP.
+AwardGrid for iPhone has been submitted to the App Store.
+AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.
+
+Type the routes and dates in English or Chinese, or set them in the editor.
+List, Calendar and Matrix views; compare up to four options; save results on the device.
+
+Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points.
+Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.
+Ask is optional: it answers questions about your results with Claude, on your own Anthropic API key, after you allow it. Anthropic bills each question to that key.
+
+The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches go to seats.aero and, only for Ask, to Anthropic.
+
+For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.
+No live search, no booking, no round trips, no alerts or notifications, no scraping of airline or bank sites, no airline or bank passwords, no logos.
+
+AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.
+
+- About the app: <https://awardgrid.dowhiz.com/ios/>
+- Privacy policy: <https://awardgrid.dowhiz.com/privacy/>
+- Support: <https://awardgrid.dowhiz.com/support/>
+<!-- public-claims:end -->
+
+## Private web app (separate from the iPhone app; not public)
+
+This repo also holds a private, invite-only web app, separate from the iPhone app.
 
 AwardGrid began as a private, invite-only web app for its developer and a small group of friends. The iPhone app
-has been submitted to the App Store as a separate public release. This repo also holds a private, invite-only web
-app, separate from the iPhone app. Every user brings their **own** seats.aero Pro key. **Data: seats.aero.**
+has been submitted to the App Store as a separate public release. Every user brings their **own** seats.aero Pro key.
+**Data: seats.aero.**
 
 Two lanes plus a scheduler (`ARCHITECTURE.md` §1):
 
