@@ -723,6 +723,7 @@ describe("TRADEMARK_ASO", () => {
     ["name", "AwardGrid for seats.aero"],
     ["keywords", "award,pointsyeah,grid"],
     ["keywords", "award,miles & more,grid"],
+    ["keywords", "award,velocity,points"],
   ])("fails a third-party name in %s: %j", (name, text) => {
     expect(rules(text, { logical: field(name) })).toContain("TRADEMARK_ASO");
   });
@@ -737,6 +738,17 @@ describe("TRADEMARK_ASO", () => {
 
   it("applies only to the name, subtitle and keywords", () => {
     expect(rules("Needs your own seats.aero Pro key.", { logical: field("description") })).not.toContain("TRADEMARK_ASO");
+    expect(rules("Needs your own seats.aero Pro key.", { logical: "apps/ios/store-metadata/next/en-US/description.txt" })).not.toContain("TRADEMARK_ASO");
+  });
+
+  it.each([
+    "apps/ios/store-metadata/next/en-US/keywords.txt",
+    "apps/ios/store-metadata/next/en-GB/subtitle.txt",
+    "apps/ios/store-metadata/next/zh-Hans/name.txt",
+    "apps/ios/store-metadata/next/zh-Hans/keywords_fallback.txt",
+  ])("applies to the next version's drafts too: %s", (logical) => {
+    expect(rules("award,seats aero,miles", { logical })).toContain("TRADEMARK_ASO");
+    expect(rules("award,points,miles", { logical })).toEqual([]);
   });
 
   it("knows every program in packages/core, so a new program cannot slip into the keywords", () => {

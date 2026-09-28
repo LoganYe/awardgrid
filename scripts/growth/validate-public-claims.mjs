@@ -891,7 +891,7 @@ export const PROGRAM_BRANDS = {
   emirates: ["Emirates", "Skywards"],
   aeroplan: ["Air Canada", "Aeroplan"],
   alaska: ["Alaska", "Mileage Plan"],
-  velocity: ["Virgin Australia", "Velocity Frequent Flyer"],
+  velocity: ["Virgin Australia", "Velocity Frequent Flyer", "Velocity"],
   qantas: ["Qantas"],
   connectmiles: ["Copa", "ConnectMiles"],
   azul: ["Azul", "TudoAzul"],
@@ -910,7 +910,8 @@ export const PROGRAM_BRANDS = {
 };
 /** Third-party names that never go in the App Store name, subtitle or keywords (Guideline 2.3.7; APP_STORE_HANDOFF.md). */
 export const TRADEMARK_BASE = ["seats.aero", "seats aero", "seatsaero", "Claude", "Anthropic", "point.me", "Roame", "AwardFares", "PointsYeah", "AwardTool", "MilesUp", "Flightpoints"];
-const STORE_FIELD = /^apps\/ios\/store-metadata\/[^/]+\/(?:name|subtitle|keywords)\.txt$/;
+/** A localization's name, subtitle and keyword fields: <locale>/ (as submitted) and next/<locale>/ (drafts), with the byte-limited keyword fallback. */
+const STORE_FIELD = /^apps\/ios\/store-metadata\/(?:next\/)?[^/]+\/(?:name|subtitle|keywords|keywords_fallback)\.txt$/;
 
 /** The program list in packages/core: source codes and full names, read from its source so the two cannot drift. */
 export function programList(root = DEFAULT_ROOT) {
