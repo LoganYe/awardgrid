@@ -168,6 +168,33 @@ main {
   color: var(--fg-muted);
 }
 
+/* The example is drawn as the app's Matrix: one line per cabin in each cell, the cabin as a small label. */
+.ag-preview .slot {
+  margin: 0;
+}
+
+.ag-preview .slot + .slot {
+  margin-top: var(--space-2);
+}
+
+.ag-preview b {
+  display: inline;
+}
+
+.ag-preview .slot span {
+  display: block;
+}
+
+.ag-preview abbr {
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--bg-raised);
+  color: var(--fg-muted);
+}
+
 .ag-preview tr:last-child th,
 .ag-preview tr:last-child td,
 .fact-table tr:last-child th,

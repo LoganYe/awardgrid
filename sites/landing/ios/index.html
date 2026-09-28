@@ -127,8 +127,9 @@
       says neither app has telemetry or analytics of its own. A marketing page is where such promises
       usually drift, so this one says what the pages do.
 
-      Every sentence is registry copy (growth/product-facts.json), apart from the rows of "What it does not do" and
-      the "Where this is up to" paragraph, which are kept as they were. The FAQPage node of the JSON-LD is generated
+      Every sentence is registry copy (growth/product-facts.json), apart from parts of the rows of "What it does not do"
+      and the "Where this is up to" paragraph, which are kept as they were. The example table is drawn as the app's
+      Matrix: dates as rows, routes as columns, one line per cabin, and words for an empty slot. The FAQPage node of the JSON-LD is generated
       from the "Questions" section (data-faq) by scripts/growth/sync-faq-schema.mjs --write: edit the questions, then
       run it. "Ask" names only the AI feature; searching is "type". hreflang: this page (en and x-default) and
       /ios/zh-hans/, its Chinese version (zh-Hans).
@@ -174,31 +175,49 @@
         <div class="ag-scroll">
           <table class="ag-preview">
             <caption class="sr-only">
-              Example award availability: Hong Kong and Shanghai to Seattle, business class.
+              Example of the Matrix: dates down the side, routes across; in each cell one line for business (J) and one
+              for first (F).
             </caption>
             <thead>
               <tr>
-                <th scope="col">Route</th>
-                <th scope="col">Oct 3</th>
-                <th scope="col">Oct 4</th>
-                <th scope="col">Oct 5</th>
-                <th scope="col">Oct 6</th>
+                <th scope="col">Date</th>
+                <th scope="col">HKG → SEA</th>
+                <th scope="col">PVG → SEA</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <th scope="row">HKG → SEA</th>
-                <td><b>80,000</b><span>Alaska · 2 seats</span></td>
-                <td class="none">—</td>
-                <td><b>85,000</b><span>Alaska · 1 seat</span></td>
-                <td><b>77,500</b><span>Aeroplan · 4 seats</span></td>
+                <th scope="row">Oct 3</th>
+                <td>
+                  <p class="slot"><b>80,000</b> <abbr title="Business">J</abbr><span>Alaska · 2 seats</span></p>
+                  <p class="slot none"><abbr title="First">F</abbr> No matches</p>
+                </td>
+                <td>
+                  <p class="slot"><b>87,500</b> <abbr title="Business">J</abbr><span>Aeroplan · 2 seats</span></p>
+                  <p class="slot"><b>110,000</b> <abbr title="First">F</abbr><span>Aeroplan · 1 seat</span></p>
+                </td>
               </tr>
               <tr>
-                <th scope="row">PVG → SEA</th>
-                <td><b>87,500</b><span>Aeroplan · 2 seats</span></td>
-                <td><b>90,000</b><span>United · 3 seats</span></td>
-                <td class="none">—</td>
-                <td class="none">—</td>
+                <th scope="row">Oct 4</th>
+                <td>
+                  <p class="slot none"><abbr title="Business">J</abbr> No matches</p>
+                  <p class="slot none"><abbr title="First">F</abbr> No matches</p>
+                </td>
+                <td>
+                  <p class="slot"><b>90,000</b> <abbr title="Business">J</abbr><span>United · 3 seats</span></p>
+                  <p class="slot none"><abbr title="First">F</abbr> No matches</p>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Oct 5</th>
+                <td>
+                  <p class="slot"><b>77,500</b> <abbr title="Business">J</abbr><span>Aeroplan · 4 seats</span></p>
+                  <p class="slot"><b>100,000</b> <abbr title="First">F</abbr><span>Alaska · 1 seat</span></p>
+                </td>
+                <td>
+                  <p class="slot"><b>85,000</b> <abbr title="Business">J</abbr><span>Alaska · 1 seat</span></p>
+                  <p class="slot none"><abbr title="First">F</abbr> No matches</p>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -291,14 +310,14 @@
                 <th scope="row">No guaranteed schedule</th>
                 <td>
                   iOS cannot promise to run anything on a cadence, so AwardGrid does not claim one.
-                  It checks your watches when you open the app, and at no other time. There is no
-                  background check.
+                  Watches are checked when you open or return to the app, and at no other time; there is no
+                  background check and no notification.
                 </td>
               </tr>
               <tr>
                 <th scope="row">No key of its own</th>
                 <td>
-                  Without your seats.aero Pro key the app does nothing at all. It cannot search on
+                  Without your seats.aero Pro key the app searches nothing. It cannot search on
                   someone else's behalf, and nobody can search on yours.
                 </td>
               </tr>

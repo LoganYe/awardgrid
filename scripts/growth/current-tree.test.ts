@@ -303,7 +303,13 @@ describe("the public copy is the registry's", () => {
 
   it("sites/landing/ios/index.html: the lead, what you need, the example's caption and every answer", () => {
     // "What it does not do" and "Where this is up to" are the page's copy from before the registry, kept as it was.
-    const blocks = pageBlocks("sites/landing/ios/index.html", [/<section class="limits"[\s\S]*?<\/section>/i, /<section class="status"[\s\S]*?<\/section>/i]);
+    // The example table's cells are illustrative figures drawn as the app's Matrix, not claims; its visible caption
+    // ("Illustrative figures, not seats.aero data…") is outside the table and is checked.
+    const blocks = pageBlocks("sites/landing/ios/index.html", [
+      /<section class="limits"[\s\S]*?<\/section>/i,
+      /<section class="status"[\s\S]*?<\/section>/i,
+      /<table class="ag-preview"[\s\S]*?<\/table>/i,
+    ]);
     expect(loose(blocks)).toEqual([]);
     expect(sentences(blocks).length).toBeGreaterThan(20);
   });
