@@ -1,0 +1,10 @@
+{
+  "host": "awardgrid.dowhiz.com",
+  "pages": [
+    { "path": "/", "lastmod": "2026-09-28" },
+    { "path": "/ios/", "lastmod": "2026-09-28" },
+    { "path": "/privacy/", "lastmod": "2026-09-27" },
+    { "path": "/support/", "lastmod": "2026-09-28" }
+  ],
+  "indexnow_key": "0123456789abcdef0123456789abcdef"
+}

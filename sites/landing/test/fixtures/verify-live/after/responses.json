@@ -1,0 +1,178 @@
+{
+  "about": "Synthetic responses: the state expected after the crawl files, the / route and _headers are deployed, and after the http-to-https redirect rule exists. Pages are shaped like the built pages (canonical link, JSON-LD on / and /ios/, no comment); 'beacon: true' means the test adds the Cloudflare Web Analytics beacon (../beacon.html, as recorded on 2026-09-28 with its token redacted) before </body>, as Cloudflare does for a browser on awardgrid.dowhiz.com. The web app paths reuse the 2026-09-28 recordings in ../before/, since the deploy does not change the web app.",
+  "responses": {
+    "https://awardgrid.dowhiz.com/": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body_file": "home.html",
+      "beacon": true
+    },
+    "https://awardgrid.dowhiz.com/ios/": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body_file": "ios.html",
+      "beacon": true
+    },
+    "https://awardgrid.dowhiz.com/privacy/": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body_file": "privacy.html",
+      "beacon": true
+    },
+    "https://awardgrid.dowhiz.com/support/": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body_file": "support.html",
+      "beacon": true
+    },
+    "https://awardgrid-site.logan-yegaoyang.workers.dev/": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "body_file": "home.html"
+    },
+    "https://awardgrid-site.logan-yegaoyang.workers.dev/ios/": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "body_file": "ios.html"
+    },
+    "https://awardgrid.dowhiz.com/login": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding",
+        "cf-cache-status": "DYNAMIC"
+      },
+      "body_file": "../before/host-login.html"
+    },
+    "https://awardgrid.dowhiz.com/register": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding",
+        "cf-cache-status": "DYNAMIC"
+      },
+      "body_file": "../before/host-register.html"
+    },
+    "https://awardgrid.dowhiz.com/legal": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding",
+        "cf-cache-status": "DYNAMIC"
+      },
+      "body_file": "../before/host-legal.html"
+    },
+    "https://awardgrid.dowhiz.com/?x=1": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding",
+        "cf-cache-status": "DYNAMIC"
+      },
+      "body_file": "../before/host-root.html"
+    },
+    "https://awardgrid.dowhiz.com/robots.txt": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body_file": "../site/public/robots.txt"
+    },
+    "https://awardgrid.dowhiz.com/sitemap.xml": {
+      "status": 200,
+      "headers": {
+        "content-type": "application/xml",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n  <url><loc>https://awardgrid.dowhiz.com/</loc><lastmod>2026-09-28</lastmod></url>\n  <url><loc>https://awardgrid.dowhiz.com/ios/</loc><lastmod>2026-09-28</lastmod></url>\n  <url><loc>https://awardgrid.dowhiz.com/privacy/</loc><lastmod>2026-09-27</lastmod></url>\n  <url><loc>https://awardgrid.dowhiz.com/support/</loc><lastmod>2026-09-28</lastmod></url>\n</urlset>\n"
+    },
+    "https://awardgrid.dowhiz.com/llms.txt": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "# AwardGrid\n\n> A synthetic llms.txt for the verify-live tests.\n"
+    },
+    "https://awardgrid.dowhiz.com/0123456789abcdef0123456789abcdef.txt": {
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body_file": "../site/public/0123456789abcdef0123456789abcdef.txt"
+    },
+    "https://awardgrid.dowhiz.com/favicon.ico": {
+      "status": 200,
+      "headers": {
+        "content-type": "image/x-icon",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body_base64": "AAABAAEAAQEAAAEAIAAwAAAAFgAAACgAAAABAAAAAgAAAAEAIAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAACAYCD/AAAAAA=="
+    },
+    "https://awardgrid.dowhiz.com/favicon.svg": {
+      "status": 200,
+      "headers": {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><rect width=\"32\" height=\"32\" rx=\"6\" fill=\"#123\"/></svg>\n"
+    },
+    "http://awardgrid.dowhiz.com/login": {
+      "status": 301,
+      "headers": {
+        "location": "https://awardgrid.dowhiz.com/login"
+      },
+      "body": ""
+    }
+  }
+}

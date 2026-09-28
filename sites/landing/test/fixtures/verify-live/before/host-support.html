@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en" data-surface="rich">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>AwardGrid support</title>
+    <meta
+      name="description"
+      content="Help for the AwardGrid iPhone app: what it needs, how its keys and calls work, and how to reach its developer."
+    />
+    <!--
+      The support page for the iOS app (release decision D7): App Store Connect's Support URL. Facts only, in the
+      product's own voice (docs/COPY.md); every one of them is true of the code (docs/release/APP_STORE_HANDOFF.md §6).
+      No script, no analytics, no webfont request (honesty.test.ts scans this page).
+    -->
+    <link rel="stylesheet" crossorigin href="../_site/styles-DN8akfGg.css">
+  </head>
+  <body>
+    <main class="doc">
+      <nav class="doc-nav" aria-label="Site">
+        <a href="../ios/">AwardGrid</a>
+        <a href="../privacy/">Privacy policy</a>
+        <a href="#zh" lang="zh-CN">中文</a>
+      </nav>
+
+      <header>
+        <p class="eyebrow">Support</p>
+        <h1>AwardGrid for iPhone</h1>
+        <p class="lead">
+          Write to <a href="mailto:support@example.com">support@example.com</a>. Say what you tapped, what
+          you expected and what happened. Never send an API key: the app shows only a key's last four characters, and
+          that is all anyone helping you needs.
+        </p>
+      </header>
+
+      <section aria-labelledby="needs-h">
+        <h2 id="needs-h">What it needs</h2>
+        <ul>
+          <li>An iPhone with iOS 18 or later.</li>
+          <li>
+            Your own seats.aero Pro subscription and its API key, from the API tab of your seats.aero settings. Without
+            it the app searches nothing.
+          </li>
+          <li>
+            For Ask, which is optional: your own Anthropic API key. Anthropic bills each question to that key, and the
+            app asks your permission before it sends anything to Anthropic.
+          </li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="faq-h">
+        <h2 id="faq-h">Common questions</h2>
+
+        <h3>Why does a search use seats.aero calls?</h3>
+        <p>
+          Each search goes to seats.aero with your key, and seats.aero counts calls against your plan's daily limit.
+          The app stops at 950 of the 1,000 a Pro key allows, and keeps results on the device for 45 minutes, so
+          repeating a search costs nothing. The count starts again at midnight UTC.
+        </p>
+
+        <h3>What does "not monitored" mean?</h3>
+        <p>
+          seats.aero does not track that route for the programs you asked about, so no result there is not the same as
+          no seats. A route whose list could not be loaded says so instead.
+        </p>
+
+        <h3>When are watches checked?</h3>
+        <p>
+          When you open the app or come back to it, and at no other time. iOS cannot promise to run an app while
+          you are not using it, so AwardGrid does not claim to.
+        </p>
+
+        <h3>Are the results live?</h3>
+        <p>
+          They are seats.aero's cached availability, with how old each result is. Awards disappear; confirm on the
+          program's own site before you transfer any points.
+        </p>
+
+        <h3>How do I remove my keys or my data?</h3>
+        <p>
+          Remove either key in Settings, clear cached results there, and start a new conversation in Ask to delete the
+          conversation. The <a href="../privacy/">privacy policy</a> lists everything the app keeps and sends.
+        </p>
+      </section>
+
+      <section aria-labelledby="about-h">
+        <h2 id="about-h">About</h2>
+        <p>
+          Data: seats.aero. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any
+          airline, or any loyalty program. It never asks for an airline, bank or loyalty-program password, and it never
+          books anything.
+        </p>
+      </section>
+
+      <hr />
+
+      <section id="zh" lang="zh-CN" aria-labelledby="zh-h">
+        <p class="eyebrow">支持</p>
+        <h2 id="zh-h">AwardGrid iPhone 版</h2>
+        <p>
+          请发邮件至 <a href="mailto:support@example.com">support@example.com</a>，说明你点了什么、预期是什么、实际发生了什么。不要发送任何 API
+          密钥：应用只显示密钥的末四位，帮助你的人只需要这些。
+        </p>
+
+        <h3>使用前提</h3>
+        <ul>
+          <li>运行 iOS 18 或更高版本的 iPhone。</li>
+          <li>你自己的 seats.aero Pro 订阅及其 API 密钥，可在 seats.aero 设置的 API 页获取。没有它，应用无法查票。</li>
+          <li>AI 辅助是可选功能，需要你自己的 Anthropic API 密钥。Anthropic 按每次提问向该密钥计费；应用在向 Anthropic 发送任何内容之前会征求你的许可。</li>
+        </ul>
+
+        <h3>常见问题</h3>
+        <h4>为什么查票会消耗 seats.aero 调用？</h4>
+        <p>
+          每次查票都会携带你的密钥发往 seats.aero，seats.aero 按你套餐的每日上限计数。Pro 密钥每天允许 1,000 次，应用在 950 次时停止；结果在本机保留 45
+          分钟，重复查询不消耗调用。计数在 UTC 午夜重新开始。
+        </p>
+        <h4>“未监控”是什么意思？</h4>
+        <p>seats.aero 没有为你所查的里程计划跟踪这条航线，所以那里没有结果不等于没有座位。航线列表无法加载时，应用会如实说明。</p>
+        <h4>关注什么时候检查？</h4>
+        <p>在你打开或回到应用时检查，其他时间不会。iOS 无法保证应用在你没有打开它时运行，所以 AwardGrid 不作这样的承诺。</p>
+        <h4>结果是实时的吗？</h4>
+        <p>结果是 seats.aero 的缓存数据，并注明每条结果的数据时间。里程票随时会消失；转点前请先在里程计划官网确认。</p>
+        <h4>如何移除密钥或数据？</h4>
+        <p>在设置中移除任一密钥、清除缓存结果；在 AI 辅助中开始新对话即可删除对话。<a href="../privacy/">隐私政策</a>列出了应用保存和发送的全部内容。</p>
+
+        <h3>关于</h3>
+        <p>
+          数据：seats.aero。AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。它从不索要航空公司、银行或里程计划的密码，也从不预订任何东西。
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        <a href="../ios/">AwardGrid</a> · <a href="../privacy/">Privacy policy</a> · Data: seats.aero. AwardGrid is not
+        affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program. © 2026 Curastone
+        CORP.
+      </p>
+    </footer>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"REDACTED","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# AwardGrid: https://awardgrid.dowhiz.com/
+# Public pages: /ios/, /privacy/, /support/ (static files).
+# The web app at this address is private and invite-only; it is separate from the iPhone app.
+User-agent: *
+Disallow: /api/
+Disallow: /grid
+
+Sitemap: https://awardgrid.dowhiz.com/sitemap.xml
