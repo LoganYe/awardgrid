@@ -56,6 +56,7 @@ export const zh: Record<keyof typeof en, string> = {
   "home.limits.body": "它只读取 seats.aero 的缓存数据。它不会替你打开航司网站，也不会索取航司或银行密码。",
   "home.login_link": "登录",
   "home.register_link": "用邀请码创建账号",
+  "home.ios_link": "AwardGrid iPhone 版",
 
   // ---- auth pages ----
   "auth.login.title": "登录",

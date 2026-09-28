@@ -189,6 +189,20 @@ describe("the state recorded on 2026-09-28, before the deploy", () => {
     const noindex = report.results.flatMap((r) => r.checks.filter((c) => c.id === "noindex").map((c) => `${r.url} ${c.level}`));
     expect(noindex).toEqual([`${H}/login pass`, `${H}/register pass`]);
   });
+
+  it("passes a page the deploy adds, which the Worker answers with a 404 before it, and lists it; after the deploy that fails", async () => {
+    // The Worker's not_found_handling is "none": a path under its route that the deployed build lacks is a bare 404.
+    const notYet: Change = () => ({ status: 404, headers: {}, body: "" });
+    const before = (await run("before", { mode: "before", changes: { [`${H}/privacy/`]: notYet } })).report;
+    expect(at(before, "fail")).toEqual([]);
+    expect(changing(before)).toContain(`${H}/privacy/ status`);
+    const after = (await run("after", { changes: { [`${H}/privacy/`]: notYet } })).report;
+    expect(at(after, "fail")).toEqual(expect.arrayContaining([`${H}/privacy/ status`]));
+    // A 404 from the web app (Vary: rsc) is not the Worker missing a page: its route is wrong, before the deploy too.
+    const webApp404: Change = () => ({ status: 404, headers: WEB_APP_HEADERS, body: RECORDED_NOT_FOUND });
+    const routeLost = (await run("before", { mode: "before", changes: { [`${H}/privacy/`]: webApp404 } })).report;
+    expect(at(routeLost, "fail")).toEqual(expect.arrayContaining([`${H}/privacy/ served-by`, `${H}/privacy/ status`]));
+  });
 });
 
 describe("the state expected after the deploy (synthetic)", () => {
@@ -575,10 +589,10 @@ describe("the CLI", () => {
 });
 
 describe("the site's own configuration", () => {
-  it("loads sites/landing/pages.json and public/robots.txt: the host, its four pages and the IndexNow key", () => {
+  it("loads sites/landing/pages.json and public/robots.txt: the host, its pages and the IndexNow key", () => {
     const own = loadSite();
     expect(own.host).toBe("awardgrid.dowhiz.com");
-    expect(own.paths).toEqual(expect.arrayContaining(["/", "/ios/", "/privacy/", "/support/"]));
+    expect(own.paths).toEqual(expect.arrayContaining(["/", "/ios/", "/ios/award-grid/", "/ios/zh-hans/", "/privacy/", "/support/"]));
     expect(own.key).toMatch(/^[0-9a-f]{32}$/);
     expect(own.robotsTxt.toString("utf8")).toMatch(/^User-agent: \*$/m);
     expect(planProbes(own).filter((p) => p.kind === "root-file").map((p) => p.path)).toContain(`/${own.key}.txt`);

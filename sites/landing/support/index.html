@@ -62,6 +62,16 @@
       <section aria-labelledby="faq-h">
         <h2 id="faq-h">Common questions</h2>
 
+        <h3>Where do I find my seats.aero API key?</h3>
+        <p>In the API tab of your seats.aero settings. It needs a paid seats.aero Pro subscription with API access.</p>
+
+        <h3>My seats.aero settings show no API tab. Will AwardGrid work?</h3>
+        <p>
+          No. seats.aero says not every Pro account or country gets API access; without a key AwardGrid searches
+          nothing. AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and
+          can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+        </p>
+
         <h3>Why does a search use seats.aero calls?</h3>
         <p>
           Each search goes to seats.aero with your key, and seats.aero counts calls against your plan's daily limit.
@@ -117,16 +127,23 @@
         <ul>
           <li>运行 iOS 18 或更高版本的 iPhone。</li>
           <li>你自己的 seats.aero Pro 订阅及其 API 密钥，可在 seats.aero 设置的 API 页获取。没有它，应用无法查票。</li>
-          <li>AI 辅助是可选功能，需要你自己的 Anthropic API 密钥。Anthropic 按每次提问向该密钥计费；应用在向 Anthropic 发送任何内容之前会征求你的许可。</li>
+          <li>AI 辅助是可选功能，需要你自己的 Anthropic API 密钥。每次提问由 Anthropic 按此密钥计费；应用在向 Anthropic 发送任何内容之前会征求你的许可。</li>
         </ul>
 
         <h3>常见问题</h3>
+        <h4>在哪里找到 seats.aero API 密钥？</h4>
+        <p>在 seats.aero 设置的 API 页里。需要付费的 seats.aero Pro 订阅，并且账户要有 API 权限。</p>
+        <h4>我的 seats.aero 设置里没有 API 页，AwardGrid 还能用吗？</h4>
+        <p>
+          不能。seats.aero 说明，并非每个 Pro 账户、每个国家或地区都能获得 API 权限；没有密钥，AwardGrid 无法查票。AwardGrid 依赖 seats.aero 的
+          Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。订阅之前，请先确认你的 seats.aero 设置里有 API 页。
+        </p>
         <h4>为什么查票会消耗 seats.aero 调用？</h4>
         <p>
           每次查票都会携带你的密钥发往 seats.aero，seats.aero 按你套餐的每日上限计数。Pro 密钥每天允许 1,000 次，应用在 950 次时停止；结果在本机保留 45
           分钟，重复查询不消耗调用。应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。
         </p>
-        <h4>“未监控”是什么意思？</h4>
+        <h4>“未监测”是什么意思？</h4>
         <p>seats.aero 没有为你所查的里程计划跟踪这条航线，所以那里没有结果不等于没有座位。航线列表无法加载时，应用会如实说明。</p>
         <h4>关注什么时候检查？</h4>
         <p>在你打开或回到应用时检查，其他时间不会。iOS 无法保证应用在你没有打开它时运行，所以 AwardGrid 不作这样的承诺。</p>

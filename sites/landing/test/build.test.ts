@@ -20,7 +20,7 @@ const REPO = path.join(SITE, "..", "..");
 const CONFIG_FILE = path.join(SITE, "vite.config.ts");
 const EMAIL = "support@example.com";
 const PLACEHOLDER = "%AWARDGRID_SUPPORT_EMAIL%";
-const PAGES = ["index.html", "ios/index.html", "privacy/index.html", "support/index.html"];
+const PAGES = ["index.html", "ios/index.html", "ios/award-grid/index.html", "ios/zh-hans/index.html", "privacy/index.html", "support/index.html"];
 
 /** Every file under `dir`, as a relative path with forward slashes. */
 function listFiles(dir: string): string[] {

@@ -43,6 +43,23 @@ function textOf(node: unknown, out: string[] = []): string[] {
   return out;
 }
 
+type ReactNodeLike = { type: unknown; props: Record<string, unknown> };
+
+/** The element whose children are exactly `text`, depth-first. */
+function elementWithText(node: unknown, text: string): ReactNodeLike | undefined {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = elementWithText(child, text);
+      if (found) return found;
+    }
+  } else if (node && typeof node === "object" && "props" in node) {
+    const element = node as ReactNodeLike;
+    if (element.props?.children === text) return element;
+    return elementWithText(element.props?.children, text);
+  }
+  return undefined;
+}
+
 describe("the front door at /", () => {
   it("renders the signed-out page when nobody is signed in", async () => {
     getCurrentUser.mockResolvedValue(null);
@@ -59,7 +76,22 @@ describe("the front door at /", () => {
       "home.limits.body",
       "home.login_link",
       "home.register_link",
+      "home.ios_link",
     ]);
+  });
+
+  /**
+   * "/" with a query string (a campaign or shared link) reaches this page, not the site's home page, whose exact route
+   * matches no query string (sites/landing/DEPLOY.md). So the page links the iPhone app's page: a plain <a> to the
+   * static site's /ios/, which is not a route of this app (a next/link would prefetch it and navigate client-side).
+   */
+  it("links the iPhone app's page at /ios/ with a plain link that keeps the touch floor", async () => {
+    getCurrentUser.mockResolvedValue(null);
+    const page = await Home();
+    const link = elementWithText(page, "home.ios_link");
+    expect(link?.type).toBe("a");
+    expect(link?.props).toMatchObject({ href: "/ios/", "data-slot": "button" });
+    expect(String(link?.props.className)).toMatch(/\bself-start\b/);
   });
 
   it("redirects a signed-in visitor to /grid without rendering the page", async () => {

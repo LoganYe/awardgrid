@@ -946,13 +946,18 @@ function excerptOf(text, start, end) {
   return s;
 }
 
-/** Every sentence of a claim's copy, in every status and variant. */
+/**
+ * Every sentence of a claim's copy, in every status, variant and language: the Chinese of a claim is allowed_copy_zh
+ * (the sentence), allowed_copy_zh_extra (more sentences) and allowed_copy_zh_by_status (the status-dependent ones).
+ */
 export function claimCopies(claim) {
   const out = [];
   if (typeof claim.allowed_copy === "string") out.push(claim.allowed_copy);
   if (typeof claim.allowed_copy_zh === "string") out.push(claim.allowed_copy_zh);
   if (Array.isArray(claim.allowed_copy_extra)) out.push(...claim.allowed_copy_extra);
+  if (Array.isArray(claim.allowed_copy_zh_extra)) out.push(...claim.allowed_copy_zh_extra);
   if (claim.allowed_copy_by_status && typeof claim.allowed_copy_by_status === "object") out.push(...Object.values(claim.allowed_copy_by_status));
+  if (claim.allowed_copy_zh_by_status && typeof claim.allowed_copy_zh_by_status === "object") out.push(...Object.values(claim.allowed_copy_zh_by_status));
   if (claim.allowed_copy_variants && typeof claim.allowed_copy_variants === "object") out.push(...Object.values(claim.allowed_copy_variants));
   return out.filter((s) => typeof s === "string");
 }
@@ -974,14 +979,17 @@ export function exactCopySentences(registry) {
 }
 
 /**
- * The sentences of every status-dependent claim (allowed_copy_by_status), each with a pattern that finds it in page
- * text: the final full stop is optional (a page may go on "… and is waiting"), and <date> stands for any date.
+ * The sentences of every status-dependent claim (allowed_copy_by_status, and its Chinese, allowed_copy_zh_by_status),
+ * each with a pattern that finds it in page text: the final full stop is optional (a page may go on "… and is
+ * waiting"), and <date> stands for any date. A Chinese full stop ends a sentence with or without a space after it.
  */
 export function statusSentences(registry) {
   const out = [];
   for (const claim of registry.claims ?? []) {
-    for (const [status, text] of Object.entries(claim.allowed_copy_by_status ?? {})) {
-      for (const sentence of String(text).replace(/\s+/g, " ").trim().split(/(?<=[.!?。！？])\s+/)) {
+    const copies = [...Object.entries(claim.allowed_copy_by_status ?? {}), ...Object.entries(claim.allowed_copy_zh_by_status ?? {})];
+    for (const [status, text] of copies) {
+      const sentences = String(text).replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+|(?<=[。！？])\s*/);
+      for (const sentence of sentences.filter(Boolean)) {
         const body = sentence.replace(/[.。]$/, "");
         const source = body
           .split("<date>")
@@ -1545,6 +1553,17 @@ export function checkRegistry(registry, { root = DEFAULT_ROOT, registryFile = "g
       const keys = Object.keys(c.allowed_copy_by_status);
       if (!keys.includes("submitted_not_live")) add("REGISTRY", `claim ${id}: allowed_copy_by_status needs submitted_not_live`, needle);
       for (const k of keys) if (!STATUSES.includes(k)) add("REGISTRY", `claim ${id}: allowed_copy_by_status key "${k}" is not a status`, needle);
+    }
+    if ("allowed_copy_zh" in c && (typeof c.allowed_copy_zh !== "string" || !c.allowed_copy_zh.trim())) add("REGISTRY", `claim ${id}: allowed_copy_zh must be a sentence`, needle);
+    if ("allowed_copy_zh_extra" in c && (!Array.isArray(c.allowed_copy_zh_extra) || !c.allowed_copy_zh_extra.every((x) => typeof x === "string" && x.trim()))) {
+      add("REGISTRY", `claim ${id}: allowed_copy_zh_extra must be a list of sentences`, needle);
+    }
+    if (c.allowed_copy_zh_by_status) {
+      // The Chinese follows the English status by status: a status the English does not word has no Chinese either.
+      const keys = Object.keys(c.allowed_copy_zh_by_status);
+      if (!c.allowed_copy_by_status) add("REGISTRY", `claim ${id}: allowed_copy_zh_by_status needs allowed_copy_by_status`, needle);
+      if (!keys.includes("submitted_not_live")) add("REGISTRY", `claim ${id}: allowed_copy_zh_by_status needs submitted_not_live`, needle);
+      for (const k of keys) if (!(k in (c.allowed_copy_by_status ?? {}))) add("REGISTRY", `claim ${id}: allowed_copy_zh_by_status key "${k}" is not a status of allowed_copy_by_status`, needle);
     }
     if (c.allowed_copy_variants) {
       const keys = Object.keys(c.allowed_copy_variants);

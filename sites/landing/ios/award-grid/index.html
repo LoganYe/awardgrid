@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en" data-surface="rich">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Award seats for many origins, destinations and dates in one table — AwardGrid</title>
+    <meta
+      name="description"
+      content="On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for several origins, destinations and dates in one table."
+    />
+    <link rel="canonical" href="https://awardgrid.dowhiz.com/ios/award-grid/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://awardgrid.dowhiz.com/ios/award-grid/" />
+    <meta property="og:title" content="Award seats for many origins, destinations and dates in one table — AwardGrid" />
+    <meta
+      property="og:description"
+      content="On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for several origins, destinations and dates in one table."
+    />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://awardgrid.dowhiz.com/#org",
+            "name": "Curastone CORP."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://awardgrid.dowhiz.com/#website",
+            "name": "AwardGrid",
+            "url": "https://awardgrid.dowhiz.com/",
+            "publisher": { "@id": "https://awardgrid.dowhiz.com/#org" }
+          }
+        ]
+      }
+    </script>
+    <!--
+      /ios/award-grid/: how the table works, for someone asking whether an app puts several origins, destinations and
+      dates into one table. English only, so no hreflang. Every sentence is registry copy (growth/product-facts.json):
+      identity, grid, prerequisite, keys, query_input, filters, views, program_link, data_cached, cell_fields,
+      programs, scope, quota, watches, dependency, not_offered and release_status. The table in the iPhone app is the
+      Matrix: each cell holds, for each cabin asked, the lowest miles, the program and the seats; fees and data age are
+      on each option's card (apps/ios/src/components/results/AvailabilityMatrix.tsx, AvailabilityCard.tsx), so this
+      page never says a cell holds fees or data age. No other tool is named (the registry holds no claim about any
+      other tool), and there is no example query (the parser's reading of one is not pinned by a test).
+      No script but JSON-LD and no webfont request; apps/ios/src/honesty.test.ts scans the page.
+    -->
+    <link rel="stylesheet" href="../../styles.css" />
+  </head>
+  <body>
+    <main class="doc">
+      <nav class="doc-nav" aria-label="Site">
+        <a href="../">AwardGrid for iPhone</a>
+        <a href="../../support/">Support</a>
+        <a href="../../privacy/">Privacy policy</a>
+      </nav>
+
+      <header>
+        <p class="eyebrow">How the table works</p>
+        <h1>See award seats for several origins, destinations and dates in one table</h1>
+        <p class="lead">
+          AwardGrid is an iPhone app by Curastone CORP. It puts seats.aero's cached award availability for several
+          origins, several destinations and up to 92 days into one table. It needs your own paid seats.aero Pro
+          subscription with API access; without that key it searches nothing.
+        </p>
+      </header>
+
+      <section aria-labelledby="how-h">
+        <h2 id="how-h">How it works</h2>
+        <ol>
+          <li>
+            Add your seats.aero Pro API key, from the API tab of your seats.aero settings. Keys stay in your iPhone's
+            Keychain, with iCloud Keychain sync off.
+          </li>
+          <li>
+            Type the routes and dates in English or Chinese, or set them in the editor. Programs, nonstop only and a
+            mileage cap are optional filters; a search asks for business and first unless you choose other cabins.
+          </li>
+          <li>
+            Read the result as a List, a Calendar or a Matrix; compare up to four options and save results on the
+            device.
+          </li>
+          <li>
+            For an option, AwardGrid opens seats.aero's booking link when there is one; otherwise you copy the search.
+            It never books. Confirm on the program's own site before you transfer points.
+          </li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="table-h">
+        <h2 id="table-h">What the table shows</h2>
+        <p>
+          In the Matrix, rows are the dates and columns the routes. Each cell shows the lowest miles for each cabin you
+          asked for, with the program and the seats left. Miles in different programs are not equivalent.
+        </p>
+        <p>
+          Each option's card shows the route, the date, the cabin, the miles, the fees, the program, the seats left and
+          how old the data is. Where seats.aero does not give the fees, the card says "Fees not yet confirmed"; where it
+          does not give a seat count, "Seat count not provided"; where it does not give an update time, "Source update
+          time unknown".
+        </p>
+        <p>An empty line in a cell says why, such as "No matches" or "Not monitored".</p>
+      </section>
+
+      <section aria-labelledby="limits-h">
+        <h2 id="limits-h">Limits to know first</h2>
+        <ul>
+          <li>Results are seats.aero's cached availability, not a live search, and each shows how old it is.</li>
+          <li>
+            It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not
+            monitor is marked "not monitored".
+          </li>
+          <li>Searches are one-way: no round trips, multi-city or passenger count.</li>
+          <li>
+            The app stops at 950 of the 1,000 daily calls a Pro key allows and keeps results on the device for 45
+            minutes, so repeating a search costs no calls.
+          </li>
+          <li>
+            Watches are checked when you open or return to the app, and at no other time; there is no background check
+            and no notification.
+          </li>
+          <li>iPhone only, iOS 18 or later.</li>
+          <li>
+            AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can
+            limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+          </li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="else-h">
+        <h2 id="else-h">When something else suits you better</h2>
+        <p>
+          AwardGrid has no live search, no round trips and no alerts or notifications. If you need any of these, a tool
+          built for them will suit you better.
+        </p>
+      </section>
+
+      <section aria-labelledby="status-h">
+        <h2 id="status-h">Where this is up to</h2>
+        <p>
+          AwardGrid for iPhone has been submitted to the App Store. It needs your own paid seats.aero Pro subscription
+          with API access; without that key it searches nothing.
+        </p>
+        <p><a href="../">More about AwardGrid for iPhone</a></p>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        <a href="../">AwardGrid for iPhone</a> · <a href="../../privacy/">Privacy policy</a> ·
+        <a href="../../support/">Support</a> · Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not
+        affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.
+        © 2026 Curastone CORP.
+      </p>
+    </footer>
+  </body>
+</html>

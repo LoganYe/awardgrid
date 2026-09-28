@@ -59,6 +59,9 @@ export const en = {
     "It reads the seats.aero cache and nothing else. It never opens an airline site for you, and it never asks for an airline or bank password.",
   "home.login_link": "Log in",
   "home.register_link": "Create account with an invite",
+  // For a visitor who came for the iPhone app: "/" with a query string is still this page, not the site's home page
+  // (an exact route matches no query string: sites/landing/DEPLOY.md).
+  "home.ios_link": "AwardGrid for iPhone",
 
   // ---- auth pages ----
   "auth.login.title": "Log in",

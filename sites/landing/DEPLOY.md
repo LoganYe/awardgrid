@@ -80,7 +80,8 @@ AWARDGRID_SUPPORT_EMAIL=knowhiz.us@gmail.com pnpm build:landing   # the same pub
 ```
 
 The build refuses to run without the address. It builds the pages `pages.json` lists (`dist/index.html`,
-`dist/ios/`, `dist/privacy/`, `dist/support/`) and `dist/_site/styles-<hash>.css`, copies `public/` (robots.txt,
+`dist/ios/`, `dist/ios/award-grid/`, `dist/ios/zh-hans/`, `dist/privacy/`, `dist/support/`) and
+`dist/_site/styles-<hash>.css`, copies `public/` (robots.txt,
 llms.txt, the key file, favicon.svg, favicon.ico, `_headers`), and writes `dist/sitemap.xml` from `pages.json`,
 one `<lastmod>` per page. It also refuses a `lastmod` later than the build date. Every page links the stylesheet
 and the favicons relatively, so the same files work on the hostname and on workers.dev.
@@ -121,7 +122,7 @@ node sites/landing/scripts/verify-live.mjs --json verify-live.json # read-only; 
 It asks for each page as a browser does (a browser user agent and `Accept: text/html`, which is when Cloudflare adds
 the Web Analytics beacon) and checks:
 
-- the Worker's pages (`/`, `/ios/`, `/privacy/`, `/support/`, and the workers.dev address) carry no HTML comment and no
+- the Worker's pages (every page of `pages.json`, and the workers.dev address) carry no HTML comment and no
   script except JSON-LD without `src` and the one Cloudflare beacon;
 - each root file answers 200 from the Worker (no `vary: rsc`, which the web app sends) with a sensible content type,
   and the served robots.txt is byte for byte `public/robots.txt` (so a line Cloudflare's managed robots.txt might add
@@ -130,7 +131,9 @@ the Web Analytics beacon) and checks:
 - the web app's `/login` and `/register` still carry `noindex` (robots.txt does not block them, so crawlers can see
   that), and how many beacons the web app's paths carry (disclosed; not a failure).
 
-`--before-deploy` expects the state before these routes, to see what a deploy changes. In both modes it also asks for
+`--before-deploy` expects the state before these routes, to see what a deploy changes. A page of `pages.json` that the
+Worker answers with a 404 before the deploy (`/ios/award-grid/` and `/ios/zh-hans/` until the deploy that adds them)
+passes there and is listed as expected to answer 200 after it; after the deploy it fails. In both modes it also asks for
 `http://awardgrid.dowhiz.com/login` and warns unless that is a permanent redirect (301 or 308) to https;
 `--expect-https-redirect` makes it a failure, for use once the hostname has an http-to-https redirect rule.
 
@@ -141,7 +144,7 @@ answer (after the deploy, `/` and the root files too) it is a failure; on a web 
 The quick version by hand:
 
 ```bash
-for p in / /ios/ /privacy/ /support/ /robots.txt /sitemap.xml /llms.txt /665e809ddf84f9e36cd81d6f8842eaf6.txt /favicon.ico /favicon.svg; do
+for p in / /ios/ /ios/award-grid/ /ios/zh-hans/ /privacy/ /support/ /robots.txt /sitemap.xml /llms.txt /665e809ddf84f9e36cd81d6f8842eaf6.txt /favicon.ico /favicon.svg; do
   curl -s -o /dev/null -w "%{http_code} %{content_type} $p\n" https://awardgrid.dowhiz.com$p; done               # 200 each
 curl -s https://awardgrid.dowhiz.com/robots.txt | diff - sites/landing/public/robots.txt && echo robots.txt matches
 curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" https://awardgrid.dowhiz.com/privacy                  # 307 …/privacy/

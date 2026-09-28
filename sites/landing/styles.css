@@ -99,7 +99,9 @@ main {
 }
 
 .status h2,
-.limits h2 {
+.limits h2,
+.needs h2,
+.faq h2 {
   font-family: var(--font-display);
   font-size: clamp(20px, 3.5vw, 26px);
   letter-spacing: var(--tracking-display);
@@ -166,6 +168,33 @@ main {
   color: var(--fg-muted);
 }
 
+/* The example is drawn as the app's Matrix: one line per cabin in each cell, the cabin as a small label. */
+.ag-preview .slot {
+  margin: 0;
+}
+
+.ag-preview .slot + .slot {
+  margin-top: var(--space-2);
+}
+
+.ag-preview b {
+  display: inline;
+}
+
+.ag-preview .slot span {
+  display: block;
+}
+
+.ag-preview abbr {
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--bg-raised);
+  color: var(--fg-muted);
+}
+
 .ag-preview tr:last-child th,
 .ag-preview tr:last-child td,
 .fact-table tr:last-child th,
@@ -187,6 +216,12 @@ main {
   /* LEGAL.md: every screen showing award data carries "Data: seats.aero". */
   font-size: var(--type-meta);
   color: var(--fg-muted);
+  margin: var(--space-2) 0 0;
+}
+
+/* A plain link under the example table, to /ios/award-grid/. */
+.more {
+  font-size: var(--type-meta);
   margin: var(--space-2) 0 0;
 }
 
@@ -229,7 +264,9 @@ main.doc {
   margin: var(--space-8) 0 var(--space-3);
 }
 
-.doc h3 {
+/* The questions of an FAQ (<section class="faq" data-faq>), on a document page or on /ios/. */
+.doc h3,
+.faq h3 {
   font-size: 17px;
   font-weight: 600;
   margin: var(--space-6) 0 var(--space-2);
@@ -242,20 +279,29 @@ main.doc {
 }
 
 .doc p,
-.doc ul {
+.doc ul,
+.doc ol,
+.faq p,
+.needs ul {
   margin: 0 0 var(--space-3);
 }
 
-.doc ul {
+.doc ul,
+.doc ol,
+.needs ul {
   padding-left: 1.25em;
 }
 
-.doc li + li {
+.doc li + li,
+.needs li + li {
   margin-top: var(--space-2);
 }
 
 .doc a,
 .status a,
+.faq a,
+.needs a,
+.more a,
 footer a {
   color: var(--accent);
   text-decoration: underline;

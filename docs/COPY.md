@@ -15,7 +15,8 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
    "Link Telegram" → "Creating link…" → "Telegram linked"; "Log in" / "Log out" everywhere (never "Sign
    in/out").
 4. **Errors say what happened and what to do next.** Two short sentences at most, no apology, no vagueness:
-   "Couldn't reach awardgrid. Check your connection and retry." Never "Sorry", "Oops", "Please" (en) or
+   "Couldn't reach awardgrid. Check your connection and retry." (the web app's dictionaries, which still write the
+   name in lower case: see the glossary). Never "Sorry", "Oops", "Please" (en) or
    抱歉 / 对不起 (zh). Env-var names (`MASTER_KEY`, `TELEGRAM_BOT_TOKEN`) may appear because the
    self-hoster is the reader and the fix is that exact identifier.
 5. **Empty states invite action.** A sentence plus a link button: "No standing queries yet. Save one from
@@ -41,7 +42,7 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
 
 | Concept | en | zh | Notes |
 |---|---|---|---|
-| The product | awardgrid | awardgrid | Never capitalised, never translated |
+| The product | AwardGrid | AwardGrid | One word, capital G, never translated: the name of the iPhone app and of the website's pages (see "The product's name" below). The private web app's own strings, in these dictionaries, still write `awardgrid` until they are changed, so rule 4's and §3's examples keep it |
 | The grid page / the table | Grid | 表格 | 表格 is the natural word; 网格 is the machine-literal one. Also what `UI_PLAN.md` §8 uses |
 | Standing query | Standing query | 定时查询 | Never "saved query" / 已保存查询, never "cron job" |
 | Program (loyalty program) | Program | 里程计划 | Program names are text from `SOURCE_NAMES`, never translated |
@@ -67,7 +68,7 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
 | Link / Unlink Telegram | Link Telegram / Unlink | 绑定 Telegram / 解绑 | |
 | Alert (Telegram message) | alert | 提醒 | The verb "notify" is 通知 |
 | Quiet hours | Quiet hours | 免打扰时段 | |
-| Ask (the assistant lane) | Ask | 提问 | Feature name; "Ask budget" 提问额度 |
+| Ask (the assistant lane) | Ask | 提问 | Feature name; "Ask budget" 提问额度. On the website's pages and in the iPhone app's public copy, "Ask" names only the AI feature, never searching: a search is typed ("Type the routes and dates …"). The web app's front door (`home.lead`) still opens "Ask in Chinese or English"; rewording it is the owner's decision |
 | Run (a query) | Run | 运行 | Button on the query bar; "Run now" 立即运行. Never 重跑 |
 | Schedule (a standing query's cadence) | Schedule | 频率 | Never 计划, which collides with 里程计划 |
 | This server / instance / deployment | this server | 此服务器 | One noun for the machine; the person who runs it is the server's operator / 本站管理员 |
@@ -75,6 +76,41 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
 | Log in / Log out | Log in / Log out | 登录 / 退出登录 | Never "Sign in" |
 | Settings | Settings | 设置 | "Open settings" 打开设置 |
 | Program's site | the program's site | 里程计划官网 | |
+
+### The product's name
+
+**AwardGrid**, one word with a capital G, is the product's name on every public surface: the website's pages
+(`sites/landing/`), the App Store listing, the public copy in `growth/` and the iPhone app's name. One spelling keeps
+the product apart from other things called "award grid" and from "award chart", the generic term.
+
+Not everything says it yet:
+
+- The private web app's own strings still write `awardgrid`: `app.name` and several sentences in
+  `packages/core/src/lib/i18n/dictionaries/`, which is why rule 4's and §3's examples keep the lower case. They
+  change only if the owner decides to rename the web app too.
+- Several strings inside the iPhone app still write `awardgrid` too: `apps/ios/src/app/App.tsx` (the heading shown
+  when the app cannot start), `apps/ios/src/ask/labels.ts` (Ask's step and failure labels),
+  `apps/ios/src/components/results/copy.ts` and `apps/ios/src/screens/watches-copy.ts` (in English and Chinese).
+  Renaming them is a candidate change for a later version of the app, pending the owner's decision; a rename should
+  start from `grep -rn awardgrid apps/ios/src`, not from this list.
+
+The product in one sentence, for a heading, a profile or a listing that needs one (registered under the `grid`
+claim of `growth/product-facts.json`, with the prerequisite and the platform):
+
+- en: AwardGrid: award seats for many routes and dates in one table, on iPhone, on your own seats.aero Pro key.
+- zh: AwardGrid：iPhone 上用你自己的 seats.aero Pro 密钥，把多条航线、多个日期的里程票排进一张表。
+
+Every other public sentence about the iPhone app comes from `growth/product-facts.json` (`allowed_copy` and its kin,
+and `allowed_copy_zh` in Chinese), which `scripts/growth/validate-public-claims.mjs` checks in CI;
+`scripts/growth/current-tree.test.ts` also checks that the titles, meta descriptions and H1s of `/ios/`,
+`/ios/award-grid/` and `/ios/zh-hans/` are registered copy.
+
+**"Ask" is the AI feature's name, and only that, on the website's pages and in the iPhone app's public copy.** There
+a search is *typed*: "Type the routes and dates in English or Chinese, or set them in the editor." Never "Ask in
+Chinese or English" for a search, and never "AI search": the search parser is deterministic
+(`apps/ios/src/search/search.ts`). In Chinese the feature is AI 辅助, as the app names it; the website writes
+AI 辅助（Ask） so it matches the English pages. The web app's signed-out front door (`home.lead` in the dictionaries)
+still opens "Ask in Chinese or English"; it is the web app's own copy, and rewording it is the owner's decision.
 
 ## 3. Before → after (from the dictionaries)
 

@@ -73,8 +73,19 @@ The comments stay in the source for whoever edits the page; the build drops them
 Each page listed in `pages.json` carries a canonical link to itself on `https://awardgrid.dowhiz.com`, `og:type`
 `website`, `og:url` (the canonical), `og:title` (its title), `og:description` (its meta description),
 `twitter:card` `summary`, and the favicons `/favicon.svg` and `/favicon.ico` (the build writes them relative to the
-page). No `og:image` yet. `/` and `/ios/` carry the JSON-LD graph (Organization, WebSite); nothing claims
-`MobileApplication` before the app is released, and no `FAQPage` until the questions are on the page.
+page). No `og:image` yet. `/`, `/ios/`, `/ios/award-grid/` and `/ios/zh-hans/` carry the JSON-LD graph (Organization,
+WebSite); nothing claims `MobileApplication` before the app is released.
+
+A page that shows questions carries a `FAQPage` node in that graph, generated from the questions it shows:
+`/ios/` and `/ios/zh-hans/`. The questions follow one convention, `<section class="faq" data-faq
+aria-labelledby="…">` with each question an `<h3>` and its answer the `<p>`s after it, and
+`node scripts/growth/sync-faq-schema.mjs --write` writes the node from them (`--check` fails on drift, in CI). Edit
+the visible questions, never the JSON-LD.
+
+`/ios/` and `/ios/zh-hans/` name each other with `hreflang` (`en`, `zh-Hans`, and `x-default` for `/ios/`).
+`/privacy/` and `/support/` hold their Chinese on the same page (`#zh`), so they have no alternates, and
+`/ios/award-grid/` is in English only.
+
 `sites/landing/test/crawl.test.ts` checks all of it, in the source and in the built pages.
 
 ### `ios/index.html`: the iPhone app's page
@@ -89,11 +100,55 @@ page). No `og:image` yet. `/` and `/ios/` carry the JSON-LD graph (Organization,
 - The example table's section sets `data-surface="flat"`: it is data, so the glass effect is off behind it, as it is
   behind restful.dowhiz.com's `.fact-table` and `.compare-table`. Blur behind a column of mileage figures makes them
   harder to read.
-- The "How it works" articles are the web app's front-door copy, changed only where the move to an app made it
-  untrue. The front door's `home.invite.*` block is left out: it described a shared server, and the app has none
-  (DECISIONS.md, "\"Invite only\" is gone from the copy and nothing else is").
+- Rewritten on 2026-09-28 to answer questions rather than only carry a tagline: "What you need" (the iPhone, the
+  seats.aero Pro key, the Anthropic key for Ask, and the dependency on seats.aero's Partner API), the example table,
+  "Questions" (the nine answers of `growth/geo/accuracy-answer.md`, word for word), "What it does not do" and "Where
+  this is up to". The H1 is unchanged. Every new sentence is registry copy.
+- The three "How it works" articles (the web app's front-door copy) are gone. Their facts are in "What you need",
+  the questions and the table; their "Bilingual" article said "Ask in Chinese or English", and Ask is the name of
+  the AI feature, so searching is "type" everywhere (`docs/COPY.md`, "The product's name").
+- "How the table works" links to `/ios/award-grid/`; the footer links the Chinese version and names Anthropic in the
+  affiliation sentence, as the other pages do.
 - The "What it does not do" table turns the front door's one sentence (`home.limits.body`) into a table, longer
-  rather than shorter, after Restful's page (docs/PIVOT.md §4; DECISIONS.md, same entry).
+  rather than shorter, after Restful's page (docs/PIVOT.md §4; DECISIONS.md, same entry). Its rows are kept as they
+  were, the "No accounts, no analytics in the app" row word for word as the owner wrote it (PR #104); "No round trips"
+  (the scope claim) was added.
+- "Where this is up to" is the status text of PR #103, unchanged. At release it is rewritten by hand: it is not one
+  registry sentence (`scripts/growth/current-tree.test.ts` pins what the gate finds in it then).
+- Known mismatches, kept as the spec says until the owner decides:
+  - The example table is laid out the web app's way: one row per route, one column per date, and a bare "—" in an
+    empty cell. The iPhone app's Matrix, which "How the table works" describes right below it, has the dates as rows
+    and the routes as columns, labels each slot with its cabin, and says why a slot is empty ("No matches") instead
+    of a bare dash (`apps/ios/src/components/results/AvailabilityMatrix.tsx`). The caption covers the figures, not
+    the layout. Either the example is redrawn as the Matrix, or the link moves away from it.
+  - Two kept rows of "What it does not do" say less exactly what the registry says: "It checks your watches when you
+    open the app, and at no other time" (the app also checks when you return to it, as the questions above say:
+    `apps/ios/src/app/App.tsx`), and "Without your seats.aero Pro key the app does nothing at all" (the app has an
+    example screen that needs no key; the registry's words are "searches nothing"). Changing them is a two-word edit
+    each, once the owner allows it.
+- The meta description names the key first and is 155 characters or fewer, so a search result does not cut the
+  prerequisite off; `sites/landing/test/crawl.test.ts` holds every page's description to that width (a CJK
+  character counts as two).
+
+### `ios/award-grid/index.html`: how the table works
+
+- For someone asking whether an app puts several origins, destinations and dates into one table. The claim is the
+  narrow one: on iPhone, on your own seats.aero Pro key, several origins, several destinations and up to 92 days.
+  It does not say no other tool does this.
+- Every sentence is registry copy: identity, grid, prerequisite, keys, query_input, filters, views, program_link,
+  data_cached, cell_fields, programs, scope, quota, watches, dependency, not_offered and release_status.
+- The table is the iPhone app's Matrix: each cell holds, for each cabin asked, the lowest miles, the program and the
+  seats; fees and data age are on each option's card (`AvailabilityMatrix.tsx`, `AvailabilityCard.tsx`). The
+  web app's table put fees and data age in the cell, and that wording is retired (`grid.retired_copy`).
+- No other tool is named: the registry holds no claim about any other tool. No example query: none is registered (a
+  whole query needs a parser fixture test first), and the parser reads bare airport codes only in upper case.
+- The lead says what the table is (several origins, several destinations and up to 92 days, on your own key); what a
+  cell and an option's card show is left to "What the table shows", so the page says it once. The steps of "How it
+  works" use the step-shaped sentences of views, program_link and keys ("your iPhone", since a web page may be read
+  on any device). Cabins are not called an optional filter: a search always asks for at least one, business and
+  first unless you choose others (the filters claim).
+- The status sentence sits right before the prerequisite, so the released status sentence, which says "free", can
+  replace it as it is (`FREE_WITHOUT_PRO`).
 
 ### `privacy/index.html`: the iPhone app's privacy policy
 
@@ -107,4 +162,8 @@ page). No `og:image` yet. `/` and `/ios/` carry the JSON-LD graph (Organization,
 
 - Release decision D7: App Store Connect's Support URL. Facts only, in the product's own voice (`docs/COPY.md`),
   each of them one of `docs/release/APP_STORE_HANDOFF.md` §6.
+- The first two questions, in English and in the Chinese section, are where to find the seats.aero API key and what
+  a missing API tab means (the prerequisite and dependency claims; seats.aero's own page on API access). A person
+  without API access should learn it before installing, not after.
+- Its questions do not use the FAQ convention (`data-faq`), so the page carries no FAQPage.
 - No script and no webfont request; `apps/ios/src/honesty.test.ts` scans the page.

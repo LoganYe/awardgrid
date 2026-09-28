@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageColumn } from "@/components/shell/page-column";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/next";
 import { getT } from "@/lib/i18n/server";
+import { cn } from "@/lib/utils";
 
 /**
  * / — the front door (docs/UI_PLAN.md §6.10). Signed in, this is the one hop to the grid it has
@@ -64,6 +65,19 @@ export default async function Home() {
           {t("home.register_link")}
         </Button>
       </div>
+
+      {/*
+       * The way on for a visitor who came for the iPhone app. On awardgrid.dowhiz.com the site's home page has "/"
+       * by an exact route, which matches no query string, so "/?utm_source=…" or "/?ref=…" still reaches this page
+       * (sites/landing/DEPLOY.md). /ios/ is the static site's page, not a route of this app: a plain <a>, so Next
+       * neither prefetches it nor navigates to it client-side, and a real link rather than a Button (which would
+       * stamp role="button" on it). `data-slot="button"` puts it under the 40 px touch floor (globals.css, the
+       * `(max-width: 767px), (pointer: coarse)` rule), as cell-drawer/actions.tsx does for its link; `self-start`
+       * keeps it the width of its words in the column.
+       */}
+      <a data-slot="button" href="/ios/" className={cn(buttonVariants({ variant: "link" }), "h-auto self-start px-0")}>
+        {t("home.ios_link")}
+      </a>
     </PageColumn>
   );
 }
