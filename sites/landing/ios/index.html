@@ -20,6 +20,8 @@
       content="On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for many routes and up to 92 days into one table."
     />
     <meta name="twitter:card" content="summary" />
+    <!-- Smart App Banner (DECISIONS.md, the App Store listing amendment): a meta tag, not a script; Safari may fetch the banner from Apple. -->
+    <meta name="apple-itunes-app" content="app-id=6816321841" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <script type="application/ld+json">
@@ -117,6 +119,27 @@
                 }
               }
             ]
+          },
+          {
+            "@type": "MobileApplication",
+            "@id": "https://awardgrid.dowhiz.com/ios/#app",
+            "name": "AwardGrid",
+            "operatingSystem": "iOS 18.0 or later",
+            "applicationCategory": "TravelApplication",
+            "publisher": { "@id": "https://awardgrid.dowhiz.com/#org" },
+            "offers": {
+              "@type": "Offer",
+              "price": 0,
+              "priceCurrency": "USD",
+              "url": "https://apps.apple.com/app/id6816321841"
+            },
+            "softwareRequirements": "It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.",
+            "sameAs": [
+              "https://apps.apple.com/app/id6816321841",
+              "https://github.com/LoganYe/awardgrid"
+            ],
+            "description": "On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for many routes and up to 92 days into one table.",
+            "disambiguatingDescription": "AwardGrid is an iPhone app by Curastone CORP. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program."
           }
         ]
       }

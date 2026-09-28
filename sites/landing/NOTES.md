@@ -74,7 +74,13 @@ Each page listed in `pages.json` carries a canonical link to itself on `https://
 `website`, `og:url` (the canonical), `og:title` (its title), `og:description` (its meta description),
 `twitter:card` `summary`, and the favicons `/favicon.svg` and `/favicon.ico` (the build writes them relative to the
 page). No `og:image` yet. `/`, `/ios/`, `/ios/award-grid/` and `/ios/zh-hans/` carry the JSON-LD graph (Organization,
-WebSite); nothing claims `MobileApplication` before the app is released.
+WebSite); nothing claims `MobileApplication` before the app is released. Once it is (DECISIONS.md, the App Store
+listing amendment), `/ios/` ends its graph with a `MobileApplication` node whose `offers.url` is the listing with no
+slug, and `/ios/` and `/ios/zh-hans/` carry the Smart App Banner,
+`<meta name="apple-itunes-app" content="app-id=6816321841">` (`scripts/growth/store-listing.test.ts`). The node says
+which app the site is about. Google's software-app rich result also requires `aggregateRating` or `review`, and the
+node has neither, so Search Console may list `/ios/` as an invalid "Software apps" item once it is crawled. That is
+expected and needs no action: a rating or a review goes into the node only from real App Store data, with its source.
 
 A page that shows questions carries a `FAQPage` node in that graph, generated from the questions it shows:
 `/ios/` and `/ios/zh-hans/`. The questions follow one convention, `<section class="faq" data-faq

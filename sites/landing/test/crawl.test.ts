@@ -48,6 +48,11 @@ const SITE_GRAPH = {
   ],
 };
 
+/** The pages that may carry the Smart App Banner once the app is released: the app's page and its Chinese version. */
+const BANNER_PAGES = ["/ios/", "/ios/zh-hans/"];
+/** The page whose JSON-LD may describe the app (a MobileApplication node, after its FAQPage) once it is released. */
+const APP_PAGE = "/ios/";
+
 /** The Worker's own address, which serves every file of the build (the hostname serves only what a route claims). */
 const WORKERS_DEV_ORIGIN = "https://awardgrid-site.logan-yegaoyang.workers.dev";
 /**
@@ -115,10 +120,11 @@ const typesIn = (value: unknown): string[] => {
 /**
  * The head tags a page must carry, checked against its URL: a canonical link to itself on the hostname, og:url the
  * same, og:type website, og:title its title, og:description its meta description, twitter:card summary, and the two
- * favicons (an href that resolves, from the page, to /favicon.svg and /favicon.ico). No og:image yet, no Smart App
- * Banner before release. Returns what is wrong.
+ * favicons (an href that resolves, from the page, to /favicon.svg and /favicon.ico). No og:image yet. A Smart App
+ * Banner only once the registry says released, only on /ios/ and /ios/zh-hans/, and only the app's id (no
+ * app-argument or affiliate data). Returns what is wrong.
  */
-function headProblems(html: string, pagePath: string): string[] {
+function headProblems(html: string, pagePath: string, status: string = REGISTRY.released.status): string[] {
   const head = headOf(html);
   const out: string[] = [];
   const url = ORIGIN + pagePath;
@@ -142,7 +148,14 @@ function headProblems(html: string, pagePath: string): string[] {
   expectIcon(icons, `${ORIGIN}/favicon.ico`, (i) => i.sizes === "32x32", out);
   if (icons.length !== 2) out.push(`${icons.length} icon links, want 2`);
   for (const property of ["og:image", "twitter:image"]) if (metas(head, "property", property).length || metas(head, "name", property).length) out.push(`${property}: none yet`);
-  if (/apple-itunes-app/i.test(head)) out.push("apple-itunes-app: only once the app is released");
+  const banner = metas(head, "name", "apple-itunes-app");
+  if (/apple-itunes-app/i.test(head)) {
+    if (status !== "released") out.push("apple-itunes-app: only once the app is released");
+    else if (!BANNER_PAGES.includes(pagePath)) out.push(`apple-itunes-app: only on ${BANNER_PAGES.join(" and ")}`);
+    else if (banner.length !== 1 || banner[0] !== `app-id=${REGISTRY.released.app_id}`) {
+      out.push(`apple-itunes-app: ${JSON.stringify(banner)}, want one meta whose content is "app-id=${REGISTRY.released.app_id}"`);
+    }
+  }
   return out;
 }
 
@@ -322,6 +335,21 @@ describe("head tags", () => {
     expect(headProblems(good.replace(/content="Help for the AwardGrid[^"]*"/g, `content="${long}"`), "/support/").join("\n")).toMatch(/meta description: 174 wide, want at most 155/);
     expect(displayWidth("一张表 AB")).toBe(9);
   });
+
+  it("allows the Smart App Banner only once released, only on /ios/ and /ios/zh-hans/, and only with the app's id", () => {
+    const ios = readFileSync(path.join(SITE, "ios", "index.html"), "utf8").replace(/\s*<meta name="apple-itunes-app"[^>]*>/, "");
+    const withBanner = (content: string) => ios.replace('<meta name="twitter:card" content="summary" />', `<meta name="twitter:card" content="summary" /><meta name="apple-itunes-app" content="${content}" />`);
+    const good = withBanner("app-id=6816321841");
+    expect(headProblems(ios, "/ios/", "released")).toEqual([]);
+    expect(headProblems(good, "/ios/", "released")).toEqual([]);
+    expect(headProblems(good, "/ios/", "submitted_not_live")).toEqual(["apple-itunes-app: only once the app is released"]);
+    expect(headProblems(good, "/ios/", "withdrawn")).toEqual(["apple-itunes-app: only once the app is released"]);
+    expect(headProblems(withBanner("app-id=6816321841, app-argument=https://example.com/"), "/ios/", "released").join("\n")).toMatch(/want one meta whose content is "app-id=6816321841"/);
+    expect(headProblems(withBanner("app-id=123"), "/ios/", "released").join("\n")).toMatch(/app-id=6816321841/);
+    const support = readFileSync(path.join(SITE, "support", "index.html"), "utf8");
+    const supportBanner = support.replace('<meta name="twitter:card" content="summary" />', '<meta name="twitter:card" content="summary" /><meta name="apple-itunes-app" content="app-id=6816321841" />');
+    expect(headProblems(supportBanner, "/support/", "released")).toEqual(["apple-itunes-app: only on /ios/ and /ios/zh-hans/"]);
+  });
 });
 
 describe("JSON-LD", () => {
@@ -342,16 +370,24 @@ describe("JSON-LD", () => {
       expect(blocks).toHaveLength(1);
       const graph = blocks[0]["@graph"] as Array<Record<string, unknown>>;
       expect({ "@context": blocks[0]["@context"], "@graph": graph.slice(0, 2) }).toEqual(SITE_GRAPH);
-      expect(graph.slice(2).map((node) => node["@type"])).toEqual(["FAQPage"]);
+      // After the FAQPage, /ios/ may describe the app (a MobileApplication node) once it is released; nothing else.
+      const rest = graph.slice(2).map((node) => node["@type"]);
+      const app = pagePath === APP_PAGE && REGISTRY.released.status === "released" && rest.length === 2 ? ["MobileApplication"] : [];
+      expect(rest).toEqual(["FAQPage", ...app]);
       expect(graph[2]!["@id"]).toBe(`${ORIGIN}${pagePath}#faq`);
       expect((graph[2]!.mainEntity as unknown[]).length).toBeGreaterThan(0);
     }
   });
 
-  it("FAQPage only where the page shows its questions, and no MobileApplication (the app is not released)", () => {
+  it("FAQPage only where the page shows its questions, and MobileApplication only on /ios/ once the app is released", () => {
     const types = MANIFEST.pages.flatMap((p) => jsonLd(read(p.file)).flatMap(typesIn));
     expect(types.length).toBeGreaterThan(0);
-    expect(new Set(types)).toEqual(new Set(["Organization", "WebSite", "FAQPage", "Question", "Answer"]));
+    const app = types.includes("MobileApplication") ? ["MobileApplication", "Offer"] : [];
+    expect(new Set(types)).toEqual(new Set(["Organization", "WebSite", "FAQPage", "Question", "Answer", ...app]));
+    for (const p of MANIFEST.pages) {
+      const has = jsonLd(read(p.file)).flatMap(typesIn).includes("MobileApplication");
+      expect(has && (p.path !== APP_PAGE || REGISTRY.released.status !== "released"), `${p.path}: MobileApplication`).toBe(false);
+    }
     for (const p of MANIFEST.pages) {
       const html = read(p.file);
       expect(jsonLd(html).flatMap(typesIn).includes("FAQPage"), p.path).toBe(showsQuestions(html));
