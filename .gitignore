@@ -37,6 +37,9 @@ next-env.d.ts
 # Vitest / misc
 .vitest-cache/
 
+# Python bytecode (scripts/aso: python3 -m unittest writes it next to the scripts)
+__pycache__/
+
 # Local tooling
 .claude/
 
