@@ -167,7 +167,7 @@
         "src/app/api/auth/register/route.ts:2-4 \"POST /api/auth/register { inviteCode, username, password }\"",
         "docs/DEPLOYMENT.md:49-56 \"## Not done\"",
         "sites/landing/DEPLOY.md:10-21 \"## Shape\"",
-        "src/app/page.tsx:24 \"if (user) redirect(\"/grid\");\"",
+        "src/app/page.tsx:25 \"if (user) redirect(\"/grid\");\"",
         "src/lib/auth/next.ts:40 \"if (!user) redirect(\"/login\");\""
       ],
       "allowed_copy_variants": {
