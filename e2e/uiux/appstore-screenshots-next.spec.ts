@@ -3,7 +3,7 @@
  * (./appstore-screenshots.spec.ts, docs/release/appstore/1.0), which it leaves alone. It renders the real app in the
  * fixture host at the 6.9-inch iPhone size (440×956 pt at 3×), then frames each screen under a short caption on a
  * 1320×2868 px image, in English (en-US) and Chinese (zh-Hans), with a "Sample data" / "示例数据" label in the corner
- * of every image. The captions and labels are in ./appstore-captions-next.ts. Each caption must pass the public-claims
+ * of every image. The captions and labels are in scripts/growth/appstore-captions-next.ts. Each caption must pass the public-claims
  * gate (scripts/growth/validate-public-claims.mjs) on its own before its image is written; the root tests
  * (scripts/growth/store-captions-next.test.ts) check the same on every run, and the committed images' size.
  *
@@ -28,7 +28,7 @@ import scenarios from "../../packages/core/test/fixtures/uiux/scenarios.json" wi
 import availability from "../../packages/core/test/fixtures/uiux/availability-rows.json" with { type: "json" };
 import registry from "../../growth/product-facts.json" with { type: "json" };
 import { formatFinding, scanContent } from "../../scripts/growth/validate-public-claims.mjs";
-import { STORE_SHOTS_NEXT, type Shot } from "./appstore-captions-next";
+import { STORE_SHOTS_NEXT, type Shot } from "../../scripts/growth/appstore-captions-next";
 import { openScenario, searchByText } from "./helpers";
 import { expect, test } from "./test";
 

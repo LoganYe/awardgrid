@@ -1,7 +1,7 @@
 /**
  * The words on the next version's App Store screenshots (docs/release/appstore/next/<locale>/<shot>.png): the caption
- * of each shot and the label in the corner of every image. ./appstore-screenshots-next.spec.ts renders them into the
- * images. They are public copy, so scripts/growth/store-captions-next.test.ts checks each one against the
+ * of each shot and the label in the corner of every image. e2e/uiux/appstore-screenshots-next.spec.ts renders them into the
+ * images. They are public copy, so ./store-captions-next.test.ts checks each one against the
  * public-claims gate and the committed images' size on every run of the root tests, without rendering anything.
  */
 

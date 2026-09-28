@@ -2,7 +2,7 @@
  * The next version's App Store screenshots (docs/release/appstore/next/<locale>/): the words rendered into them, and
  * the committed images.
  *
- *   - Every caption and corner label (e2e/uiux/appstore-captions-next.ts) passes the public-claims gate against the
+ *   - Every caption and corner label (scripts/growth/appstore-captions-next.ts) passes the public-claims gate against the
  *     current registry, so a caption edit, or a registry change that retires what a caption says, fails here even
  *     though the screenshot spec itself only runs by hand.
  *   - Each locale has exactly one image per shot, 1320×2868, with no alpha channel.
@@ -10,7 +10,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { IMAGE_SIZE, SHOTS, STORE_SHOTS_NEXT, type StoreShotLocale } from "../../e2e/uiux/appstore-captions-next";
+import { IMAGE_SIZE, SHOTS, STORE_SHOTS_NEXT, type StoreShotLocale } from "./appstore-captions-next";
 import { formatFinding, scanContent } from "./validate-public-claims.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
