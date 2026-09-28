@@ -1259,6 +1259,9 @@ Full rationale in `packages/tokens/README.md`.
   Amended <date>: no executable script in the pages' source (Cloudflare adds its Web Analytics beacon at the edge,
   as the privacy policy says); Safari may fetch the Smart App Banner from Apple.
 
+  Amended <date>: the app was removed from the App Store on <date>; the pages carry no Smart App Banner and no link
+  to the listing.
+
 - **The landing page carries NO App Store badge, and says why on the page.** `docs/PIVOT.md` §0 is
   unanswered: seats.aero's Partner API is licensed for non-commercial personal use and nobody has
   confirmed that permits a distributed app. A "Download on the App Store" button would assert a

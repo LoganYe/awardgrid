@@ -7,18 +7,24 @@
  *   node scripts/growth/validate-public-claims.mjs --dist <dir>      … plus every *.html and *.txt of a built site
  *   node scripts/growth/validate-public-claims.mjs --status released run the content rules as if the registry said so
  *   node scripts/growth/validate-public-claims.mjs --file draft.md   scan only these files (a draft kept elsewhere)
- *   node scripts/growth/validate-public-claims.mjs --t0-merge-check  … and fail on T0_UNRECORDED (so does T0_MERGE_CHECK=1)
+ *   node scripts/growth/validate-public-claims.mjs --t0-merge-check  … and fail on the deferred findings (so does T0_MERGE_CHECK=1)
  *   options: --registry <path>  --root <dir>  --json
  *
  * Exit 0 when clean, 1 with one line per finding (`RULE file:line "excerpt"`), 2 on a usage error. A summary line
  * with the count per rule and the files scanned is always printed, so a CI log shows the gate really ran.
  *
- * T0_UNRECORDED is the one deferred finding: a registry whose status is released but whose released_at_utc or
- * t0_lookup_receipt is still empty. The T0 switch is prepared before T0 with those two left empty, since only the
+ * T0_UNRECORDED is one deferred finding: a registry whose status is released (or withdrawn, since a removal follows
+ * the release) but whose released_at_utc or t0_lookup_receipt is still empty. The T0 switch is prepared before T0 with those two left empty, since only the
  * lookup that first returns the app can fill them (scripts/growth/set-t0.mjs does, on T0 day). Until then the gate
  * prints it as a DEFERRED line and does not fail on it, so CI on the prepared switch stays green; with
  * --t0-merge-check or T0_MERGE_CHECK=1 it is a finding like any other, and the switch is not merged until that run
  * exits 0.
+ *
+ * WITHDRAWN_UNRECORDED is the other, the same pattern for the removal: a registry whose status is withdrawn but whose
+ * withdrawn_at_utc is still empty. The change to withdrawn is prepared with the date of the removal left as <date> in
+ * the withdrawn sentences (the registry's own placeholder); scripts/growth/set-withdrawn.mjs records withdrawn_at_utc
+ * and writes its date into them in one run. Until then the one deferred line stands for every placeholder; once the
+ * date is recorded, a placeholder left in a public file is DATE_PLACEHOLDER, which fails in every mode.
  *
  * Pages are read the way `apps/ios/src/honesty.test.ts` (`landingTexts`) reads them, so both scanners see the same
  * text: comments, the doctype and <style> are dropped; the strings of <script type="application/ld+json"> are kept;
@@ -331,7 +337,9 @@ export function htmlDocument(raw, { file = "page.html", logical = file, dist = f
     try {
       block.parsed = JSON.parse(block.body);
       for (const s of jsonStrings(block.parsed)) {
-        for (const { pieces } of markupRuns(s, 0)) {
+        // A string's markup is read as the page's is, but <date> is the withdrawn copy's placeholder, not a tag: it
+        // reads as the page's &lt;date&gt; does, so a withdrawn sentence in the JSON-LD is found like the one on the page.
+        for (const { pieces } of markupRuns(s.replace(/<date>/g, "&lt;date&gt;"), 0)) {
           const run = buildRun(pieces, true);
           run.map = run.map.map(() => m.index);
           runs.push(run);
@@ -878,11 +886,15 @@ export const RULE_IDS = [
     "ATTRIBUTION_LINK",
     "SCHEMA_JSON",
     "TRADEMARK_ASO",
+    "DATE_PLACEHOLDER",
   ]),
 ];
-export const REGISTRY_RULE_IDS = ["REGISTRY", "EVIDENCE_REF", "PUBLIC_FILE_MISSING", "PUBLIC_CLAIMS_MARKERS", "UNREGISTERED_SURFACE", "EXEMPTION_INVALID", "EXEMPTION_UNUSED", "T0_UNRECORDED"];
+export const REGISTRY_RULE_IDS = [
+  "REGISTRY", "EVIDENCE_REF", "PUBLIC_FILE_MISSING", "PUBLIC_CLAIMS_MARKERS", "UNREGISTERED_SURFACE", "EXEMPTION_INVALID", "EXEMPTION_UNUSED", "T0_UNRECORDED",
+  "WITHDRAWN_UNRECORDED",
+];
 /** Findings the gate reports without failing on, unless the T0 merge check asks for them (see the header). */
-export const DEFERRED_RULE_IDS = ["T0_UNRECORDED"];
+export const DEFERRED_RULE_IDS = ["T0_UNRECORDED", "WITHDRAWN_UNRECORDED"];
 
 /** The iPhone app as a subject: "the app", "iPhone app", "iOS app"; not "App Store", "App ID", "App Review". */
 const SUBJECT_EN = /\b(?:iPhone|iOS|the) app\b(?!\s*(?:Store|ID|Review|Clip)\b)/i;
@@ -1006,6 +1018,9 @@ export function exactCopySentences(registry) {
   return [...new Set(out.flatMap((s) => readText(s).replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+/)))];
 }
 
+/** A Chinese character or punctuation mark (CJK ideographs, CJK punctuation, full-width forms). */
+const CJK_CHAR = /[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]/;
+
 /**
  * The sentences of every status-dependent claim (allowed_copy_by_status, and its Chinese, allowed_copy_zh_by_status,
  * and the extra sentences per status, allowed_copy_extra_by_status and allowed_copy_zh_extra_by_status), each with a
@@ -1019,10 +1034,14 @@ export function statusSentences(registry) {
       const sentences = String(text).replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+|(?<=[。！？])\s*/);
       for (const sentence of sentences.filter(Boolean)) {
         const body = sentence.replace(/[.。]$/, "");
-        const source = body
+        // A space next to Chinese is optional (Chinese text puts one only between Chinese and Latin letters or digits,
+        // and a page may leave it out), so a status sentence is found however its Chinese is spaced.
+        const parts = body
           .split("<date>")
-          .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+"))
-          .join("[^.。\\n]{1,40}?");
+          .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, (_s, i, str) => (CJK_CHAR.test(str[i - 1] ?? "") || CJK_CHAR.test(str[i + 1] ?? "") ? "\\s*" : "\\s+")));
+        // A date inside a sentence is as short as it can be; one that ends it runs to the full stop, so the finding
+        // shows the whole date ("on 1 November 2026", or the placeholder).
+        const source = parts.reduce((out, part, k) => `${out}${k === parts.length - 1 && part === "" ? "[^.。\\n]{1,40}" : "[^.。\\n]{1,40}?"}${part}`);
         out.push({ claim: claim.claim_id, status, sentence: body, source });
       }
     }
@@ -1290,6 +1309,24 @@ function htmlFindings(doc, ctx, out) {
   }
 }
 
+/**
+ * The date placeholder of the withdrawn copy, as a public file holds it until scripts/growth/set-withdrawn.mjs fills
+ * it: <date> in Markdown and plain text, &lt;date&gt; in a page's text, and \u003cdate> in its JSON-LD (the escape
+ * scripts/growth/sync-faq-schema.mjs writes for "<").
+ */
+export const DATE_PLACEHOLDER = /<date>|&lt;date&gt;|\\u003cdate(?:>|\\u003e)/gi;
+
+function placeholderFindings(doc, ctx, out) {
+  // While the removal is not recorded, the registry's deferred WITHDRAWN_UNRECORDED stands for every placeholder:
+  // set-withdrawn.mjs records the date and fills them in one run.
+  if (ctx.withdrawalPending) return;
+  const source = doc.kind === "html" ? doc.page : doc.raw.replace(/<!--[\s\S]*?-->/g, blank);
+  const [a, b] = doc.region;
+  for (const m of source.slice(a, b).matchAll(DATE_PLACEHOLDER)) {
+    push(out, doc, "DATE_PLACEHOLDER", "raw", a + m.index, a + m.index + m[0].length, "a date left as <date>: scripts/growth/set-withdrawn.mjs writes the date of the removal", doc.raw);
+  }
+}
+
 function trademarkFindings(doc, ctx, out) {
   if (!STORE_FIELD.test(doc.logical)) return;
   for (const term of ctx.trademarks) {
@@ -1303,7 +1340,7 @@ function trademarkFindings(doc, ctx, out) {
 /**
  * Every finding in one document, before exemptions.
  * @param {Doc} doc
- * @param {{ status: string, appId: string, exactCopy: string[], pending: Array<{claim: string, sentence: string}>, statusCopy?: Array<{claim: string, status: string, sentence: string, source: string}>, trademarks: string[] }} ctx
+ * @param {{ status: string, appId: string, exactCopy: string[], pending: Array<{claim: string, sentence: string}>, statusCopy?: Array<{claim: string, status: string, sentence: string, source: string}>, trademarks: string[], withdrawalPending?: boolean }} ctx
  * @returns {Finding[]}
  */
 export function scanDocument(doc, ctx) {
@@ -1311,6 +1348,7 @@ export function scanDocument(doc, ctx) {
   contentFindings(doc, ctx, out);
   if (doc.kind === "html") htmlFindings(doc, ctx, out);
   trademarkFindings(doc, ctx, out);
+  placeholderFindings(doc, ctx, out);
   const seen = new Set();
   return out.filter((f) => {
     const key = `${f.rule}\u0000${f.file}\u0000${f.hay}\u0000${f.start}\u0000${f.end}`;
@@ -1330,6 +1368,8 @@ export function scanContext(registry, { status, root = DEFAULT_ROOT } = {}) {
     pending: registry ? pendingNeedles(registry) : [],
     statusCopy: registry ? statusSentences(registry) : [],
     trademarks: trademarkTerms(root),
+    // The removal is not recorded yet: the registry's deferred WITHDRAWN_UNRECORDED covers the <date> placeholders.
+    withdrawalPending: registry?.released?.status === "withdrawn" && !registry?.released?.withdrawn_at_utc,
   };
 }
 
@@ -1579,14 +1619,15 @@ export function checkRegistry(registry, { root = DEFAULT_ROOT, registryFile = "g
   const rel = registry.released ?? {};
   for (const f of RELEASED_FIELDS) if (!(f in rel)) add("REGISTRY", `released.${f} is missing`, '"released"');
   if (!STATUSES.includes(rel.status)) add("REGISTRY", `released.status "${rel.status}" is not one of ${STATUSES.join(", ")}`, '"status"');
-  if (rel.status === "released") {
+  if (rel.status === "released" || rel.status === "withdrawn") {
     const empty = ["released_at_utc", "t0_lookup_receipt"].filter((f) => !rel[f]);
     if (empty.length) {
-      add(
-        "T0_UNRECORDED",
-        `released.status is released but ${empty.join(" and ")} ${empty.length > 1 ? "are" : "is"} empty: on T0 day run node scripts/growth/set-t0.mjs --released-at <ISO> --receipt <lookup URL>, before the switch is merged`,
-        '"status"',
-      );
+      // The removal follows the release: the change to withdrawn goes on a tree whose T0 set-t0.mjs has recorded.
+      const fill =
+        rel.status === "released"
+          ? "on T0 day run node scripts/growth/set-t0.mjs --released-at <ISO> --receipt <lookup URL>, before the switch is merged"
+          : "the app is removed only after it is released, so the change to withdrawn goes on a tree where node scripts/growth/set-t0.mjs has recorded T0";
+      add("T0_UNRECORDED", `released.status is ${rel.status} but ${empty.join(" and ")} ${empty.length > 1 ? "are" : "is"} empty: ${fill}`, '"status"');
     }
   }
   if (rel.released_at_utc && !isUtcInstant(rel.released_at_utc)) add("REGISTRY", `released.released_at_utc "${rel.released_at_utc}" is not a UTC time (YYYY-MM-DDTHH:MM:SSZ)`, '"released_at_utc"');
@@ -1594,7 +1635,21 @@ export function checkRegistry(registry, { root = DEFAULT_ROOT, registryFile = "g
     const problem = lookupProblem(rel.t0_lookup_receipt, String(rel.app_id ?? ""));
     if (problem) add("REGISTRY", `released.t0_lookup_receipt: ${problem}`, '"t0_lookup_receipt"');
   }
-  if (rel.status === "withdrawn" && !rel.withdrawn_at_utc) add("REGISTRY", "released.status is withdrawn but withdrawn_at_utc is empty", '"status"');
+  if (rel.status === "withdrawn" && !rel.withdrawn_at_utc) {
+    add(
+      "WITHDRAWN_UNRECORDED",
+      "released.status is withdrawn but withdrawn_at_utc is empty: on the day of the removal run node scripts/growth/set-withdrawn.mjs --withdrawn-at <ISO> --receipt <lookup URL>, which also writes the date into the withdrawn sentences, before the change is merged",
+      '"status"',
+    );
+  }
+  if (rel.withdrawn_at_utc) {
+    if (!isUtcInstant(rel.withdrawn_at_utc)) add("REGISTRY", `released.withdrawn_at_utc "${rel.withdrawn_at_utc}" is not a UTC time (YYYY-MM-DDTHH:MM:SSZ)`, '"withdrawn_at_utc"');
+    else if (rel.status !== "withdrawn") add("REGISTRY", `released.status is ${rel.status} but withdrawn_at_utc is set`, '"withdrawn_at_utc"');
+    else {
+      const [label, before] = rel.released_at_utc ? ["released_at_utc", rel.released_at_utc] : ["submitted_at_utc", rel.submitted_at_utc];
+      if (before && rel.withdrawn_at_utc < String(before)) add("REGISTRY", `released.withdrawn_at_utc ${rel.withdrawn_at_utc} is before ${label} (${before})`, '"withdrawn_at_utc"');
+    }
+  }
   if (rel.status === "submitted_not_live" && rel.released_at_utc) add("REGISTRY", "released.status is submitted_not_live but released_at_utc is set", '"released_at_utc"');
   if (rel.evidence_level !== undefined && !EVIDENCE_LEVELS.includes(rel.evidence_level)) add("REGISTRY", `released.evidence_level "${rel.evidence_level}" is not one of ${EVIDENCE_LEVELS.join(", ")}`);
   if (rel.checked_at !== undefined && !DATE.test(rel.checked_at)) add("REGISTRY", "released.checked_at is not YYYY-MM-DD");

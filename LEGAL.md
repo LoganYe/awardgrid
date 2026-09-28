@@ -1,7 +1,7 @@
 # LEGAL
 
 AwardGrid began as a private, invite-only web app for its developer and a small group of friends.
-The iPhone app is a separate, public release. The web app at
+The iPhone app was a separate, public release until it was removed from the App Store. The web app at
 this address is private and invite-only; it is separate from the iPhone app. There is no paywall,
 cost-sharing, subscription or advertising. Neither app has telemetry or analytics of its own; the pages on
 awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no cookies.

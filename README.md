@@ -4,9 +4,7 @@
 ## AwardGrid for iPhone
 
 AwardGrid is an iPhone app by Curastone CORP.
-AwardGrid is free on the App Store (App ID 6816321841).
-The app is free, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.
-AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+AwardGrid for iPhone was removed from the App Store on <date>.
 
 It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
 
@@ -22,6 +20,9 @@ The AwardGrid iPhone app has no accounts and no server of its own, and there is 
 For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.
 No live search, no booking, no round trips, no alerts or notifications, no scraping of airline or bank sites, no airline or bank passwords, no logos.
 
+It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.
+AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.
+
 AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.
 
 - About the app: <https://awardgrid.dowhiz.com/ios/>
@@ -34,7 +35,8 @@ AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthr
 This repo also holds a private, invite-only web app, separate from the iPhone app.
 
 AwardGrid began as a private, invite-only web app for its developer and a small group of friends. The iPhone app
-is a separate, public release. Every user brings their **own** seats.aero Pro key.
+was a separate, public release until it was removed from the App Store. Every user brings their **own** seats.aero
+Pro key.
 **Data: seats.aero.**
 
 The web app's scheduler (the **worker** lane below) is not running in the current deployment (`docs/DEPLOYMENT.md`).

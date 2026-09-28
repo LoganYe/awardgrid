@@ -298,7 +298,7 @@ const CASES: ReadonlyArray<{ rule: string; lang: "en" | "zh"; fail: string[]; pa
 describe("content rules: each fails on a claim and passes on the honest sentence", () => {
   it("covers every content rule, in English, and in Chinese where the rule has Chinese", () => {
     const covered = new Set(CASES.map((c) => `${c.rule}/${c.lang}`));
-    const contentRules = RULE_IDS.filter((r: string) => !["STALE_STATUS", "PREMATURE_STATUS", "WITHDRAWN_STATUS", "PENDING_CLAIM_TEXT", "HTML_COMMENT_IN_DIST", "SCRIPT_NOT_LD_JSON", "ATTRIBUTION_LINK", "SCHEMA_JSON", "TRADEMARK_ASO"].includes(r));
+    const contentRules = RULE_IDS.filter((r: string) => !["STALE_STATUS", "PREMATURE_STATUS", "WITHDRAWN_STATUS", "PENDING_CLAIM_TEXT", "HTML_COMMENT_IN_DIST", "SCRIPT_NOT_LD_JSON", "ATTRIBUTION_LINK", "SCHEMA_JSON", "TRADEMARK_ASO", "DATE_PLACEHOLDER"].includes(r));
     for (const rule of contentRules) {
       expect(covered.has(`${rule}/en`), rule).toBe(true);
       expect(covered.has(`${rule}/zh`), rule).toBe(true);
@@ -524,6 +524,20 @@ describe("status modes", () => {
     expect(inEachZh("它将在 174 个国家或地区提供，中国大陆除外。").released).toEqual([]);
   });
 
+  it("finds a status sentence's Chinese however it is spaced next to Chinese characters", () => {
+    // The registry writes 已于 <date>从 (no space between the date and 从); a page that spaces it otherwise is still found.
+    const inEachZh = (text: string) => Object.fromEntries((["submitted", "released", "withdrawn"] as const).map((s) => [s, rules(text, { status: s })]));
+    for (const text of [
+      "AwardGrid iPhone 版已于 2026 年 11 月 1 日从 App Store 下架。",
+      "AwardGrid iPhone 版已于 2026 年 11 月 1 日 从 App Store 下架。",
+      "AwardGrid iPhone版已于2026 年 11 月 1 日从App Store下架。",
+    ]) {
+      expect(inEachZh(text), text).toEqual({ submitted: ["PREMATURE_STATUS"], released: ["PREMATURE_STATUS"], withdrawn: [] });
+    }
+    // Spaces between Latin words are not optional: "AppStore" is not the sentence.
+    expect(inEachZh("AwardGrid iPhone 版已于 2026 年 11 月 1 日从 AppStore 下架。").released).toEqual([]);
+  });
+
   it("an extra sentence for a status (allowed_copy_extra_by_status, and its Chinese) is that status's copy", () => {
     // Pinned by a registry of its own. The sentences carry no listing words, so only the registry's copy catches them.
     const registry = structuredClone(REGISTRY);
@@ -744,6 +758,58 @@ describe("page structure (HTML)", () => {
   });
 });
 
+describe("DATE_PLACEHOLDER: the withdrawn copy's <date>, left unfilled", () => {
+  /** A registry that says withdrawn, with the removal recorded or not. */
+  const withdrawn = (at: string | null) => {
+    const r = structuredClone(REGISTRY);
+    r.released.status = "withdrawn";
+    r.released.withdrawn_at_utc = at;
+    return r;
+  };
+  const recorded = withdrawn("2026-11-01T09:00:00Z");
+  const sentence = "AwardGrid for iPhone was removed from the App Store on <date>.";
+
+  it("fails a <date> in every form a public file holds it, once the removal is recorded, and in any status", () => {
+    // A page's text (&lt;date&gt;), its JSON-LD (the \\u003c escape sync-faq-schema.mjs writes), Markdown and plain text.
+    const page = html(`<p>${sentence.replace("<date>", "&lt;date&gt;")}</p>`).replace(
+      "<title>t</title>",
+      `<title>t</title><script type="application/ld+json">{"text": ${JSON.stringify(sentence).replace("<", "\\u003c")}}</script>`,
+    );
+    const found = hits(page, { logical: PAGE, status: "withdrawn", registry: recorded }).filter((h) => h.startsWith("DATE_PLACEHOLDER"));
+    expect(found).toEqual(['DATE_PLACEHOLDER "\\\\u003cdate>"', 'DATE_PLACEHOLDER "&lt;date&gt;"']);
+    expect(rules(sentence, { logical: "growth/geo/accuracy-answer.md", status: "withdrawn", registry: recorded })).toEqual(["DATE_PLACEHOLDER"]);
+    expect(rules(`- Status: ${sentence}`, { logical: "sites/landing/public/llms.txt", status: "withdrawn", registry: recorded })).toEqual(["DATE_PLACEHOLDER"]);
+    // In another status the sentence is premature too, and the placeholder is still a placeholder.
+    expect(rules(sentence, { status: "released", registry: recorded }).sort()).toEqual(["DATE_PLACEHOLDER", "PREMATURE_STATUS"]);
+    // The Chinese sentence; and a registry that is not withdrawn at all has nothing to defer it to.
+    const zh = "<p>AwardGrid iPhone 版已于 &lt;date&gt;从 App Store 下架。</p>";
+    expect(rules(zh, { logical: PAGE, status: "withdrawn", registry: recorded })).toEqual(["DATE_PLACEHOLDER"]);
+    const released = structuredClone(REGISTRY);
+    released.released.status = "released";
+    released.released.withdrawn_at_utc = null;
+    expect(rules(zh, { logical: PAGE, status: "released", registry: released }).sort()).toEqual(["DATE_PLACEHOLDER", "PREMATURE_STATUS"]);
+  });
+
+  it("is left to the registry's deferred WITHDRAWN_UNRECORDED while the removal is not recorded", () => {
+    const pending = withdrawn(null);
+    expect(rules(sentence, { status: "withdrawn", registry: pending })).toEqual([]);
+    expect(rules(html(`<p>${sentence.replace("<date>", "&lt;date&gt;")}</p>`), { logical: PAGE, status: "withdrawn", registry: pending })).toEqual([]);
+    expect(checkRegistry(pending, { root: ROOT }).filter((f: { rule: string }) => f.rule === "WITHDRAWN_UNRECORDED")).toHaveLength(1);
+  });
+
+  it("passes the filled sentence, and a <date> in a comment, which no reader sees", () => {
+    const filled = "AwardGrid for iPhone was removed from the App Store on 1 November 2026.";
+    expect(rules(filled, { status: "withdrawn", registry: recorded })).toEqual([]);
+    expect(rules(html(`<!-- the sentence says <date> until it is filled --><p>${filled}</p>`), { logical: PAGE, status: "withdrawn", registry: recorded })).toEqual([]);
+    expect(rules(`<!-- <date> -->\n${filled}`, { logical: "growth/geo/accuracy-answer.md", status: "withdrawn", registry: recorded })).toEqual([]);
+  });
+
+  it("reads the JSON-LD's <date> as text, so a withdrawn sentence there is found like the page's", () => {
+    const page = html("<p>x</p>").replace("<title>t</title>", `<title>t</title><script type="application/ld+json">{"text": ${JSON.stringify(sentence).replace("<", "\\u003c")}}</script>`);
+    expect(hits(page, { logical: PAGE, status: "released", registry: withdrawn(null) })).toEqual([`PREMATURE_STATUS "${sentence.slice(0, -1)}"`]);
+  });
+});
+
 describe("TRADEMARK_ASO", () => {
   const field = (name: string) => `apps/ios/store-metadata/en-US/${name}.txt`;
 
@@ -914,6 +980,28 @@ describe("registry checks", () => {
         expect.stringMatching(/public_use is missing/),
       ]),
     );
+  });
+
+  it("checks the removal's time: a UTC time, only on a withdrawn registry, after T0, which a withdrawn registry needs", () => {
+    const withdrawn = (at: unknown, status = "withdrawn", releasedAt: string | null = "2026-09-29T14:05:00Z") => {
+      const r = structuredClone(REGISTRY);
+      r.released.status = status;
+      r.released.withdrawn_at_utc = at;
+      r.released.released_at_utc = releasedAt;
+      r.released.t0_lookup_receipt = releasedAt ? "https://itunes.apple.com/lookup?id=6816321841&country=us&cb=1759154700" : null;
+      return checkRegistry(r, { root: ROOT }).map((f: { rule: string; match: string }) => `${f.rule} ${f.match}`);
+    };
+    expect(withdrawn("2026-11-01T09:00:00Z")).toEqual([]);
+    expect(withdrawn("2026-11-01")).toEqual([expect.stringMatching(/^REGISTRY released\.withdrawn_at_utc "2026-11-01" is not a UTC time/)]);
+    expect(withdrawn("2026-11-01T09:00:00Z", "released")).toEqual(["REGISTRY released.status is released but withdrawn_at_utc is set"]);
+    expect(withdrawn("2026-09-29T12:00:00Z")).toEqual(["REGISTRY released.withdrawn_at_utc 2026-09-29T12:00:00Z is before released_at_utc (2026-09-29T14:05:00Z)"]);
+    expect(withdrawn(null)).toEqual([expect.stringMatching(/^WITHDRAWN_UNRECORDED released\.status is withdrawn but withdrawn_at_utc is empty: .*set-withdrawn\.mjs --withdrawn-at <ISO> --receipt <lookup URL>/)]);
+    // The removal follows the release: a withdrawn registry without T0 is T0_UNRECORDED (deferred, and failing under the
+    // merge check), recorded removal or not; the submission is then the only floor there is.
+    const t0 = expect.stringMatching(/^T0_UNRECORDED released\.status is withdrawn but released_at_utc and t0_lookup_receipt are empty: the app is removed only after it is released/);
+    expect(withdrawn("2026-11-01T09:00:00Z", "withdrawn", null)).toEqual([t0]);
+    expect(withdrawn(null, "withdrawn", null)).toEqual([t0, expect.stringMatching(/^WITHDRAWN_UNRECORDED /)]);
+    expect(withdrawn("2026-09-26T12:00:00Z", "withdrawn", null)).toEqual([t0, "REGISTRY released.withdrawn_at_utc 2026-09-26T12:00:00Z is before submitted_at_utc (2026-09-27T03:24:00Z)"]);
   });
 
   it("checks the Chinese copy's shape: a sentence, a list, and the Chinese of a status only where the English has it", () => {

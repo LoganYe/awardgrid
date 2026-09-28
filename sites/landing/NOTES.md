@@ -74,13 +74,10 @@ Each page listed in `pages.json` carries a canonical link to itself on `https://
 `website`, `og:url` (the canonical), `og:title` (its title), `og:description` (its meta description),
 `twitter:card` `summary`, and the favicons `/favicon.svg` and `/favicon.ico` (the build writes them relative to the
 page). No `og:image` yet. `/`, `/ios/`, `/ios/award-grid/` and `/ios/zh-hans/` carry the JSON-LD graph (Organization,
-WebSite); nothing claims `MobileApplication` before the app is released. Once it is (DECISIONS.md, the App Store
-listing amendment), `/ios/` ends its graph with a `MobileApplication` node whose `offers.url` is the listing with no
-slug, and `/ios/` and `/ios/zh-hans/` carry the Smart App Banner,
-`<meta name="apple-itunes-app" content="app-id=6816321841">` (`scripts/growth/store-listing.test.ts`). The node says
-which app the site is about. Google's software-app rich result also requires `aggregateRating` or `review`, and the
-node has neither, so Search Console may list `/ios/` as an invalid "Software apps" item once it is crawled. That is
-expected and needs no action: a rating or a review goes into the node only from real App Store data, with its source.
+WebSite). The app was removed from the App Store (the registry's status is withdrawn), so no page links the listing:
+`/ios/` has no app node in its graph and neither `/ios/` nor `/ios/zh-hans/` carries Apple's Smart App Banner
+(`scripts/growth/store-listing.test.ts` checks that they are gone; DECISIONS.md, the removal's amendment under the
+zero-network entry).
 
 A page that shows questions carries a `FAQPage` node in that graph, generated from the questions it shows:
 `/ios/` and `/ios/zh-hans/`. The questions follow one convention, `<section class="faq" data-faq
@@ -107,7 +104,8 @@ the visible questions, never the JSON-LD.
   behind restful.dowhiz.com's `.fact-table` and `.compare-table`. Blur behind a column of mileage figures makes them
   harder to read.
 - Rewritten on 2026-09-28 to answer questions rather than only carry a tagline: "What you need" (the iPhone, the
-  seats.aero Pro key, the Anthropic key for Ask, and the dependency on seats.aero's Partner API), the example table,
+  seats.aero Pro key, the dependency on seats.aero's Partner API, and the Anthropic key for Ask; `/ios/zh-hans/`'s
+  使用前提 lists them in the same order), the example table,
   "Questions" (the nine answers of `growth/geo/accuracy-answer.md`, word for word), "What it does not do" and "Where
   this is up to". The H1 is unchanged. Every new sentence is registry copy.
 - The three "How it works" articles (the web app's front-door copy) are gone. Their facts are in "What you need",
@@ -119,12 +117,16 @@ the visible questions, never the JSON-LD.
   rather than shorter, after Restful's page (docs/PIVOT.md §4; DECISIONS.md, same entry). Its rows are kept as they
   were, the "No accounts, no analytics in the app" row word for word as the owner wrote it (PR #104); "No round trips"
   (the scope claim) was added.
-- "Where this is up to" is the released status (the switch to released), all registry copy: release_status's
-  released sentence for this page, the prerequisite, the dependency, the prerequisite's released sentence from
-  seats.aero's help centre (not every Pro account or country gets API access), a link to the listing with the campaign
-  token `ct=awardgrid-ios` and the provider token `pt=124116782`, and the pointer to the privacy policy. Before the day
-  the app is first found on the App Store the gate finds all of it premature (`--status submitted`;
-  `scripts/growth/current-tree.test.ts` pins the list).
+- "Where this is up to" is the withdrawn status, all registry copy: release_status's withdrawn sentence ("AwardGrid for
+  iPhone was removed from the App Store on <date>."), then the pointer to the privacy policy, and nothing else. It
+  comes right after the lead, before "What you need", so a reader learns first that the app is no longer on the App
+  Store. The first question, "Is AwardGrid free?", has the same sentence for its answer. Once withdrawn, the
+  dependency ("What you need" and "Could AwardGrid stop working?", and on every other page that states it) is its first
+  sentence alone: the second advises a check before subscribing to seats.aero Pro, which is advice for someone about
+  to get the app (the registry's dependency claim). `<date>` stays in the pages until
+  `scripts/growth/set-withdrawn.mjs` writes the date of the removal into every withdrawn sentence; until then the gate
+  defers WITHDRAWN_UNRECORDED. With `--status released` or `--status submitted` the gate finds the withdrawn wording
+  premature (`scripts/growth/current-tree.test.ts` pins the list).
 - Known mismatches, kept as the spec says until the owner decides:
   - The example table is laid out the web app's way: one row per route, one column per date, and a bare "—" in an
     empty cell. The iPhone app's Matrix, which "How the table works" describes right below it, has the dates as rows
@@ -157,8 +159,9 @@ the visible questions, never the JSON-LD.
   works" use the step-shaped sentences of views, program_link and keys ("your iPhone", since a web page may be read
   on any device). Cabins are not called an optional filter: a search always asks for at least one, business and
   first unless you choose others (the filters claim).
-- The status sentence sits right before the prerequisite, so the released status sentence, which says "free", can
-  replace it as it is (`FREE_WITHOUT_PRO`).
+- "Where this is up to" is release_status's withdrawn sentence alone. The prerequisite followed the status sentence
+  while that sentence said "free" (`FREE_WITHOUT_PRO`); nothing is priced once the app is removed, and the first step
+  of "How it works" still names the key.
 
 ### `privacy/index.html`: the iPhone app's privacy policy
 

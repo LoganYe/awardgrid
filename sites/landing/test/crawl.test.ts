@@ -448,7 +448,10 @@ describe("the home page", () => {
 
   it("says the registry's words: the status for the current status, the web app note as plain text, the affiliation", () => {
     const status: string = claim("release_status").allowed_copy_by_status[REGISTRY.released.status];
-    expect(text).toContain(status);
+    // The withdrawn status says <date> until scripts/growth/set-withdrawn.mjs writes the date of the removal.
+    const DATE = String.raw`(?:<date>|\d{1,2} [A-Z][a-z]+ \d{4})`;
+    const escape = (part: string) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    expect(text.replace(/&lt;/g, "<").replace(/&gt;/g, ">")).toMatch(new RegExp(status.split("<date>").map(escape).join(DATE)));
     // A status that says free has the prerequisite after it, in the same paragraph (release_status's limitation).
     const paragraphs = [...html.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => m[1]!.replace(/\s+/g, " ").trim());
     if (/\bfree\b/.test(status)) expect(paragraphs).toContain(`${status} ${claim("prerequisite").allowed_copy}`);

@@ -28,6 +28,7 @@ import {
   t0Date,
   todayOf,
 } from "./set-t0.mjs";
+import { applyWithdrawal } from "./set-withdrawn.mjs";
 import { checkRegistry, formatFinding } from "./validate-public-claims.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
@@ -37,12 +38,17 @@ const RECEIPT = "https://itunes.apple.com/lookup?id=6816321841&country=us&cb=175
 const AT = "2026-09-29T14:05:00Z";
 const NOW = new Date("2026-09-29T15:00:00Z");
 
-/** The registry as the switch is prepared: released, T0 not recorded (whatever this tree's registry holds). */
-const prepared = () => {
-  const r = structuredClone(REGISTRY);
+/**
+ * The registry as the switch is prepared: released, T0 not recorded, and no removal (whatever `base` holds: this tree's
+ * registry may say released, or withdrawn with T0 and the removal recorded).
+ */
+const preparedFrom = (base: typeof REGISTRY) => {
+  const r = structuredClone(base);
   r.released.status = "released";
   r.released.released_at_utc = null;
   r.released.t0_lookup_receipt = null;
+  r.released.withdrawn_at_utc = null;
+  for (const holder of [r.released, ...r.claims]) holder.evidence_ref = holder.evidence_ref.filter((ref: string) => !ref.endsWith("(withdrawal)"));
   r.released.checked_at = "2026-09-28";
   const status = r.claims.find((c: { claim_id: string }) => c.claim_id === "release_status");
   status.checked_at = "2026-09-28";
@@ -52,6 +58,7 @@ const prepared = () => {
   for (const c of r.claims) c.evidence_ref = c.evidence_ref.map((ref: string) => ref.replace(/^(\[external\] https:\/\/docs\.seats\.aero\/article\/68 \(read )\d{4}-\d{2}-\d{2}/, "$12026-09-28"));
   return r;
 };
+const prepared = () => preparedFrom(REGISTRY);
 const refused = (fn: () => unknown) => {
   try {
     fn();
@@ -111,6 +118,20 @@ describe("applyT0: the registry with T0 recorded", () => {
     // Pure: the registry it was given is unchanged.
     expect(before.released.released_at_utc).toBeNull();
     // Every ref it writes is one the gate reads, and T0_UNRECORDED is gone.
+    expect(checkRegistry(registry, { root: ROOT }).map(formatFinding)).toEqual([]);
+  });
+
+  it("prepares the same switch from a tree whose registry says withdrawn, with T0 and the removal recorded", () => {
+    // The withdrawn template's tree on the day of the removal, after set-t0.mjs (on main) and set-withdrawn.mjs.
+    const released = applyT0(prepared(), { releasedAt: AT, receipt: RECEIPT, now: NOW }).registry;
+    released.released.status = "withdrawn";
+    const removal = "https://itunes.apple.com/lookup?id=6816321841&country=us&cb=1793437200";
+    const removed = applyWithdrawal(released, { withdrawnAt: "2026-11-01T09:00:00Z", receipt: removal, now: new Date("2026-11-01T10:00:00Z") }).registry;
+    expect(checkRegistry(removed, { root: ROOT }).map(formatFinding)).toEqual([]);
+    const again = preparedFrom(removed);
+    expect(again.released).toMatchObject({ status: "released", released_at_utc: null, t0_lookup_receipt: null, withdrawn_at_utc: null });
+    const { registry } = applyT0(again, { releasedAt: AT, receipt: RECEIPT, now: NOW });
+    expect(registry.released.withdrawn_at_utc).toBeNull();
     expect(checkRegistry(registry, { root: ROOT }).map(formatFinding)).toEqual([]);
   });
 

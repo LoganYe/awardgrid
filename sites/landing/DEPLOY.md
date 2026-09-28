@@ -104,6 +104,9 @@ T0_MERGE_CHECK=1 node scripts/growth/validate-public-claims.mjs --dist sites/lan
 
 A registry that says released before `scripts/growth/set-t0.mjs` has recorded the day the app was first found on the
 App Store fails it (T0_UNRECORDED), so pages that say the app is on the App Store are not deployed before the app is.
+Likewise a registry that says withdrawn before `scripts/growth/set-withdrawn.mjs` has recorded the day of the removal
+fails it (WITHDRAWN_UNRECORDED), so pages whose withdrawn sentence still says `<date>` are not deployed; so does one
+whose T0 was never recorded (T0_UNRECORDED), since the app is removed only after it is released.
 
 **CLI.** `npx wrangler deploy` from `sites/landing` after `wrangler login` (an OAuth grant on the owner's
 Cloudflare account, the owner's call). It uploads `dist/` and sets every route in `wrangler.jsonc` in one step.

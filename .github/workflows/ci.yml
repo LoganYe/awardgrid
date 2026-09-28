@@ -134,7 +134,9 @@ jobs:
   # on any branch that carries it, until scripts/growth/set-t0.mjs records T0 and the owner's re-read of seats.aero's
   # help article 68, and the dates of the switch's DECISIONS.md amendments are filled in
   # (scripts/growth/t0-switch.test.ts). A change without the switch passes it: T0_UNRECORDED is reported only for a
-  # registry that says released.
+  # registry that says released, or withdrawn. The change to withdrawn (the app removed from the App Store) is held the
+  # same way: it goes on a tree whose T0 is recorded, and the gate defers WITHDRAWN_UNRECORDED until
+  # scripts/growth/set-withdrawn.mjs records the removal and dates its sentences.
   t0-merge-check:
     name: T0 merge check (red on the T0 switch until set-t0)
     runs-on: ubuntu-latest

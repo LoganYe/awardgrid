@@ -5,7 +5,7 @@ Short, checked answers to common questions about the AwardGrid iPhone app, each 
 
 ## Is AwardGrid free?
 
-The app is free, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.
+AwardGrid for iPhone was removed from the App Store on <date>.
 
 ## Is AwardGrid affiliated with seats.aero?
 
@@ -37,4 +37,4 @@ No. For an option it opens seats.aero's booking link when there is one; otherwis
 
 ## Could AwardGrid stop working?
 
-AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.
