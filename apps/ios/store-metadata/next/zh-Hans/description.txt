@@ -5,7 +5,7 @@ AwardGrid 把你所选航线和日期的里程票汇总成一张表。每格显�
 • 关注会在你打开应用时检查保存的查询。没有后台检查，也没有通知。
 • AI 辅助（可选）：由 Claude 使用你自己的 Anthropic API 密钥回答关于结果的问题，需先获得你的许可。
 
-使用前提：你自己的 seats.aero Pro 订阅和 API 密钥；没有它，AwardGrid 无法查票。AI 辅助需要你自己的 Anthropic API 密钥，并由 Anthropic 按每次提问向你的账户计费。
+使用前提：你自己的 seats.aero Pro 订阅和 API 密钥；没有它，AwardGrid 无法查票。AI 辅助需要你自己的 Anthropic API 密钥；每次提问由 Anthropic 按此密钥计费。
 
 你的密钥保存在 iPhone 的钥匙串中。App 没有账号、统计分析、广告或跟踪。结果是 seats.aero 的缓存数据，转点前请先在里程计划官网确认。
 
