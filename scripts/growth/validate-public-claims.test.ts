@@ -568,12 +568,15 @@ describe("status modes", () => {
 // ---------------------------------------------------------------------------------------------------------------
 
 describe("PENDING_CLAIM_TEXT", () => {
-  const dependency = REGISTRY.claims.find((c: { claim_id: string }) => c.claim_id === "dependency");
+  // The registry's own pending claims change as the owner approves wording, so these tests hold one pending on a copy.
+  const PENDING = structuredClone(REGISTRY);
+  const dependency = PENDING.claims.find((c: { claim_id: string }) => c.claim_id === "dependency");
+  dependency.public_use = "pending_owner";
 
   it("fails when copy the owner has not approved appears, and passes once it is approved", () => {
     const text = `Before you subscribe: ${dependency.allowed_copy}`;
-    expect(rules(text)).toContain("PENDING_CLAIM_TEXT");
-    const approved = structuredClone(REGISTRY);
+    expect(rules(text, { registry: PENDING })).toContain("PENDING_CLAIM_TEXT");
+    const approved = structuredClone(PENDING);
     approved.claims.find((c: { claim_id: string }) => c.claim_id === "dependency").public_use = "approved";
     expect(rules(text, { registry: approved })).not.toContain("PENDING_CLAIM_TEXT");
   });
@@ -586,18 +589,34 @@ describe("PENDING_CLAIM_TEXT", () => {
 
   it("finds pending copy without its final stop (a list item, a table cell), with typographic quotes, and clause by clause", () => {
     const items = [
-      "The app itself sends nothing to its developer",
-      "The app itself sends nothing to its developer, ever.",
       "AwardGrid depends on seats.aero’s Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw",
       "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use.",
-      "The pages at /ios/, /privacy/ and /support/ run no scripts.",
+      "Check your seats.aero settings show an API tab before you subscribe",
     ];
     for (const item of items) {
-      expect(rules(html(`<ul><li>${item}</li></ul>`), { logical: PAGE }), item).toContain("PENDING_CLAIM_TEXT");
-      expect(rules(`| ${item} |`), item).toContain("PENDING_CLAIM_TEXT");
+      expect(rules(html(`<ul><li>${item}</li></ul>`), { logical: PAGE, registry: PENDING }), item).toContain("PENDING_CLAIM_TEXT");
+      expect(rules(`| ${item} |`, { registry: PENDING }), item).toContain("PENDING_CLAIM_TEXT");
     }
     // One finding per place: the longest piece that matches there.
-    expect(hits(dependency.allowed_copy).filter((h) => h.startsWith("PENDING_CLAIM_TEXT"))).toHaveLength(2);
+    expect(hits(dependency.allowed_copy, { registry: PENDING }).filter((h) => h.startsWith("PENDING_CLAIM_TEXT"))).toHaveLength(2);
+  });
+
+  it("fails retired wording, whole or by the clause, while the clause it shares with the new copy passes", () => {
+    const grid = REGISTRY.claims.find((c: { claim_id: string }) => c.claim_id === "grid");
+    expect(grid.public_use).toBe("approved");
+    for (const retired of grid.retired_copy as string[]) expect(rules(retired), retired).toContain("PENDING_CLAIM_TEXT");
+    expect(rules("One table, with the cheapest award seat in each cell and its miles, fees, seats left, program and data age")).toContain("PENDING_CLAIM_TEXT");
+    expect(rules("The pages at /ios/, /privacy/ and /support/ run no scripts.")).toContain("PENDING_CLAIM_TEXT");
+    expect(hits(grid.allowed_copy)).toEqual([]);
+    const shared = "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table.";
+    expect(rules(shared)).not.toContain("PENDING_CLAIM_TEXT");
+  });
+
+  it("rejects a retired_copy that is not a list of sentences", () => {
+    const bad = structuredClone(REGISTRY);
+    bad.claims.find((c: { claim_id: string }) => c.claim_id === "grid").retired_copy = "one sentence";
+    const problems = checkRegistry(bad, { root: ROOT }).map((f: { rule: string; match: string }) => `${f.rule} ${f.match}`);
+    expect(problems.some((p: string) => p.startsWith("REGISTRY") && p.includes("retired_copy"))).toBe(true);
   });
 });
 

@@ -994,25 +994,37 @@ export function statusSentences(registry) {
 }
 
 /**
- * The pieces of pending copy that must not appear: each sentence without its final stop (a list item or a table
- * cell drops it), and each clause of 25 characters or more (a draft may reuse a clause alone: "AwardGrid depends
- * on seats.aero's Partner API"; "The pages at /ios/, /privacy/ and /support/ run no scripts"). Read as the scanner
- * reads text, lower-cased.
+ * The pieces of copy that must not appear: the copy of a claim still pending the owner, and any claim's
+ * retired_copy (wording that was replaced because it was not true, e.g. a sentence that described the web app's table
+ * rather than the iPhone app's). Each sentence without its final stop (a list item or a table cell drops it), and each
+ * clause of 25 characters or more (a draft may reuse a clause alone: "AwardGrid depends on seats.aero's Partner API";
+ * "The pages at /ios/, /privacy/ and /support/ run no scripts"). Read as the scanner reads text, lower-cased.
  */
 export function pendingNeedles(registry) {
   const out = [];
   const seen = new Set();
+  // A retired sentence may share a clause with the copy that replaced it ("It puts … into one table"); that clause is
+  // still true, so it is not a needle.
+  const approved = (registry.claims ?? [])
+    .filter((c) => c.public_use === "approved")
+    .flatMap((c) => claimCopies(c))
+    .map((copy) => readText(copy).replace(/\s+/g, " ").toLowerCase())
+    .join("\n");
   for (const c of registry.claims ?? []) {
-    if (c.public_use !== "pending_owner") continue;
-    for (const copy of claimCopies(c)) {
+    const copies = [
+      ...(c.public_use === "pending_owner" ? claimCopies(c).map((copy) => ({ copy, kind: "pending" })) : []),
+      ...(Array.isArray(c.retired_copy) ? c.retired_copy.map((copy) => ({ copy, kind: "retired" })) : []),
+    ];
+    for (const { copy, kind } of copies) {
       for (const sentence of readText(copy).replace(/\s+/g, " ").trim().split(/(?<=[.!?。！？])\s+/)) {
         const whole = sentence.replace(/[.。!?！？]+$/, "").trim();
         const clauses = whole.split(/\s*[;；:：]\s*|,\s+(?:which|and|with|so|but)\s+|，/);
         for (const piece of [whole, ...clauses]) {
           const needle = piece.trim().toLowerCase();
           if (needle.length < 25 || seen.has(`${c.claim_id}\u0000${needle}`)) continue;
+          if (kind === "retired" && approved.includes(needle)) continue;
           seen.add(`${c.claim_id}\u0000${needle}`);
-          out.push({ claim: c.claim_id, sentence: needle });
+          out.push({ claim: c.claim_id, sentence: needle, kind });
         }
       }
     }
@@ -1143,15 +1155,16 @@ function contentFindings(doc, ctx, out) {
   // Pending copy, whole or by the clause: one finding per place, the longest piece that matches there.
   const lower = stream.toLowerCase();
   const pending = [];
-  for (const { claim, sentence } of ctx.pending) {
-    for (let i = lower.indexOf(sentence); i >= 0; i = lower.indexOf(sentence, i + 1)) pending.push({ claim, start: i, end: i + sentence.length });
+  for (const { claim, sentence, kind } of ctx.pending) {
+    for (let i = lower.indexOf(sentence); i >= 0; i = lower.indexOf(sentence, i + 1)) pending.push({ claim, kind, start: i, end: i + sentence.length });
   }
   pending.sort((a, b) => b.end - b.start - (a.end - a.start));
   const taken = [];
   for (const f of pending) {
     if (taken.some((t) => f.start < t.end && t.start < f.end)) continue;
     taken.push(f);
-    push(out, doc, "PENDING_CLAIM_TEXT", "stream", f.start, f.end, `the ${f.claim} claim is pending the owner's approval`, stream);
+    const why = f.kind === "retired" ? `retired wording of the ${f.claim} claim (see its retired_copy)` : `the ${f.claim} claim is pending the owner's approval`;
+    push(out, doc, "PENDING_CLAIM_TEXT", "stream", f.start, f.end, why, stream);
   }
 }
 
@@ -1521,6 +1534,7 @@ export function checkRegistry(registry, { root = DEFAULT_ROOT, registryFile = "g
     ids.add(id);
     if (!EVIDENCE_LEVELS.includes(c.evidence_level)) add("REGISTRY", `claim ${id}: evidence_level "${c.evidence_level}" is not one of ${EVIDENCE_LEVELS.join(", ")}`, needle);
     if (!PUBLIC_USES.includes(c.public_use)) add("REGISTRY", `claim ${id}: public_use "${c.public_use}" is not one of ${PUBLIC_USES.join(", ")}`, needle);
+    if ("retired_copy" in c && (!Array.isArray(c.retired_copy) || !c.retired_copy.every((x) => typeof x === "string" && x.trim()))) add("REGISTRY", `claim ${id}: retired_copy must be a list of sentences`, needle);
     if (!DATE.test(String(c.checked_at))) add("REGISTRY", `claim ${id}: checked_at is not YYYY-MM-DD`, needle);
     if (!Array.isArray(c.limitations) || !c.limitations.includes(GENERAL_LIMITATION)) add("REGISTRY", `claim ${id}: limitations must include the general limitation`, needle);
     const forms = ["allowed_copy", "allowed_copy_by_status", "allowed_copy_variants"].filter((k) => k in c);

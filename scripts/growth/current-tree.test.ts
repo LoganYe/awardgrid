@@ -28,6 +28,7 @@ interface Claim {
   allowed_copy_by_status?: Record<string, string>;
   allowed_copy_variants?: Record<string, string>;
   in_use?: string[];
+  retired_copy?: string[];
 }
 const CLAIMS: Claim[] = REGISTRY.claims;
 const claim = (id: string) => CLAIMS.find((c) => c.claim_id === id)!;
@@ -46,9 +47,10 @@ describe("the facts registry", () => {
     ]);
   });
 
-  it("keeps dependency, grid and developer_data for the owner to approve, and approves the rest", () => {
-    // grid: its sentence describes the web app's table, not the iPhone app's Matrix (see its limitations).
-    expect(CLAIMS.filter((c) => c.public_use === "pending_owner").map((c) => c.claim_id)).toEqual(["dependency", "grid", "developer_data"]);
+  it("has no claim pending the owner, and approves the rest", () => {
+    // dependency, grid (reworded for the iPhone app's Matrix) and developer_data (the owner's PR #104 wording) were
+    // approved on 2026-09-28; a claim set back to pending_owner must be listed here on purpose.
+    expect(CLAIMS.filter((c) => c.public_use === "pending_owner").map((c) => c.claim_id)).toEqual([]);
     expect(CLAIMS.filter((c) => c.public_use !== "pending_owner").every((c) => c.public_use === "approved")).toBe(true);
   });
 
@@ -109,9 +111,14 @@ describe("the facts registry", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("refuses the copy still waiting for the owner", () => {
-    for (const id of ["dependency", "grid", "developer_data"]) {
-      expect(scanContent(claim(id).allowed_copy!, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), id).toContain("PENDING_CLAIM_TEXT");
+  it("refuses the copy still waiting for the owner, and every retired wording", () => {
+    for (const c of CLAIMS.filter((x) => x.public_use === "pending_owner")) {
+      expect(scanContent(c.allowed_copy!, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), c.claim_id).toContain("PENDING_CLAIM_TEXT");
+    }
+    const retired = CLAIMS.flatMap((c) => (c.retired_copy ?? []).map((text) => [c.claim_id, text] as const));
+    expect(retired.map(([id]) => id).sort()).toEqual(["developer_data", "grid"]);
+    for (const [id, text] of retired) {
+      expect(scanContent(text, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), id).toContain("PENDING_CLAIM_TEXT");
     }
   });
 
@@ -224,7 +231,7 @@ describe("the public copy is the registry's", () => {
       .split(/^## .*$/m)
       .slice(1)
       .map((block) => block.replace(/\s+/g, " ").trim());
-    expect(answers).toHaveLength(8);
+    expect(answers).toHaveLength(9);
     const loose = sentences(answers).filter((s) => s !== "No." && s !== "Yes." && !registered.has(s));
     expect(loose).toEqual([]);
   });

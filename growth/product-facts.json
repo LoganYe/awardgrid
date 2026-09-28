@@ -31,10 +31,10 @@
     "evidence_level": "observed",
     "evidence_ref": [
       "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\"",
-      "docs/release/IOS_1.0_RELEASE.md:65-66 \"B3 | Register the App ID `com.dowhiz.awardgrid`\"",
-      "docs/release/IOS_1.0_RELEASE.md:157 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
-      "docs/release/IOS_1.0_RELEASE.md:118 \"`ea4bf2d` | The new icon and build 3\"",
-      "docs/release/IOS_1.0_RELEASE.md:80-81 \"D4 | iPhone only\"",
+      "docs/release/IOS_1.0_RELEASE.md:66-67 \"B3 | Register the App ID `com.dowhiz.awardgrid`\"",
+      "docs/release/IOS_1.0_RELEASE.md:158 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
+      "docs/release/IOS_1.0_RELEASE.md:119 \"`ea4bf2d` | The new icon and build 3\"",
+      "docs/release/IOS_1.0_RELEASE.md:81-82 \"D4 | iPhone only\"",
       "apps/ios/ios/App/App.xcodeproj/project.pbxproj:366-374 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
       "apps/ios/ios/App/App.xcodeproj/project.pbxproj:387-394 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
       "docs/release/IOS_1.0_RELEASE.md:28-29 \"P7 | Price: Free\"",
@@ -64,10 +64,10 @@
       "checked_at": "2026-09-28",
       "evidence_level": "observed",
       "evidence_ref": [
-        "docs/release/IOS_1.0_RELEASE.md:66 \"B4 | Create the App Store Connect record\"",
-        "docs/release/IOS_1.0_RELEASE.md:80 \"D4 | iPhone only\"",
-        "docs/release/IOS_1.0_RELEASE.md:157 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
-        "docs/release/IOS_1.0_RELEASE.md:272 \"**Copyright:** 2026 Curastone CORP.\"",
+        "docs/release/IOS_1.0_RELEASE.md:67 \"B4 | Create the App Store Connect record\"",
+        "docs/release/IOS_1.0_RELEASE.md:81 \"D4 | iPhone only\"",
+        "docs/release/IOS_1.0_RELEASE.md:158 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
+        "docs/release/IOS_1.0_RELEASE.md:273 \"**Copyright:** 2026 Curastone CORP.\"",
         "apps/ios/ios/App/App/Info.plist:7-8 \"<key>CFBundleDisplayName</key>\""
       ],
       "allowed_copy": "AwardGrid is an iPhone app by Curastone CORP.",
@@ -166,11 +166,11 @@
       ],
       "allowed_copy": "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.",
       "limitations": [
-        "Pending the owner's approval of the wording; not for public use until public_use is approved.",
+        "Approved for public use on 2026-09-28.",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "pending_owner"
+      "public_use": "approved"
     },
     {
       "claim_id": "prerequisite",
@@ -235,14 +235,16 @@
         "apps/ios/src/components/results/AvailabilityCard.tsx:94 \"<p className=\"ag-result-fees\">\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:102 \"<p className=\"ag-result-time\">\""
       ],
-      "allowed_copy": "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table, with the cheapest award seat in each cell and its miles, fees, seats left, program and data age.",
+      "allowed_copy": "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.",
       "limitations": [
-        "Pending the owner: the code does not support this sentence for the iPhone app. It describes the web app's table (packages/core/src/lib/grid/types.ts GridCell, rendered only by the web app; apps/ios/src/components/GridTable.tsx is not used by any screen). In the iPhone app the table is the Matrix: rows are the dates, columns the routes, and each cell shows the lowest miles for each cabin asked, with the program and the seats left; fees and data age are on each option in the List (AvailabilityMatrix.tsx:5-7, :116-122; AvailabilityCard.tsx:94, :102).",
-        "Wording that matches the app, for the owner to approve: \"It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table, with the lowest miles for each cabin in each cell and the program and seats left; each option lists its fees and how old the data is.\"",
-        "Not for public use until public_use is approved. sites/landing/ios/index.html (the hero lead and the meta description) still carries the web app's wording and is rewritten separately.",
+        "Decided 2026-09-28: the earlier wording (retired_copy) described the web app's table (packages/core/src/lib/grid/types.ts GridCell, rendered only by the web app). In the iPhone app the table is the Matrix: rows are the dates, columns the routes, and each cell holds one slot per cabin asked with its lowest miles, the program and the seats; fees and data age are on each option's card (AvailabilityMatrix.tsx:5-7, AvailabilityCard.tsx:94, :102).",
+        "Where coverage is incomplete, a cell's number is the lowest retrieved, and miles in different programs are not equivalent (the Matrix caption says both).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "pending_owner"
+      "public_use": "approved",
+      "retired_copy": [
+        "It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table, with the cheapest award seat in each cell and its miles, fees, seats left, program and data age."
+      ]
     },
     {
       "claim_id": "query_input",
@@ -349,8 +351,8 @@
         "packages/core/src/lib/workspace/present.ts:146-150 \"\"38 min\" / \"38 分钟\", in whole units\"",
         "packages/core/src/lib/seatsaero/normalize.ts:46 \"const timeBasis =\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:102 \"<p className=\"ag-result-time\">\"",
-        "LEGAL.md:16-17 \"**Live Search is never used**\"",
-        "LEGAL.md:75-76 \"Cached award data can be stale and awards disappear.\""
+        "LEGAL.md:17-18 \"**Live Search is never used**\"",
+        "LEGAL.md:76-77 \"Cached award data can be stale and awards disappear.\""
       ],
       "allowed_copy": "Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points.",
       "allowed_copy_extra": [
@@ -432,8 +434,8 @@
         "apps/ios/src/ask/consent-copy.ts:50-58 \"title: \"Allow Ask to send data to Anthropic?\",\"",
         "packages/core/src/lib/ask/limits.ts:16 \"export const ASK_MODEL = \"claude-opus-5\";\"",
         "apps/ios/src/ask/ask-service.ts:558-559 \"Release D10: without the person's permission nothing goes to Anthropic\"",
-        "LEGAL.md:34-35 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\"",
-        "LEGAL.md:43-48 \"sent to Anthropic; the app makes every seats.aero call itself.\"",
+        "LEGAL.md:35-36 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\"",
+        "LEGAL.md:44-49 \"sent to Anthropic; the app makes every seats.aero call itself.\"",
         "apps/ios/src/search/search.ts:156-157 \"No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key\""
       ],
       "allowed_copy": "Ask is optional: it answers questions about your results with Claude, on your own Anthropic API key, after you allow it. Anthropic bills each question to that key.",
@@ -461,7 +463,7 @@
         "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
         "apps/ios/src/native/webview-fetch-guard.ts:22 \"const NATIVE_ONLY_HOSTS: ReadonlySet<string> = new Set([\"api.anthropic.com\", \"seats.aero\"]);\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\"",
-        "LEGAL.md:34-35 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\""
+        "LEGAL.md:35-36 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\""
       ],
       "allowed_copy": "The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches go to seats.aero and, only for Ask, to Anthropic.",
       "limitations": [
@@ -478,19 +480,22 @@
       "checked_at": "2026-09-28",
       "evidence_level": "observed",
       "evidence_ref": [
-        "sites/landing/privacy/index.html:38-39 \"AwardGrid has no accounts and no server of its own. Its developer receives none of your data\"",
-        "LEGAL.md:5-6 \"There is no paywall,\"",
-        "apps/ios/package.json:16-26 \"\"dependencies\": {\"",
-        "sites/landing/DEPLOY.md:20-23 \"**Worker `awardgrid-site`** holds the built `dist/` as static assets and runs no code\""
+        "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
+        "sites/landing/privacy/index.html:167-173 \"<h2 id=\"site-h\">This website</h2>\"",
+        "sites/landing/DEPLOY.md:28-30 \"**Cloudflare Web Analytics** is on for the hostname.\"",
+        "apps/ios/package.json:16-26 \"\"dependencies\": {\""
       ],
-      "allowed_copy": "The app itself sends nothing to its developer. Apple may give the developer aggregated App Store statistics and crash reports from people who choose to share them. The pages at /ios/, /privacy/ and /support/ run no scripts; Cloudflare, which serves them, keeps aggregate request statistics the developer can view.",
+      "allowed_copy": "Neither app has telemetry or analytics of its own; the pages on awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no cookies.",
       "limitations": [
-        "Pending the owner's approval of the wording; not for public use until public_use is approved. It would replace the developer sentence on sites/landing/privacy/index.html (\"Its developer receives none of your data\") and the telemetry and analytics sentence at the top of LEGAL.md.",
-        "Not verified: on 2026-09-28 the served pages carried a script injected at the edge (scripts/growth/fixtures/2026-09-28/live), so \"run no scripts\" is not true of the served pages.",
-        "What Apple and Cloudflare make available to the developer is described from their documentation, not checked in either account here.",
+        "The wording is the owner's (PR #104, merged 2026-09-28): the website keeps Cloudflare Web Analytics and discloses it. The earlier draft's sentence about the pages (retired_copy) said they run no scripts, which is not true of the served pages.",
+        "Observed 2026-09-28T07:14Z: browser-style requests to /ios/, /privacy/ and /support/ each carried one Cloudflare Web Analytics beacon, added at the edge; the built files carry none.",
+        "The /privacy/ \"This website\" section is the full disclosure; this sentence is the short form used in LEGAL.md.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "pending_owner"
+      "public_use": "approved",
+      "retired_copy": [
+        "The pages at /ios/, /privacy/ and /support/ run no scripts; Cloudflare, which serves them, keeps aggregate request statistics the developer can view."
+      ]
     },
     {
       "claim_id": "keys",
@@ -541,10 +546,10 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "LEGAL.md:16-17 \"**Live Search is never used**\"",
-        "LEGAL.md:20-22 \"**No scraping.** awardgrid never automates, crawls or scrapes\"",
-        "LEGAL.md:55-56 \"No airline, alliance or loyalty-program logos, wordmarks or brand imagery are displayed.\"",
-        "LEGAL.md:62-65 \"awardgrid never accepts, stores, or transmits airline, bank or travel-portal usernames\"",
+        "LEGAL.md:17-18 \"**Live Search is never used**\"",
+        "LEGAL.md:21-23 \"**No scraping.** awardgrid never automates, crawls or scrapes\"",
+        "LEGAL.md:56-57 \"No airline, alliance or loyalty-program logos, wordmarks or brand imagery are displayed.\"",
+        "LEGAL.md:63-66 \"awardgrid never accepts, stores, or transmits airline, bank or travel-portal usernames\"",
         "BACKLOG.md:18 \"Round-trip / multi-city queries (v1 is one-way grid only)\"",
         "apps/ios/src/watch/capabilities.ts:40-44 \"export const IOS_WATCH_CAPABILITIES: WatchCapabilities = {\""
       ],
@@ -565,7 +570,7 @@
       "evidence_ref": [
         "apps/ios/src/screens/settings-copy.ts:136 \"notAffiliated: \"AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero\"",
         "apps/ios/src/screens/settings-copy.ts:217 \"notAffiliated: \"AwardGrid 与 seats.aero、Anthropic\"",
-        "LEGAL.md:56-58 \"Programs are referred to by their plain text names.\"",
+        "LEGAL.md:57-59 \"Programs are referred to by their plain text names.\"",
         "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\""
       ],
@@ -658,24 +663,6 @@
     }
   ],
   "historical_allowlist": [
-    {
-      "file": "sites/landing/ios/index.html",
-      "text": "No accounts, no analytics",
-      "rules": [
-        "NO_SERVER_SUBJECT"
-      ],
-      "reason": "This table row is pending a separate change (the analytics disclosure), which rewrites it. The row is on the iPhone app's page and describes the app.",
-      "expires_when": "the analytics-disclosure change to this row lands; remove this exemption then"
-    },
-    {
-      "file": "sites/landing/ios/index.html",
-      "text": "No telemetry, no advertising, no tracking. There is no server to collect any of it.",
-      "rules": [
-        "NO_SERVER_SUBJECT"
-      ],
-      "reason": "The cell of the same table row, pending a separate change (the analytics disclosure). Once the row's header names the app, the header is the cell's subject and this exemption matches nothing.",
-      "expires_when": "the analytics-disclosure change to this row lands; remove this exemption then"
-    },
     {
       "file": "sites/landing/privacy/index.html",
       "text": "AwardGrid has no accounts and no server of its own.",
