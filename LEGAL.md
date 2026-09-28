@@ -1,8 +1,8 @@
 # LEGAL
 
-awardgrid is a **personal, non-commercial** tool for its author and fewer than ten friends.
-The web app runs on its author's own machine, with invite-only registration. The iOS app (AwardGrid) is
-tested privately through Apple's TestFlight and is not on the App Store. There is no paywall,
+AwardGrid began as a private, invite-only web app for its developer and a small group of friends.
+The iPhone app has been submitted to the App Store as a separate public release. The web app at
+this address is private and invite-only; it is separate from the iPhone app. There is no paywall,
 cost-sharing, subscription, advertising, telemetry or analytics.
 
 ## Data sources and terms
@@ -18,8 +18,8 @@ cost-sharing, subscription, advertising, telemetry or analytics.
   **"Data: seats.aero"**. In the iOS app, every Ask answer that used seats.aero data carries the
   same attribution. Terms: <https://seats.aero/terms>.
 - **No scraping.** awardgrid never automates, crawls or scrapes any airline, alliance,
-  loyalty-program, bank or portal website. Links to a program's own award-search page are
-  plain deep links the user opens and completes themselves.
+  loyalty-program, bank or portal website. In the web app, links to a program's own award-search
+  page are plain deep links the user opens and completes themselves.
 - **travel-hacking-toolkit** (MIT License, © Michael Borohovski) is vendored as a git
   submodule and loaded into the web app's advisory "Ask" lane as a *pruned* plugin: every skill that
   uses Docker / Patchright browser automation, reads a username or password, performs

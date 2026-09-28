@@ -1,9 +1,8 @@
 # awardgrid
 
-Private, friends-only award-flight grid: one natural-language question (Chinese or English) → one table of
-origins × destinations × dates, each cell the cheapest award seat (miles · fees · seats left · program · freshness)
-with a link to the program's own search page. Non-commercial, invite-only, fewer than ten users, every user brings
-their **own** seats.aero Pro key. **Data: seats.aero.**
+AwardGrid began as a private, invite-only web app for its developer and a small group of friends. The iPhone app
+has been submitted to the App Store as a separate public release. This repo also holds a private, invite-only web
+app, separate from the iPhone app. Every user brings their **own** seats.aero Pro key. **Data: seats.aero.**
 
 Two lanes plus a scheduler (`ARCHITECTURE.md` §1):
 
