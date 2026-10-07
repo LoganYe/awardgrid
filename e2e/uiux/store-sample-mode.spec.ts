@@ -86,6 +86,8 @@ test("Welcome › Try sample › Hong Kong to Seattle › List, Calendar, Matrix
   await expect(details.getByRole("link", { name: /Program website/ })).toHaveCount(0);
   await details.getByRole("button", { name: "View flight itineraries" }).click();
   await expect(details.getByTestId("trip-card").first()).toBeVisible();
+  // Drawn on this device, not loaded from anywhere: no "Loaded on this device …" age, which would read "1 min ago" later.
+  await expect(details).not.toContainText("Loaded on this device");
   await sampleScreen(page, "details", "en", details);
   await evidenceShot(page, "sample-details");
   await page.keyboard.press("Escape");
