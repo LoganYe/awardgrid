@@ -49,7 +49,7 @@
                 "name": "Is AwardGrid free?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing."
+                  "text": "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data."
                 }
               },
               {
@@ -113,7 +113,7 @@
                 "name": "Could AwardGrid stop working?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe."
+                  "text": "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw."
                 }
               }
             ]
@@ -128,7 +128,9 @@
       usually drift, so this one says what the pages do.
 
       Every sentence is registry copy (growth/product-facts.json), apart from parts of the rows of "What it does not do"
-      and the "Where this is up to" paragraph, which are kept as they were. The example table is drawn as the app's
+      and the "Where this is up to" paragraph, which are kept as they were; since 2026-10-06 that paragraph carries
+      release_status's sentence and LEGAL.md's non-affiliation wording (decision D7, docs/release/IOS_1.0_RELEASE.md
+      §0.1). The example table is drawn as the app's
       Matrix: dates as rows, routes as columns, one line per cabin, and words for an empty slot. The FAQPage node of the JSON-LD is generated
       from the "Questions" section (data-faq) by scripts/growth/sync-faq-schema.mjs --write: edit the questions, then
       run it. "Ask" names only the AI feature; searching is "type". hreflang: this page (en and x-default) and
@@ -154,13 +156,13 @@
         <ul>
           <li>An iPhone with iOS 18 or later.</li>
           <li>
-            Your own paid seats.aero Pro subscription with API access, and its API key from the API tab of your
-            seats.aero settings. Without it the app searches nothing.
+            Your own seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), and its
+            API key from the API tab of your seats.aero settings. Without it the app searches nothing.
           </li>
           <li>For Ask, which is optional: your own Anthropic API key. Anthropic bills each question to that key.</li>
           <li>
             AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can
-            limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+            limit or withdraw.
           </li>
         </ul>
       </section>
@@ -238,8 +240,9 @@
 
         <h3>Is AwardGrid free?</h3>
         <p>
-          AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. It needs your own paid
-          seats.aero Pro subscription with API access; without that key it searches nothing.
+          AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data
+          (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not
+          sell), you can connect it to see results from that account instead of sample data.
         </p>
 
         <h3>Is AwardGrid affiliated with seats.aero?</h3>
@@ -284,7 +287,7 @@
         <h3>Could AwardGrid stop working?</h3>
         <p>
           AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit
-          or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+          or withdraw.
         </p>
       </section>
 
@@ -347,12 +350,11 @@
       <section class="status" aria-labelledby="status-h">
         <h2 id="status-h">Where this is up to</h2>
         <p>
-          AwardGrid is an iPhone app that runs on your own keys. AwardGrid for iPhone has been
-          submitted to the App Store and is waiting for Apple's review. This page will link to the
-          listing once Apple approves it. seats.aero's Partner API is licensed for non-commercial
-          personal use, and whether that permits a distributed app is a question for them, not for us
-          to assume. What the app sends, and to whom, is in its
-          <a href="../privacy/">privacy policy</a>.
+          AwardGrid is an iPhone app that runs on your own keys. AwardGrid for iPhone is submitted to
+          the App Store and not available there yet. This page will link to the App Store listing once
+          the app is available. AwardGrid is not affiliated with, endorsed by, or sponsored by
+          seats.aero. Each user connects their own seats.aero account. What the app sends, and to
+          whom, is in its <a href="../privacy/">privacy policy</a>.
         </p>
       </section>
     </main>
