@@ -32,6 +32,9 @@ e2e/uiux
 scripts/uiux-web
 playwright.uiux.config.ts
 sites
+# The OAuth mock's test imports the token-service Worker under sites/auth (excluded above); `next build`
+# type-checks scripts/**, and the server image needs no tests.
+scripts/mock-seatsaero-oauth.test.ts
 coverage
 .vitest-cache
 **/.DS_Store
