@@ -53,11 +53,17 @@ async function readIndex(live: FileStore): Promise<string[]> {
 /**
  * The live file store, under `sample/`. Every path it writes is added to sample/files.json first, so clearSampleFiles
  * can find it again after a relaunch. Index writes are queued and each writes the whole list as it stands then.
+ *
+ * Sealed when sample mode is left (`seal`): a save the old services still make after that — a search or a watch check
+ * that finished during the exit — is dropped, and the writes already under way finish before sample/ is deleted, so
+ * no file outlives the exit unlisted and turns up in the next visit.
  */
 export class SampleFiles implements FileStore {
   readonly #live: FileStore;
   #index: Promise<Set<string>> | null = null;
   #saving: Promise<unknown> = Promise.resolve();
+  #sealed = false;
+  readonly #writing = new Set<Promise<void>>();
 
   constructor(live: FileStore) {
     this.#live = live;
@@ -73,6 +79,28 @@ export class SampleFiles implements FileStore {
   }
 
   async write(path: string, data: string): Promise<void> {
+    if (this.#sealed) return;
+    const write = this.#write(path, data);
+    this.#writing.add(write);
+    try {
+      await write;
+    } finally {
+      this.#writing.delete(write);
+    }
+  }
+
+  /** Stop writing (later writes are dropped), once the writes under way have finished. */
+  async seal(): Promise<void> {
+    this.#sealed = true;
+    await Promise.allSettled([...this.#writing]);
+  }
+
+  /** Write again: the exit that sealed this store failed, and sample mode goes on. */
+  unseal(): void {
+    this.#sealed = false;
+  }
+
+  async #write(path: string, data: string): Promise<void> {
     const known = await this.#known();
     if (!known.has(path)) {
       known.add(path);
@@ -138,10 +166,11 @@ export async function sampleBootstrapOptions(live: BootstrapOptions, files: File
   const keys = new MemoryKeyStore();
   await keys.set(SAMPLE_KEY);
   const now = live.now ?? (() => new Date());
+  const sampleFiles = new SampleFiles(files);
   return {
     keys,
     anthropicKeys: new MemoryKeyStore(),
-    snapshots: new SnapshotStore(new SampleFiles(files)),
+    snapshots: new SnapshotStore(sampleFiles),
     now: live.now,
     fetchImpl: createSampleFetch({ now }),
     anthropicFetch: noAnthropic,
@@ -150,6 +179,20 @@ export async function sampleBootstrapOptions(live: BootstrapOptions, files: File
     // rule bootstrap.ts gives for a host that injects both). Ask stays off in sample mode either way.
     assertNative: () => {},
     locale: live.locale,
-    dataSource: { ...control, kind: "sample", coverage: SAMPLE_COVERAGE },
+    dataSource: {
+      ...control,
+      kind: "sample",
+      coverage: SAMPLE_COVERAGE,
+      // These services stop writing under sample/ before it is deleted (SampleFiles.seal), and go on if the exit fails.
+      async exitSample() {
+        await sampleFiles.seal();
+        try {
+          await control.exitSample();
+        } catch (err) {
+          sampleFiles.unseal();
+          throw err;
+        }
+      },
+    },
   };
 }

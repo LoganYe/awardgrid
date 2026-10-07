@@ -28,7 +28,7 @@ vi.mock("../native/http", async (importOriginal) => {
 
 const { bootstrap } = await import("../app/bootstrap");
 const { DATA_SOURCE_NAMESPACE, readDataSource, resolveBoot, writeDataSource } = await import("../app/data-source");
-const { SAMPLE_INDEX, SAMPLE_KEY, SampleFiles, clearSampleFiles, enterSampleData, exitSampleData } = await import("./boot");
+const { SAMPLE_INDEX, SAMPLE_KEY, SampleFiles, clearSampleFiles, enterSampleData, exitSampleData, sampleBootstrapOptions } = await import("./boot");
 
 const NOW = new Date("2026-10-18T08:30:00Z");
 
@@ -188,6 +188,39 @@ describe("sample mode's boot", () => {
     expect(await readDataSource(files)).toBe("live");
     expect([...files.files.keys()].filter((p) => p.startsWith("sample/"))).toEqual([]);
     expect(files.files.get("quota.json")).toBe(JSON.stringify({ day: "2026-10-18", used: 412 }));
+  });
+
+  it("leaves nothing behind when a save is under way at the exit, or one comes after it", async () => {
+    const files = await liveFilesWith(null);
+    await enterSampleData(files);
+    const reboot = vi.fn();
+    const services = await bootstrap(await resolveBoot({ snapshots: new SnapshotStore(files), now: () => NOW }, { beforeSwitch: async () => {}, reboot }));
+    await services.searchText("LAX to Tokyo next month");
+    // A save the exit overtakes (a search or a watch check that has just finished), and ones the old services make after.
+    const during = services.persist();
+    await services.dataSource.exitSample();
+    await during;
+    expect((await services.persist()).ok).toBe(true);
+    await services.settings.setTheme("dark");
+    expect(reboot).toHaveBeenCalledOnce();
+    expect([...files.files.keys()].filter((p) => p.startsWith("sample/"))).toEqual([]);
+    // The next visit starts empty: no search or setting from the last one.
+    await enterSampleData(files);
+    const again = await bootstrap(await resolveBoot({ snapshots: new SnapshotStore(files), now: () => NOW }, { beforeSwitch: async () => {}, reboot }));
+    expect(again.dataSource.kind).toBe("sample");
+    expect(again.workspace.getState().displayedSnapshot).toBeNull();
+    expect(again.settings.theme()).not.toBe("dark");
+  });
+
+  it("an exit that fails keeps sample mode saving", async () => {
+    const files = await liveFilesWith(null);
+    await enterSampleData(files);
+    const control = { kind: "live" as const, coverage: null, enterSample: async () => {}, exitSample: async () => Promise.reject(new Error("disk full")) };
+    const services = await bootstrap(await sampleBootstrapOptions({ snapshots: new SnapshotStore(files), now: () => NOW }, files, control));
+    await expect(services.dataSource.exitSample()).rejects.toThrow("disk full");
+    await services.settings.setTheme("dark");
+    const saved = (await new SlotFileStorage(new SampleFiles(files)).read(SETTINGS_NAMESPACE)) as { theme: string };
+    expect(saved.theme).toBe("dark");
   });
 
   it("starts each visit empty: whatever an interrupted exit left is cleared on the way in", async () => {
