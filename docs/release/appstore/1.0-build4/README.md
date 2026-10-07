@@ -36,6 +36,11 @@ updated") or "Pro".
   Kong to Seattle next month, business" were watched, and the app was opened again so the watches took their first
   check (06). The screens were driven through the app's WebKit inspector (taps and typing as page events) and
   captured with `xcrun simctl io <UDID> screenshot`.
+- **06 retaken in review:** in the first 06 the third card's Edit and Stop watching buttons ran 3 pt under the tab bar.
+  On the same device and bundle, the three watches were stopped and watched again in the same order, and the app was
+  opened again so each took its first check. At scroll 0 the capture matched the first 06 pixel for pixel. The
+  Watches page was then scrolled 8 pt, so all three cards' buttons are whole above the tab bar, and the banner is
+  still 8 pt below the status bar.
 - **Sample data** is made on the device from the day it runs: these were taken on 2026-10-07, so "next month" reads as
   Oct 7 – Nov 5. Program names are real; miles, fees, seats and flight numbers are invented (decision D10).
 - **After capture**, two changes only: RGBA to RGB (every pixel was already opaque), and a 3×3-pixel black dot in the
