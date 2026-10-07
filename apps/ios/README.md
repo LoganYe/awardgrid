@@ -258,9 +258,9 @@ cd apps/ios && npm run build:store && npx cap copy ios  # the App Store flavour:
 ```
 
 `cap copy`, not `cap sync`: sync also runs `pod install` against the network, and the Pods are already
-installed and pinned by the committed `ios/App/Podfile.lock`. Then build and install on a Simulator made for
-this app, always by its UDID (never `booted`: another project's devices, or one holding real keys, may be
-booted too):
+installed and pinned by the committed `ios/App/Podfile.lock` (after a dependency bump, see "Release" step 3).
+Then build and install on a Simulator made for this app, always by its UDID (never `booted`: another
+project's devices, or one holding real keys, may be booted too):
 
 ```bash
 xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug \
@@ -336,10 +336,16 @@ everything from a worktree, never from the checkout production serves.
 1. **Gates:** `pnpm typecheck && pnpm lint && pnpm test`, then
    `UIUX_WEB=0 pnpm exec playwright test --config=playwright.uiux.config.ts` (the iOS browser mock).
 2. **Bundle:** `env -u VITE_AG_PROBES -u VITE_AG_STORE pnpm --filter @awardgrid/ios build:store` (the App Store
-   flavour, above). It fails on any fixture marker, on a source map inside `dist/` (they are moved to
-   `dist-sourcemaps/`), on Ask or a paid-plan phrase in the bundle, and on a licenses list that is not what ships.
-   Then R1 (above) over `dist/assets/*.js` and the maps beside them.
-3. **Copy:** `npx cap copy ios` (not `sync`).
+   flavour, above; never the plain `build`, which keeps Ask). It fails on any fixture marker, on a source map inside
+   `dist/` (they are moved to `dist-sourcemaps/`), on Ask or a paid-plan phrase in the bundle, and on a licenses list
+   that is not what ships. Then R1 (above) over `dist/assets/*.js` and the maps beside them.
+3. **Copy:** `npx cap copy ios`, then `node scripts/check-store-bundle.mjs ios/App/App/public`: the folder Xcode
+   archives is gitignored and keeps whatever was copied last, so this checks that it holds the store flavour, not
+   an earlier `build`. `cap sync` only after a dependency bump: it runs `pod install` against the network (the
+   owner's OK), and the licenses list must then be written again. That is the release plan's step 4b sequence —
+   `env -u VITE_AG_PROBES npx vite build`, `LANG=en_US.UTF-8 npx cap sync ios`, `node scripts/acknowledgements.mjs`,
+   then steps 2 and 3 again with `cap copy` — and `ios/App/Podfile`, `ios/App/Podfile.lock`, any
+   `project.pbxproj` change and `src/about/acknowledgements.json` go in a commit before the archive.
 4. **Build number:** raise `CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` (both
    configurations) in a commit before every archive after the first; 1.0 (1) is the first.
 5. **Archive**, once the App ID is registered and the signing identity is on this Mac (the owner's steps):

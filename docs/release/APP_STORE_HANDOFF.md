@@ -103,7 +103,7 @@ Run from the worktree `/Users/yegaoyang/Desktop/workspace/awardgrid-uiux` (all p
    - `ls apps/ios/dist/assets | grep -Ei 'probe|e2e'` prints nothing;
    - `grep -c '127.0.0.1:45\|localhost:45\|probe-server\|sk-ant-' apps/ios/dist/assets/*.js` counts 0 in every file;
    - if source maps are kept, check the `*.js.map` files too.
-4. **Copy into Xcode:** `(cd apps/ios && npx cap copy ios)`. **Not `cap sync`**: that runs `pod install` against the network, and the Pods are already installed. The project's `ios/App/App/public` is stale today (18:43, 2026-09-24, pre-merge), so this step is required. Then `(cd apps/ios && node scripts/check-store-bundle.mjs ios/App/App/public)`: the copied bundle is the store flavour too.
+4. **Copy into Xcode:** `(cd apps/ios && npx cap copy ios)`, then `(cd apps/ios && node scripts/check-store-bundle.mjs ios/App/App/public)`: `ios/App/App/public` is gitignored and keeps whatever was copied last, so the check shows that the bundle Xcode archives is the store flavour too, not an earlier `build`. **`cap sync` only after a dependency bump**: it runs `pod install` against the network (the owner's OK, §7), and the licenses list must then be written again. That is the release plan's step 4b sequence (`env -u VITE_AG_PROBES npx vite build`, `LANG=en_US.UTF-8 npx cap sync ios`, `node scripts/acknowledgements.mjs`, then §4.2-§4.4 again with `cap copy`), and `ios/App/Podfile`, `ios/App/Podfile.lock`, any `project.pbxproj` change and `src/about/acknowledgements.json` go in a commit before the archive. Otherwise the Pods are already installed and pinned by the committed `Podfile.lock`. Same as `apps/ios/README.md` › "Release" step 3.
 5. **Signing.** The owner signs in to Xcode › Settings › Accounts with their Apple ID; **the agent never types the Apple ID, password or 2FA**. The owner, or the agent with the owner's per-action OK in the browser, registers the App ID from D2. Then either pass `DEVELOPMENT_TEAM=232AGCYZ2Z` on the xcodebuild command line, which keeps it out of git, or commit it if the owner prefers. Automatic signing needs nothing else: the Pods' resource bundles have signing off, and their frameworks are re-signed by "[CP] Embed Pods Frameworks".
 6. **Archive:**
    ```
@@ -119,7 +119,7 @@ Run from the worktree `/Users/yegaoyang/Desktop/workspace/awardgrid-uiux` (all p
    - the icon is the new one;
    - Xcode Organizer › Generate Privacy Report.
 8. **Upload.** The owner uploads with Xcode Organizer › Distribute App › App Store Connect. Transporter takes an `.ipa`, not an archive, so for Transporter first export one: `xcodebuild -exportArchive -archivePath <archive> -exportOptionsPlist <plist: method app-store-connect, teamID 232AGCYZ2Z> -exportPath <dir>`. External: Organizer's "Manage Version and Build Number" can rewrite `CFBundleVersion`.
-9. **Build numbers:** bump `CURRENT_PROJECT_VERSION` (pbxproj:359,380) in a commit before each archive, and switch Xcode's auto-management off. Or let Xcode manage it and record the uploaded number. Each upload needs a higher build number.
+9. **Build numbers:** bump `CURRENT_PROJECT_VERSION` (pbxproj:363,384, both configurations; `MARKETING_VERSION` stays 1.0) in a commit before each archive, and switch Xcode's auto-management off (both `ExportOptions-*.plist` set `manageAppVersionAndBuildNumber` false, D14). Or let Xcode manage it and record the uploaded number. Each upload needs a higher build number. 1.0 (4), the resubmission after the 3.1.1 rejection, is `CURRENT_PROJECT_VERSION = 4` (release plan step 28).
 10. **TestFlight internal first:**
     - install on the owner's iPhone and run §5;
     - then, only after D1, fill in the metadata and let the **owner** press Submit for Review.
@@ -209,7 +209,7 @@ Full context for each A-number is in `docs/uiux-v1/ACCEPTANCE.md` and `docs/uiux
   - `run-probes.sh` defaults `SIM_UDID` to the owner's device, so always set it.
   - Keyless devices made for AwardGrid: `awardgrid T22 smoke` `A655D16B-17E7-4DF4-B481-DF9229C8CCE1` (iOS 26.5) and `awardgrid T22 smoke iOS18` `4EDAFC4F-DDCA-47D4-963B-96D2688F5871` (iOS 18.3).
   - For anything else (iPad, the 6.9" screenshots), create new devices (V12). The stock `iPhone 17 Pro Max` (`A5BC8AFF-…`) and `iPad Pro 13-inch (M5)` (`118B5043-…`) hold another project's app: never erase, reset or reconfigure them.
-- **Offline Pods:** do not run `pod install` or `cap sync` without the owner's OK, since they use the network. For the probe harness, put a stand-in `pod` first on PATH:
+- **Offline Pods:** do not run `pod install` or `cap sync` without the owner's OK, since they use the network. A release needs them only after a dependency bump (§4.4); otherwise `cap copy`. For the probe harness, put a stand-in `pod` first on PATH:
   ```
   mkdir -p <scratch>/shim && printf '#!/bin/sh\n[ "$1" = --version ] && echo 1.16.2\nexit 0\n' > <scratch>/shim/pod && chmod +x <scratch>/shim/pod
   PATH="<scratch>/shim:$PATH" SIM_UDID=<fresh UDID> SE_NAME="<new name>" apps/ios/probes/run-probes.sh --e2e <scratch>/phase5-e2e
@@ -254,7 +254,7 @@ Paste this into a new Claude Code session opened in **`/Users/yegaoyang/Desktop/
 
 1. 只读核对：git status、main 是否仍是 d998cf5（或更新），交接文档 §1 的账号状态和 §2 的 14 个决定。把我还没决定的事项（D1–D14）列成一个清单一次性问我，附你的建议；不要替我决定。
 2. 在该 worktree 里从 docs/app-store-handoff（若交接文档已合并进 main，则从 main）新建分支 release/ios-1.0，做 §3 的工程项（隐私清单、Info.plist、deployment target、device family、法律与同意文案等），每步带测试、明确文件列表的本地提交。
-3. 按 §4 构建和检查：iOS 门禁、web bundle、R1、cap copy（不是 cap sync）、Release archive、检查 archive 里真正要发布的内容。
+3. 按 §4 构建和检查：iOS 门禁、web bundle（build:store）、R1、cap copy（只有依赖升级后才用 cap sync，见 §4.4）并对 ios/App/App/public 跑 check-store-bundle、Release archive、检查 archive 里真正要发布的内容。
 4. 按 §5 准备真机验证清单；真机和真实 key 的步骤由我来操作或逐项同意。
 5. 为 App Store Connect 起草元数据、App Privacy 答案、Review Notes（交接文档 §6），由我粘贴。
 
