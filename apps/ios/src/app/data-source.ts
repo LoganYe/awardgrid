@@ -10,8 +10,9 @@
  *
  * Sample mode's code is loaded only when it is used: ../sample/boot.ts and what it imports are their own chunk.
  */
+import type { QueryObject } from "@awardgrid/core/query/schema";
 import { createContext } from "react";
-import type { BootstrapOptions } from "./bootstrap";
+import type { AppServices, BootstrapOptions } from "./bootstrap";
 import { type FileStore, capacitorFiles } from "../store/persistence";
 import { SlotFileStorage } from "../workspace/slot-storage";
 
@@ -30,12 +31,24 @@ export interface SampleCoverage {
   coversDate(date: string, today: string): boolean;
 }
 
+/**
+ * A trip plan to search as soon as sample mode has started (release plan step 18): a plan's "Try with sample data".
+ * Its words and the search they were read as; the app runs it on the sample data once it has booted again.
+ */
+export interface SampleStart {
+  text: string;
+  query: QueryObject;
+}
+
 export interface DataSourceControl {
   readonly kind: DataSourceKind;
   /** Sample mode only. */
   readonly coverage: SampleCoverage | null;
-  /** Save what is on screen, switch to sample data and boot again on it. Live mode only. */
-  enterSample(): Promise<void>;
+  /**
+   * Save what is on screen, switch to sample data and boot again on it, then search `start` there when one is given.
+   * Live mode only.
+   */
+  enterSample(start?: SampleStart): Promise<void>;
   /** Switch back to the account, delete sample/ and boot again. Sample mode only. */
   exitSample(): Promise<void>;
 }
@@ -82,8 +95,17 @@ export function liveFilesOf(live: BootstrapOptions): FileStore {
 export interface BootHooks {
   /** Before entering sample mode: save what the live services hold. */
   beforeSwitch(): Promise<unknown>;
-  /** Boot the app again, which reads the choice again. */
-  reboot(): void;
+  /** Boot the app again, which reads the choice again; then search `start`, when entering sample mode gave one. */
+  reboot(start?: SampleStart): void;
+}
+
+/**
+ * Search a plan the person chose to try on sample data, on the services sample mode booted with: the same run a typed
+ * search makes (a workspace revision, labelled with the plan's words), then saved like any other search.
+ */
+export async function runSampleStart(services: Pick<AppServices, "runParsed" | "persist">, start: SampleStart): Promise<void> {
+  await services.runParsed(start.text, { query: start.query, warnings: [], notices: [] });
+  await services.persist();
 }
 
 /**
@@ -96,11 +118,11 @@ export async function resolveBoot(live: BootstrapOptions, hooks: BootHooks): Pro
   const control: DataSourceControl = {
     kind,
     coverage: null,
-    async enterSample() {
+    async enterSample(start) {
       await hooks.beforeSwitch();
       const sample = await import("../sample/boot");
       await sample.enterSampleData(files);
-      hooks.reboot();
+      hooks.reboot(start);
     },
     async exitSample() {
       const sample = await import("../sample/boot");

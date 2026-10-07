@@ -31,6 +31,10 @@
  * device" where the status line names seats.aero, no call counts and no quota line (no seats.aero call is made). A
  * search that reaches past what sample data covers says what it covers, and an empty result or a text the parser
  * could not read offers one tap to a search that has rows: Hong Kong to Seattle, the next 30 days, business.
+ *
+ * With no data source connected (release plan step 18), the first run's welcome is followed by the trip planner
+ * (components/plan/PlanSearch.tsx): the same text box, read as a plan to look at, save or try on sample data. It
+ * sends nothing, and a search still needs a data source.
  */
 import { QueryObject, SortBy } from "@awardgrid/core/query/schema";
 import { projectResults } from "@awardgrid/core/workspace/projection";
@@ -49,6 +53,7 @@ import { ASK_SURFACES } from "../ask/ask-surface-copy";
 import type { ApiFailure, ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
 import type { LastSearchEntry } from "../search/last-search";
 import { TextSearch } from "../components/query/TextSearch";
+import { PlanSearch } from "../components/plan/PlanSearch";
 import { AvailabilityCalendar } from "../components/results/AvailabilityCalendar";
 import { AvailabilityList } from "../components/results/AvailabilityList";
 import { AvailabilityMatrix } from "../components/results/AvailabilityMatrix";
@@ -634,8 +639,12 @@ export function SearchScreen() {
           {quota && !sample ? <p className="ag-results-meta tabular">{t.quota(quota.used, quota.softLimit)}</p> : null}
         </>
       ) : hasKey === false ? (
-        // First run (T11): no seats.aero key yet — what the app does, sample data first, or connect an account.
-        <Welcome locale={locale} onTrySample={entering.enter} busy={entering.busy} failed={entering.failed} />
+        // First run (T11): no seats.aero key yet — what the app does, sample data first, or connect an account; then
+        // the trip planner, which reads a typed trip as a plan and runs nothing (release plan step 18).
+        <>
+          <Welcome locale={locale} onTrySample={entering.enter} busy={entering.busy} failed={entering.failed} />
+          <PlanSearch services={services} locale={locale} />
+        </>
       ) : (
         <div className="ag-results-empty">
           <p className="ag-results-meta">{t.emptyIntro}</p>

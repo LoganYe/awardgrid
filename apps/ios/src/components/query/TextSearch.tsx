@@ -2,6 +2,9 @@
  * Search by typing (docs/04 S02: "自由文字可作为另一入口解析，但不自动请求LLM"): one sentence, read by the deterministic
  * parser only — no AI — and run as a workspace revision when the person presses Run. Used on the empty Search screen
  * and at the top of the query editor. Examples, in the screen's language, fill the box; they never run by themselves.
+ *
+ * The trip planner (release plan step 18) uses the same box with its own words (`words`): there the button reads the
+ * text as a plan and runs nothing, so it is not the search's Run, and its test id says so.
  */
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "../../app/locale";
@@ -21,10 +24,14 @@ export interface TextSearchProps {
   /** Whether Run is the screen's one filled action (spec §10: one primary per screen). */
   primary?: boolean;
   locale?: Locale;
+  /** The box's label and its button's words, in place of the search's (the planner's). */
+  words?: { label: string; run: string; running: string };
+  /** The button's test id; "text-search-run" is the search's Run. */
+  runTestId?: string;
 }
 
-export function TextSearch({ busy, onSearch, initial, error, errorLang, primary = true, locale = "en" }: TextSearchProps) {
-  const t = EDITOR_COPY[locale].text;
+export function TextSearch({ busy, onSearch, initial, error, errorLang, primary = true, locale = "en", words, runTestId = "text-search-run" }: TextSearchProps) {
+  const t = { ...EDITOR_COPY[locale].text, ...words };
   const [text, setText] = useState(initial ?? t.examples[0]!);
   const box = useRef<HTMLTextAreaElement>(null);
   // A text that could not be read: focus goes back to the box, whose description now carries the error.
@@ -52,7 +59,7 @@ export function TextSearch({ busy, onSearch, initial, error, errorLang, primary 
         </p>
       ) : null}
       <div className="ag-text-search-actions">
-        <Button variant={primary ? "primary" : "secondary"} data-testid="text-search-run" onClick={() => onSearch(text)} loading={busy} loadingLabel={t.running}>
+        <Button variant={primary ? "primary" : "secondary"} data-testid={runTestId} onClick={() => onSearch(text)} loading={busy} loadingLabel={t.running}>
           {t.run}
         </Button>
       </div>

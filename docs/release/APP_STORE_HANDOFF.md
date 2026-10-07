@@ -170,7 +170,7 @@ Full context for each A-number is in `docs/uiux-v1/ACCEPTANCE.md` and `docs/uiux
 
 **What stays on the device:**
 - **Keychain:** two items, `seats_aero_api_key` (afterFirstUnlockThisDeviceOnly) and `anthropic_api_key` (whenUnlockedThisDeviceOnly). Both have iCloud sync off, and only the last four characters are ever shown.
-- **Files in Documents** (included in device backups): `cache.json` (45-minute TTL), `quota.json`, `watches.json`, `ask.json` (up to 1.5 MB), and the two-slot `workspace-v1`, `settings-v1` and `favorites-v1` files.
+- **Files in Documents** (included in device backups): `cache.json` (45-minute TTL), `quota.json`, `watches.json`, `ask.json` (up to 1.5 MB), and the two-slot `workspace-v1`, `settings-v1`, `favorites-v1` and `plans-v1` (trip plans, release plan step 18) files.
 
 **Listing rules:**
 - **No trademarks as keywords:** "seats.aero", airline names, "Claude" and "Anthropic" do not go in the name, subtitle or keywords (2.3.7). Mention them only nominatively in the description.
