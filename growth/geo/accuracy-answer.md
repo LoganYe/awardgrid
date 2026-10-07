@@ -7,6 +7,10 @@ Short, checked answers to common questions about the AwardGrid iPhone app, each 
 
 AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.
 
+## Do I need a seats.aero account?
+
+No. Without one, AwardGrid shows sample data only: search, the List, Calendar and Matrix views, option details, compare, Saved and Watches all work on sample data made on your iPhone, labelled as sample data, and nothing is sent. If you have a seats.aero account with API access, you can connect it in Settings to see results from that account instead.
+
 ## Is AwardGrid affiliated with seats.aero?
 
 No. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program. Its data comes from seats.aero.
@@ -25,7 +29,7 @@ The 26 programs seats.aero lists, where seats.aero monitors the route; a route i
 
 ## Do I need an AI key?
 
-Only for Ask, which is optional. Search runs on your seats.aero key alone.
+No. Search needs no AI key. Ask, the optional AI feature, is in testing and is not part of the App Store version 1.0.
 
 ## Can I search in Chinese?
 

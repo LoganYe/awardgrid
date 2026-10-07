@@ -2,13 +2,18 @@
  * App Store screenshots for the public listing (docs/release/IOS_1.0_RELEASE.md, "Public release"). Not a behaviour
  * test: it renders the real app in the fixture host at the 6.9-inch iPhone size the listing requires (440×956 pt at
  * 3×, 1320×2868 px), with that phone's safe areas, and writes one PNG per screen, in English (en-US) and Chinese
- * (zh-Hans). Every result in them is the fixture's synthetic data, and the Ask screen shows the host's scripted
- * answer; nothing is sent anywhere (./test.ts locks the network down as for every spec).
+ * (zh-Hans). Every result in them is the fixture's synthetic data; nothing is sent anywhere (./test.ts locks the network
+ * down as for every spec). There is no Ask shot: the App Store build has no Ask (release plan D3), so the 07-ask test
+ * that rendered one is gone; docs/release/appstore/1.0/en-US/07-ask.png stays only as the record of build 3's listing.
  *
- *   UIUX_STORE_SHOTS=docs/release/appstore/1.0 UIUX_WEB=0 \
+ * The 1.0 (4) listing does not use this spec: its set (docs/release/appstore/1.0-build4/, README there) is captured in
+ * the Simulator from the App Store bundle in sample mode, with the sample banner on every result screen.
+ *
+ *   UIUX_STORE_SHOTS=<output directory> UIUX_WEB=0 \
  *     pnpm exec playwright test --config=playwright.uiux.config.ts appstore-screenshots
  *
- * Skipped unless UIUX_STORE_SHOTS names the output directory, so the suite never writes these files.
+ * Skipped unless UIUX_STORE_SHOTS names the output directory, so the suite never writes these files. Do not point it
+ * at docs/release/appstore/1.0: those files are build 3's listing as submitted, kept as they are.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -96,15 +101,3 @@ for (const l of LOCALES) {
     await shot(page, l.dir, "06-watches");
   });
 }
-
-// The scripted answer is English only, so Ask is shown in the English set alone.
-test("en-US: Ask proposes a change to the search", async ({ page }) => {
-  await phoneInsets(page);
-  await openScenario(page, "ai-pending", "ios", { lang: "en" });
-  await searchByText(page, "HKG to SEA in October, business and first");
-  await page.getByTestId("results-header").getByRole("link").click();
-  await page.getByRole("textbox", { name: "Question for Claude" }).fill("Is there anything later in the autumn?");
-  await page.getByRole("button", { name: "Ask", exact: true }).click();
-  await expect(page.getByTestId("query-change-proposal")).toHaveAttribute("data-status", "pending");
-  await shot(page, "en-US", "07-ask");
-});

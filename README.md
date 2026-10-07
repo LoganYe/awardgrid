@@ -10,14 +10,17 @@ AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non
 
 It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
 
+Without a seats.aero account, AwardGrid shows sample data only: search, the List, Calendar and Matrix views, option details, compare, Saved and Watches all work on sample data made on the iPhone, for any route between the 84 airports it recognises, over the next 12 months.
+Sample data is labelled on every screen that shows it, its options have no booking links, and nothing is sent.
+
 Type the routes and dates in English or Chinese, or set them in the editor.
 List, Calendar and Matrix views; compare up to four options; save results on the device.
 
 Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points.
 Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.
-Ask is optional: it answers questions about your results with Claude, on your own Anthropic API key, after you allow it. Anthropic bills each question to that key.
+Ask, which answers questions about your results with Claude on your own Anthropic API key, is in testing; it is not part of the App Store version 1.0.
 
-The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches go to seats.aero and, only for Ask, to Anthropic.
+The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go to seats.aero; sample data sends nothing.
 
 For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.
 No live search, no booking, no round trips, no alerts or notifications, no scraping of airline or bank sites, no airline or bank passwords, no logos.

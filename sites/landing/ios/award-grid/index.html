@@ -6,7 +6,7 @@
     <title>Award seats for many origins, destinations and dates in one table — AwardGrid</title>
     <meta
       name="description"
-      content="On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for several origins, destinations and dates in one table."
+      content="AwardGrid for iPhone puts award seats for several origins, destinations and dates in one table, from your own seats.aero account or from sample data."
     />
     <link rel="canonical" href="https://awardgrid.dowhiz.com/ios/award-grid/" />
     <meta property="og:type" content="website" />
@@ -14,7 +14,7 @@
     <meta property="og:title" content="Award seats for many origins, destinations and dates in one table — AwardGrid" />
     <meta
       property="og:description"
-      content="On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for several origins, destinations and dates in one table."
+      content="AwardGrid for iPhone puts award seats for several origins, destinations and dates in one table, from your own seats.aero account or from sample data."
     />
     <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -42,7 +42,8 @@
       /ios/award-grid/: how the table works, for someone asking whether an app puts several origins, destinations and
       dates into one table. English only, so no hreflang. Every sentence is registry copy (growth/product-facts.json):
       identity, grid, prerequisite, keys, query_input, filters, views, program_link, data_cached, cell_fields,
-      programs, scope, quota, watches, dependency, not_offered and release_status. The table in the iPhone app is the
+      programs, scope, quota, watches, dependency, not_offered and release_status. Since 2026-10-07 (build 4) its
+      first step offers sample data first, and no sentence calls the key a Pro key. The table in the iPhone app is the
       Matrix: each cell holds, for each cabin asked, the lowest miles, the program and the seats; fees and data age are
       on each option's card (apps/ios/src/components/results/AvailabilityMatrix.tsx, AvailabilityCard.tsx), so this
       page never says a cell holds fees or data age. No other tool is named (the registry holds no claim about any
@@ -74,8 +75,8 @@
         <h2 id="how-h">How it works</h2>
         <ol>
           <li>
-            Add your seats.aero Pro API key, from the API tab of your seats.aero settings. Keys stay in your iPhone's
-            Keychain, with iCloud Keychain sync off.
+            Start with sample data, or connect your own seats.aero account in Settings with the API key from the API
+            tab of your seats.aero settings. Keys stay in your iPhone's Keychain, with iCloud Keychain sync off.
           </li>
           <li>
             Type the routes and dates in English or Chinese, or set them in the editor. Programs, nonstop only and a
@@ -117,8 +118,8 @@
           </li>
           <li>Searches are one-way: no round trips, multi-city or passenger count.</li>
           <li>
-            The app stops at 950 of the 1,000 daily calls a Pro key allows and keeps results on the device for 45
-            minutes, so repeating a search costs no calls.
+            The app stops at 950 of seats.aero's 1,000 daily calls and keeps results on the device for 45 minutes, so
+            repeating a search costs no calls.
           </li>
           <li>
             Watches are checked when you open or return to the app, and at no other time; there is no background check

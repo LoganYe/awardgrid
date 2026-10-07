@@ -32,7 +32,11 @@ awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no c
   seats.aero key is injected only into the isolated per-user Ask session environment so that the
   toolkit's `curl` calls can reach seats.aero.
 
-  In the iOS app, Ask is optional and runs only on the user's own Anthropic API key, stored in
+  The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of
+  it (`VITE_AG_STORE=1`, `apps/ios/src/app/flags.ts`), together with its routes, entry points and copy.
+  Ask is in the iOS app's test builds only: development, the probes and e2e, and the internal
+  TestFlight builds 1.0 (1)-(3). In a test build, Ask is optional and runs only on the user's own
+  Anthropic API key, stored in
   the device Keychain and sent only to api.anthropic.com. A question sends Anthropic the
   question, today's date, the parameters of any search the user chose to include, and the
   seats.aero results of the searches and flight lookups the app makes for it, with how many
@@ -50,6 +54,13 @@ awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no c
 
   The iOS app's privacy policy says all of this for its users: `sites/landing/privacy/index.html`,
   built for <https://awardgrid.dowhiz.com/privacy/>.
+- **Sample data (iOS app).** Without a seats.aero account, the iOS app shows sample data: invented
+  numbers under real program names, generated on the device for any route between the airports the
+  app recognises, labelled "Sample data" on every screen that shows it, with no booking or program
+  links and no "Data: seats.aero" attribution, because it is not seats.aero data. While it is on,
+  the app sends nothing to seats.aero or anyone else; it keeps its own files apart from the
+  account's, and never reads or writes the user's seats.aero key or the day's count of seats.aero
+  calls.
 
 ## Trademarks and logos
 
@@ -62,14 +73,15 @@ any loyalty program.
 
 awardgrid never accepts, stores, or transmits airline, bank or travel-portal usernames or
 passwords. Only API keys the user generates in their own account settings are accepted:
-seats.aero (both apps), Anthropic (iOS app), and Duffel and Ignav (web app). Only the last four
-characters are ever displayed or logged.
+seats.aero (both apps), Anthropic (the iOS app's test builds, for Ask; the App Store build asks for
+none), and Duffel and Ignav (web app). Only the last four characters are ever displayed or logged.
 
 ## Disable on request
 
 If seats.aero, any airline, program, or data provider asks for this tool to stop using their
-data or linking to their site, that source will be switched off immediately. Contact the
-repository owner.
+data or linking to their site, that source will be switched off immediately in the web app. For
+the iOS app, the app will be removed from sale immediately and the source disabled in the next
+build. Contact the repository owner.
 
 ## Accuracy
 

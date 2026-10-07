@@ -2,17 +2,19 @@
 
 > AwardGrid is an iPhone app by Curastone CORP. It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.
 
-## Facts (checked 2026-10-06)
+## Facts (checked 2026-10-07)
 
 - Price and status: AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data. AwardGrid for iPhone is submitted to the App Store and not available there yet.
+- Sample data: Without a seats.aero account, AwardGrid shows sample data only: search, the List, Calendar and Matrix views, option details, compare, Saved and Watches all work on sample data made on the iPhone, for any route between the 84 airports it recognises, over the next 12 months. Sample data is labelled on every screen that shows it, its options have no booking links, and nothing is sent.
 - Platform: iPhone, iOS 18 or later. The app's interface is in English or Simplified Chinese.
 - Input: Type the routes and dates in English or Chinese, or set them in the editor.
 - Table: Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
 - Views: List, Calendar and Matrix views; compare up to four options; save results on the device.
 - Data: Results are seats.aero's cached availability, not a live search, and each shows how old it is. It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked "not monitored".
 - Watches: Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.
-- Ask: Ask is optional: it answers questions about your results with Claude, on your own Anthropic API key, after you allow it. Anthropic bills each question to that key. Search runs on your seats.aero key alone.
-- Privacy: The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches go to seats.aero and, only for Ask, to Anthropic.
+- Trip planner: Plan a trip shows how AwardGrid reads a trip you type, as airports, dates and cabins, without an account and without sending anything. A plan can be saved on the device, in Saved › Trip plans, and tried on sample data.
+- Ask: Ask, which answers questions about your results with Claude on your own Anthropic API key, is in testing; it is not part of the App Store version 1.0. Search needs no AI key.
+- Privacy: The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go to seats.aero; sample data sends nothing.
 - Availability: AwardGrid for iPhone will be offered in 174 countries or regions; not in mainland China.
 - Dependency: AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.
 

@@ -6,7 +6,7 @@
     <title>AwardGrid iPhone 版：把多条航线、多个日期的里程票排进一张表</title>
     <meta
       name="description"
-      content="用中文或英文输入航线和日期，AwardGrid 就会用你自己的 seats.aero Pro 密钥，把 seats.aero 缓存的里程票数据排进一张表。"
+      content="用中文或英文输入航线和日期，AwardGrid 就会把里程票排进一张表，数据来自你自己的 seats.aero 账户或示例数据。"
     />
     <link rel="canonical" href="https://awardgrid.dowhiz.com/ios/zh-hans/" />
     <link rel="alternate" hreflang="en" href="https://awardgrid.dowhiz.com/ios/" />
@@ -17,7 +17,7 @@
     <meta property="og:title" content="AwardGrid iPhone 版：把多条航线、多个日期的里程票排进一张表" />
     <meta
       property="og:description"
-      content="用中文或英文输入航线和日期，AwardGrid 就会用你自己的 seats.aero Pro 密钥，把 seats.aero 缓存的里程票数据排进一张表。"
+      content="用中文或英文输入航线和日期，AwardGrid 就会把里程票排进一张表，数据来自你自己的 seats.aero 账户或示例数据。"
     />
     <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -50,6 +50,14 @@
                 "acceptedAnswer": {
                   "@type": "Answer",
                   "text": "AwardGrid iPhone 版已提交 App Store，定价为免费，没有内购。你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据。"
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "需要 seats.aero 账户吗？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "不连接 seats.aero 账户时，AwardGrid 只显示示例数据：查票、列表、日历和矩阵视图、选项详情、比较、收藏和关注都可以使用本机生成的示例数据，并标注为示例数据，不会发送任何内容。如果你有带 API 权限的 seats.aero 账户，可以在设置中连接它，看到该账户的结果。"
                 }
               },
               {
@@ -89,7 +97,7 @@
                 "name": "需要 AI 密钥吗？",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "只有 AI 辅助（Ask）需要，它是可选功能。查票只需要你的 seats.aero 密钥。"
+                  "text": "查票不需要 AI 密钥。AI 辅助（Ask）仍在测试中，不在 App Store 1.0 版本里。"
                 }
               },
               {
@@ -149,7 +157,7 @@
 
       <header>
         <p class="eyebrow">iPhone 里程票查询</p>
-        <h1>一张表，用你自己的密钥</h1>
+        <h1>把里程票排进一张表</h1>
         <p class="lead">用中文或英文输入航线和日期，也可以在编辑器里逐项设置。AwardGrid 把 seats.aero 缓存的里程票数据排进一张表，可以同时包含多个出发地、多个目的地，日期范围最长 92 天。每一格为你所查的每个舱位分别列出最低里程，并注明所属里程计划和剩余座位；税费和数据时间显示在每个选项里。</p>
       </header>
 
@@ -157,8 +165,7 @@
         <h2 id="needs-h">使用前提</h2>
         <ul>
           <li>运行 iOS 18 或更高版本的 iPhone。</li>
-          <li>你自己的 seats.aero 账户，要有 API 权限（属于 seats.aero Pro，AwardGrid 不出售）；API 密钥在 seats.aero 设置的 API 页里。没有这个密钥，App 什么也搜不到。</li>
-          <li>AI 辅助（Ask）是可选功能，需要你自己的 Anthropic API 密钥。每次提问由 Anthropic 按此密钥计费。</li>
+          <li>可选：你自己的 seats.aero 账户，要有 API 权限（属于 seats.aero Pro，AwardGrid 不出售）；API 密钥在 seats.aero 设置的 API 页里。没有它，AwardGrid 只显示示例数据。</li>
           <li>AwardGrid 依赖 seats.aero 的 Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。</li>
         </ul>
       </section>
@@ -168,6 +175,9 @@
 
         <h3>AwardGrid 免费吗？</h3>
         <p>AwardGrid iPhone 版已提交 App Store，定价为免费，没有内购。你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据。</p>
+
+        <h3>需要 seats.aero 账户吗？</h3>
+        <p>不连接 seats.aero 账户时，AwardGrid 只显示示例数据：查票、列表、日历和矩阵视图、选项详情、比较、收藏和关注都可以使用本机生成的示例数据，并标注为示例数据，不会发送任何内容。如果你有带 API 权限的 seats.aero 账户，可以在设置中连接它，看到该账户的结果。</p>
 
         <h3>AwardGrid 和 seats.aero 有关联吗？</h3>
         <p>没有。AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。它的数据来自 seats.aero。</p>
@@ -182,7 +192,7 @@
         <p>seats.aero 列出的 26 个里程计划，前提是 seats.aero 监测这条航线；它没有监测的航线会标为“未监测”。</p>
 
         <h3>需要 AI 密钥吗？</h3>
-        <p>只有 AI 辅助（Ask）需要，它是可选功能。查票只需要你的 seats.aero 密钥。</p>
+        <p>查票不需要 AI 密钥。AI 辅助（Ask）仍在测试中，不在 App Store 1.0 版本里。</p>
 
         <h3>可以用中文查询吗？</h3>
         <p>可以。航线和日期可以用中文或英文输入，也可以在编辑器里逐项设置。App 的界面是英文或简体中文。</p>

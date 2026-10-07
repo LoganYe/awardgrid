@@ -4,8 +4,10 @@ Phase 2 of `docs/PIVOT.md`: *"Vite SPA, react-router, the native-HTTP adapter wi
 assertion, Keychain key storage, in-memory cache with a JSON snapshot. Device SQLite can wait for
 watches."* Phase 3 put it on the shared design tokens; Phase 4 added watches; Phase 5 added Ask.
 
-**There is no server.** No accounts, no sessions, no database, no key of ours. One device, your own
-keys in its Keychain: a seats.aero Pro key, and an Anthropic key if you use Ask. That deletes the
+**There is no server.** No accounts, no sessions, no database, no key of ours. One device, and your
+own keys in its Keychain: the API key of your own seats.aero account if you connect one (without it
+the app shows sample data made on the device, release plan steps 16-17), and an Anthropic key if you
+use Ask in a build that has it (the App Store build, `build:store`, compiles Ask out). That deletes the
 ~5,500 lines PIVOT §1 counted — `auth`, `server`, `keys`, `crypto`, `db` — because every one of them
 existed to protect a shared host.
 

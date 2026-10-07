@@ -97,8 +97,11 @@ Not everything says it yet:
 The product in one sentence, for a heading, a profile or a listing that needs one (registered under the `grid`
 claim of `growth/product-facts.json`, with the prerequisite and the platform):
 
-- en: AwardGrid: award seats for many routes and dates in one table, on iPhone, on your own seats.aero Pro key.
-- zh: AwardGrid：iPhone 上用你自己的 seats.aero Pro 密钥，把多条航线、多个日期的里程票排进一张表。
+- en: AwardGrid: award seats for many routes and dates in one table, on iPhone, from your own seats.aero account or from sample data.
+- zh: AwardGrid：在 iPhone 上把多条航线、多个日期的里程票排进一张表，数据来自你自己的 seats.aero 账户或示例数据。
+
+Until 2026-10-07 it ended "on your own seats.aero Pro key". Build 4 works without a key, on sample data, and the
+public pages no longer call the key a Pro key (release plan step 22; `IOS_1.0_RELEASE.md` §0.1 D6).
 
 Every other public sentence about the iPhone app comes from `growth/product-facts.json` (`allowed_copy` and its kin,
 and `allowed_copy_zh` in Chinese), which `scripts/growth/validate-public-claims.mjs` checks in CI;
@@ -109,8 +112,10 @@ and `allowed_copy_zh` in Chinese), which `scripts/growth/validate-public-claims.
 a search is *typed*: "Type the routes and dates in English or Chinese, or set them in the editor." Never "Ask in
 Chinese or English" for a search, and never "AI search": the search parser is deterministic
 (`apps/ios/src/search/search.ts`). In Chinese the feature is AI 辅助, as the app names it; the website writes
-AI 辅助（Ask） so it matches the English pages. The web app's signed-out front door (`home.lead` in the dictionaries)
-still opens "Ask in Chinese or English"; it is the web app's own copy, and rewording it is the owner's decision.
+AI 辅助（Ask） so it matches the English pages. Ask is not part of the App Store version 1.0 (`IOS_1.0_RELEASE.md`
+§0.1 D3): the pages say so ("in testing; it is not part of the App Store version 1.0") and never offer it as a feature
+of that version. The web app's signed-out front door (`home.lead` in the dictionaries) still opens "Ask in Chinese or
+English"; it is the web app's own copy, and rewording it is the owner's decision.
 
 ## 3. Before → after (from the dictionaries)
 

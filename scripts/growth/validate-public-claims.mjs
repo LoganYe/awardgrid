@@ -877,10 +877,18 @@ export const RULE_IDS = [
 ];
 export const REGISTRY_RULE_IDS = ["REGISTRY", "EVIDENCE_REF", "PUBLIC_FILE_MISSING", "PUBLIC_CLAIMS_MARKERS", "UNREGISTERED_SURFACE", "EXEMPTION_INVALID", "EXEMPTION_UNUSED"];
 
-/** The iPhone app as a subject: "the app", "iPhone app", "iOS app"; not "App Store", "App ID", "App Review". */
-const SUBJECT_EN = /\b(?:iPhone|iOS|the) app\b(?!\s*(?:Store|ID|Review|Clip)\b)/i;
-/** Chinese copy calls the app "App" ("App 没有账号"); "Web App" / 网页 App is the web app, never the subject. */
-const SUBJECT_APP = /(?<![Ww][Ee][Bb]\s?)(?<!网页\s?)(?<!網頁\s?)(?<!网络\s?)(?<!網路\s?)\bApp(?=\s*[㐀-鿿])/;
+/**
+ * The iPhone app as a subject: "the app", "iPhone app", "iOS app", or its public name "AwardGrid for iPhone"; not "App
+ * Store", "App ID", "App Review". Since 2026-10-07 (build 4's pages, release plan step 22) the privacy policy and the
+ * store description scope "no accounts / no server of its own" to "AwardGrid for iPhone", which names the iPhone app
+ * as plainly as "the iPhone app" does; "AwardGrid" alone is also the web app's name, so it is still no subject.
+ */
+const SUBJECT_EN = /\b(?:iPhone|iOS|the) app\b(?!\s*(?:Store|ID|Review|Clip)\b)|\bAwardGrid for iPhone\b/i;
+/**
+ * Chinese copy calls the app "App" ("App 没有账号"), or by its public name "AwardGrid iPhone 版"; "Web App" / 网页 App is
+ * the web app, never the subject.
+ */
+const SUBJECT_APP = /(?<![Ww][Ee][Bb]\s?)(?<!网页\s?)(?<!網頁\s?)(?<!网络\s?)(?<!網路\s?)\bApp(?=\s*[㐀-鿿])|\bAwardGrid\s*iPhone\s*版/;
 
 /** Brand words for each seats.aero source code, beyond its full name in packages/core (TRADEMARK_ASO). */
 export const PROGRAM_BRANDS = {
