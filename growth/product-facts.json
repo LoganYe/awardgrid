@@ -214,7 +214,7 @@
       "limitations": [
         "Approved for public use on 2026-09-28.",
         "Shortened on 2026-10-06 (decision D6, docs/release/IOS_1.0_RELEASE.md §0.1): the second sentence, which asked readers to check their seats.aero settings for an API tab before buying a subscription, and its Chinese are gone. It was a call to action for a purchase outside the app, which App Review Guideline 3.1.3 does not allow on the storefronts outside the United States. What remains is AwardGrid's own paraphrase of seats.aero's policy, never quoted as seats.aero's words.",
-        "In Chinese the API tab is API 页, the app's word (apps/ios/src/screens/settings-copy.ts); the same Chinese sentence is on /ios/zh-hans/ and /support/#zh. 只许可 states seats.aero's restriction; 授权 would read as an endorsement (the gate's AFFILIATION rule refuses \"seats.aero 授权\").",
+        "The same Chinese sentence is on /ios/zh-hans/ and /support/#zh. Since 2026-10-06 it no longer names the API tab; where the prerequisite's Chinese does, it is API 页, the app's word (apps/ios/src/screens/settings-copy.ts). 只许可 states seats.aero's restriction; 授权 would read as an endorsement (the gate's AFFILIATION rule refuses \"seats.aero 授权\").",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
