@@ -1497,20 +1497,6 @@
   line-height: var(--ag-leading-reading);
 }
 
-.ag-example {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ag-space-3);
-  max-width: 640px;
-  margin: 0 auto;
-}
-
-.ag-example-list {
-  display: grid;
-  gap: var(--ag-card-gap);
-}
-
-
 /* Saving the results (T13): the line that says it, with a way to the Saved tab. */
 .ag-results-save:empty {
   position: absolute;

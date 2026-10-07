@@ -406,8 +406,8 @@ export function SearchScreen() {
   // The engine's own messages and run warnings are English (core); they say so on a Chinese screen.
   const english = locale === "en" ? undefined : "en";
   const saveNote = saveMessage && saveMessage.snapshotId === snapshot?.id ? saveMessage : null;
-  // No account connected: say so, offer the sample data (the example until sample mode replaces it), and say where to
-  // connect one — unless this build has no connection (VITE_AG_CONNECT=0), where only the sample data is offered.
+  // No account connected: say so, offer sample data (#/example enters sample mode), and say where to connect one —
+  // unless this build has no connection (VITE_AG_CONNECT=0), where only the sample data is offered.
   const keyCallout =
     hasKey === false ? (
       <Callout tone="danger" className="ag-results-callout">
