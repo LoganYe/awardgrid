@@ -47,6 +47,7 @@ import { Link, Outlet, useLocation, useMatch, useNavigate, useOutletContext } fr
 import type { AppServices } from "../app/bootstrap";
 import { useAskRunning } from "../app/ask-running";
 import { isSample } from "../app/data-source";
+import { localDate, localDateOf } from "../app/local-date";
 import { CAN_CONNECT, STORE } from "../app/flags";
 import { langTag, useLocale } from "../app/locale";
 import { ASK_SURFACES } from "../ask/ask-surface-copy";
@@ -153,7 +154,7 @@ export function SearchScreen() {
   const failure = attempt && attempt.revision === workspace.revision ? attempt.error : null;
   const location = useLocation();
   // Whether the shown search's words, read again, give that search (as read on the day it was made).
-  const madeOn = snapshot?.createdAt.slice(0, 10) ?? null;
+  const madeOn = snapshot ? localDateOf(snapshot.createdAt) : null;
   const reproduces = useMemo(() => (shown && madeOn ? textReproducesQuery(shown.text, shown.value.query, madeOn) : false), [shown, madeOn]);
   const [quota, setQuota] = useState<QuotaSnapshotView | null>(null);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
@@ -213,7 +214,7 @@ export function SearchScreen() {
 
   // Sample mode's one tap: a structured search with rows, from an empty result or a text the parser could not read.
   const trySampleSearch = () => {
-    const query = sampleStarterQuery(services.now().toISOString().slice(0, 10));
+    const query = sampleStarterQuery(localDate(services.now()));
     void runSearch(() => services.runParsed(SAMPLE_STARTER_TEXT, { query, warnings: [], notices: [] }));
   };
   const sampleTry = sample ? (
@@ -288,7 +289,7 @@ export function SearchScreen() {
   const watchThis = useCallback(async () => {
     const snap = services.workspace.getState().displayedSnapshot;
     if (!snap) return;
-    const draft = draftForWatch(snap.query, (madeOn ?? snap.createdAt).slice(0, 10));
+    const draft = draftForWatch(snap.query, madeOn ?? localDateOf(snap.createdAt));
     const title = describeQuery(snap.query, draft.dates);
     const added = services.watches.add({
       id: crypto.randomUUID(),
@@ -320,7 +321,7 @@ export function SearchScreen() {
   // Coverage speaks for the search, so it counts the snapshot's rows, not the ones a view filter lets through.
   const coverage = snapshot && value ? coverageNotices(snapshot.coverage, snapshot.rows.length, locale) : [];
   // Sample mode: a search past what sample data covers says what it covers; an empty one offers the one tap.
-  const pastCoverage = sample && value ? pastSampleCoverage(services, value.query, now.toISOString().slice(0, 10)) : false;
+  const pastCoverage = sample && value ? pastSampleCoverage(services, value.query, localDate(now)) : false;
   // "Show all" takes its own button away: focus goes to the status line, and the change is announced.
   const [announcement, setAnnouncement] = useState("");
   const showAll = () => {

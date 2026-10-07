@@ -10,6 +10,7 @@
 import { useSyncExternalStore } from "react";
 import type { AppServices } from "../../app/bootstrap";
 import { isSample } from "../../app/data-source";
+import { localDate } from "../../app/local-date";
 import type { Locale } from "../../app/locale";
 import { routeLabel } from "@awardgrid/core/workspace/present";
 import { SAMPLE } from "../../sample/sample-copy";
@@ -42,7 +43,7 @@ export function SavedPlans({ services, locale, hasKey, busy, onRemove }: SavedPl
   const unreadable = services.plans.unreadableCount();
   if (plans.length === 0 && !readOnly && unreadable === 0) return null;
   const usage = services.plans.usage();
-  const today = services.now().toISOString().slice(0, 10);
+  const today = localDate(services.now());
   // What the plans' action does, said once: through the account, on the sample data, or by switching to it.
   const note = hasKey === null ? null : hasKey ? (isSample(services) ? SAMPLE[locale].savedSearchAgain : p.searchNote) : p.tryNote;
   return (

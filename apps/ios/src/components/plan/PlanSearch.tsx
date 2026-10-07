@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import type { AppServices } from "../../app/bootstrap";
+import { localDate } from "../../app/local-date";
 import type { Locale } from "../../app/locale";
 import { WithTail } from "../../app/WithTail";
 import { SAMPLE } from "../../sample/sample-copy";
@@ -41,7 +42,7 @@ export function PlanSearch({ services, locale }: { services: AppServices; locale
   // What saving said, about the plan on screen; a plan read again is not "saved".
   const [said, setSaid] = useState<{ text: string; ok: boolean; tail?: string } | null>(null);
   const actions = usePlanActions(services, locale);
-  const today = services.now().toISOString().slice(0, 10);
+  const today = localDate(services.now());
 
   const read = async (text: string) => {
     setReading(true);

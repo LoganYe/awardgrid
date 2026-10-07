@@ -28,6 +28,7 @@ import { Link, useLocation, useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
 import { isSample } from "../app/data-source";
+import { localDate } from "../app/local-date";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import { SAMPLE } from "../sample/sample-copy";
 import { EDITOR_COPY } from "../components/query/labels";
@@ -66,7 +67,7 @@ export function statusLine(watch: Watch, now: Date, w: WatchesCopy, run: WatchCh
     if (run.reason === "quota_low") return { text: w.skipQuota(copy("watch.quota", locale)) };
     if (run.reason === "no_key") return { text: w.skipNoKey };
     // Not after the dates were edited: the run's outcome is older than the watch's conditions.
-    if (run.reason === "dates_passed" && datesPassed(watch, now.toISOString().slice(0, 10))) return { text: w.skipDatesPassed };
+    if (run.reason === "dates_passed" && datesPassed(watch, localDate(now))) return { text: w.skipDatesPassed };
   }
   if (failure) {
     if (failure.unresolved) return { text: w.unresolved };
@@ -164,7 +165,7 @@ export function WatchesScreen() {
   );
 
   const lastRun = services.lastWatchRun();
-  const today = now.toISOString().slice(0, 10);
+  const today = localDate(now);
 
   /**
    * The watch's heading and conditions, in the screen's language: for a structured watch, its route, then what it

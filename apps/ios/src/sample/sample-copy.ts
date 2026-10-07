@@ -6,7 +6,7 @@
  * Statically imported by the screens, so it is in the main bundle; the sample data and its transport are not
  * (./boot.ts and what it imports load only in sample mode).
  */
-import { STORE } from "../app/flags";
+import { CAN_CONNECT, STORE } from "../app/flags";
 import type { Locale } from "../app/locale";
 
 export interface SampleCopy {
@@ -32,6 +32,12 @@ export interface SampleCopy {
   connectHint: string;
   /** The seats.aero row's value in Settings, in sample mode (never the placeholder's last four). */
   settingsValue: string;
+  /**
+   * Settings › About's first sentence, in sample mode, in place of the account's "Searches go to seats.aero with your
+   * seats.aero API key…": what is true over sample data. Its data line is `attribution`, as on every sample screen.
+   * A build with no way to connect (CONNECT "0") does not offer one.
+   */
+  aboutSent: string;
   /** The comparison's source-time field, in sample mode. */
   compareField: string;
   /** The query editor's note under its submit button, in sample mode. */
@@ -56,6 +62,9 @@ export const SAMPLE: Record<Locale, SampleCopy> = {
     trySearch: "Try Hong Kong to Seattle, next 30 days, business",
     connectHint: "Exit sample data to connect your account.",
     settingsValue: "Sample data",
+    aboutSent: CAN_CONNECT
+      ? "Sample data is made on this device, and nothing is sent. Connecting a seats.aero account is optional."
+      : "Sample data is made on this device, and nothing is sent.",
     compareField: "Data",
     // The App Store build has no AI at all (app/flags.ts STORE), so it does not say what it does not use.
     editorNote: STORE ? "Searches the sample data on this device" : "Searches the sample data on this device · No AI",
@@ -75,6 +84,7 @@ export const SAMPLE: Record<Locale, SampleCopy> = {
     trySearch: "试试 香港到西雅图，未来30天，商务舱",
     connectHint: "退出示例数据后即可连接你的账户。",
     settingsValue: "示例数据",
+    aboutSent: CAN_CONNECT ? "示例数据在本机生成，不会发送任何内容。连接 seats.aero 账户是可选的。" : "示例数据在本机生成，不会发送任何内容。",
     compareField: "数据",
     editorNote: STORE ? "在本机示例数据中查询" : "在本机示例数据中查询 · 不使用 AI",
     watchSkipSoon: "距离上一次检查不到 45 分钟的检查会跳过。",

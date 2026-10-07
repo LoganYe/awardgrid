@@ -29,6 +29,7 @@ import { Link, useLocation, useNavigate, useOutletContext, useParams } from "rea
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
 import { isSample } from "../app/data-source";
+import { localDate } from "../app/local-date";
 import { CAN_CONNECT } from "../app/flags";
 import { useFocusOnArrival } from "../app/focus";
 import { langTag, useLocale } from "../app/locale";
@@ -337,8 +338,8 @@ export function SavedScreen() {
   }
 
   const projected = shown(item);
-  // The saved dates against today (UTC, the query's own clock): all past, or partly.
-  const today = now.toISOString().slice(0, 10);
+  // The saved dates against today on this device's calendar: all past, or partly.
+  const today = localDate(now);
   const allPast = item.query.date_to < today;
   const somePast = !allPast && item.query.date_from < today;
 

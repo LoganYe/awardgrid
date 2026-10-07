@@ -84,7 +84,7 @@ export function planConditions(query: Pick<QueryObject, "direct_only" | "program
   return out;
 }
 
-/** Whether the plan's dates have passed on `today` (YYYY-MM-DD, UTC, the query's own clock): all, some, or none. */
+/** Whether the plan's dates have passed on `today` (YYYY-MM-DD, this device's calendar day): all, some, or none. */
 export function planPast(query: Pick<QueryObject, "date_from" | "date_to">, today: string): "all" | "some" | null {
   if (query.date_to < today) return "all";
   if (query.date_from < today) return "some";

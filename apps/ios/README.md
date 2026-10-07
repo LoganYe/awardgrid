@@ -241,7 +241,8 @@ unchanged.
   only in sample mode.
 - **Labelled.** A banner on every screen (the approved "Illustrative data — not live availability" under "Sample
   data", with "Exit sample data"), "Sample data" where a source time would be, "Sample data · on this device" where
-  "Data: seats.aero" would be, no call counts or quota line, and no booking or program links.
+  "Data: seats.aero" would be, no call counts or quota line, and no booking or program links. Settings › About says
+  what is true there: sample data is made on this device, nothing is sent, and connecting an account is optional.
 - **Leaving** keeps the language and appearance chosen meanwhile, deletes `sample/`, and boots again on the account.
   `#/example`, the old static example's address, enters sample mode.
 
@@ -296,6 +297,24 @@ reproducibly on the xcframework download (`docs/PHASE0.md` §6).
   sizes show some under 44 pt: the nav link "Ask" is 26.4 pt wide, and four Settings controls and
   Search's Run, Watch this search and example chips, all older than Phase 5, are 27 to 41.8 pt tall
   (`docs/PHASE5.md` §2.2; #91).
+- **Safe areas: one inset, the page's own (PR-D).** The page covers the screen (`viewport-fit=cover`) and each
+  screen's top chrome pads `env(safe-area-inset-top)` once, the tab bar `env(safe-area-inset-bottom)` once. The web
+  view's scroll view no longer insets it as well (`ios.contentInset: "never"` in `capacitor.config.ts`, and the same
+  in `AppViewController.swift`): with "always" a page one screen tall was scrollable by the inset, and depending on
+  launch timing showed a 62 pt empty band above its title on an iPhone or its title under an iPad window's controls.
+  On iPadOS 26 and later the controller adds the window controls (the corner-adapted safe area) to the web view's
+  safe area, so the title starts below them. Watches, Saved and Settings keep the top inset as a strip of canvas
+  above their scrolling area (`.app-status-area`), so what scrolls stops below the status bar instead of running
+  under it; Search, details, compare and the editor carry it in their own headers. What spans the screen outside
+  the tab chrome (the editor, Ask, sheets and the bare "Starting…" page) pads the side insets too, so a phone in
+  landscape keeps it clear of the Dynamic Island. Checked on the Simulator on iOS 18.3, iOS 26.5 (also in
+  landscape) and an iPad in a window on iPadOS 27 (`src/native/safe-area.test.ts` holds the configuration).
+  Whether this also closes #90 (the scrolled grid under the status bar) needs that screenshot retaken.
+- **"Today" is the device's calendar day (PR-D).** Every place that turns the clock into a date (the parser's today,
+  the editor, plans, Saved, watches, sample data) uses `src/app/local-date.ts`, so "next 14 days" typed at 22:53 in
+  California starts that day, not tomorrow. Only seats.aero's daily call count stays on UTC, as seats.aero resets
+  it. Drafts still store `clock: "UTC"` on a relative date rule (core's type); it is a stored tag, and the day it is
+  counted from is the one the app passes in.
 - **The grid is not yet the web app's virtualised component.** `src/components/GridTable.tsx` is a
   flat, phone-sized reading of the core's `Grid`; `src/search/search.ts` keeps the `ApiResult` /
   `ApiFailureCode` shape from `src/components/grid/api.ts` exactly so the full port stays a small diff.

@@ -1,6 +1,6 @@
 /**
- * Departure dates (docs/04 S02; spec §12; docs/02 D06): a fixed pair of calendar dates, or the next N days counted in
- * UTC from today and including it. Both modes show what they mean — a fixed pair its day count against core's cap,
+ * Departure dates (docs/04 S02; spec §12; docs/02 D06): a fixed pair of calendar dates, or the next N days counted
+ * from today (the day on this device's calendar, app/local-date.ts) and including it. Both modes show what they mean — a fixed pair its day count against core's cap,
  * the relative rule the exact range it resolves to — and "Next days" offers 30 and 60 as quick picks. Switching
  * modes keeps the range the person was looking at (and each mode remembers its last value), so arrowing through the
  * mode control never throws a range away. Nothing here sends anything.

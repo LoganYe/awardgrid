@@ -47,6 +47,7 @@ import {
 import { resolveDraft } from "@awardgrid/core/workspace/query-editor";
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import { DEFAULT_CACHE_TTL_MINUTES } from "@awardgrid/core/seatsaero/cache";
+import { localDate } from "../app/local-date";
 import type { ApiFailureCode, SearchEngine } from "../search/search";
 import type { WatchStore } from "../store/watch-store";
 
@@ -103,14 +104,14 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
     let structured: QueryObject | null = null;
     if (watch.draft && !watch.review) {
       try {
-        structured = resolveDraft(watch.draft, now.toISOString().slice(0, 10));
+        structured = resolveDraft(watch.draft, localDate(now));
       } catch {
         // Never the old text instead: that is a different search from the one on its card. Nothing was sent.
         opts.store.update(watch.id, { lastResult: { at: now.toISOString(), status: "failed", firstCheck, unresolved: true } });
         results.push(result(watch, { status: "failed", message: "The watch's conditions could not be resolved." }, firstCheck));
         continue;
       }
-      if (structured.date_to < now.toISOString().slice(0, 10)) {
+      if (structured.date_to < localDate(now)) {
         results.push(result(watch, { status: "skipped", reason: "dates_passed" }, firstCheck));
         continue;
       }

@@ -34,6 +34,7 @@ import { ResilientRoutesCatalog, type RoutesCatalog } from "@awardgrid/core/seat
 import { SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
 import { type GetTripsResult, runGetTrips } from "@awardgrid/core/seatsaero/trips";
 import { type KeyCheckOutcome, checkSeatsKey } from "@awardgrid/core/seatsaero/key-check";
+import { localDate } from "../app/local-date";
 
 /**
  * There is exactly one user, and `runFind` still wants an id because the core is shared with the
@@ -172,7 +173,8 @@ export class SearchEngine {
     const trimmed = text.trim();
     if (!trimmed) return { ok: false, status: 400, error: "invalid_body", message: "Type a query first.", notice: { code: "parse.empty" } };
     try {
-      const parsed = await parseQuery(trimmed, { today: this.#now().toISOString().slice(0, 10) });
+      // "Today" on the person's own calendar, not UTC's: in the US evening UTC is already tomorrow (PR-D).
+      const parsed = await parseQuery(trimmed, { today: localDate(this.#now()) });
       return { ok: true, value: { query: parsed.query, warnings: parsed.warnings, notices: parsed.notices } };
     } catch (err) {
       const notice = noticeFrom(err);

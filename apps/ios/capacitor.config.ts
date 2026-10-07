@@ -21,7 +21,11 @@ const config: CapacitorConfig = {
     },
   },
   ios: {
-    contentInset: "always",
+    // "never": the page pads its own chrome with env(safe-area-inset-*) (viewport-fit=cover in index.html), so the
+    // web view must not inset it as well. "always" did both, and left a page one screen tall scrollable by the
+    // inset: an empty band above the title on an iPhone, or the title under an iPad window's controls, depending on
+    // launch timing. AppViewController.swift sets the same and adds the window controls to the safe area (PR-D).
+    contentInset: "never",
   },
 };
 
