@@ -6,8 +6,12 @@
  * sent where, the non-affiliation sentence, the cache note and its result, the seats.aero key's removal sheet), are
  * ask/ask-surface-copy.ts, read only when the build has Ask; the App Store build (app/flags.ts STORE) uses the
  * neutral versions written here. The Anthropic key page's words are ./anthropic-copy.ts.
+ *
+ * The OAuth flavour (app/flags.ts OAUTH) has no key: its connect page's words are ./oauth-copy.ts (loaded with that
+ * page only), the account row says "Connected", and the sentences that name the key (what is sent where, the cache
+ * note and its result) have versions that name the connected account and the 24-hour limit instead.
  */
-import { STORE } from "../app/flags";
+import { OAUTH, STORE } from "../app/flags";
 import type { Locale } from "../app/locale";
 import { ASK_SURFACES } from "../ask/ask-surface-copy";
 
@@ -68,7 +72,8 @@ export interface SettingsCopy {
     confirmRemove: string;
     confirmKeep: string;
   };
-
+  /** The account row's value in the OAuth flavour, where no key characters exist to show. */
+  connected: string;
 }
 
 export const SETTINGS: Record<Locale, SettingsCopy> = {
@@ -82,15 +87,25 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
     themes: { system: "System", light: "Light", dark: "Dark" },
     language: "Language",
     clearCache: "Clear cached results",
-    cacheNote: STORE
-      ? "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls. Clearing it costs one cold search, nothing more. This does not touch your seats.aero key."
-      : ASK_SURFACES.en.settings.cacheNote,
+    cacheNote: OAUTH
+      ? "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls, and nothing from seats.aero is kept longer than 24 hours. Clearing it costs one cold search, nothing more. Your seats.aero account stays connected."
+      : STORE
+        ? "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls. Clearing it costs one cold search, nothing more. This does not touch your seats.aero key."
+        : ASK_SURFACES.en.settings.cacheNote,
     cacheKeeps: "Results already on the Search screen stay there, with the search they came from; clearing the cache does not remove them.",
-    cacheCleared: STORE ? "Cached results cleared. Your seats.aero key is untouched." : ASK_SURFACES.en.settings.cacheCleared,
+    cacheCleared: OAUTH
+      ? "Cached results cleared. Your seats.aero account is still connected."
+      : STORE
+        ? "Cached results cleared. Your seats.aero key is untouched."
+        : ASK_SURFACES.en.settings.cacheCleared,
     aboutData: "Data: seats.aero",
-    aboutSent: STORE
-      ? "Searches go to seats.aero with your seats.aero API key. Keeping the key on this device does not keep searches off the network."
-      : ASK_SURFACES.en.settings.aboutSent,
+    aboutSent: OAUTH
+      ? STORE
+        ? "Searches go from this device to seats.aero through your connected seats.aero account. A small token service at awardgrid.dowhiz.com renews the connection and stores nothing. Results from seats.aero are kept on this device for 24 hours at most."
+        : ASK_SURFACES.en.settings.aboutSentOAuth
+      : STORE
+        ? "Searches go to seats.aero with your seats.aero API key. Keeping the key on this device does not keep searches off the network."
+        : ASK_SURFACES.en.settings.aboutSent,
     notAffiliated: STORE
       ? "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program."
       : ASK_SURFACES.en.settings.notAffiliated,
@@ -135,6 +150,7 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
       confirmRemove: "Remove",
       confirmKeep: "Keep key",
     },
+    connected: "Connected",
   },
   zh: {
     title: "设置",
@@ -146,11 +162,21 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
     themes: { system: "跟随系统", light: "浅色", dark: "深色" },
     language: "语言",
     clearCache: "清除缓存结果",
-    cacheNote: STORE ? "兑换结果在本机缓存 45 分钟，重复查询不消耗 seats.aero 调用。清除后下次查询需重新获取，不影响 seats.aero 密钥。" : ASK_SURFACES.zh.settings.cacheNote,
+    cacheNote: OAUTH
+      ? "兑换结果在本机缓存 45 分钟，重复查询不消耗 seats.aero 调用；来自 seats.aero 的内容最多保留 24 小时。清除后下次查询需重新获取，seats.aero 账户保持连接。"
+      : STORE
+        ? "兑换结果在本机缓存 45 分钟，重复查询不消耗 seats.aero 调用。清除后下次查询需重新获取，不影响 seats.aero 密钥。"
+        : ASK_SURFACES.zh.settings.cacheNote,
     cacheKeeps: "查票页上已显示的结果会随其查询一起保留，清除缓存不会删除它们。",
-    cacheCleared: STORE ? "缓存结果已清除，seats.aero 密钥未受影响。" : ASK_SURFACES.zh.settings.cacheCleared,
+    cacheCleared: OAUTH ? "缓存结果已清除，seats.aero 账户仍保持连接。" : STORE ? "缓存结果已清除，seats.aero 密钥未受影响。" : ASK_SURFACES.zh.settings.cacheCleared,
     aboutData: "数据：seats.aero",
-    aboutSent: STORE ? "查票请求会携带你的 seats.aero API 密钥发往 seats.aero。密钥保存在本机，不代表查询内容不外发。" : ASK_SURFACES.zh.settings.aboutSent,
+    aboutSent: OAUTH
+      ? STORE
+        ? "查票请求通过你已连接的 seats.aero 账户从本机发往 seats.aero。awardgrid.dowhiz.com 上的一个小型令牌服务只负责续期连接，不保存任何内容。来自 seats.aero 的结果在本机最多保留 24 小时。"
+        : ASK_SURFACES.zh.settings.aboutSentOAuth
+      : STORE
+        ? "查票请求会携带你的 seats.aero API 密钥发往 seats.aero。密钥保存在本机，不代表查询内容不外发。"
+        : ASK_SURFACES.zh.settings.aboutSent,
     notAffiliated: STORE ? "AwardGrid 与 seats.aero、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。" : ASK_SURFACES.zh.settings.notAffiliated,
     privacy: "隐私政策",
     support: "支持",
@@ -191,5 +217,7 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
       confirmRemove: "移除",
       confirmKeep: "保留密钥",
     },
+    connected: "已连接",
+
   },
 };

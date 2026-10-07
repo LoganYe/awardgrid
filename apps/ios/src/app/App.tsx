@@ -61,6 +61,12 @@ const E2E = import.meta.env.VITE_AG_PROBES === "e2e";
 const ASK_BUILT = import.meta.env.VITE_AG_STORE !== "1";
 const AskScreen = ASK_BUILT ? lazy(() => import("../screens/AskScreen").then((m) => ({ default: m.AskScreen }))) : null;
 const AnthropicKeyScreen = ASK_BUILT ? lazy(() => import("../screens/AnthropicKeyScreen").then((m) => ({ default: m.AnthropicKeyScreen }))) : null;
+/**
+ * The OAuth flavour's connect page (VITE_AG_CONNECT=oauth, ./flags.ts OAUTH): seats.aero's own sign-in instead of the
+ * key field. Written out the same way, so the other flavours carry neither the page nor its words (oauth-copy.ts).
+ */
+const OAUTH_BUILT = import.meta.env.VITE_AG_CONNECT === "oauth";
+const SeatsConnectScreen = OAUTH_BUILT ? lazy(() => import("../screens/SeatsConnectScreen").then((m) => ({ default: m.SeatsConnectScreen }))) : null;
 
 /**
  * How many watches have changes the user has not looked at yet.
@@ -296,8 +302,22 @@ export function appRoutes(services: AppServices): RouteObject[] {
         { path: "saved", element: <FavoritesScreen /> },
         { path: "saved/:id", element: <SavedScreen /> },
         { path: "settings", element: <SettingsScreen /> },
-        // The seats.aero connection page, unless this build has no connection (VITE_AG_CONNECT=0).
-        ...(CAN_CONNECT ? [{ path: "settings/seats", element: <SeatsKeyScreen /> }] : []),
+        // The seats.aero connection page, unless this build has no connection (VITE_AG_CONNECT=0): seats.aero's own
+        // sign-in in the OAuth flavour (VITE_AG_CONNECT=oauth), the key field otherwise.
+        ...(CAN_CONNECT
+          ? [
+              {
+                path: "settings/seats",
+                element: SeatsConnectScreen ? (
+                  <Suspense fallback={null}>
+                    <SeatsConnectScreen />
+                  </Suspense>
+                ) : (
+                  <SeatsKeyScreen />
+                ),
+              },
+            ]
+          : []),
         ...(AnthropicKeyScreen
           ? [
               {
@@ -372,16 +392,20 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
     // …persist on the way out, and check again on the way back in. `pagehide` and a hidden
     // visibility state are what iOS delivers when the app is backgrounded. The Phase 2 version added
     // an anonymous visibilitychange listener it could never remove; these are named so they are.
+    // The OAuth flavour first removes whatever passed its 24-hour limit while the app was away (launch already has).
     const onVisibility = () => {
       if (document.visibilityState === "hidden") void services.persist();
-      else void services.checkWatches();
+      else void services.sweepShortTerm().then(() => services.checkWatches());
     };
     const onPageHide = () => void services.persist();
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onPageHide);
+    // …and hourly while it stays open, so nothing outlives the limit on a screen left showing.
+    const sweep = services.shortTermMs != null ? window.setInterval(() => void services.sweepShortTerm(), 60 * 60_000) : null;
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
+      if (sweep !== null) window.clearInterval(sweep);
     };
   }, [services]);
 

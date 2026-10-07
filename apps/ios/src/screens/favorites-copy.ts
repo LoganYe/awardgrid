@@ -59,6 +59,20 @@ export interface FavoritesCopy {
   noKey: string;
   saveProblem: (message: string) => string;
   saveProblemRetry: string;
+  /**
+   * The OAuth flavour (release plan step 18b): seats.aero's results in a saved item are kept for 24 hours at most;
+   * after that the item keeps its search and a summary, and opening it searches again.
+   */
+  shortTerm: {
+    intro: string;
+    /** On an item whose results were removed. */
+    removedNote: string;
+    open: string;
+    openName: (name: string) => string;
+    searching: string;
+    searched: string;
+    failed: (message: string) => string;
+  };
 }
 
 export const FAVORITES: Record<Locale, FavoritesCopy> = {
@@ -112,6 +126,15 @@ export const FAVORITES: Record<Locale, FavoritesCopy> = {
     saveProblemDetails: "Details",
     saveRetried: "Still could not save.",
     saveFixed: "Saved.",
+    shortTerm: {
+      intro: "Saved on this device only. Results from seats.aero stay in a saved item for 24 hours; after that it keeps its search and a summary, and opening it searches again.",
+      removedNote: "Results older than 24 hours are removed from this device. Open it to search seats.aero again.",
+      open: "Open and search again",
+      openName: (name) => `Open and search again: ${name}`,
+      searching: "Searching seats.aero again",
+      searched: "Searched again. These are the results seats.aero has now.",
+      failed: (message) => `Could not search again: ${message}`,
+    },
   },
   zh: {
     tab: "收藏",
@@ -163,5 +186,14 @@ export const FAVORITES: Record<Locale, FavoritesCopy> = {
     saveProblemDetails: "详情",
     saveRetried: "仍然无法保存。",
     saveFixed: "已保存。",
+    shortTerm: {
+      intro: "仅保存在本机。收藏中来自 seats.aero 的结果保留 24 小时；之后只保留查询条件和摘要，打开时会重新查询。",
+      removedNote: "超过 24 小时的结果已从本机移除。打开后会重新向 seats.aero 查询。",
+      open: "打开并重新查询",
+      openName: (name) => `打开并重新查询：${name}`,
+      searching: "正在重新向 seats.aero 查询",
+      searched: "已重新查询。以下是 seats.aero 现在的结果。",
+      failed: (message) => `无法重新查询：${message}`,
+    },
   },
 };

@@ -34,6 +34,7 @@ import { ResilientRoutesCatalog, type RoutesCatalog } from "@awardgrid/core/seat
 import { SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
 import { type GetTripsResult, runGetTrips } from "@awardgrid/core/seatsaero/trips";
 import { type KeyCheckOutcome, checkSeatsKey } from "@awardgrid/core/seatsaero/key-check";
+import { OAUTH } from "../app/flags";
 
 /**
  * There is exactly one user, and `runFind` still wants an id because the core is shared with the
@@ -300,7 +301,9 @@ export class SearchEngine {
         error: isAuth ? "no_key" : "seatsaero",
         kind: `http_${err.status}`,
         message: isAuth
-          ? "seats.aero did not accept the API key. Check it in Settings."
+          ? OAUTH
+            ? "seats.aero did not accept the connection. Connect your seats.aero account again in Settings."
+            : "seats.aero did not accept the API key. Check it in Settings."
           : err.message,
       };
     }

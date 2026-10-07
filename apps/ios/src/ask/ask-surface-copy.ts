@@ -26,6 +26,8 @@ export interface AskSurfaceCopy {
     row: string;
     rowNote: string;
     aboutSent: string;
+    /** The OAuth flavour's version (app/flags.ts OAUTH): an account connected through seats.aero's sign-in, no key. */
+    aboutSentOAuth: string;
     notAffiliated: string;
     cacheNote: string;
     cacheCleared: string;
@@ -48,6 +50,8 @@ export const ASK_SURFACES: Record<Locale, AskSurfaceCopy> = {
       rowNote: "Only for AI assistance. Search works without it.",
       aboutSent:
         "Searches go to seats.aero with your seats.aero API key. When you use AI assistance, your question, the earlier questions and answers in that conversation, the search you include and the seats.aero results it reads go to Anthropic. Keeping keys on this device does not keep searches off the network.",
+      aboutSentOAuth:
+        "Searches go from this device to seats.aero through your connected seats.aero account. When you use AI assistance, your question, the earlier questions and answers in that conversation, the search you include and the seats.aero results it reads go to Anthropic. A small token service at awardgrid.dowhiz.com renews the seats.aero connection and stores nothing.",
       notAffiliated: "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.",
       cacheNote: CACHE_NOTE,
       cacheCleared: CACHE_CLEARED,
@@ -67,6 +71,8 @@ export const ASK_SURFACES: Record<Locale, AskSurfaceCopy> = {
       rowNote: "仅用于 AI 辅助，没有它也能查票。",
       aboutSent:
         "查票请求会携带你的 seats.aero API 密钥发往 seats.aero。使用 AI 辅助时，你的问题、同一对话中之前的问答、你附带的查询，以及它读取的 seats.aero 结果会发往 Anthropic。密钥保存在本机，不代表查询内容不外发。",
+      aboutSentOAuth:
+        "查票请求通过你已连接的 seats.aero 账户从本机发往 seats.aero。使用 AI 辅助时，你的问题、同一对话中之前的问答、你附带的查询，以及它读取的 seats.aero 结果会发往 Anthropic。awardgrid.dowhiz.com 上的一个小型令牌服务只负责续期 seats.aero 连接，不保存任何内容。",
       notAffiliated: "AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
       cacheNote: "兑换结果在本机缓存 45 分钟，重复查询不消耗 seats.aero 调用。清除后下次查询需重新获取，不影响密钥和 AI 对话。",
       cacheCleared: "缓存结果已清除，密钥未受影响。",

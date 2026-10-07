@@ -3,6 +3,7 @@
  * unchanged; the Chinese keeps the same rule (docs/PIVOT.md §3): when a watch was last checked, never when it will be,
  * and no background check claimed. `honesty.test.ts` scans both.
  */
+import { OAUTH } from "../app/flags";
 import type { Locale } from "../app/locale";
 
 export interface WatchesCopy {
@@ -107,9 +108,14 @@ export const WATCHES: Record<Locale, WatchesCopy> = {
     notCompared: "Could not compare with the check before: the dates did not overlap. This check is the new starting point.",
     skipCached: (ago) => `Skipped while cached results are still valid (last checked ${ago}).`,
     skipDatesPassed: "Not checked: these dates have passed. Edit the watch to choose new dates.",
-    refused: "Not checked: seats.aero did not accept the API key. Check it in Settings. The previous baseline is kept.",
+    // The OAuth flavour has no key to check: the connection is what seats.aero refused.
+    refused: OAUTH
+      ? "Not checked: seats.aero did not accept the connection. Connect your account again in Settings. The previous baseline is kept."
+      : "Not checked: seats.aero did not accept the API key. Check it in Settings. The previous baseline is kept.",
     failedWith: (ago, message) => `Check failed; previous baseline kept (${ago}): ${message}`,
-    refusedNoBaseline: "Not checked: seats.aero did not accept the API key. Check it in Settings.",
+    refusedNoBaseline: OAUTH
+      ? "Not checked: seats.aero did not accept the connection. Connect your account again in Settings."
+      : "Not checked: seats.aero did not accept the API key. Check it in Settings.",
     unresolved: "Not checked: these conditions cannot be run. Edit the watch to set them again.",
     stopName: (name) => `Stop watching: ${name}`,
     discardWatch: "Your changes to this watch have not been saved.",
@@ -163,9 +169,9 @@ export const WATCHES: Record<Locale, WatchesCopy> = {
     notCompared: "无法与上一次检查比较：两次的日期没有重叠。这次检查是新的起点。",
     skipCached: (ago) => `缓存期内未重查（上一次检查：${ago}）。`,
     skipDatesPassed: "未检查：这些日期已经过去。请编辑关注，选择新的日期。",
-    refused: "未检查：seats.aero 未接受此 API 密钥，请在设置中检查。已保留旧基线。",
+    refused: OAUTH ? "未检查：seats.aero 未接受当前连接，请在设置中重新连接账户。已保留旧基线。" : "未检查：seats.aero 未接受此 API 密钥，请在设置中检查。已保留旧基线。",
     failedWith: (ago, message) => `检查失败，已保留旧基线（${ago}）：${message}`,
-    refusedNoBaseline: "未检查：seats.aero 未接受此 API 密钥，请在设置中检查。",
+    refusedNoBaseline: OAUTH ? "未检查：seats.aero 未接受当前连接，请在设置中重新连接账户。" : "未检查：seats.aero 未接受此 API 密钥，请在设置中检查。",
     unresolved: "未检查：这些条件无法运行。请编辑关注，重新设置条件。",
     stopName: (name) => `停止关注：${name}`,
     discardWatch: "你对此关注的修改还没有保存。",

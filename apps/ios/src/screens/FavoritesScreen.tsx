@@ -14,10 +14,16 @@
  * order (core projectResults) — from this device, with the note and its coverage. Nothing is fetched or refreshed.
  * "Search again" shows the conditions (with the year) and what it sends, and runs only when confirmed; dates that
  * have all passed are said, with a way to change them instead; without a key it says so, with the way to add one.
+ *
+ * The OAuth flavour (release plan step 18b; AppServices.shortTermMs) keeps seats.aero's results for 24 hours at most.
+ * An item past that keeps its search and a summary (core FavoriteV1.rowsRemoved): its card says so, "Open and search
+ * again" names what opening does, and opening it searches its own query again (AppServices.refreshSaved) and shows the
+ * fresh results — unless its dates have all passed, or no account is connected, which are said instead.
  */
 import { projectResults } from "@awardgrid/core/workspace/projection";
 import { copy, coverageNotices, dayLabel, feesLabel, formatMiles, programLabel, querySubline, routeLabel, seatsLabel } from "@awardgrid/core/workspace/present";
 import { cabinName } from "@awardgrid/core/workspace/query-editor";
+import type { Cabin } from "@awardgrid/core/query/schema";
 import type { FavoriteV1 } from "@awardgrid/core/workspace/types";
 import type { Locale } from "../app/locale";
 import { useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -33,7 +39,7 @@ import { shortDateTime } from "../app/when";
 import { AvailabilityList } from "../components/results/AvailabilityList";
 import { RESULTS } from "../components/results/copy";
 import { Button, Icon, Notice, Sheet } from "../components/ui";
-import { favoriteSnapshot } from "../store/favorites-store";
+import { favoriteSnapshot, savedOptionIdentity } from "../store/favorites-store";
 import { DEFAULT_PREFERENCES } from "../workspace/workspace-store";
 import { FAVORITES } from "./favorites-copy";
 import "./favorites.css";
@@ -44,6 +50,11 @@ import "./favorites.css";
  * seats, unknowns said as unknown), as the Web's Saved does; saved results keep their query's words (T22 review PROD-2).
  */
 function savedOptionLine(item: FavoriteV1, locale: Locale): string | null {
+  // An option whose row was removed (short-term caching) is still named: its day, cabin and program.
+  if (item.rowsRemoved) {
+    const option = savedOptionIdentity(item);
+    return option ? [dayLabel(option.date, locale), cabinName(option.cabin as Cabin, locale), programLabel(option.program)].join(" · ") : null;
+  }
   const row = item.rows.length === 1 && item.originalSnapshotId.includes("#") ? item.rows[0]! : null;
   if (!row) return null;
   const v = row.value;
@@ -65,6 +76,11 @@ function shown(item: FavoriteV1) {
 }
 
 const mb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1);
+
+/** How many options an item showed: counted now, or, once its rows were removed, as recorded then. */
+function optionCount(item: FavoriteV1): number {
+  return item.rowsRemoved ? item.rowsRemoved.options : shown(item).rows.length;
+}
 
 /** The Saved tab. */
 export function FavoritesScreen() {
@@ -187,7 +203,7 @@ export function FavoritesScreen() {
       <h1 ref={title} id={SAVED_TITLE} tabIndex={-1} className="ag-saved-title">
         {f.title}
       </h1>
-      <p className="ag-saved-intro">{f.intro}</p>
+      <p className="ag-saved-intro">{services.shortTermMs != null ? f.shortTerm.intro : f.intro}</p>
       {readOnly ? <Notice tone="warning">{f.readOnly}</Notice> : null}
       {unreadable > 0 ? <Notice tone="warning">{f.unreadable(unreadable)}</Notice> : null}
       {usage.count > 0 ? <p className="ag-saved-usage tabular">{f.usage(usage.count, usage.maxItems, mb(usage.bytes), mb(usage.maxBytes))}</p> : null}
@@ -219,12 +235,17 @@ export function FavoritesScreen() {
                 <p className="ag-saved-card-sub">{querySubline(item.query, locale)}</p>
                 {savedOptionLine(item, locale) ? <p className="ag-saved-card-option tabular">{savedOptionLine(item, locale)}</p> : null}
                 <p className="ag-saved-card-meta tabular">
-                  {f.savedAt(shortDateTime(item.savedAt, locale))} · {f.options(shown(item).rows.length)}
+                  {f.savedAt(shortDateTime(item.savedAt, locale))} · {f.options(optionCount(item))}
                 </p>
-                <p className="ag-saved-card-note">{copy("favorite.snapshot", locale)}</p>
+                <p className="ag-saved-card-note">{item.rowsRemoved ? f.shortTerm.removedNote : copy("favorite.snapshot", locale)}</p>
                 <div className="ag-saved-card-actions">
-                  <Link id={`saved-open-${item.id}`} to={`/saved/${encodeURIComponent(item.id)}`} className="ag-button ag-saved-open" aria-label={f.openName(name(item))}>
-                    {f.open}
+                  <Link
+                    id={`saved-open-${item.id}`}
+                    to={`/saved/${encodeURIComponent(item.id)}`}
+                    className="ag-button ag-saved-open"
+                    aria-label={item.rowsRemoved ? f.shortTerm.openName(name(item)) : f.openName(name(item))}
+                  >
+                    {item.rowsRemoved ? f.shortTerm.open : f.open}
                   </Link>
                   <Button variant="danger" aria-label={f.removeName(name(item))} loading={busy === item.id} onClick={() => void remove(item)}>
                     {f.remove}
@@ -253,6 +274,9 @@ export function SavedScreen() {
   useFocusOnArrival(title);
   const [confirming, setConfirming] = useState(false);
   const [now] = useState(() => services.now());
+  // The OAuth flavour: an item whose results passed 24 hours is searched again when opened (once per visit).
+  const [refresh, setRefresh] = useState<{ state: "searching" | "searched" } | { state: "failed"; message: string } | null>(null);
+  const refreshed = useRef(false);
   // Whether there is a key to search with: read once, sending nothing; unknown until the Keychain answers.
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   useEffect(() => {
@@ -265,6 +289,23 @@ export function SavedScreen() {
       live = false;
     };
   }, [services]);
+
+  const searchAgainNow = async () => {
+    setRefresh({ state: "searching" });
+    const outcome = await services.refreshSaved(id);
+    if (outcome.ok) setRefresh({ state: "searched" });
+    else if (outcome.reason === "search") setRefresh({ state: "failed", message: outcome.error.message ?? outcome.error.error });
+    else if (outcome.reason === "write") setRefresh({ state: "failed", message: outcome.detail.reason === "write_failed" ? outcome.detail.message : outcome.detail.reason });
+    else setRefresh(null);
+  };
+  const stale = Boolean(item?.rowsRemoved);
+  const pastNow = item ? item.query.date_to < now.toISOString().slice(0, 10) : false;
+  useEffect(() => {
+    if (!stale || pastNow || hasKey !== true || refreshed.current) return;
+    refreshed.current = true;
+    void searchAgainNow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per visit, when the key is known
+  }, [stale, pastNow, hasKey]);
 
   const back = (
     <Link to="/saved" state={{ focus: `saved-open-${id}` }} className="ag-saved-back">
@@ -290,6 +331,7 @@ export function SavedScreen() {
   const today = now.toISOString().slice(0, 10);
   const allPast = item.query.date_to < today;
   const somePast = !allPast && item.query.date_from < today;
+  const removed = item.rowsRemoved ?? null;
 
   const run = () => {
     setConfirming(false);
@@ -307,10 +349,20 @@ export function SavedScreen() {
       <p className="ag-saved-card-sub">{querySubline(item.query, locale)}</p>
       {savedOptionLine(item, locale) ? <p className="ag-saved-card-option tabular">{savedOptionLine(item, locale)}</p> : null}
       <p className="ag-saved-card-meta tabular">
-        {f.savedAt(shortDateTime(item.savedAt, locale))} · {f.options(projected.rows.length)}
+        {f.savedAt(shortDateTime(item.savedAt, locale))} · {f.options(optionCount(item))}
       </p>
-      <Notice tone="warning">{copy("favorite.snapshot", locale)}</Notice>
-      {coverageNotices(item.coverage, projected.rows.length, locale).map((notice) => (
+      {/* Said as it happens: the search again that opening an item past 24 hours starts, and how it went. */}
+      <p role="status" className="ag-saved-status">
+        {refresh?.state === "searching" ? f.shortTerm.searching : refresh?.state === "searched" ? f.shortTerm.searched : ""}
+      </p>
+      {refresh?.state === "failed" ? (
+        <p role="alert" className="ag-saved-status ag-saved-fail">
+          <WithTail text={f.shortTerm.failed(refresh.message)} tail={refresh.message} tailLang={locale === "en" ? undefined : "en"} />
+        </p>
+      ) : null}
+      {removed ? <Notice tone="info">{f.shortTerm.removedNote}</Notice> : <Notice tone="warning">{copy("favorite.snapshot", locale)}</Notice>}
+      {removed && allPast ? <p className="ag-saved-confirm ag-saved-fail">{f.pastAll}</p> : null}
+      {removed ? null : coverageNotices(item.coverage, projected.rows.length, locale).map((notice) => (
         <Notice key={notice.text} tone={notice.kind === "none" ? "info" : "warning"}>
           {notice.text}
         </Notice>
@@ -318,7 +370,9 @@ export function SavedScreen() {
       {projected.dynamicNotShown > 0 ? (
         <Notice tone="info">{RESULTS[locale].dynamicNotShown(projected.dynamicNotShown)}</Notice>
       ) : null}
-      <AvailabilityList rows={projected.rows} sort={item.query.sort_by} snapshotId={item.originalSnapshotId} selected={NO_SELECTION} now={now.toISOString()} locale={locale} testId="saved-list" />
+      {removed ? null : (
+        <AvailabilityList rows={projected.rows} sort={item.query.sort_by} snapshotId={item.originalSnapshotId} selected={NO_SELECTION} now={now.toISOString()} locale={locale} testId="saved-list" />
+      )}
       {hasKey === false ? (
         <p className="ag-saved-intro">
           {f.noKey}
@@ -333,9 +387,20 @@ export function SavedScreen() {
           ) : null}
         </p>
       ) : null}
-      <Button onClick={() => setConfirming(true)} disabled={hasKey !== true} disabledReason={hasKey === false ? f.noKey : null}>
-        {f.searchAgain}
-      </Button>
+      {removed ? (
+        // Opening searched again already; after a failure, the way to try once more. Changing past dates is above.
+        refresh?.state === "failed" ? (
+          <Button onClick={() => void searchAgainNow()} disabled={hasKey !== true} disabledReason={hasKey === false ? f.noKey : null}>
+            {f.searchAgain}
+          </Button>
+        ) : allPast ? (
+          <Button onClick={() => navigate("/edit", { state: { query: item.query, from: "search-title" } })}>{f.editDates}</Button>
+        ) : null
+      ) : (
+        <Button onClick={() => setConfirming(true)} disabled={hasKey !== true} disabledReason={hasKey === false ? f.noKey : null}>
+          {f.searchAgain}
+        </Button>
+      )}
       <Sheet open={confirming} title={f.confirmTitle} closeLabel={f.close} onClose={() => setConfirming(false)}>
         <p className="ag-saved-confirm">
           <strong>{routeLabel(item.query, locale)}</strong>
