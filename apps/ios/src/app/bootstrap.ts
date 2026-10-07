@@ -38,6 +38,7 @@ import { createDetailService, type DetailService } from "../workspace/detail-ser
 import { RequestCoordinator } from "../workspace/request-coordinator";
 import { SettingsStore } from "./settings-store";
 import { FavoritesStore } from "../store/favorites-store";
+import { PlansStore } from "../store/plans-store";
 import type { KeyCheckOutcome } from "@awardgrid/core/seatsaero/key-check";
 import { SlotFileStorage } from "../workspace/slot-storage";
 import { type PersistResult, WorkspaceStore } from "../workspace/workspace-store";
@@ -77,6 +78,11 @@ export interface AppServices {
   searchText(text: string): Promise<ApiResult<FindValue>>;
   /** The first half of `searchText`: the key check and the deterministic parse. Sends nothing. */
   prepareText(text: string): Promise<ApiResult<ParsedText>>;
+  /**
+   * The planner (release plan step 18): the same deterministic parse with no key asked for, since nothing is fetched —
+   * a plan to look at, save, or try on sample data. A search still goes through `prepareText`'s key check.
+   */
+  parsePlan(text: string): Promise<ApiResult<ParsedText>>;
   /** The second half: run a parsed text as a workspace revision, labelled with the text. */
   runParsed(text: string, parsed: ParsedText): Promise<ApiResult<FindValue>>;
   /**
@@ -110,6 +116,11 @@ export interface AppServices {
    * fetching anything.
    */
   favorites: FavoritesStore;
+  /**
+   * Saved trip plans (release plan step 18): searches not run yet, as typed and as read, in their own namespace. Loaded
+   * at launch without fetching anything. In sample mode they are sample mode's own, under sample/ like its other files.
+   */
+  plans: PlansStore;
   /**
    * Empty the availability cache, in memory AND on disk. Quota, watches, both keys and ask.json are left alone.
    * See `SnapshotStore.clearCache` for why both halves are required.
@@ -370,6 +381,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   // Saved snapshots (T13): read at launch; nothing is fetched and nothing is written.
   const favorites = new FavoritesStore(new SlotFileStorage(snapshots.files), () => now().toISOString());
   await favorites.load();
+  // Saved trip plans (release plan step 18): read at launch, the same way. Over sample mode's files in sample mode.
+  const plans = new PlansStore(new SlotFileStorage(snapshots.files));
+  await plans.load();
   let lastWorkspaceSave: PersistResult | null = null;
 
   const listeners = new Set<() => void>();
@@ -526,6 +540,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     checkSeatsKey: (draft) => engine.checkKey(draft),
     searchText,
     prepareText: async (text) => engine.parseText(text, await readKey(keys)),
+    parsePlan: (text) => engine.parsePlan(text),
     runParsed: (text, parsed) => runTyped({ text, parsed }),
     rerunShown,
     lastSearch,
@@ -536,6 +551,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     persist,
     saveStatus,
     favorites,
+    plans,
     async clearCache() {
       // Memory first: if the file went first and a persist() landed in between, it would write
       // the rows straight back — which is precisely the Phase 2 bug this replaces.

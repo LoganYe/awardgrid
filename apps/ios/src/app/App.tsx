@@ -16,7 +16,7 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Navigate, NavLink, Outlet, type RouteObject, RouterProvider, createHashRouter, useLocation } from "react-router";
 import { type AppServices, type BootstrapOptions, bootstrap } from "./bootstrap";
-import { SampleDataContext, isSample, resolveBoot } from "./data-source";
+import { SampleDataContext, type SampleStart, isSample, resolveBoot, runSampleStart } from "./data-source";
 import { RESULTS } from "../components/results/copy";
 import { Button, Icon, type IconName, applyThemePreference } from "../components/ui";
 import { FAVORITES } from "../screens/favorites-copy";
@@ -370,16 +370,19 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
   const [generation, setGeneration] = useState(0);
   const current = useRef<AppServices | null>(null);
   const switched = useRef(false);
+  // A plan's "Try with sample data" (release plan step 18): searched on the sample data once it has booted.
+  const pendingStart = useRef<SampleStart | null>(null);
 
   useEffect(() => {
     let live = true;
     const hooks = {
       // Entering sample mode saves what the account's services hold first, as leaving the app would.
       beforeSwitch: async () => current.current?.persist(),
-      reboot: () => {
+      reboot: (start?: SampleStart) => {
         // The new router starts on Search, without a history entry for the page the switch was made from.
         window.history.replaceState(null, "", "#/");
         switched.current = true;
+        pendingStart.current = start ?? null;
         current.current = null;
         setServices(null);
         setGeneration((n) => n + 1);
@@ -397,6 +400,10 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
         current.current = ready;
         setServices(ready);
         boot.current.onReady?.(ready);
+        // Only ever on the sample data it was chosen for; a run the workspace shows (and says why it failed) like any other.
+        const start = pendingStart.current;
+        pendingStart.current = null;
+        if (start && isSample(ready)) void runSampleStart(ready, start).catch(() => undefined);
       },
       (e: unknown) => {
         if (live) setError(e instanceof Error ? e.message : String(e));

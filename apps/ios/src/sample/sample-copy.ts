@@ -6,6 +6,7 @@
  * Statically imported by the screens, so it is in the main bundle; the sample data and its transport are not
  * (./boot.ts and what it imports load only in sample mode).
  */
+import { STORE } from "../app/flags";
 import type { Locale } from "../app/locale";
 
 export interface SampleCopy {
@@ -56,7 +57,8 @@ export const SAMPLE: Record<Locale, SampleCopy> = {
     connectHint: "Exit sample data to connect your account.",
     settingsValue: "Sample data",
     compareField: "Data",
-    editorNote: "Searches the sample data on this device · No AI",
+    // The App Store build has no AI at all (app/flags.ts STORE), so it does not say what it does not use.
+    editorNote: STORE ? "Searches the sample data on this device" : "Searches the sample data on this device · No AI",
     watchSkipSoon: "A check sooner than 45 minutes after the previous one is skipped.",
     savedSearchAgain: "It searches the sample data on this device. Nothing is sent.",
   },
@@ -74,7 +76,7 @@ export const SAMPLE: Record<Locale, SampleCopy> = {
     connectHint: "退出示例数据后即可连接你的账户。",
     settingsValue: "示例数据",
     compareField: "数据",
-    editorNote: "在本机示例数据中查询 · 不使用 AI",
+    editorNote: STORE ? "在本机示例数据中查询" : "在本机示例数据中查询 · 不使用 AI",
     watchSkipSoon: "距离上一次检查不到 45 分钟的检查会跳过。",
     savedSearchAgain: "会在本机示例数据中查询，不发送任何请求。",
   },

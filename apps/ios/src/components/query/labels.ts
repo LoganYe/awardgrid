@@ -5,6 +5,7 @@
  */
 import { copy } from "@awardgrid/core/workspace/present";
 import { type DraftErrorCode, type DraftField, MAX_SPAN_DAYS } from "@awardgrid/core/workspace/query-editor";
+import { STORE } from "../../app/flags";
 import type { Locale } from "../../app/locale";
 
 export interface EditorCopy {
@@ -65,7 +66,8 @@ export interface EditorCopy {
 const EN: EditorCopy = {
   title: "Edit search",
   back: "Back",
-  intro: "Change the conditions directly. No AI is used.",
+  // The App Store build has no AI at all (app/flags.ts STORE), so it does not say what it does not use.
+  intro: STORE ? "Change the conditions directly." : "Change the conditions directly. No AI is used.",
   origins: "Departure airports",
   destinations: "Arrival airports",
   addAirport: "Add airport",
@@ -107,7 +109,7 @@ const EN: EditorCopy = {
   miles: "Mileage cap",
   milesHelp: "Leave empty for no limit.",
   submit: copy("query.submit", "en"),
-  submitNote: "Uses your own seats.aero quota · No AI",
+  submitNote: STORE ? "Uses your own seats.aero quota" : "Uses your own seats.aero quota · No AI",
   discardTitle: "Discard your changes?",
   discardBody: "Your edits to this search have not been run.",
   close: "Close",
@@ -128,7 +130,7 @@ const EN: EditorCopy = {
 const ZH: EditorCopy = {
   title: "编辑查询",
   back: "返回",
-  intro: "直接修改查询条件，不使用 AI。",
+  intro: STORE ? "直接修改查询条件。" : "直接修改查询条件，不使用 AI。",
   origins: "出发机场",
   destinations: "到达机场",
   addAirport: "添加机场",
@@ -170,7 +172,7 @@ const ZH: EditorCopy = {
   miles: "里程上限",
   milesHelp: "留空表示不限。",
   submit: copy("query.submit", "zh"),
-  submitNote: "使用你自己的 seats.aero 额度 · 不使用 AI",
+  submitNote: STORE ? "使用你自己的 seats.aero 额度" : "使用你自己的 seats.aero 额度 · 不使用 AI",
   discardTitle: "放弃修改？",
   discardBody: "你对这次查询的修改还没有执行。",
   close: "关闭",

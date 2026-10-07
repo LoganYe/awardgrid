@@ -1,0 +1,141 @@
+/*
+ * The trip planner (release plan step 18). Tokens only. On the Search screen it sits under the first run's welcome,
+ * in the same gutters; in Saved each kept plan is a Saved card (favorites.css .ag-saved-card).
+ */
+.ag-planner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+  padding: var(--ag-space-6) var(--results-gutter-end) var(--ag-space-4) var(--results-gutter-start);
+}
+
+.ag-planner-title,
+.ag-saved-section-title {
+  margin: 0;
+  font-size: var(--ag-type-section);
+  line-height: var(--ag-leading-section);
+  font-weight: var(--ag-weight-title);
+}
+
+.ag-saved-section-title:focus {
+  outline: none;
+}
+
+.ag-saved-section-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-planner-intro {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+}
+
+.ag-plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+  min-width: 0;
+}
+
+/* The plan just read stands apart from the box above it; a kept plan is already a card. */
+.ag-planner > .ag-plan {
+  padding: var(--ag-space-4);
+  border: 1px solid var(--ag-divider);
+  border-radius: var(--ag-radius-card);
+  background: var(--ag-surface);
+}
+
+.ag-plan-title {
+  margin: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  font-weight: var(--ag-weight-strong);
+}
+
+.ag-plan-title:focus {
+  outline: none;
+}
+
+.ag-plan-title:focus-visible {
+  outline: var(--ag-focus-width) solid var(--ag-accent);
+  outline-offset: var(--ag-focus-offset);
+}
+
+.ag-plan-typed,
+.ag-plan-meta {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+  color: var(--ag-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.ag-plan-facts {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  column-gap: var(--ag-space-3);
+  row-gap: var(--ag-space-1);
+  margin: 0;
+}
+
+/* Each term and its value stay one row of the grid. */
+.ag-plan-fact {
+  display: contents;
+}
+
+.ag-plan-fact dt {
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-body);
+  color: var(--ag-text-secondary);
+}
+
+.ag-plan-fact dd {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--ag-type-body);
+  line-height: var(--ag-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.ag-plan-places {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ag-plan-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-2);
+}
+
+.ag-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ag-space-2);
+  margin-top: var(--ag-space-1);
+}
+
+.ag-plan-status {
+  margin: 0;
+  font-size: var(--ag-type-meta);
+  line-height: var(--ag-leading-meta);
+}
+
+.ag-plan-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ag-saved-plans {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ag-space-3);
+}

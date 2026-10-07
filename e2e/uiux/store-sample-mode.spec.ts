@@ -134,7 +134,8 @@ test("Welcome › Try sample › Hong Kong to Seattle › List, Calendar, Matrix
   await sampleScreen(page, "settings/seats");
   await page.evaluate(() => (location.hash = "#/edit"));
   await expect(page.getByRole("heading", { level: 1, name: "Edit search" })).toBeVisible();
-  await expect(page.getByText("Searches the sample data on this device · No AI")).toBeVisible();
+  await expect(page.getByText("Searches the sample data on this device", { exact: true })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("No AI");
   await sampleScreen(page, "edit");
 
   // Exit: the account's first run again, with nothing of sample mode left.
