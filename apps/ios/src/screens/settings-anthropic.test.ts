@@ -15,7 +15,8 @@ import * as labels from "../ask/labels";
 import { SettingsStore } from "../app/settings-store";
 import { type KeyStore, MemoryKeyStore } from "../native/keychain";
 import { CONSENT } from "../ask/consent-copy";
-import { AnthropicKeySection, AskPermission, SettingsScreen, anthropicKeyLine, checkStatus, readMasked, removeAnthropicKey, saveAnthropicKey } from "./SettingsScreen";
+import { AnthropicKeySection, AskPermission, anthropicKeyLine, checkStatus, readMasked, removeAnthropicKey, saveAnthropicKey } from "./AnthropicKeyScreen";
+import { SettingsScreen } from "./SettingsScreen";
 
 const PASTED = "sk-ant-api03-settings-test-key-wxyz";
 

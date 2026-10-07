@@ -1,0 +1,27 @@
+/**
+ * The build's flavour, fixed when Vite builds the bundle (the same constant pattern as VITE_AG_PROBES in App.tsx):
+ * each flag is a literal comparison on `import.meta.env`, so in a build where it does not hold, the code behind it is
+ * dropped from the bundle, not merely hidden.
+ *
+ *   - **STORE** (`VITE_AG_STORE=1`, `npm run build:store`): the App Store build. Ask (AI assistance) is compiled out:
+ *     its routes, every way into it, and the copy that mentions it or Anthropic. AppServices.ask is still built at
+ *     launch, never opened, so both flavours ship the same npm modules and one licenses list (release plan D3).
+ *     scripts/check-store-bundle.mjs checks the result. The default `build` (dev, probes, the UI/UX e2e) keeps Ask.
+ *   - **CONNECT** (`VITE_AG_CONNECT`): how a seats.aero account is connected. "key" (the default): its API key is
+ *     pasted on the connect page. "0": no connection at all — the connect page and every link to it are compiled out
+ *     (the fallback in plan D12; not shipped). "oauth": reserved for seats.aero's own sign-in, which the OAuth branch
+ *     (PR-O) implements; until it lands this build behaves as "key", and vite.config.ts refuses to build a bundle
+ *     with it, so no bundle can claim a connection it does not have.
+ *
+ * vite.config.ts refuses any other value of either variable, so a typo cannot quietly build the wrong flavour.
+ */
+export type ConnectMode = "key" | "oauth" | "0";
+
+export const CONNECT_MODES: readonly ConnectMode[] = ["key", "oauth", "0"];
+
+export const STORE: boolean = import.meta.env.VITE_AG_STORE === "1";
+
+export const CONNECT: ConnectMode = (import.meta.env.VITE_AG_CONNECT || "key") as ConnectMode;
+
+/** Whether this build has a way to connect a seats.aero account at all (CONNECT is not "0"). */
+export const CAN_CONNECT: boolean = import.meta.env.VITE_AG_CONNECT !== "0";

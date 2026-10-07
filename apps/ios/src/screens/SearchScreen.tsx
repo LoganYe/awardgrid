@@ -36,7 +36,10 @@ import { type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, us
 import { createPortal } from "react-dom";
 import { Link, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { useAskRunning } from "../app/ask-running";
+import { CAN_CONNECT, STORE } from "../app/flags";
 import { langTag, useLocale } from "../app/locale";
+import { ASK_SURFACES } from "../ask/ask-surface-copy";
 import type { ApiFailure, ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
 import type { LastSearchEntry } from "../search/last-search";
 import { TextSearch } from "../components/query/TextSearch";
@@ -115,7 +118,7 @@ export function SearchScreen() {
   // Said of the snapshot it was about, and shown only beside that snapshot: a newer search is not "saved".
   const [saveMessage, setSaveMessage] = useState<{ snapshotId: string; text: string; ok: boolean; tail?: string } | null>(null);
   const now = services.now();
-  const asking = useSyncExternalStore(services.ask.subscribe, services.ask.isRunning, services.ask.isRunning);
+  const asking = useAskRunning(services);
 
   useEffect(() => {
     void services.keys.get().then((k) => setHasKey(Boolean(k)));
@@ -339,8 +342,9 @@ export function SearchScreen() {
   // The engine's own messages and run warnings are English (core); they say so on a Chinese screen.
   const english = locale === "en" ? undefined : "en";
   const saveNote = saveMessage && saveMessage.snapshotId === snapshot?.id ? saveMessage : null;
+  // No account connected: say so, and where to connect one — unless this build has no connection (VITE_AG_CONNECT=0).
   const keyCallout =
-    hasKey === false ? (
+    hasKey === false && CAN_CONNECT ? (
       <Callout tone="danger" className="ag-results-callout">
         {t.noKey.before}
         <Link to="/settings/seats">{t.noKey.link}</Link>
@@ -364,10 +368,13 @@ export function SearchScreen() {
           <h1 className="ag-results-title" id="search-title" tabIndex={-1}>
             {t.title}
           </h1>
-          <Link id="ask-entry-header" to="/ask" state={{ returnFocus: "ask-entry-header" }} className="ag-results-ai">
-            <Icon name="sparkle" />
-            <span>{asking ? t.aiWorking : t.ai}</span>
-          </Link>
+          {/* AI assistance (T15). The App Store build has no Ask (app/flags.ts STORE): no link, and none of its words. */}
+          {STORE ? null : (
+            <Link id="ask-entry-header" to="/ask" state={{ returnFocus: "ask-entry-header" }} className="ag-results-ai">
+              <Icon name="sparkle" />
+              <span>{asking ? ASK_SURFACES[locale].search.headerWorking : ASK_SURFACES[locale].search.header}</span>
+            </Link>
+          )}
         </header>
         {snapshot && value ? <QuerySummary id={RETURN_FOCUS} query={value.query} locale={locale} waitNote={running ? t.editWhileRunning : null} /> : null}
       </div>
@@ -513,9 +520,11 @@ export function SearchScreen() {
             <Button onClick={() => void saveResults()} loading={saving} loadingLabel={FAVORITES[locale].saving}>
               {FAVORITES[locale].save}
             </Button>
-            <Link id="ask-entry-results" to="/ask" state={{ returnFocus: "ask-entry-results" }} className="ag-button">
-              {t.askAbout}
-            </Link>
+            {STORE ? null : (
+              <Link id="ask-entry-results" to="/ask" state={{ returnFocus: "ask-entry-results" }} className="ag-button">
+                {ASK_SURFACES[locale].search.aboutSearch}
+              </Link>
+            )}
           </div>
           {/* Always in the tree, so saving is announced; a failure is an alert of its own. */}
           <p role="status" className="ag-results-meta ag-results-save">

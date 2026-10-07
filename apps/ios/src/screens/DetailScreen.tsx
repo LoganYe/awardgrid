@@ -34,7 +34,9 @@ import type { TripSummary } from "@awardgrid/core/seatsaero/trips";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useLocation, useNavigate, useOutletContext, useParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { STORE } from "../app/flags";
 import { langTag, useLocale } from "../app/locale";
+import { ASK_SURFACES } from "../ask/ask-surface-copy";
 import { RESULTS } from "../components/results/copy";
 import { Button, Icon, IconButton, Notice } from "../components/ui";
 import type { DetailLoaded } from "../workspace/detail-service";
@@ -149,7 +151,7 @@ export function DetailScreen() {
 
   const header = (
     <header className="ag-detail-header">
-      <IconButton icon="chevron-left" label={fromAsk ? d.backToAsk : d.back} onClick={close} />
+      <IconButton icon="chevron-left" label={!STORE && fromAsk ? ASK_SURFACES[locale].search.backFromAnswer : d.back} onClick={close} />
       <h1 className="ag-detail-title" tabIndex={-1} ref={heading}>
         {d.title}
       </h1>

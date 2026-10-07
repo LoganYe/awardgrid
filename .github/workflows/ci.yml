@@ -42,6 +42,12 @@ jobs:
       - name: Test (fixtures only, no network)
         run: pnpm test
 
+      # The iPhone app's App Store flavour (apps/ios, VITE_AG_STORE=1: Ask compiled out). The build fails if its bundle
+      # carries Ask or a paid-plan phrase (scripts/check-store-bundle.mjs), a test fixture, or a licenses list that is
+      # not what ships. CI has no ios/App/Pods, so the licenses check skips the two pods it reads from there, by design.
+      - name: iOS App Store bundle (Ask compiled out)
+        run: pnpm --filter @awardgrid/ios build:store
+
       # One owner per capture (#34): every PNG under docs/screenshots/v0.2/** outside the frozen
       # before/ is declared in e2e/matrix.ts and written by e2e/screenshots.spec.ts. This reads
       # the COMMITTED tree only — no browser, no build — and fails on a capture the matrix does

@@ -14,6 +14,7 @@ import type { WorkspaceRow } from "@awardgrid/core/workspace/types";
 import { useMemo, useRef, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { CAN_CONNECT } from "../app/flags";
 import { useFocusOnArrival } from "../app/focus";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import { AvailabilityCard } from "../components/results/AvailabilityCard";
@@ -46,9 +47,12 @@ export function Welcome({ locale }: { locale: Locale }) {
   return (
     <div className="ag-welcome" data-testid="welcome">
       <p className="ag-welcome-value">{w.value}</p>
-      <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
-        {w.connect}
-      </Link>
+      {/* Not in a build without a connection (VITE_AG_CONNECT=0, app/flags.ts). */}
+      {CAN_CONNECT ? (
+        <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
+          {w.connect}
+        </Link>
+      ) : null}
       <Link id="welcome-example" to="/example" className="ag-button ag-button-block">
         {w.example}
       </Link>
@@ -121,9 +125,11 @@ export function ExampleScreen() {
         ))}
       </div>
       <Notice tone="warning">{copy("demo.synthetic", locale)}</Notice>
-      <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
-        {w.connect}
-      </Link>
+      {CAN_CONNECT ? (
+        <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
+          {w.connect}
+        </Link>
+      ) : null}
     </div>
   );
 }

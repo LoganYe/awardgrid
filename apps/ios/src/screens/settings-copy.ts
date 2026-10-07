@@ -1,40 +1,20 @@
 /**
  * Settings' own words, in English and Chinese (UI/UX v1 T11; docs/04 S08). Sentences with an approved key (the key
- * check's cost, the example's label) come from core's COPY; the Anthropic section's English is ask/labels.ts, kept
- * as it is so its tests and meaning do not move, and this file gives its Chinese.
+ * check's cost, the example's label) come from core's COPY.
+ *
+ * Ask's lines are not here. The AI group and its row, and the Ask-naming versions of five sentences below (what is
+ * sent where, the non-affiliation sentence, the cache note and its result, the seats.aero key's removal sheet), are
+ * ask/ask-surface-copy.ts, read only when the build has Ask; the App Store build (app/flags.ts STORE) uses the
+ * neutral versions written here. The Anthropic key page's words are ./anthropic-copy.ts.
  */
-import {
-  ANTHROPIC_DATA_SENT,
-  ANTHROPIC_KEY_INPUT_LABEL,
-  ANTHROPIC_KEY_PLACEHOLDER,
-  ANTHROPIC_KEY_USE,
-  ANTHROPIC_SECTION_TITLE,
-  CACHE_CLEARED,
-  CACHE_NOTE,
-  CHECK_KEY,
-  KEY_CHECKING,
-  KEY_NOT_REMOVED,
-  KEY_REMOVAL_NOTE,
-  KEY_REMOVED,
-  KEY_SAVED,
-  NO_KEY_ON_FILE,
-  PRICING_LINE,
-  REMOVE_ANTHROPIC_KEY_NAME,
-  REMOVE_KEY,
-  SAVE_ANTHROPIC_KEY_NAME,
-  SAVE_KEY,
-  keyOnFileLabel,
-  keyReadFailedLabel,
-  keySaveFailedLabel,
-} from "../ask/labels";
+import { STORE } from "../app/flags";
 import type { Locale } from "../app/locale";
+import { ASK_SURFACES } from "../ask/ask-surface-copy";
 
 export interface SettingsCopy {
   title: string;
-  groups: { data: string; ai: string; appearance: string; local: string; about: string };
+  groups: { data: string; appearance: string; local: string; about: string };
   seatsRow: string;
-  anthropicRow: string;
-  anthropicRowNote: string;
   onFile: (last4: string) => string;
   notConnected: string;
   theme: string;
@@ -88,52 +68,32 @@ export interface SettingsCopy {
     confirmRemove: string;
     confirmKeep: string;
   };
-  anthropic: {
-    title: string;
-    use: string;
-    dataSent: string;
-    pricing: string;
-    label: string;
-    placeholder: string;
-    save: string;
-    saveName: string;
-    check: string;
-    remove: string;
-    removeName: string;
-    removalNote: string;
-    saved: string;
-    checking: string;
-    noKey: string;
-    removed: string;
-    notRemoved: string;
-    onFile: (masked: string) => string;
-    saveFailed: (message: string) => string;
-    readFailed: (message: string) => string;
-    confirmTitle: string;
-    confirmBody: string[];
-  };
+
 }
 
 export const SETTINGS: Record<Locale, SettingsCopy> = {
   en: {
     title: "Settings",
-    groups: { data: "Data connection", ai: "AI (optional)", appearance: "Appearance and language", local: "Local data", about: "About" },
+    groups: { data: "Data connection", appearance: "Appearance and language", local: "Local data", about: "About" },
     seatsRow: "seats.aero Pro key",
-    anthropicRow: "Anthropic API key",
-    anthropicRowNote: "Only for AI assistance. Search works without it.",
     onFile: (last4) => `Key on file ending in ${last4}`,
     notConnected: "Not connected",
     theme: "Theme",
     themes: { system: "System", light: "Light", dark: "Dark" },
     language: "Language",
     clearCache: "Clear cached results",
-    cacheNote: CACHE_NOTE,
+    cacheNote: STORE
+      ? "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls. Clearing it costs one cold search, nothing more. This does not touch your seats.aero key."
+      : ASK_SURFACES.en.settings.cacheNote,
     cacheKeeps: "Results already on the Search screen stay there, with the search they came from; clearing the cache does not remove them.",
-    cacheCleared: CACHE_CLEARED,
+    cacheCleared: STORE ? "Cached results cleared. Your seats.aero key is untouched." : ASK_SURFACES.en.settings.cacheCleared,
     aboutData: "Data: seats.aero · your own keys, on this device",
-    aboutSent:
-      "Searches go to seats.aero with your key. When you use AI assistance, your question, the earlier questions and answers in that conversation, the search you include and the seats.aero results it reads go to Anthropic. Keeping keys on this device does not keep searches off the network.",
-    notAffiliated: "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.",
+    aboutSent: STORE
+      ? "Searches go to seats.aero with your seats.aero API key. Keeping the key on this device does not keep searches off the network."
+      : ASK_SURFACES.en.settings.aboutSent,
+    notAffiliated: STORE
+      ? "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program."
+      : ASK_SURFACES.en.settings.notAffiliated,
     privacy: "Privacy policy",
     support: "Support",
     opensInSafari: "Opens in Safari",
@@ -168,53 +128,29 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
       removeUnconfirmed: "Could not confirm that the key was removed. Open this page again to check.",
       startSearching: "Start searching",
       confirmTitle: "Remove the seats.aero key?",
-      confirmBody: ["Search stops until you add a key again.", "AI assistance keeps its own key.", "Today's call count is kept."],
+      confirmBody: STORE
+        ? ["Search stops until you add a key again.", "Today's call count is kept."]
+        : ["Search stops until you add a key again.", ASK_SURFACES.en.settings.seatsKeyKeepsAi, "Today's call count is kept."],
       confirmRemove: "Remove",
       confirmKeep: "Keep key",
-    },
-    anthropic: {
-      title: ANTHROPIC_SECTION_TITLE,
-      use: ANTHROPIC_KEY_USE,
-      dataSent: ANTHROPIC_DATA_SENT,
-      pricing: PRICING_LINE,
-      label: ANTHROPIC_KEY_INPUT_LABEL,
-      placeholder: ANTHROPIC_KEY_PLACEHOLDER,
-      save: SAVE_KEY,
-      saveName: SAVE_ANTHROPIC_KEY_NAME,
-      check: CHECK_KEY,
-      remove: REMOVE_KEY,
-      removeName: REMOVE_ANTHROPIC_KEY_NAME,
-      removalNote: KEY_REMOVAL_NOTE,
-      saved: KEY_SAVED,
-      checking: KEY_CHECKING,
-      noKey: NO_KEY_ON_FILE,
-      removed: KEY_REMOVED,
-      notRemoved: KEY_NOT_REMOVED,
-      onFile: keyOnFileLabel,
-      saveFailed: keySaveFailedLabel,
-      readFailed: keyReadFailedLabel,
-      confirmTitle: "Remove the Anthropic key?",
-      confirmBody: ["AI assistance stops until you add a key again.", "Search keeps working.", "Today's call count is kept."],
     },
   },
   zh: {
     title: "设置",
-    groups: { data: "数据连接", ai: "AI（可选）", appearance: "外观与语言", local: "本地数据", about: "关于" },
+    groups: { data: "数据连接", appearance: "外观与语言", local: "本地数据", about: "关于" },
     seatsRow: "seats.aero Pro 密钥",
-    anthropicRow: "Anthropic API 密钥",
-    anthropicRowNote: "仅用于 AI 辅助，没有它也能查票。",
     onFile: (last4) => `已保存密钥，末四位 ${last4}`,
     notConnected: "未连接",
     theme: "主题",
     themes: { system: "跟随系统", light: "浅色", dark: "深色" },
     language: "语言",
     clearCache: "清除缓存结果",
-    cacheNote: "兑换结果在本机缓存 45 分钟，重复查询不消耗 seats.aero 调用。清除后下次查询需重新获取，不影响密钥和 AI 对话。",
+    cacheNote: STORE ? "兑换结果在本机缓存 45 分钟，重复查询不消耗 seats.aero 调用。清除后下次查询需重新获取，不影响 seats.aero 密钥。" : ASK_SURFACES.zh.settings.cacheNote,
     cacheKeeps: "查票页上已显示的结果会随其查询一起保留，清除缓存不会删除它们。",
-    cacheCleared: "缓存结果已清除，密钥未受影响。",
+    cacheCleared: STORE ? "缓存结果已清除，seats.aero 密钥未受影响。" : ASK_SURFACES.zh.settings.cacheCleared,
     aboutData: "数据：seats.aero · 使用你自己的密钥，保存在本机",
-    aboutSent: "查票请求会携带你的密钥发往 seats.aero。使用 AI 辅助时，你的问题、同一对话中之前的问答、你附带的查询，以及它读取的 seats.aero 结果会发往 Anthropic。密钥保存在本机，不代表查询内容不外发。",
-    notAffiliated: "AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
+    aboutSent: STORE ? "查票请求会携带你的 seats.aero API 密钥发往 seats.aero。密钥保存在本机，不代表查询内容不外发。" : ASK_SURFACES.zh.settings.aboutSent,
+    notAffiliated: STORE ? "AwardGrid 与 seats.aero、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。" : ASK_SURFACES.zh.settings.notAffiliated,
     privacy: "隐私政策",
     support: "支持",
     opensInSafari: "在 Safari 中打开",
@@ -248,33 +184,11 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
       removeUnconfirmed: "无法确认密钥已移除。请重新打开此页查看。",
       startSearching: "开始查票",
       confirmTitle: "移除 seats.aero 密钥？",
-      confirmBody: ["移除后无法查票，直到重新添加密钥。", "AI 辅助使用自己的密钥，不受影响。", "今日调用次数会保留。"],
+      confirmBody: STORE
+        ? ["移除后无法查票，直到重新添加密钥。", "今日调用次数会保留。"]
+        : ["移除后无法查票，直到重新添加密钥。", ASK_SURFACES.zh.settings.seatsKeyKeepsAi, "今日调用次数会保留。"],
       confirmRemove: "移除",
       confirmKeep: "保留密钥",
-    },
-    anthropic: {
-      title: "Anthropic API 密钥（用于 AI 辅助）",
-      use: "可选。AI 辅助使用你自己的 Anthropic 密钥，保存在本机钥匙串，只发送给 Anthropic。每次提问由 Anthropic 按此密钥计费。查票和关注不使用它。",
-      dataSent: "AI 辅助会把你的问题、同一对话中之前的问答、你附带的查询，以及它读取的 seats.aero 结果发给 Anthropic。你的 seats.aero 密钥不会发给 Anthropic。",
-      pricing: "Anthropic 的价格页列出了这些 token 的费用。",
-      label: "Anthropic API 密钥",
-      placeholder: "粘贴你的 Anthropic API 密钥",
-      save: "保存",
-      saveName: "保存 Anthropic 密钥",
-      check: "检查密钥",
-      remove: "移除密钥",
-      removeName: "移除 Anthropic 密钥",
-      removalNote: "移除此密钥不会删除 AI 对话，查票照常可用。",
-      saved: "Anthropic 密钥已保存到本机钥匙串。",
-      checking: "正在向 Anthropic 检查密钥…",
-      noKey: "未保存 Anthropic 密钥。",
-      removed: "已从本机钥匙串移除 Anthropic 密钥。",
-      notRemoved: "无法移除密钥：钥匙串中仍有该密钥。",
-      onFile: (masked) => `已保存：${masked}`,
-      saveFailed: (message) => `无法保存密钥：${message}`,
-      readFailed: (message) => `无法从钥匙串读取密钥：${message}`,
-      confirmTitle: "移除 Anthropic 密钥？",
-      confirmBody: ["移除后无法使用 AI 辅助，直到重新添加密钥。", "查票照常可用。", "今日调用次数会保留。"],
     },
   },
 };

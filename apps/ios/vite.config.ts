@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import react from "@vitejs/plugin-react";
-import { type Plugin, defineConfig } from "vite";
+import { type Plugin, defineConfig, loadEnv } from "vite";
 
 const here = import.meta.dirname;
 const outDir = path.join(here, "dist");
@@ -38,10 +38,29 @@ function sourceMapsBesideBundle(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), sourceMapsBesideBundle()],
-  // Capacitor copies dist/ into ios/App/App/public and serves it from capacitor://localhost,
-  // so every asset URL must be relative.
-  base: "",
-  build: { outDir, sourcemap: "hidden" },
+/**
+ * The build's flavour flags (src/app/flags.ts), checked before anything is built: a value the app does not know would
+ * otherwise build the default flavour without a word. VITE_AG_STORE is "1" (the App Store build, `npm run build:store`)
+ * or unset. VITE_AG_CONNECT is "key" (the default), "0" or "oauth"; "oauth" is refused for a bundle until the OAuth
+ * connection exists (PR-O), because the app would still show the key field under that name.
+ */
+export function checkFlavour(env: Record<string, string>, command: "build" | "serve"): void {
+  const store = env.VITE_AG_STORE;
+  if (store !== undefined && store !== "" && store !== "1") throw new Error(`VITE_AG_STORE must be "1" or unset, not ${JSON.stringify(store)}`);
+  const connect = env.VITE_AG_CONNECT;
+  if (connect !== undefined && connect !== "" && !["key", "0", "oauth"].includes(connect)) {
+    throw new Error(`VITE_AG_CONNECT must be "key", "0" or "oauth", not ${JSON.stringify(connect)}`);
+  }
+  if (connect === "oauth" && command === "build") throw new Error("VITE_AG_CONNECT=oauth is not built yet (the OAuth connection, PR-O): build with key or 0");
+}
+
+export default defineConfig(({ command, mode }) => {
+  checkFlavour(loadEnv(mode, here, "VITE_AG_"), command);
+  return {
+    plugins: [react(), sourceMapsBesideBundle()],
+    // Capacitor copies dist/ into ios/App/App/public and serves it from capacitor://localhost,
+    // so every asset URL must be relative.
+    base: "",
+    build: { outDir, sourcemap: "hidden" },
+  };
 });

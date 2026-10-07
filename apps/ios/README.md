@@ -204,12 +204,31 @@ normal `npm run build`, no chunk in `dist/assets/` may be named `*[Pp]robe*` or 
 `grep -c "127.0.0.1:45\|localhost:45\|probe-server\|sk-ant-"` must count 0 in every `.js` file there.
 `run-probes.sh` exits 7 when either fails, or when the `.js` files differ from `R1_BASELINE`.
 
+### The App Store flavour
+
+`npm run build:store` (`VITE_AG_STORE=1`, `src/app/flags.ts`) builds the app the App Store gets: Ask is compiled
+out — no `#/ask` or `#/settings/anthropic` route (an old link lands on Search), no AI link in the Search header or
+under the results, no AI group in Settings, and none of the copy that names Ask or Anthropic. AppServices.ask is
+still built at launch and never opened, so both flavours bundle the same npm modules and share one licenses list
+(`@anthropic-ai/sdk` stays in it: a license notice, not a feature). The plain `npm run build` keeps Ask for
+development, the probes and the UI/UX e2e, whose `ios-store` project runs `e2e/uiux/store-*.spec.ts` against the
+fixture host served with `UIUX_STORE=1` on 127.0.0.1:4311.
+
+`build:store` runs the fixture-marker check, then `scripts/check-store-bundle.mjs` (Ask's strings and routes,
+paid-plan phrases; each known hit is documented in the script with the reason it is there and what must surround it),
+then the licenses check. `src/store-copy.test.ts` holds the wording of the source the store build is made from.
+
+`VITE_AG_CONNECT` picks how a seats.aero account is connected: `key` (the default, its API key pasted on the connect
+page), `0` (no connection: the connect page and every link to it are compiled out; prepared, not shipped), or
+`oauth` (reserved for seats.aero's own sign-in; `vite.config.ts` refuses to build it until it exists).
+
 ## Running it
 
 ```bash
 pnpm install                       # from the repo root; this is a workspace member
-pnpm --filter @awardgrid/ios test  # 830 tests in 53 files, no device, no network
-cd apps/ios && npm run build && npx cap copy ios
+pnpm --filter @awardgrid/ios test  # no device, no network
+cd apps/ios && npm run build && npx cap copy ios        # Ask on: development and the probes
+cd apps/ios && npm run build:store && npx cap copy ios  # the App Store flavour: Ask compiled out
 ```
 
 `cap copy`, not `cap sync`: sync also runs `pod install` against the network, and the Pods are already
@@ -272,9 +291,10 @@ everything from a worktree, never from the checkout production serves.
 
 1. **Gates:** `pnpm typecheck && pnpm lint && pnpm test`, then
    `UIUX_WEB=0 pnpm exec playwright test --config=playwright.uiux.config.ts` (the iOS browser mock).
-2. **Bundle:** `env -u VITE_AG_PROBES pnpm --filter @awardgrid/ios build`. It fails on any fixture marker, on a
-   source map inside `dist/` (they are moved to `dist-sourcemaps/`), and on a licenses list that is not what
-   ships. Then R1 (above) over `dist/assets/*.js` and the maps beside them.
+2. **Bundle:** `env -u VITE_AG_PROBES -u VITE_AG_STORE pnpm --filter @awardgrid/ios build:store` (the App Store
+   flavour, above). It fails on any fixture marker, on a source map inside `dist/` (they are moved to
+   `dist-sourcemaps/`), on Ask or a paid-plan phrase in the bundle, and on a licenses list that is not what ships.
+   Then R1 (above) over `dist/assets/*.js` and the maps beside them.
 3. **Copy:** `npx cap copy ios` (not `sync`).
 4. **Build number:** raise `CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` (both
    configurations) in a commit before every archive after the first; 1.0 (1) is the first.

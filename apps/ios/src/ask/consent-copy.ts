@@ -14,7 +14,7 @@
  */
 import type { Locale } from "../app/locale";
 
-export const ANTHROPIC_CONSENT_VERSION = 1;
+export { ANTHROPIC_CONSENT_VERSION } from "./consent-version";
 
 /** Anthropic's own privacy policy, linked from the sheet. */
 export const ANTHROPIC_PRIVACY_URL = "https://www.anthropic.com/legal/privacy";

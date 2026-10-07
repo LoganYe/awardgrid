@@ -5,11 +5,13 @@
  * nobody translated. The approved rows (core `present.ts` COPY) have their own parity test in core.
  */
 import { parseDeterministic } from "@awardgrid/core/query";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EDITOR_COPY, allFieldErrors } from "./components/query/labels";
 import { RESULTS } from "./components/results/copy";
 import { ASK_COPY } from "./ask/ask-copy";
+import { ASK_SURFACES } from "./ask/ask-surface-copy";
 import { CONSENT } from "./ask/consent-copy";
+import { ANTHROPIC_PAGE } from "./screens/anthropic-copy";
 import { CONNECT_ANTHROPIC } from "./screens/AskScreen";
 import { COMPARE } from "./screens/compare-copy";
 import { FAVORITES } from "./screens/favorites-copy";
@@ -21,6 +23,8 @@ const TABLES: Record<string, { en: unknown; zh: unknown }> = {
   results: RESULTS,
   editor: EDITOR_COPY,
   settings: SETTINGS,
+  anthropicPage: ANTHROPIC_PAGE,
+  askSurfaces: ASK_SURFACES,
   watches: WATCHES,
   welcome: WELCOME,
   connectAnthropic: CONNECT_ANTHROPIC,
@@ -96,40 +100,56 @@ function leaves(en: unknown, zh: unknown, path: string, out: Leaf[]): Leaf[] {
   return out;
 }
 
+/** One table's parity: the same keys, nothing empty, each language in its own words. */
+function checkTable(name: string, table: { en: unknown; zh: unknown }): void {
+    const all = leaves(table.en, table.zh, name, []);
+    expect(all.length).toBeGreaterThan(0);
+    for (const { path, en, zh } of all) {
+      expect(typeof zh, `${path}: the same kind of value`).toBe(typeof en);
+      if (typeof en === "function") {
+        const fnEn = en as (...args: unknown[]) => unknown;
+        const fnZh = zh as (...args: unknown[]) => unknown;
+        expect(fnZh.length, `${path}: the same arguments`).toBe(fnEn.length);
+        const found = call(fnEn);
+        const cases = CASES[path] ?? (found ? [found.args] : []);
+        expect(cases.length, `${path}: English answers with a sentence`).toBeGreaterThan(0);
+        for (const args of cases) {
+          const a = fnEn(...args);
+          const b = fnZh(...args);
+          expect(typeof a === "string" && a !== "", `${path}(${JSON.stringify(args)}): English answers`).toBe(true);
+          expect(typeof b === "string" && b !== "", `${path}(${JSON.stringify(args)}): Chinese answers the same arguments`).toBe(true);
+          expect(CJK.test(a as string), `${path}: English has no Chinese: ${String(a)}`).toBe(false);
+          expect(HAN.test(b as string), `${path}: Chinese is Chinese: ${String(b)}`).toBe(true);
+        }
+      } else if (typeof en === "string") {
+        expect(en.trim(), `${path}: not empty`).not.toBe("");
+        expect((zh as string).trim(), `${path}: not empty`).not.toBe("");
+        expect(CJK.test(en), `${path}: English has no Chinese: ${en}`).toBe(false);
+        if (en === zh) expect(SAME_IN_BOTH.has(en.trim()), `${path}: left untranslated: ${en}`).toBe(true);
+        else if (!HAN.test(zh as string)) expect(SAME_IN_BOTH.has((zh as string).trim()) || /^[\s\p{P}\p{S}\d]*$/u.test(zh as string), `${path}: Chinese is Chinese: ${String(zh)}`).toBe(true);
+      } else {
+        expect(zh, `${path}: the same value`).toEqual(en);
+      }
+    }
+}
+
 describe("English and Chinese copy tables", () => {
   for (const [name, table] of Object.entries(TABLES)) {
-    it(`${name}: same keys, nothing empty, each language in its own words`, () => {
-      const all = leaves(table.en, table.zh, name, []);
-      expect(all.length).toBeGreaterThan(0);
-      for (const { path, en, zh } of all) {
-        expect(typeof zh, `${path}: the same kind of value`).toBe(typeof en);
-        if (typeof en === "function") {
-          const fnEn = en as (...args: unknown[]) => unknown;
-          const fnZh = zh as (...args: unknown[]) => unknown;
-          expect(fnZh.length, `${path}: the same arguments`).toBe(fnEn.length);
-          const found = call(fnEn);
-          const cases = CASES[path] ?? (found ? [found.args] : []);
-          expect(cases.length, `${path}: English answers with a sentence`).toBeGreaterThan(0);
-          for (const args of cases) {
-            const a = fnEn(...args);
-            const b = fnZh(...args);
-            expect(typeof a === "string" && a !== "", `${path}(${JSON.stringify(args)}): English answers`).toBe(true);
-            expect(typeof b === "string" && b !== "", `${path}(${JSON.stringify(args)}): Chinese answers the same arguments`).toBe(true);
-            expect(CJK.test(a as string), `${path}: English has no Chinese: ${String(a)}`).toBe(false);
-            expect(HAN.test(b as string), `${path}: Chinese is Chinese: ${String(b)}`).toBe(true);
-          }
-        } else if (typeof en === "string") {
-          expect(en.trim(), `${path}: not empty`).not.toBe("");
-          expect((zh as string).trim(), `${path}: not empty`).not.toBe("");
-          expect(CJK.test(en), `${path}: English has no Chinese: ${en}`).toBe(false);
-          if (en === zh) expect(SAME_IN_BOTH.has(en.trim()), `${path}: left untranslated: ${en}`).toBe(true);
-          else if (!HAN.test(zh as string)) expect(SAME_IN_BOTH.has((zh as string).trim()) || /^[\s\p{P}\p{S}\d]*$/u.test(zh as string), `${path}: Chinese is Chinese: ${String(zh)}`).toBe(true);
-        } else {
-          expect(zh, `${path}: the same value`).toEqual(en);
-        }
-      }
-    });
+    it(`${name}: same keys, nothing empty, each language in its own words`, () => checkTable(name, table));
   }
+
+  it("settings in the App Store flavour (app/flags.ts STORE): the same, for the sentences that build words differently", async () => {
+    vi.resetModules();
+    vi.stubEnv("VITE_AG_STORE", "1");
+    try {
+      const store = (await import("./screens/settings-copy")).SETTINGS;
+      expect(store.en.notAffiliated).not.toBe(SETTINGS.en.notAffiliated);
+      checkTable("settings (store)", store);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
 
   it("the editor's field errors: the same fields and codes, each said in both languages", () => {
     const en = allFieldErrors("en");

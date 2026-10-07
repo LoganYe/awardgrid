@@ -11,7 +11,7 @@
  * to the foreground, and at no other time. There is no background check (../watch/capabilities.ts).
  */
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { NavLink, Outlet, RouterProvider, createHashRouter, useLocation } from "react-router";
+import { Navigate, NavLink, Outlet, type RouteObject, RouterProvider, createHashRouter, useLocation } from "react-router";
 import { type AppServices, type BootstrapOptions, bootstrap } from "./bootstrap";
 import { RESULTS } from "../components/results/copy";
 import { Button, Icon, type IconName, applyThemePreference } from "../components/ui";
@@ -22,14 +22,14 @@ import { installAppearanceBridge, postAppearance } from "../native/appearance";
 import { installSystemTextSize } from "../native/text-size";
 import { type Locale, langTag, useLocale } from "./locale";
 import { TraySlot } from "./tray-slot";
-import { AskScreen } from "../screens/AskScreen";
+import { CAN_CONNECT } from "./flags";
 import { CompareScreen } from "../screens/CompareScreen";
 import { QueryEditorScreen } from "../screens/QueryEditorScreen";
 import { DetailScreen } from "../screens/DetailScreen";
 import { ExampleScreen } from "../screens/OnboardingScreen";
 import { FavoritesScreen, SavedScreen } from "../screens/FavoritesScreen";
 import { SearchScreen } from "../screens/SearchScreen";
-import { AnthropicKeyScreen, SeatsKeyScreen, SettingsScreen } from "../screens/SettingsScreen";
+import { SeatsKeyScreen, SettingsScreen } from "../screens/SettingsScreen";
 import { WatchesScreen } from "../screens/WatchesScreen";
 
 /**
@@ -47,6 +47,19 @@ const AcknowledgementsScreen = lazy(() => import("../screens/AcknowledgementsScr
  * services. In every other build this is the constant false as well, and R1 checks the same way.
  */
 const E2E = import.meta.env.VITE_AG_PROBES === "e2e";
+/**
+ * Ask (AI assistance) and the Anthropic key page, loaded when first opened. The App Store build (./flags.ts STORE) has
+ * neither: both are the constant null there, so their modules and their words are not in its bundle
+ * (scripts/check-store-bundle.mjs), and their routes do not exist — `#/ask` lands on Search (the catch-all below).
+ *
+ * The condition is written out here rather than read from ./flags.ts, as PROBES is above: the bundler drops a
+ * dynamic import only when its condition is a constant in the same file. Through an imported constant the code is
+ * still removed, but the two chunks would be written to dist/ anyway, unreferenced (flags.test.ts keeps the two
+ * conditions the same).
+ */
+const ASK_BUILT = import.meta.env.VITE_AG_STORE !== "1";
+const AskScreen = ASK_BUILT ? lazy(() => import("../screens/AskScreen").then((m) => ({ default: m.AskScreen }))) : null;
+const AnthropicKeyScreen = ASK_BUILT ? lazy(() => import("../screens/AnthropicKeyScreen").then((m) => ({ default: m.AnthropicKeyScreen }))) : null;
 
 /**
  * How many watches have changes the user has not looked at yet.
@@ -61,11 +74,6 @@ function useUnseenCount(services: AppServices): number {
   const count = () => services.watches.all().filter((w) => w.unseen).length;
   // The same read serves a server render, which app-chrome.test.ts uses; the app itself renders only on the device.
   return useSyncExternalStore(subscribe, count, count);
-}
-
-/** Whether a question is under way. The service runs it, not the Ask screen, so the Search header says so. */
-export function useAskRunning(services: Pick<AppServices, "ask">): boolean {
-  return useSyncExternalStore(services.ask.subscribe, services.ask.isRunning, services.ask.isRunning);
 }
 
 /**
@@ -231,6 +239,99 @@ export interface AppProps {
   onReady?: (services: AppServices) => void;
 }
 
+/**
+ * The app's routes, for this build's flavour (./flags.ts): Ask and the Anthropic key page only where the build has Ask,
+ * the seats.aero connection page only where it has a connection, and a catch-all that opens Search for any other
+ * address. A function of the services so flags.test.ts and store-flavour.test.ts can read the table without a device.
+ */
+export function appRoutes(services: AppServices): RouteObject[] {
+  return [
+    {
+      path: "/edit",
+      element: <FullPage services={services} />,
+      children: [{ index: true, element: <QueryEditorScreen /> }],
+    },
+    // AI assistance, a full-height page (T15, docs/04 S09): its own header, context, conversation and composer.
+    // Not in the App Store build (STORE), where AskScreen is null.
+    ...(AskScreen
+      ? [
+          {
+            path: "/ask",
+            element: <FullPage services={services} />,
+            children: [
+              {
+                index: true,
+                element: (
+                  <Suspense fallback={null}>
+                    <AskScreen />
+                  </Suspense>
+                ),
+              },
+            ],
+          },
+        ]
+      : []),
+    {
+      path: "/",
+      element: <Chrome services={services} />,
+      children: [
+        {
+          // The Search screen, and an option's details over it (T10).
+          element: <SearchScreen />,
+          children: [
+            { index: true, Component: NoDetail },
+            { path: "detail/:snapshotId/:rowKey", element: <DetailScreen /> },
+            // The comparison (T12), over the results like the details, so they are as they were on return.
+            { path: "compare", element: <CompareScreen /> },
+          ],
+        },
+        { path: "watches", element: <WatchesScreen /> },
+        { path: "saved", element: <FavoritesScreen /> },
+        { path: "saved/:id", element: <SavedScreen /> },
+        { path: "settings", element: <SettingsScreen /> },
+        // The seats.aero connection page, unless this build has no connection (VITE_AG_CONNECT=0).
+        ...(CAN_CONNECT ? [{ path: "settings/seats", element: <SeatsKeyScreen /> }] : []),
+        ...(AnthropicKeyScreen
+          ? [
+              {
+                path: "settings/anthropic",
+                element: (
+                  <Suspense fallback={null}>
+                    <AnthropicKeyScreen />
+                  </Suspense>
+                ),
+              },
+            ]
+          : []),
+        {
+          path: "settings/acknowledgements",
+          element: (
+            <Suspense fallback={null}>
+              <AcknowledgementsScreen />
+            </Suspense>
+          ),
+        },
+        { path: "example", element: <ExampleScreen /> },
+        ...(ProbesScreen
+          ? [
+              {
+                path: "probes",
+                element: (
+                  <Suspense fallback={null}>
+                    <ProbesScreen />
+                  </Suspense>
+                ),
+              },
+            ]
+          : []),
+      ],
+    },
+    // Any other address — a page this build does not have (#/ask in the App Store build), or an old link —
+    // opens Search instead of the router's error page.
+    { path: "*", element: <Navigate to="/" replace /> },
+  ];
+}
+
 export function App({ bootstrapOptions, onReady }: AppProps = {}) {
   const [services, setServices] = useState<AppServices | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -278,68 +379,7 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
   }, [services]);
 
   // Created once per bootstrap. Re-creating the router on every render would reset navigation.
-  const router = useMemo(
-    () =>
-      services
-        ? createHashRouter([
-            {
-              path: "/edit",
-              element: <FullPage services={services} />,
-              children: [{ index: true, element: <QueryEditorScreen /> }],
-            },
-            // AI assistance, a full-height page (T15, docs/04 S09): its own header, context, conversation and composer.
-            {
-              path: "/ask",
-              element: <FullPage services={services} />,
-              children: [{ index: true, element: <AskScreen /> }],
-            },
-            {
-              path: "/",
-              element: <Chrome services={services} />,
-              children: [
-                {
-                  // The Search screen, and an option's details over it (T10).
-                  element: <SearchScreen />,
-                  children: [
-                    { index: true, Component: NoDetail },
-                    { path: "detail/:snapshotId/:rowKey", element: <DetailScreen /> },
-                    // The comparison (T12), over the results like the details, so they are as they were on return.
-                    { path: "compare", element: <CompareScreen /> },
-                  ],
-                },
-                { path: "watches", element: <WatchesScreen /> },
-                { path: "saved", element: <FavoritesScreen /> },
-                { path: "saved/:id", element: <SavedScreen /> },
-                { path: "settings", element: <SettingsScreen /> },
-                { path: "settings/seats", element: <SeatsKeyScreen /> },
-                { path: "settings/anthropic", element: <AnthropicKeyScreen /> },
-                {
-                  path: "settings/acknowledgements",
-                  element: (
-                    <Suspense fallback={null}>
-                      <AcknowledgementsScreen />
-                    </Suspense>
-                  ),
-                },
-                { path: "example", element: <ExampleScreen /> },
-                ...(ProbesScreen
-                  ? [
-                      {
-                        path: "probes",
-                        element: (
-                          <Suspense fallback={null}>
-                            <ProbesScreen />
-                          </Suspense>
-                        ),
-                      },
-                    ]
-                  : []),
-              ],
-            },
-          ])
-        : null,
-    [services],
-  );
+  const router = useMemo(() => (services ? createHashRouter(appRoutes(services)) : null), [services]);
 
   if (error) {
     return (

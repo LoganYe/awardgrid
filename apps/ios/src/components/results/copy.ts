@@ -2,15 +2,14 @@
  * The results screen's own words, in English and Chinese (UI/UX v1 T07). Sentences about the data itself (fees,
  * seats, source time, coverage, run state) are core's (`@awardgrid/core/workspace/present`, from the approved copy);
  * this file holds the screen's labels. apps/ios/src/honesty.test.ts reads it.
+ *
+ * The ways into Ask (the header's AI assistance, "Ask Claude about this search", the details' Back from an answer)
+ * are ask/ask-surface-copy.ts, which the App Store build (app/flags.ts STORE) leaves out with Ask.
  */
 import type { Locale } from "../../app/locale";
-import { ASK_ABOUT_SEARCH } from "../../ask/labels";
 
 export interface ResultsCopy {
   title: string;
-  /** copy key ai.entry */
-  ai: string;
-  aiWorking: string;
   tabs: { search: string; watches: string; saved: string; settings: string };
   tabsLabel: string;
   unseen: (n: number) => string;
@@ -52,8 +51,6 @@ export interface ResultsCopy {
   detail: {
     title: string;
     back: string;
-    /** T15: the same Back, when the details were opened from an AI answer's reference. */
-    backToAsk: string;
     notInResults: string;
     via: (program: string) => string;
     loading: string;
@@ -102,8 +99,6 @@ export interface ResultsCopy {
   newSearch: string;
   searchAgain: string;
   watch: string;
-  /** The link to Ask with this search as context. English: Ask's own label (ask/labels.ts ASK_ABOUT_SEARCH). */
-  askAbout: string;
   watching: string;
   alreadyWatching: string;
   watchLimit: string;
@@ -119,8 +114,6 @@ export interface ResultsCopy {
 export const RESULTS: Record<Locale, ResultsCopy> = {
   en: {
     title: "Search",
-    ai: "AI assistance",
-    aiWorking: "AI assistance (working)",
     tabs: { search: "Search", watches: "Watches", saved: "Saved", settings: "Settings" },
     tabsLabel: "Main navigation",
     unseen: (n) => `${n} unseen ${n === 1 ? "change" : "changes"}`,
@@ -152,7 +145,6 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     detail: {
       title: "Option details",
       back: "Return to results",
-      backToAsk: "Return to AI assistance",
       notInResults: "This option is not in your results.",
       via: (program) => `Redeemed through ${program}`,
       loading: "Loading flight itineraries",
@@ -207,7 +199,6 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     newSearch: "Build a search",
     searchAgain: "Search again",
     watch: "Watch this search",
-    askAbout: ASK_ABOUT_SEARCH,
     watching: "Watching this search. It is checked when you open the app.",
     alreadyWatching: "You are already watching this search.",
     watchLimit: "You have reached the limit of 20 watches.",
@@ -226,8 +217,6 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
   },
   zh: {
     title: "查票",
-    ai: "AI辅助",
-    aiWorking: "AI辅助（进行中）",
     tabs: { search: "查票", watches: "关注", saved: "收藏", settings: "设置" },
     tabsLabel: "主导航",
     unseen: (n) => `${n} 项未看变化`,
@@ -259,7 +248,6 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     detail: {
       title: "兑换详情",
       back: "返回结果",
-      backToAsk: "返回 AI 辅助",
       notInResults: "该选项不在当前结果中。",
       via: (program) => `通过 ${program} 兑换`,
       loading: "正在载入具体航班",
@@ -313,7 +301,6 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     newSearch: "设置查询条件",
     searchAgain: "重新查询",
     watch: "关注此查询",
-    askAbout: "就此查询问 AI",
     watching: "已关注此查询。打开本应用时检查。",
     alreadyWatching: "你已关注此查询。",
     watchLimit: "关注数量已达上限 20 个。",
