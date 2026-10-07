@@ -180,31 +180,30 @@ describe("the current tree", () => {
   // status fixes exactly these and nothing slips through. All are the submission wording, correct today: the
   // release_status and price sentences at the top of README.md, the price answer in growth/geo/accuracy-answer.md,
   // the history sentence in LEGAL.md, the /ios/ status paragraph and its price answer (on the page and in its FAQPage
-  // JSON-LD, so twice), the home page's status line, the status line of /ios/award-grid/, the Status, Price and
+  // JSON-LD, so twice), the home page's status line, the status line of /ios/award-grid/, the "Price and status" and
   // Availability lines of llms.txt, and on /ios/zh-hans/ the price and "where to download" answers in Chinese (each on
   // the page and in its JSON-LD). Once released, each takes its claim's released copy (allowed_copy_by_status, or
   // allowed_copy_zh_by_status in Chinese); once withdrawn, the withdrawn copy (release_status) or none. Line numbers
-  // are left out, so an unrelated edit above them does not break this.
+  // are left out, so an unrelated edit above them does not break this. Since 2026-10-06 (after Apple's 2026-10-05
+  // rejection) the status sentence says the app "is submitted to the App Store and not available there yet", and
+  // nothing says it is waiting for Apple's review.
   const AFTER_SUBMISSION = [
     'STALE_STATUS LEGAL.md "has been submitted to the App Store"',
     'STALE_STATUS README.md "submitted as a free app"',
-    'STALE_STATUS README.md "has been submitted to the App Store"',
+    'STALE_STATUS README.md "is submitted to the App Store"',
     'STALE_STATUS growth/geo/accuracy-answer.md "submitted as a free app"',
-    'STALE_STATUS sites/landing/index.html "has been submitted to the App Store"',
-    'STALE_STATUS sites/landing/ios/award-grid/index.html "has been submitted to the App Store"',
-    'STALE_STATUS sites/landing/ios/index.html "has been submitted to the App Store"',
+    'STALE_STATUS sites/landing/index.html "is submitted to the App Store"',
+    'STALE_STATUS sites/landing/ios/award-grid/index.html "is submitted to the App Store"',
+    'STALE_STATUS sites/landing/ios/index.html "is submitted to the App Store"',
     'STALE_STATUS sites/landing/ios/index.html "submitted as a free app"',
     'STALE_STATUS sites/landing/ios/index.html "submitted as a free app"',
-    `STALE_STATUS sites/landing/ios/index.html "waiting for Apple's review"`,
     'STALE_STATUS sites/landing/ios/zh-hans/index.html "它将在 174 个国家或地区提供，中国大陆除外"',
     'STALE_STATUS sites/landing/ios/zh-hans/index.html "它将在 174 个国家或地区提供，中国大陆除外"',
     'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
     'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
     'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
     'STALE_STATUS sites/landing/ios/zh-hans/index.html "已提交 App Store"',
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "等待苹果审核"',
-    'STALE_STATUS sites/landing/ios/zh-hans/index.html "等待苹果审核"',
-    'STALE_STATUS sites/landing/public/llms.txt "has been submitted to the App Store"',
+    'STALE_STATUS sites/landing/public/llms.txt "is submitted to the App Store"',
     'STALE_STATUS sites/landing/public/llms.txt "submitted as a free app"',
     'STALE_STATUS sites/landing/public/llms.txt "will be offered in 174"',
   ];

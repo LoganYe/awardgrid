@@ -692,7 +692,7 @@ export const CONTENT_RULES = [
     patterns: [
       p(
         String.raw`\b(?:no|zero)\s+(?:paid\s+)?seats\.aero Pro(?:\s+(?:subscription|account|key|plan))?\s+(?:needed|required|necessary)\b|\b(?:don't|do not|doesn't|does not|won't|will not|never)\s+need\s+(?:a\s+|any\s+|your own\s+|the\s+)?(?:paid\s+)?seats\.aero Pro\b|\bno need for\s+(?:a\s+|any\s+)?(?:paid\s+)?seats\.aero Pro\b|\bseats\.aero Pro(?:\s+(?:subscription|account|key|plan))?\s+(?:is\s+|are\s+)?(?:optional|not (?:needed|required|necessary)|unnecessary)\b`,
-        "it needs your own paid seats.aero Pro subscription; saying it does not is the free-seats.aero frame",
+        "results from seats.aero need a seats.aero account with API access (part of seats.aero Pro); saying Pro is not needed is the free-seats.aero frame",
       ),
       p(String.raw`(?:不需要|无需|無需|不用|不必)\s*(?:购买|購買|订阅|訂閱|开通|開通)?\s*(?:seats\.aero\s*)?Pro\b`, "不需要 Pro"),
     ],
@@ -762,20 +762,23 @@ export const CONTENT_RULES = [
   {
     id: "FREE_WITHOUT_PRO",
     guard: true,
-    near: { source: String.raw`seats\.aero Pro`, flags: "i", distance: 120, affirmative: true },
+    // 160 characters: the D6 prerequisite sentence (the owner's wording, 2026-10-06) names "seats.aero Pro" about 145
+    // characters after the "free" of the price sentence it follows; README.md, /ios/ and llms.txt put the two together.
+    near: { source: String.raw`seats\.aero Pro`, flags: "i", distance: 160, affirmative: true },
     patterns: [
       p(
         // Not "free" as in "feel free", "free up space", "free-text" or "free of ads"; "free of charge" is a price.
         String.raw`(?<!-)(?<!\bfeel )\bfree\b(?![- ](?:text|form)\b)(?!\s+(?:up|space)\b)(?!\s+of\s+(?!charge|cost))|\bno (?:[\w-]+ ){0,2}(?:fees?|charges?)\b|\bat no (?:extra )?cost\b|\bwithout (?:any )?(?:charge|cost|fees?)\b`,
-        'a free app still needs a paid seats.aero Pro subscription: "seats.aero Pro", affirmed, within 120 characters',
+        'free never reads as free of seats.aero Pro: "seats.aero Pro", affirmed, within 160 characters',
       ),
     ],
   },
   {
     id: "FREE_WITHOUT_PRO",
     guard: true,
-    near: { source: String.raw`\bPro\b`, flags: "", distance: 60, affirmative: true },
-    patterns: [p(String.raw`免费|免費|不收费|不收費|零费用|零費用`, "免费 needs Pro, affirmed, within 60 characters")],
+    // 100 characters: the Chinese D6 sentence names Pro about 90 characters after the 免费 of the sentence it follows.
+    near: { source: String.raw`\bPro\b`, flags: "", distance: 100, affirmative: true },
+    patterns: [p(String.raw`免费|免費|不收费|不收費|零费用|零費用`, "免费 needs Pro, affirmed, within 100 characters")],
   },
   {
     id: "PRICE_UNSOURCED",
@@ -808,7 +811,7 @@ export const CONTENT_RULES = [
     statuses: ["released", "withdrawn"],
     patterns: [
       p(
-        String.raw`\bhas been submitted to the App Store\b|\bsubmitted as a free app\b|\bwill be offered in 174\b|\b(?:waiting for|waiting on|awaiting|pending|in|under) (?:Apple's |Apple |the )?(?:App )?[Rr]eview\b|已提交(?:到|至)?\s*App\s*Store|等待\s*(?:Apple|苹果|蘋果)?\s*审核|等待\s*(?:Apple|苹果|蘋果)?\s*審核|审核中|審核中|正在审核|正在審核`,
+        String.raw`\b(?:has been|is) submitted to the App Store\b|\bsubmitted as a free app\b|\bwill be offered in 174\b|\b(?:waiting for|waiting on|awaiting|pending|in|under) (?:Apple's |Apple |the )?(?:App )?[Rr]eview\b|已提交(?:到|至)?\s*App\s*Store|等待\s*(?:Apple|苹果|蘋果)?\s*审核|等待\s*(?:Apple|苹果|蘋果)?\s*審核|审核中|審核中|正在审核|正在審核`,
         "submission wording is untrue once Apple has decided",
       ),
     ],
