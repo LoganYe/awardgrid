@@ -24,6 +24,9 @@ class AppViewController: CAPBridgeViewController, WKScriptMessageHandler {
             webView?.underPageBackgroundColor = canvas
         }
         webView?.configuration.userContentController.add(self, name: Self.messageName)
+        // "Connect seats.aero" in the OAuth flavour (SeatsAuthPlugin.swift). Registered in every flavour; only the OAuth
+        // one calls it.
+        bridge?.registerPluginInstance(SeatsAuthPlugin())
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
