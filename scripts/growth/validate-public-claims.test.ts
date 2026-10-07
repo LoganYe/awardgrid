@@ -162,6 +162,8 @@ const CASES: ReadonlyArray<{ rule: string; lang: "en" | "zh"; fail: string[]; pa
       "Its data comes from seats.aero.",
       "It is not a seats.aero alternative.",
       "It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.",
+      // The D6 sentence (2026-10-06): the seats.aero data is optional, seats.aero Pro is named and not denied.
+      "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.",
     ],
   },
   { rule: "COMPETITOR_FRAME", lang: "zh", fail: ["seats.aero 平替", "seats.aero 的替代品", "AwardGrid 免费，不需要 Pro 订阅。"], pass: ["数据来自 seats.aero。", "免费应用，但需要你自己的 seats.aero Pro 订阅。"] },
@@ -232,9 +234,14 @@ const CASES: ReadonlyArray<{ rule: string; lang: "en" | "zh"; fail: string[]; pa
       "AwardGrid is a free app, and you don't need a seats.aero Pro subscription.",
       "Totally free: no seats.aero Pro needed.",
       "Free to use. You do not need seats.aero Pro.",
+      // "seats.aero Pro" more than 160 characters away does not count.
+      `AwardGrid is a free app. ${"It puts award seats for many routes and dates into one table. ".repeat(3)}It works with seats.aero Pro.`,
     ],
     pass: [
       "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.",
+      // The price sentence and the D6 sentence (2026-10-06), as the pages put them: "seats.aero Pro" about 145 characters on.
+      "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.",
+      "AwardGrid is free on the App Store (App ID 6816321841). Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.",
       "Is AwardGrid free?",
       "A free-text query.",
       "Questions? Feel free to write to support.",
@@ -244,8 +251,12 @@ const CASES: ReadonlyArray<{ rule: string; lang: "en" | "zh"; fail: string[]; pa
   {
     rule: "FREE_WITHOUT_PRO",
     lang: "zh",
-    fail: ["AwardGrid 是免费应用。", "无广告，完全免费。", "AwardGrid 免费，不需要 Pro 订阅。"],
-    pass: ["免费应用，但需要你自己的 seats.aero Pro 订阅。"],
+    fail: ["AwardGrid 是免费应用。", "无广告，完全免费。", "AwardGrid 免费，不需要 Pro 订阅。", `AwardGrid 是免费应用。${"它把多条航线、多个日期的里程票排进一张表。".repeat(5)}它使用 seats.aero Pro。`],
+    pass: [
+      "免费应用，但需要你自己的 seats.aero Pro 订阅。",
+      // The Chinese price sentence and the Chinese D6 sentence (2026-10-06): Pro about 90 characters on.
+      "AwardGrid 可在 App Store 免费下载（App ID 6816321841）。你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据。",
+    ],
   },
   {
     rule: "PRICE_UNSOURCED",
@@ -478,6 +489,15 @@ describe("status modes", () => {
     expect(r.released).toContain("PREMATURE_STATUS");
   });
 
+  it("the 2026-10-06 submitted wording passes in submitted mode and is stale once Apple has decided", () => {
+    const r = inEach("AwardGrid for iPhone is submitted to the App Store and not available there yet.");
+    expect(r).toEqual({ submitted: [], released: ["STALE_STATUS"], withdrawn: ["STALE_STATUS"] });
+    const zh = inEach("AwardGrid iPhone 版已提交 App Store，目前还不能在那里下载。");
+    expect(zh).toEqual({ submitted: [], released: ["STALE_STATUS"], withdrawn: ["STALE_STATUS"] });
+    // Said by hand, not in the registry's words, it is caught all the same.
+    expect(inEach("AwardGrid is submitted to the App Store.").released).toEqual(["STALE_STATUS"]);
+  });
+
   it("the submitted wording passes in submitted mode and is stale once Apple has decided", () => {
     const text = "AwardGrid for iPhone has been submitted to the App Store and is waiting for Apple's review.";
     const r = inEach(text);
@@ -589,9 +609,12 @@ describe("PENDING_CLAIM_TEXT", () => {
   const PENDING = structuredClone(REGISTRY);
   const dependency = PENDING.claims.find((c: { claim_id: string }) => c.claim_id === "dependency");
   dependency.public_use = "pending_owner";
+  // Two sentences of its own, so these tests do not move with today's wording of the claim.
+  dependency.allowed_copy =
+    "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Look for the API tab in your seats.aero settings first.";
 
   it("fails when copy the owner has not approved appears, and passes once it is approved", () => {
-    const text = `Before you subscribe: ${dependency.allowed_copy}`;
+    const text = `In short: ${dependency.allowed_copy}`;
     expect(rules(text, { registry: PENDING })).toContain("PENDING_CLAIM_TEXT");
     const approved = structuredClone(PENDING);
     approved.claims.find((c: { claim_id: string }) => c.claim_id === "dependency").public_use = "approved";
@@ -608,7 +631,7 @@ describe("PENDING_CLAIM_TEXT", () => {
     const items = [
       "AwardGrid depends on seats.aero’s Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw",
       "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use.",
-      "Check your seats.aero settings show an API tab before you subscribe",
+      "Look for the API tab in your seats.aero settings first",
     ];
     for (const item of items) {
       expect(rules(html(`<ul><li>${item}</li></ul>`), { logical: PAGE, registry: PENDING }), item).toContain("PENDING_CLAIM_TEXT");
