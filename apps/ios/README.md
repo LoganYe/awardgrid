@@ -208,7 +208,8 @@ normal `npm run build`, no chunk in `dist/assets/` may be named `*[Pp]robe*` or 
 
 `npm run build:store` (`VITE_AG_STORE=1`, `src/app/flags.ts`) builds the app the App Store gets: Ask is compiled
 out — no `#/ask` or `#/settings/anthropic` route (an old link lands on Search), no AI link in the Search header or
-under the results, no AI group in Settings, and none of the copy that names Ask or Anthropic. AppServices.ask is
+under the results, no AI group in Settings, and none of the copy that names Ask or Anthropic (nor the query editor's
+"No AI" notes, which only point at what this build has not got). AppServices.ask is
 still built at launch and never opened, so both flavours bundle the same npm modules and share one licenses list
 (`@anthropic-ai/sdk` stays in it: a license notice, not a feature). The plain `npm run build` keeps Ask for
 development, the probes and the UI/UX e2e, whose `ios-store` project runs `e2e/uiux/store-*.spec.ts` against the

@@ -419,9 +419,9 @@
         "apps/ios/src/screens/QueryEditorScreen.tsx:316-321 \"<div className=\"query-row\">\"",
         "apps/ios/src/screens/QueryEditorScreen.tsx:348-354 \"<button id=\"query-programs-row\"\"",
         "apps/ios/src/screens/QueryEditorScreen.tsx:366-369 \"<TextField\"",
-        "apps/ios/src/components/query/labels.ts:89-90 \"cabins: \"Cabins\",\"",
-        "apps/ios/src/components/query/labels.ts:100-101 \"programs: \"Programs\",\"",
-        "apps/ios/src/components/query/labels.ts:107-108 \"miles: \"Mileage cap\",\"",
+        "apps/ios/src/components/query/labels.ts:91-92 \"cabins: \"Cabins\",\"",
+        "apps/ios/src/components/query/labels.ts:102-103 \"programs: \"Programs\",\"",
+        "apps/ios/src/components/query/labels.ts:109-110 \"miles: \"Mileage cap\",\"",
         "apps/ios/src/screens/QueryEditorScreen.tsx:70 \"cabins: [...DEFAULT_CABINS],\""
       ],
       "allowed_copy": "Programs, nonstop only and a mileage cap are optional filters; a search asks for business and first unless you choose other cabins.",
