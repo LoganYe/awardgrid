@@ -7,7 +7,7 @@
  *
  * The parser's own notices are said here too (`planNoticeText`): the deterministic parser's, in the words core's
  * dictionaries give them (packages/core/src/lib/i18n/dictionaries, `notice.parse.*`), so a Chinese screen does not show
- * an English sentence about the text it just read. plan-copy.test.ts holds the Chinese to core's.
+ * an English sentence about the text it just read. search/parse-plan.test.ts holds the Chinese to core's.
  */
 import { type Notice, noticeText } from "@awardgrid/core/notices";
 import type { Locale } from "../../app/locale";
