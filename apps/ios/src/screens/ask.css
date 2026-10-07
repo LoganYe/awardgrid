@@ -36,7 +36,7 @@
   align-items: center;
   gap: var(--ag-space-1);
   min-height: calc(var(--ag-header-height) + env(safe-area-inset-top));
-  padding: env(safe-area-inset-top) var(--ag-space-2) 0;
+  padding: env(safe-area-inset-top) max(var(--ag-space-2), env(safe-area-inset-right)) 0 max(var(--ag-space-2), env(safe-area-inset-left));
   border-bottom: 1px solid var(--ag-divider);
   background: var(--ag-surface);
 }
@@ -79,7 +79,7 @@
   overflow-y: auto;
   /* T21: reaching its end never scrolls what is behind it. */
   overscroll-behavior: contain;
-  padding: var(--ag-space-3) var(--ag-gutter);
+  padding: var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-right)) var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-left));
   border-bottom: 1px solid var(--ag-divider);
   background: var(--ag-surface-subtle);
 }
@@ -134,7 +134,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--ag-space-3);
-  padding: var(--ag-space-4) var(--ag-gutter) var(--ag-space-6);
+  padding: var(--ag-space-4) max(var(--ag-gutter), env(safe-area-inset-right)) var(--ag-space-6) max(var(--ag-gutter), env(safe-area-inset-left));
 }
 
 .ask-screen .ask-subline,
@@ -197,7 +197,7 @@
   grid-template-columns: 1fr auto;
   align-items: end;
   gap: var(--ag-space-2);
-  padding: var(--ag-space-3) var(--ag-gutter) calc(var(--ag-space-3) + env(safe-area-inset-bottom));
+  padding: var(--ag-space-3) max(var(--ag-gutter), env(safe-area-inset-right)) calc(var(--ag-space-3) + env(safe-area-inset-bottom)) max(var(--ag-gutter), env(safe-area-inset-left));
   border-top: 1px solid var(--ag-divider);
   background: var(--ag-surface);
 }

@@ -104,3 +104,30 @@ describe("each screen's top chrome pads the top inset once, and nothing around i
     expect(count(padding[0]!, "env(safe-area-inset-bottom)")).toBe(1);
   });
 });
+
+describe("what spans the screen outside the tab chrome pads the side insets itself (a phone in landscape)", () => {
+  /**
+   * The tab chrome's pages get theirs from .chrome-x and the results gutters, details and compare from their own
+   * gutters. These span the screen on their own: with the web view no longer insetting the page, a phone in landscape
+   * put the editor's back button, fields and submit (and a sheet's content) inside the 62 pt beside the Dynamic Island
+   * (Simulator, iOS 26.5: exec311/qa-prd-review/landscape-iphone26).
+   */
+  const SPANNING = [".query-editor-header", ".query-editor-body", ".query-editor-footer", ".ask-header", ".ask-context", ".ask-scroll", ".ask-screen .ask-composer", ".ag-sheet"];
+
+  it.each(SPANNING)("%s: its padding keeps clear of env(safe-area-inset-left) and env(safe-area-inset-right)", (selector) => {
+    const own = ALL_RULES.filter((r) => r.selector.split(",").map((s) => s.trim()).includes(selector));
+    const padding = own.map((r) => declaration(r.body, "padding")).filter((v) => v !== null);
+    expect(padding, selector).toHaveLength(1);
+    expect(count(padding[0]!, "env(safe-area-inset-left)"), `${selector}: ${padding[0]}`).toBe(1);
+    expect(count(padding[0]!, "env(safe-area-inset-right)"), `${selector}: ${padding[0]}`).toBe(1);
+  });
+
+  it("the bare pages shown before the screens exist (Starting…, could not start) pad all four insets", () => {
+    const app = read(join(SRC, "app/App.tsx"));
+    const bare = app.match(/const BARE_PAGE = \{([\s\S]*?)\} as const;/)?.[1] ?? "";
+    for (const side of ["top", "right", "bottom", "left"]) expect(bare, side).toContain(`env(safe-area-inset-${side})`);
+    expect(app).toContain("<div style={BARE_PAGE}>");
+    expect(app).toContain('<div style={{ ...BARE_PAGE, color: "var(--fg-muted)" }}>Starting…</div>');
+    expect(app).not.toMatch(/style=\{\{ padding: 24/);
+  });
+});

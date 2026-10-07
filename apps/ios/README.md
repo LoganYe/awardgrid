@@ -305,10 +305,11 @@ reproducibly on the xcframework download (`docs/PHASE0.md` §6).
   On iPadOS 26 and later the controller adds the window controls (the corner-adapted safe area) to the web view's
   safe area, so the title starts below them. Watches, Saved and Settings keep the top inset as a strip of canvas
   above their scrolling area (`.app-status-area`), so what scrolls stops below the status bar instead of running
-  under it; Search, details, compare and the editor carry it in their own headers. Checked on the Simulator on
-  iOS 18.3, iOS 26.5 and an iPad in a window on iPadOS 27 (`src/native/safe-area.test.ts` holds the
-  configuration). Whether this also closes #90 (the scrolled grid under the status bar) needs that screenshot
-  retaken.
+  under it; Search, details, compare and the editor carry it in their own headers. What spans the screen outside
+  the tab chrome (the editor, Ask, sheets and the bare "Starting…" page) pads the side insets too, so a phone in
+  landscape keeps it clear of the Dynamic Island. Checked on the Simulator on iOS 18.3, iOS 26.5 (also in
+  landscape) and an iPad in a window on iPadOS 27 (`src/native/safe-area.test.ts` holds the configuration).
+  Whether this also closes #90 (the scrolled grid under the status bar) needs that screenshot retaken.
 - **"Today" is the device's calendar day (PR-D).** Every place that turns the clock into a date (the parser's today,
   the editor, plans, Saved, watches, sample data) uses `src/app/local-date.ts`, so "next 14 days" typed at 22:53 in
   California starts that day, not tomorrow. Only seats.aero's daily call count stays on UTC, as seats.aero resets

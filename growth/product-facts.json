@@ -586,7 +586,7 @@
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/watch/capabilities.ts:29-44 \"export const WATCH_CHECKS = {\"",
-        "apps/ios/src/app/App.tsx:425-433 \"Check watches now that the app is open\"",
+        "apps/ios/src/app/App.tsx:435-443 \"Check watches now that the app is open\"",
         "packages/core/src/lib/watch/watch.ts:154 \"export const DEFAULT_MIN_QUOTA = 25;\"",
         "packages/core/src/lib/watch/watch.ts:163-178 \"export function dueForCheck(watch: Watch, opts: DueOptions)\"",
         "apps/ios/src/watch/runner.ts:94 \"quotaRemaining: quota.remaining,\"",

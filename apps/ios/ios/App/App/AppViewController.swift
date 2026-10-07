@@ -19,8 +19,10 @@ import Capacitor
 /// UIKit reports that corner through the corner-adapted safe area, and this adds the difference to the controller's
 /// `additionalSafeAreaInsets`, so the web view's safe area, and with it the page's `env(safe-area-inset-top)`,
 /// starts below the controls. It is read from the window, whose safe area never includes this controller's
-/// additions, so setting it cannot feed back into the next reading. Elsewhere (an iPhone, a full-screen iPad,
-/// iOS 18) the difference is 0 and nothing changes.
+/// additions, so setting it cannot feed back into the next reading. On an iPhone in portrait and on iOS 18 the
+/// difference is 0 and nothing changes. An iPhone in landscape on iOS 26 reports 18 pt for its rounded corners
+/// (measured on iOS 26.5: env(safe-area-inset-top) 18 there, 0 before), which only adds that much space above a
+/// header where the status bar is hidden; the page pads the side insets (62 pt) itself.
 ///
 /// **Appearance.** Capacitor makes the web view this controller's view and paints its background `systemBackground`,
 /// which follows the device's appearance, not the app's. That background shows around the page: below the tab bar,

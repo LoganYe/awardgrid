@@ -536,7 +536,7 @@ textarea.ag-input {
   overflow-y: auto;
   /* T21: reaching its end never scrolls what is behind it. */
   overscroll-behavior: contain;
-  padding: var(--ag-space-2) var(--ag-gutter) calc(var(--ag-space-6) + env(safe-area-inset-bottom));
+  padding: var(--ag-space-2) max(var(--ag-gutter), env(safe-area-inset-right)) calc(var(--ag-space-6) + env(safe-area-inset-bottom)) max(var(--ag-gutter), env(safe-area-inset-left));
   border-radius: var(--ag-radius-sheet) var(--ag-radius-sheet) 0 0;
   background: var(--ag-surface);
   color: var(--ag-text);
@@ -574,7 +574,10 @@ textarea.ag-input {
   .ag-sheet {
     max-width: 560px;
     border-radius: var(--ag-radius-dialog);
+    /* A dialog in the middle of the screen is clear of the side insets (a phone in landscape): its own gutter. */
+    padding-right: var(--ag-gutter);
     padding-bottom: var(--ag-space-6);
+    padding-left: var(--ag-gutter);
   }
 }
 

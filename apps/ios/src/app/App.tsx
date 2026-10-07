@@ -96,6 +96,16 @@ export function FullPage({ services }: { services: AppServices }) {
 }
 
 /**
+ * The two bare pages shown before the app has its screens ("Starting…", and the error when it cannot start): 24 pt
+ * inside the safe area. The web view does not inset the page (PR-D, capacitor.config.ts contentInset "never"), so
+ * without it their text sat under the status bar, or an iPad window's controls, while the app was starting.
+ */
+const BARE_PAGE = {
+  padding:
+    "calc(env(safe-area-inset-top) + 24px) calc(env(safe-area-inset-right) + 24px) calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 24px)",
+} as const;
+
+/**
  * The chrome's pages that show results, and so carry their source at their end: "Data: seats.aero", or in sample mode
  * "Sample data · on this device".
  */
@@ -453,7 +463,7 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
 
   if (error) {
     return (
-      <div style={{ padding: 24 }}>
+      <div style={BARE_PAGE}>
         <h1 style={{ fontSize: 18 }}>awardgrid could not start</h1>
         {/*
           The startup assertion in src/native/http.ts lands here. PIVOT §2 asks for exactly this:
@@ -465,7 +475,7 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
     );
   }
 
-  if (!services || !router) return <div style={{ padding: 24, color: "var(--fg-muted)" }}>Starting…</div>;
+  if (!services || !router) return <div style={{ ...BARE_PAGE, color: "var(--fg-muted)" }}>Starting…</div>;
 
   return (
     <SampleDataContext.Provider value={isSample(services)}>
