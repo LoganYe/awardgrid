@@ -227,13 +227,13 @@
         "apps/ios/src/search/search.ts:160-161 \"async parseText(text: string, apiKey: string | null)\"",
         "apps/ios/src/search/search.ts:183-184 \"async searchQuery(query: QueryObject, apiKey: string | null)\"",
         "apps/ios/src/search/search.ts:337-339 \"function noKey(): ApiFailure {\"",
-        "apps/ios/src/screens/SearchScreen.tsx:544-546 \") : hasKey === false ? (\"",
-        "apps/ios/src/screens/OnboardingScreen.tsx:24-28 \"Find award seats across programs with your own seats.aero key.\"",
+        "apps/ios/src/screens/SearchScreen.tsx:563-565 \") : hasKey === false ? (\"",
+        "apps/ios/src/screens/OnboardingScreen.tsx:25-29 \"Find award seats across programs, from your own seats.aero account.\"",
         "docs/reference/seatsaero/getting-started-p.md:25-27 \"Seats.aero Pro users may be able to access the partner API\"",
         "[external] https://docs.seats.aero/article/68 (read 2026-09-28)",
-        "apps/ios/src/screens/settings-copy.ts:151 \"where: \"Create one on the API tab of your seats.aero settings.\",\"",
+        "apps/ios/src/screens/settings-copy.ts:112 \"where: \"No API tab in your seats.aero settings? Then your account has no API access\"",
         "docs/reference/seatsaero/getting-started-p.md:27 \"Not all Pro users can access the partner API key or retrieve an API key.\"",
-        "apps/ios/src/components/results/copy.ts:217 \"no_key: \"Add your seats.aero Pro API key in Settings.\",\""
+        "apps/ios/src/components/results/copy.ts:212 \"no_key: \"Connect your seats.aero account in Settings.\",\""
       ],
       "allowed_copy": "It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.",
       "allowed_copy_zh": "它需要你自己付费的 seats.aero Pro 订阅，并且账户要有 API 权限；没有 API 密钥，它什么也搜不到。",
@@ -249,7 +249,7 @@
       "limitations": [
         "Not every seats.aero Pro account or country gets API access (docs/reference/seatsaero/getting-started-p.md:27).",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
-        "The extra sentences: the \"What you need\" item of /ios/, the first step of /ios/award-grid/ (the app says \"Add your seats.aero Pro API key in Settings.\", copy.ts:217), and the answers to \"Where do I find my seats.aero API key?\" and \"My seats.aero settings show no API tab. Will AwardGrid work?\" on /support/. The key is made on the API tab of the seats.aero settings page (settings-copy.ts:151; getting-started-p.md:25), and seats.aero may limit API access by location or for any reason (getting-started-p.md:27).",
+        "The extra sentences: the \"What you need\" item of /ios/, the first step of /ios/award-grid/ (the app says \"Connect your seats.aero account in Settings.\", copy.ts:212), and the answers to \"Where do I find my seats.aero API key?\" and \"My seats.aero settings show no API tab. Will AwardGrid work?\" on /support/. The key is made on the API tab of the seats.aero settings page (settings-copy.ts:112; getting-started-p.md:25), and seats.aero may limit API access by location or for any reason (getting-started-p.md:27).",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
@@ -265,7 +265,7 @@
       "evidence_ref": [
         "docs/release/IOS_1.0_RELEASE.md:28 \"P7 | Price: Free\"",
         "docs/release/APP_STORE_HANDOFF.md:184 \"the keys are credentials for the user's own third-party accounts: nothing is sold\"",
-        "apps/ios/package.json:16-26 \"\"dependencies\": {\""
+        "apps/ios/package.json:17-27 \"\"dependencies\": {\""
       ],
       "allowed_copy_by_status": {
         "submitted_not_live": "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase.",
@@ -295,7 +295,7 @@
         "packages/core/src/lib/query/schema.ts:58-64 \"export const QueryObject = z\"",
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:5-7 \"Rows are the search's dates, columns its routes; each cell holds one slot per cabin asked\"",
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:116-122 \"<span className=\"ag-mx-miles\">\"",
-        "apps/ios/src/components/results/copy.ts:143 \"matrixCaption: \"Each cell shows its lowest miles\"",
+        "apps/ios/src/components/results/copy.ts:140 \"matrixCaption: \"Each cell shows its lowest miles\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:94 \"<p className=\"ag-result-fees\">\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:102 \"<p className=\"ag-result-time\">\""
       ],
@@ -445,8 +445,8 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/src/components/results/copy.ts:136-138 \"list: \"List\",\"",
-        "apps/ios/src/components/results/copy.ts:243-245 \"list: \"列表\",\"",
+        "apps/ios/src/components/results/copy.ts:133-135 \"list: \"List\",\"",
+        "apps/ios/src/components/results/copy.ts:236-238 \"list: \"列表\",\"",
         "packages/core/src/lib/workspace/selection.ts:18-19 \"Options a comparison can hold\"",
         "packages/core/src/lib/workspace/favorites-store.ts:4-10 \"A favourite is a copy of what a search showed when it was saved\""
       ],
@@ -472,7 +472,7 @@
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:5-8 \"Rows are the search's dates, columns its routes; each cell holds one slot per cabin asked\"",
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:116-122 \"<span className=\"ag-mx-miles\">{formatMiles(row.miles)}</span>\"",
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:134-135 \"<span className=\"ag-mx-cabin\">{s.cabin}</span>\"",
-        "apps/ios/src/components/results/copy.ts:143 \"matrixCaption: \"Each cell shows its lowest miles; miles in different programs are not equivalent.\",\"",
+        "apps/ios/src/components/results/copy.ts:140 \"matrixCaption: \"Each cell shows its lowest miles; miles in different programs are not equivalent.\",\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:57-60 \"<Heading className=\"ag-result-route\">{route}</Heading>\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:91-98 \"<p className=\"ag-result-miles\" data-testid=\"card-miles\">\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:102 \"<p className=\"ag-result-time\">{timeLabel(row.time, now, locale)}</p>\"",
@@ -529,7 +529,7 @@
       "evidence_ref": [
         "packages/core/src/lib/seatsaero/types.ts:15-74 \"Mileage-program source codes from the Concepts page (updated 2026-08-28)\"",
         "packages/core/src/lib/workspace/present.ts:28 \"\"result.unmonitored\": { en: \"These routes are not monitored by the data source.\"\"",
-        "apps/ios/src/components/results/copy.ts:193 \"unmonitored: \"not monitored by the data source\",\"",
+        "apps/ios/src/components/results/copy.ts:189 \"unmonitored: \"not monitored by the data source\",\"",
         "apps/ios/src/components/results/AvailabilityCalendar.tsx:91 \"const MARK: Record<EmptyDayKind, string>\""
       ],
       "allowed_copy": "It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\".",
@@ -586,7 +586,7 @@
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/watch/capabilities.ts:29-44 \"export const WATCH_CHECKS = {\"",
-        "apps/ios/src/app/App.tsx:261-269 \"Check watches now that the app is open\"",
+        "apps/ios/src/app/App.tsx:369-377 \"Check watches now that the app is open\"",
         "packages/core/src/lib/watch/watch.ts:154 \"export const DEFAULT_MIN_QUOTA = 25;\"",
         "packages/core/src/lib/watch/watch.ts:163-178 \"export function dueForCheck(watch: Watch, opts: DueOptions)\"",
         "apps/ios/src/watch/runner.ts:93 \"quotaRemaining: quota.remaining,\"",
@@ -665,7 +665,7 @@
       "limitations": [
         "Search runs on your seats.aero key alone: the search parser is deterministic and needs no Anthropic key (apps/ios/src/search/search.ts:156-157).",
         "No per-question cost is stated.",
-        "In Chinese the feature is AI 辅助, as the app names it (apps/ios/src/components/results/copy.ts ai, consent-copy.ts, settings-copy.ts) and as /support/#zh does; the Chinese copy says AI 辅助（Ask） so a reader can match it to the English pages. 每次提问由 Anthropic 按此密钥计费 is the app's own sentence (settings-copy.ts), which bills to the key without implying a flat price per question.",
+        "In Chinese the feature is AI 辅助, as the app names it (apps/ios/src/ask/ask-surface-copy.ts, consent-copy.ts, screens/anthropic-copy.ts) and as /support/#zh does; the Chinese copy says AI 辅助（Ask） so a reader can match it to the English pages. 每次提问由 Anthropic 按此密钥计费 is the app's own sentence (screens/anthropic-copy.ts), which bills to the key without implying a flat price per question.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
@@ -679,7 +679,7 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/package.json:16-26 \"\"dependencies\": {\"",
+        "apps/ios/package.json:17-27 \"\"dependencies\": {\"",
         "apps/ios/ios/App/Podfile:12-15 \"pod 'Capacitor'\"",
         "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
         "apps/ios/src/native/webview-fetch-guard.ts:22 \"const NATIVE_ONLY_HOSTS: ReadonlySet<string> = new Set([\"api.anthropic.com\", \"seats.aero\"]);\"",
@@ -704,7 +704,7 @@
         "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
         "sites/landing/privacy/index.html:178-184 \"<h2 id=\"site-h\">This website</h2>\"",
         "sites/landing/DEPLOY.md:30-32 \"**Cloudflare Web Analytics** is on for the hostname.\"",
-        "apps/ios/package.json:16-26 \"\"dependencies\": {\""
+        "apps/ios/package.json:17-27 \"\"dependencies\": {\""
       ],
       "allowed_copy": "Neither app has telemetry or analytics of its own; the pages on awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no cookies.",
       "limitations": [
@@ -753,8 +753,8 @@
         "packages/core/src/lib/grid/deeplinks/trusted.ts:46-59 \"The details' outbound link: seats.aero's primary booking link for this option\"",
         "packages/core/src/lib/grid/deeplinks/index.ts:26-45 \"Programs whose award-search URL shape is NOT implemented yet\"",
         "apps/ios/src/screens/DetailScreen.tsx:12-13 \"**One way out to the program**, and only on a trusted link\"",
-        "apps/ios/src/screens/DetailScreen.tsx:172 \"const link = loaded?.link ?? detailLink(row, []);\"",
-        "apps/ios/src/screens/DetailScreen.tsx:314-328 \"<footer className=\"ag-detail-actions\"\""
+        "apps/ios/src/screens/DetailScreen.tsx:175 \"const link = loaded?.link ?? detailLink(row, []);\"",
+        "apps/ios/src/screens/DetailScreen.tsx:317-331 \"<footer className=\"ag-detail-actions\"\""
       ],
       "allowed_copy": "For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.",
       "allowed_copy_zh": "某个选项有 seats.aero 提供的跳转链接时，App 会打开这个链接；没有时，你可以复制查询条件。App 从不订票。",
@@ -804,8 +804,8 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/src/screens/settings-copy.ts:136 \"notAffiliated: \"AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero\"",
-        "apps/ios/src/screens/settings-copy.ts:217 \"notAffiliated: \"AwardGrid 与 seats.aero、Anthropic\"",
+        "apps/ios/src/screens/settings-copy.ts:95 \"\"AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero\"",
+        "apps/ios/src/screens/settings-copy.ts:154 \"notAffiliated: STORE ? \"AwardGrid 与 seats.aero\"",
         "LEGAL.md:57-59 \"Programs are referred to by their plain text names.\"",
         "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\""
