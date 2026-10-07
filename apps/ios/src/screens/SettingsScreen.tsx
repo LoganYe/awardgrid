@@ -16,7 +16,8 @@
  *     (app/settings-store.ts).
  *   - **Local data**: clearing cached results touches nothing else.
  *   - **About**: what goes where, "Data: seats.aero", the non-affiliation sentence, and the privacy policy and support
- *     pages (opened in Safari) and the open-source licenses (release D7, handoff §3.5).
+ *     pages (opened in Safari) and the open-source licenses (release D7, handoff §3.5). In sample mode the first two say
+ *     what is true there instead: sample data made on this device, nothing sent, an account optional (PR-D).
  *
  * The keys' discipline is unchanged (LEGAL.md "Credentials"): a key is never rendered, logged, or shown beyond its last
  * four characters, and a Keychain failure is a failure, never painted like a success.
@@ -229,8 +230,9 @@ export function SettingsScreen() {
       </Group>
       <Group title={t.groups.about}>
         <div className="ag-settings-block">
-          <p className="ag-settings-copy">{t.aboutSent}</p>
-          <p className="ag-settings-copy ag-settings-muted">{t.aboutData}</p>
+          {/* Over sample data, what is true there: made on this device, nothing sent, and no seats.aero data line. */}
+          <p className="ag-settings-copy">{sample ? SAMPLE[locale].aboutSent : t.aboutSent}</p>
+          <p className="ag-settings-copy ag-settings-muted">{sample ? SAMPLE[locale].attribution : t.aboutData}</p>
           <p className="ag-settings-copy ag-settings-muted">{t.notAffiliated}</p>
         </div>
         {/* The site's pages open in Safari; nothing is sent to that site from the app. */}

@@ -241,7 +241,8 @@ unchanged.
   only in sample mode.
 - **Labelled.** A banner on every screen (the approved "Illustrative data — not live availability" under "Sample
   data", with "Exit sample data"), "Sample data" where a source time would be, "Sample data · on this device" where
-  "Data: seats.aero" would be, no call counts or quota line, and no booking or program links.
+  "Data: seats.aero" would be, no call counts or quota line, and no booking or program links. Settings › About says
+  what is true there: sample data is made on this device, nothing is sent, and connecting an account is optional.
 - **Leaving** keeps the language and appearance chosen meanwhile, deletes `sample/`, and boots again on the account.
   `#/example`, the old static example's address, enters sample mode.
 

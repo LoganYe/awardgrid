@@ -179,6 +179,24 @@ describe("sample mode's Settings and Watches", () => {
     expect(page).not.toContain('type="password"');
   });
 
+  it("About says what is true over sample data (PR-D): made on this device, nothing sent, an account optional", async () => {
+    // The About group: from its heading to the end of the screen.
+    const about = (words: string, heading: string) => words.slice(words.lastIndexOf(` ${heading} `));
+    const settings = about(text(at(await sampleServices(), "/settings", "settings", createElement(SettingsScreen))), "About");
+    expect(settings).toContain("Sample data is made on this device, and nothing is sent. Connecting a seats.aero account is optional.");
+    expect(settings).toContain("Sample data · on this device");
+    expect(settings).not.toMatch(/Searches go to seats\.aero|seats\.aero API key|Data: seats\.aero/);
+    const zh = about(text(at(await sampleServices("zh"), "/settings", "settings", createElement(SettingsScreen))), "关于");
+    expect(zh).toContain("示例数据在本机生成，不会发送任何内容。连接 seats.aero 账户是可选的。");
+    expect(zh).toContain("示例数据 · 仅在本机");
+    expect(zh).not.toMatch(/API 密钥|数据：seats\.aero/);
+    // With an account, the account's sentences.
+    const live = about(text(at(await liveServices(), "/settings", "settings", createElement(SettingsScreen))), "About");
+    expect(live).toContain("Searches go to seats.aero with your seats.aero API key.");
+    expect(live).toContain("Data: seats.aero");
+    expect(live).not.toContain("Sample data is made on this device");
+  });
+
   it("Watches gives the rule about checks close together without naming seats.aero's cache", async () => {
     const services = await sampleServices();
     const words = text(at(services, "/watches", "watches", createElement(WatchesScreen)));
