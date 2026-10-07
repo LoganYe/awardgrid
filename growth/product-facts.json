@@ -833,7 +833,7 @@
       "evidence_level": "observed",
       "evidence_ref": [
         "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
-        "sites/landing/privacy/index.html:210-216 \"<h2 id=\"site-h\">This website</h2>\"",
+        "sites/landing/privacy/index.html:213-219 \"<h2 id=\"site-h\">This website</h2>\"",
         "sites/landing/DEPLOY.md:30-32 \"**Cloudflare Web Analytics** is on for the hostname.\"",
         "apps/ios/package.json:17-27 \"\"dependencies\": {\""
       ],
