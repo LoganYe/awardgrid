@@ -22,6 +22,7 @@ import { installAppearanceBridge, postAppearance } from "../native/appearance";
 import { installSystemTextSize } from "../native/text-size";
 import { type Locale, langTag, useLocale } from "./locale";
 import { TraySlot } from "./tray-slot";
+import { SeatsAttribution } from "../components/SeatsAttribution";
 import { CAN_CONNECT } from "./flags";
 import { CompareScreen } from "../screens/CompareScreen";
 import { QueryEditorScreen } from "../screens/QueryEditorScreen";
@@ -88,14 +89,19 @@ export function FullPage({ services }: { services: AppServices }) {
   );
 }
 
+/** The chrome's pages that show results from seats.aero, and so carry "Data: seats.aero" at their end. */
+export function showsSeatsData(place: string): boolean {
+  return place === "/watches" || place === "/saved" || place.startsWith("/saved/");
+}
+
 /**
  * The tab chrome (UI/UX v1 T07; docs/04 S01; reference results-light.png): the screen in a scrolling area, and a
  * bottom tab bar — Search, Watches, Saved (T13), Settings — above the home indicator. AI assistance
  * is reached from the Search header, which also says when a question is under way. The page itself never scrolls (the
  * shell's html/body overflow rule would stop sticky headers), the area above the bar does.
  *
- * LEGAL.md: "Every screen that shows award data carries the attribution 'Data: seats.aero'". The Search screen says it
- * in its status line; every other screen in the chrome carries it at the end of its content.
+ * LEGAL.md: "Every screen that shows award data carries the attribution 'Data: seats.aero'", with "seats.aero" linking to
+ * its site. The Search screen says it in its status line; Watches and Saved carry it at the end of their content.
  */
 export function Chrome({ services }: { services: AppServices }) {
   const unseen = useUnseenCount(services);
@@ -131,8 +137,9 @@ export function Chrome({ services }: { services: AppServices }) {
     <div className="app-shell">
       <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(place, e.currentTarget.scrollTop)}>
         <Outlet context={services} />
-        {/* Not on Search (its status line says it), Settings (its About says it) or the example (made up, not seats.aero's). */}
-        {onSearch || place === "/settings" || place === "/example" ? null : <p className="app-attribution">{t.attribution}</p>}
+        {/* Only over seats.aero's data: Watches and Saved. Search says it in its status line; Settings, its pages and the
+            example (made up, not seats.aero's) show none of it. */}
+        {showsSeatsData(place) ? <SeatsAttribution className="app-attribution" text={t.attribution} locale={locale} /> : null}
       </main>
       <SaveProblemBar services={services} problem={saveProblem} locale={locale} />
       {/* The comparison bar (T12) sits here, above the tab bar and outside the scrolling area, so it never covers a

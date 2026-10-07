@@ -77,7 +77,7 @@ describe("createSearchPort", () => {
     const port = createSearchPort({ engine, keys: { get: async () => null }, now: () => new Date(FIXTURE_NOW) });
     const pending = port.execute(fixtureQuery(), { id: "run-1", revision: 1 });
     await tick();
-    started[0]!.release({ ok: false, status: 400, error: "no_key", message: "Add your seats.aero Pro API key in Settings." });
+    started[0]!.release({ ok: false, status: 400, error: "no_key", message: "Connect your seats.aero account in Settings." });
     await expect(pending).rejects.toMatchObject({ code: "no_key" });
     expect(port.takeResult("run-1")).toMatchObject({ ok: false, error: "no_key" });
     expect(port.takeResult("run-1")).toBeNull();

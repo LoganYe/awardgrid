@@ -566,7 +566,7 @@ describe("under an answer", () => {
 describe("the conversation, and refusals before a question starts", () => {
   it("pins the copy", () => {
     expect(labels.NO_ANTHROPIC_KEY).toBe("Ask needs your own Anthropic API key. Add one in Settings. Search and watches work without it.");
-    expect(labels.NO_SEATS_KEY).toBe("Ask searches seats.aero with your own Pro key. Add it in Settings first.");
+    expect(labels.NO_SEATS_KEY).toBe("Ask searches seats.aero through your own seats.aero account. Connect it in Settings first.");
     expect(labels.BUSY).toBe("A question is already running. Stop it or wait for the answer.");
     expect(labels.CLEARED).toBe("Conversation cleared.");
     expect(labels.NEW_CONVERSATION).toBe("New conversation");
@@ -583,7 +583,7 @@ describe("the Ask screen's own copy (design §6.1-§6.3)", () => {
   it("pins the title, subline, composer and button words", () => {
     expect(labels.ASK_TITLE).toBe("Ask Claude");
     expect(labels.ASK_SUBLINE).toBe(
-      "Claude answers with your own Anthropic key. When it needs award data, this app searches seats.aero with your own Pro key, which is never sent to Anthropic. Claude sees the earlier questions in this conversation.",
+      "Claude answers with your own Anthropic key. When it needs award data, this app searches seats.aero with your own seats.aero API key, which is never sent to Anthropic. Claude sees the earlier questions in this conversation.",
     );
     // Two sections each have a Save and a Remove key: the accessible names tell them apart and start with the visible words.
     const names = [labels.SAVE_ANTHROPIC_KEY_NAME, labels.REMOVE_ANTHROPIC_KEY_NAME, labels.SAVE_SEATS_KEY_NAME, labels.REMOVE_SEATS_KEY_NAME];

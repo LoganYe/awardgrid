@@ -55,6 +55,7 @@ import { FAVORITES } from "./favorites-copy";
 import { SAVED_TITLE } from "./FavoritesScreen";
 import { RESULTS } from "../components/results/copy";
 import { QuerySummary } from "../components/results/QuerySummary";
+import { SeatsAttribution } from "../components/SeatsAttribution";
 import { Button, Icon, Notice, SegmentedControl } from "../components/ui";
 import { Welcome } from "./OnboardingScreen";
 import { RETURN_FOCUS } from "./QueryEditorScreen";
@@ -342,13 +343,22 @@ export function SearchScreen() {
   // The engine's own messages and run warnings are English (core); they say so on a Chinese screen.
   const english = locale === "en" ? undefined : "en";
   const saveNote = saveMessage && saveMessage.snapshotId === snapshot?.id ? saveMessage : null;
-  // No account connected: say so, and where to connect one — unless this build has no connection (VITE_AG_CONNECT=0).
+  // No account connected: say so, offer the sample data (the example until sample mode replaces it), and say where to
+  // connect one — unless this build has no connection (VITE_AG_CONNECT=0), where only the sample data is offered.
   const keyCallout =
-    hasKey === false && CAN_CONNECT ? (
+    hasKey === false ? (
       <Callout tone="danger" className="ag-results-callout">
         {t.noKey.before}
-        <Link to="/settings/seats">{t.noKey.link}</Link>
-        {t.noKey.after}
+        <Link to="/example">{t.noKey.sample}</Link>
+        {CAN_CONNECT ? (
+          <>
+            {t.noKey.or}
+            <Link to="/settings/seats">{t.noKey.connect}</Link>
+            {t.noKey.after}
+          </>
+        ) : (
+          t.noKey.end
+        )}
       </Callout>
     ) : null;
   const failureCallout = failure ? (
@@ -439,7 +449,7 @@ export function SearchScreen() {
               {optionsCount(rows.length, locale)}
               {shown ? ` · ${freshness(shown, now, locale)}` : ""}
             </span>
-            <span>{copy("data.source", locale)}</span>
+            <SeatsAttribution as="span" text={copy("data.source", locale)} locale={locale} />
           </div>
 
           <p className="sr-only" role="status">

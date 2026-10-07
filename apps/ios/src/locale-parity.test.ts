@@ -161,7 +161,7 @@ describe("English and Chinese copy tables", () => {
 
   it("the check itself: English words with a Chinese colon or full stop are not Chinese", () => {
     expect(HAN.test("Could not save the key on this device：x")).toBe(false);
-    expect(HAN.test("Paste your Pro key。")).toBe(false);
+    expect(HAN.test("Paste your seats.aero API key。")).toBe(false);
     expect(HAN.test("无法保存密钥：x")).toBe(true);
   });
 

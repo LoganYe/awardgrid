@@ -226,7 +226,7 @@ function summary(file, opts) {
 const COPY = {
   noAnthropicKey: "Ask needs your own Anthropic API key. Add one in Settings. Search and watches work without it.",
   attribution: "Data: seats.aero",
-  footer: "Data: seats.aero · your own keys, on this device",
+  footer: "Data: seats.aero",
   stoppedDuringRequest: "Stopped. Nothing more will be sent for this question. The request already sent to Anthropic still finishes and may be billed.",
   unfinished: "This question did not finish because awardgrid was closed while it ran. Requests already sent may have been billed.",
   overloaded: "Anthropic is overloaded and did not answer.",

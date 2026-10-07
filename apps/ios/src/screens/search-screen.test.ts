@@ -58,7 +58,8 @@ describe("SearchScreen with a shown search", () => {
     const html = render(shown());
     expect(html).toContain('data-testid="query-summary"');
     expect(html.match(/data-testid="availability-card"/g)).toHaveLength(fixtureSnapshot().rows.length);
-    expect(html).toContain("Data: seats.aero");
+    // "Data: seats.aero", the name linking to seats.aero (Safari), beside the results.
+    expect(html).toContain('Data: <a class="ag-attribution-link" href="https://seats.aero" target="_blank" rel="noreferrer noopener">seats.aero');
     expect(html).toContain(`>${ASK_ABOUT_SEARCH}</a>`);
     expect(html).toContain(">Watch this search<");
     expect(html).toContain(">Search again<");
@@ -92,7 +93,7 @@ describe("SearchScreen with a shown search", () => {
     const html = render({ ...shown(), locale: "zh" });
     expect(html).toMatch(/<div class="ag-results" lang="zh-CN"/);
     expect(html).toContain(">查票</h1>");
-    expect(html).toContain("数据：seats.aero");
+    expect(html).toContain('数据：<a class="ag-attribution-link" href="https://seats.aero"');
   });
 });
 

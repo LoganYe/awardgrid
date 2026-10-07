@@ -53,7 +53,7 @@ describe("statusLine", () => {
     expect(line.text).toBe("Last attempt failed just now: seats.aero unavailable (HTTP 500)");
     expect(line.text).not.toMatch(/baseline/);
     const refused = watch({ lastCheckedAt: null, lastResult: { at: hoursAgo(0), status: "failed", firstCheck: true, refused: true } });
-    expect(statusLine(refused, NOW, en, undefined, "en").text).toBe("Not checked: seats.aero did not accept the key.");
+    expect(statusLine(refused, NOW, en, undefined, "en").text).toBe("Not checked: seats.aero did not accept the API key. Check it in Settings.");
     expect(statusLine(refused, NOW, WATCHES.zh, undefined, "zh").text).not.toMatch(/基线/);
   });
 

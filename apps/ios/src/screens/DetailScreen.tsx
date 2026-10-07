@@ -38,6 +38,7 @@ import { STORE } from "../app/flags";
 import { langTag, useLocale } from "../app/locale";
 import { ASK_SURFACES } from "../ask/ask-surface-copy";
 import { RESULTS } from "../components/results/copy";
+import { SeatsAttribution } from "../components/SeatsAttribution";
 import { Button, Icon, IconButton, Notice } from "../components/ui";
 import type { DetailLoaded } from "../workspace/detail-service";
 import type { ApiFailure } from "../search/search";
@@ -309,7 +310,7 @@ export function DetailScreen() {
           <p className="ag-detail-meta">{timeLabel(found.row.time, now.toISOString(), locale)}</p>
           {loaded ? <p className="ag-detail-meta">{d.loadedOnDevice(ageLabel(Math.max(0, now.getTime() - Date.parse(loaded.loadedAt)), locale))}</p> : null}
           <p className="ag-detail-meta">{copy("help.program", locale)}</p>
-          <p className="ag-detail-meta">{copy("data.source", locale)}</p>
+          <SeatsAttribution className="ag-detail-meta" text={copy("data.source", locale)} locale={locale} />
         </section>
       </div>
 

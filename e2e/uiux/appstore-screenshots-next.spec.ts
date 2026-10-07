@@ -177,7 +177,7 @@ const LOCALES = [
     views: { list: "List", calendar: "Calendar", matrix: "Matrix" },
     viewOption: /^View option/,
     watches: /Watches/,
-    connect: "Connect seats.aero",
+    connect: "Connect your seats.aero account",
     question: { label: "Question for Claude", text: "Is there anything later in the autumn?", ask: "Ask" },
     captions: STORE_SHOTS_NEXT["en-US"].captions,
   },
@@ -192,7 +192,7 @@ const LOCALES = [
     views: { list: "列表", calendar: "日历", matrix: "矩阵" },
     viewOption: /^查看选项/,
     watches: /关注/,
-    connect: "连接 seats.aero",
+    connect: "连接你的 seats.aero 账户",
     question: { label: "向 Claude 提问", text: "秋天晚些时候还有吗？", ask: "提问" },
     captions: STORE_SHOTS_NEXT["zh-Hans"].captions,
   },
@@ -312,7 +312,7 @@ for (const l of LOCALES) {
   test(`${l.dir}: the seats.aero key`, async ({ page }) => {
     await phoneInsets(page);
     await openScenario(page, "no-seats-key", "ios", { lang: l.lang });
-    // Without a key the app opens on its welcome; its first action is the page that asks for the Pro key.
+    // Without a key the app opens on its welcome; its first action is the page that connects a seats.aero account.
     await page.getByTestId("welcome").getByRole("link", { name: l.connect }).click();
     await expect(page.getByRole("heading", { name: l.connect })).toBeVisible();
     await shot(page, l, "07-key");
