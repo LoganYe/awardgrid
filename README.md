@@ -4,9 +4,9 @@
 ## AwardGrid for iPhone
 
 AwardGrid is an iPhone app by Curastone CORP.
-AwardGrid for iPhone has been submitted to the App Store.
-AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.
-AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw. Check your seats.aero settings show an API tab before you subscribe.
+AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.
+AwardGrid for iPhone is submitted to the App Store and not available there yet.
+AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.
 
 It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
 
@@ -131,7 +131,7 @@ Reads `DATABASE_PATH`. Never prints hashes, keys or session tokens.
 
 1. `pnpm admin invite --for alice` → one single-use code.
 2. Send them the code and the URL. The bare host now says what this is, that there is no public signup, and that they
-   must bring their own paid seats.aero Pro key; `/register?code=…` takes them straight to the form. They pick a
+   must bring their own seats.aero Pro key; `/register?code=…` takes them straight to the form. They pick a
    username and password (argon2id) and enter the code.
 3. They open **Settings → API keys** and paste their own seats.aero Pro key. Saving costs one seats.aero call (validation)
    on *their* quota; the UI then shows only `••••` + the last four characters. Optional Duffel / Ignav keys are used

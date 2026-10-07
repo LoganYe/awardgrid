@@ -190,13 +190,16 @@ describe("pages.json, the page manifest", () => {
 
   it("refuses what would make a wrong sitemap", () => {
     const base: Manifest = JSON.parse(JSON.stringify(MANIFEST));
+    // Built on the day of the latest lastmod, the manifest as it stands is clean, and a lastmod one day later is not.
+    const built = base.pages.map((p) => p.lastmod).sort().at(-1)!;
+    const dayAfter = new Date(Date.parse(`${built}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
     const problems = (change: (m: Manifest) => void) => {
       const m: Manifest = JSON.parse(JSON.stringify(base));
       change(m);
-      return manifestProblems(m, "2026-09-28").join("\n");
+      return manifestProblems(m, built).join("\n");
     };
     expect(problems(() => {})).toBe("");
-    expect(problems((m) => (m.pages[1]!.lastmod = "2026-09-29"))).toMatch(/later than the build date 2026-09-28/);
+    expect(problems((m) => (m.pages[1]!.lastmod = dayAfter))).toMatch(new RegExp(`later than the build date ${built}`));
     expect(problems((m) => (m.pages[1]!.lastmod = "2026-02-30"))).toMatch(/is not a YYYY-MM-DD date/);
     expect(problems((m) => (m.pages[1]!.lastmod = "28/09/2026"))).toMatch(/is not a YYYY-MM-DD date/);
     expect(problems((m) => m.pages.push({ ...m.pages[1]! }))).toMatch(/listed twice/);
