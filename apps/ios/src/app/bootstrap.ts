@@ -23,6 +23,7 @@ import { type AskService, type Visibility, createAskService } from "../ask/ask-s
 import { anthropicKeychain } from "../native/anthropic-key";
 import { createNativeFetch } from "../native/http";
 import { type KeyStore, keychain } from "../native/keychain";
+import { type DataSourceControl, LIVE_ONLY } from "./data-source";
 import { type Locale, detectLocale } from "./locale";
 import { type LastSearchStore, createWorkspaceLastSearch } from "../search/last-search";
 import { AskStore } from "../store/ask-store";
@@ -125,6 +126,11 @@ export interface AppServices {
   whenWatchesIdle(): Promise<void>;
   /** T17: the one queue for the entries that spend seats.aero calls; read-only use (what runs, what waits). */
   requests: Pick<RequestCoordinator, "active" | "waiting" | "idle">;
+  /**
+   * Where these services' results come from (release plan steps 16-17): the person's seats.aero account, or sample
+   * mode's labelled sample data (./data-source.ts), and the way to switch between them.
+   */
+  dataSource: DataSourceControl;
   /** Subscribe to "the watches changed"; returns the unsubscribe function. */
   onWatchesChanged(listener: () => void): () => void;
   /** Tell subscribers the watches changed, after a screen edits the store itself. */
@@ -234,6 +240,11 @@ export interface BootstrapOptions {
   assertNative?: () => void;
   /** The language the translated screens speak. Default: the device's (navigator.language). */
   locale?: Locale;
+  /**
+   * Live or sample data, and the way to switch (./data-source.ts resolveBoot, which App boots through). Default: live,
+   * with no way to switch.
+   */
+  dataSource?: DataSourceControl;
 }
 
 /** A run that came from the Search screen's text: what was typed, and what the parser said about it. */
@@ -550,6 +561,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     lastWatchRun: () => lastRun,
     whenWatchesIdle,
     requests,
+    dataSource: opts.dataSource ?? LIVE_ONLY,
     onWatchesChanged(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
