@@ -19,6 +19,12 @@ Before pasting:
   gave. The e-mail address is the public support address on `https://awardgrid.dowhiz.com/support/`.
 - The Attachment field holds the screen recording of the connection on the owner's own account (plan step 33). If it
   is not attached, delete the sentence "The attached recording shows …".
+- "Works offline" rests on the Simulator QA, where sample mode sent no request; no run with the network off has been
+  made. Check it in airplane mode in the device test (plan step 33: Welcome, "Try with sample data", a search, the
+  three views, details, compare, save, watch); if anything there needs the network, delete "; works offline".
+- The line "The Welcome screen also offers "Plan a trip" …" is there only because build 4 has the planner (decision
+  D11, PR-C). If the submitted build has none, delete it, as the description's planner bullet goes too
+  (`apps/ios/store-metadata/README.md`).
 - The limit is 4,000 characters. Counted on the text between the fences (Unicode characters, as App Store Connect
   counts; the em dash is one character):
 

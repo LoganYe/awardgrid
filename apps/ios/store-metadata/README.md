@@ -17,6 +17,10 @@ unchanged.
   seats.aero settings" and "AwardGrid has no in-app purchases" after the one neutral sentence about seats.aero Pro
   (decision D6). A build that connects through seats.aero's own sign-in needs that paragraph and the privacy line
   rewritten first (plan step 47F.5).
+- Its first sentence, like the promotional text, names no data source ("AwardGrid puts award seats for several
+  origins, several destinations and up to 92 days into one table."): the sample-data bullet and the D6 paragraph say
+  where results come from, so the listing does not open by presenting seats.aero's data as what the app is for (plan
+  §1.2: the account only changes where results come from).
 - It has no Ask (decision D3), names no Anthropic, and mentions the trip planner only because build 4 has it (plan
   step 18, decision D11): if the planner does not ship, its bullet goes too.
 - Every sentence is in `growth/product-facts.json`: claims grid, sample_mode, query_input, views, watches, planner,

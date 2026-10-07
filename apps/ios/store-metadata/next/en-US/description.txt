@@ -1,4 +1,4 @@
-AwardGrid puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
+AwardGrid puts award seats for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
 
 • Sample data: search any route between the 84 airports AwardGrid recognises, over the next 12 months, and use every screen on built-in, clearly labelled sample data, without an account and with nothing sent anywhere.
 • Search in English or Chinese, for several origins and destinations over a range of dates.

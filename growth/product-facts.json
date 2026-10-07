@@ -365,6 +365,7 @@
       "allowed_copy_extra": [
         "Type the routes and dates in English or Chinese, and AwardGrid puts award seats into one table, from your own seats.aero account or from sample data.",
         "AwardGrid puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table.",
+        "AwardGrid puts award seats for several origins, several destinations and up to 92 days into one table.",
         "AwardGrid for iPhone puts award seats for many routes and up to 92 days into one table, from your own seats.aero account or from sample data.",
         "AwardGrid for iPhone puts award seats for several origins, destinations and dates in one table, from your own seats.aero account or from sample data.",
         "AwardGrid: award seats for many routes and dates in one table, on iPhone, from your own seats.aero account or from sample data.",
@@ -377,11 +378,12 @@
         "用中文或英文输入航线和日期，AwardGrid 就会把里程票排进一张表，数据来自你自己的 seats.aero 账户或示例数据。",
         "AwardGrid：在 iPhone 上把多条航线、多个日期的里程票排进一张表，数据来自你自己的 seats.aero 账户或示例数据。",
         "AwardGrid iPhone 版：把多条航线、多个日期的里程票排进一张表",
-        "把里程票排进一张表"
+        "把里程票排进一张表",
+        "AwardGrid 把里程票排进一张表，可以同时包含多个出发地、多个目的地，日期范围最长 92 天。"
       ],
       "limitations": [
         "Decided 2026-09-28: the earlier wording (retired_copy) described the web app's table (packages/core/src/lib/grid/types.ts GridCell, rendered only by the web app). In the iPhone app the table is the Matrix: rows are the dates, columns the routes, and each cell holds one slot per cabin asked with its lowest miles, the program and the seats; fees and data age are on each option's card (AvailabilityMatrix.tsx:5-7, AvailabilityCard.tsx:94, :102).",
-        "Version 1.0's App Store description as submitted with build 3 opened with the same description of a cell in other words (the second retired_copy sentence). Build 4's description (apps/ios/store-metadata/en-US/description.txt, since 2026-10-07) opens with this claim's sentence instead, so the gate's exemption for it is gone.",
+        "Version 1.0's App Store description as submitted with build 3 opened with the same description of a cell in other words (the second retired_copy sentence). Build 4's description (apps/ios/store-metadata/en-US/description.txt, since 2026-10-07) opens instead with the extra sentence \"AwardGrid puts award seats for several origins, several destinations and up to 92 days into one table.\" and allowed_copy's second sentence, so the gate's exemption for it is gone. That first sentence, like the promotional text's \"One table of award seats …\", names no data source: the description's sample-data bullet and its D6 paragraph say where results come from, and its first line does not present seats.aero's data as what the app is for (release plan §1.2 and AR-3: the account only changes where results come from; the description is information, not a gate). Over sample data an option's time line says \"Sample data\" where its age would be (the sample_mode claim). next/zh-Hans/description.txt opens with the same sentence in Chinese (the last allowed_copy_zh_extra sentence, made of allowed_copy_zh's and an extra sentence's words; pending a native speaker's review).",
         "Where coverage is incomplete, a cell's number is the lowest retrieved, and miles in different programs are not equivalent (the Matrix caption says both).",
         "The extra sentence is the lead of the home page (sites/landing/index.html) and its meta description: query_input, this claim and the prerequisite in one sentence. Since 2026-10-07 (build 4) the extra sentences say \"from your own seats.aero account or from sample data\" (the prerequisite and sample_mode claims) where they said \"on your own seats.aero Pro key\": build 4 works without a key, and the pages no longer call the key a Pro key (decision D6). The earlier sentences are retired_copy.",
         "The other extra sentences are on sites/landing/ios/: the first sentence of the /ios/ lead (this claim with AwardGrid as the subject), and the meta descriptions of /ios/ and /ios/award-grid/ (this claim, released.platforms and the data source, each 155 characters or fewer, so a search result does not cut it off).",
