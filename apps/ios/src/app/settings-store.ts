@@ -14,7 +14,7 @@
  * the caller.
  */
 import type { StoragePort } from "@awardgrid/core/workspace/types";
-import { ANTHROPIC_CONSENT_VERSION } from "../ask/consent-copy";
+import { ANTHROPIC_CONSENT_VERSION } from "../ask/consent-version";
 import { type ThemePreference, isThemePreference } from "../components/ui/theme";
 import type { Locale } from "./locale";
 

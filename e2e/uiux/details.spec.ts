@@ -240,7 +240,9 @@ test("loaded itineraries: each its own miles, airport-local times with their dat
   await expect(oneStop).toContainText("Business · Mixed cabin: 20% of the distance below this cabin");
   await expect(oneStop).toContainText("One itinerary can include different cabins. Check every segment.");
   // This option's primary booking link is javascript: — refused; another program's link is not its way out either.
-  await expect(details(page).getByRole("link")).toHaveCount(0);
+  // The one link left is the data attribution's, to seats.aero itself.
+  await expect(details(page).getByRole("link")).toHaveCount(1);
+  await expect(details(page).getByRole("link")).toHaveAttribute("href", "https://seats.aero");
   await expect(details(page).locator('a[href^="javascript:"], a[href^="data:"], a[href*="united.example"]')).toHaveCount(0);
   await expect(details(page).getByRole("button", { name: "Copy search details", exact: true })).toBeVisible();
 });

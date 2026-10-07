@@ -203,15 +203,17 @@ test("no key: there is no search to run, and the way to add one is a link; resul
   await openScenario(page, "complete", "ios", { lang: "en" });
   await searchByText(page, "Synthetic HKG to SEA October business and first");
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }).click();
-  await page.getByRole("link", { name: /seats\.aero Pro key/ }).click();
+  await page.getByRole("link", { name: /seats\.aero account/ }).click();
   await page.getByRole("button", { name: "Remove key", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Remove", exact: true }).click();
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Search" }).click();
   await expect(page.getByTestId("availability-list")).toBeVisible();
   await expect(page.getByRole("button", { name: "Search again" })).toBeDisabled();
-  const callout = page.getByRole("alert").filter({ hasText: "No seats.aero key on this device" });
-  await callout.getByRole("link", { name: "Connect seats.aero" }).click();
-  await expect(page.getByLabel("seats.aero Pro key")).toBeVisible();
+  const callout = page.getByRole("alert").filter({ hasText: "No seats.aero account connected." });
+  await expect(callout).toHaveText("No seats.aero account connected. Try sample data, or connect your seats.aero account in Settings.");
+  await expect(callout.getByRole("link", { name: "Try sample data" })).toHaveAttribute("href", "#/example");
+  await callout.getByRole("link", { name: "connect your seats.aero account" }).click();
+  await expect(page.getByLabel("seats.aero API key")).toBeVisible();
   expect((await requestLog(page)).seats).toBe(1);
 });
 

@@ -485,7 +485,7 @@ export function showsFollowUpNote(entry: Pick<AskEntry, "texts">): boolean {
 // ---------------------------------------------------------------------------
 
 export const NO_ANTHROPIC_KEY = "Ask needs your own Anthropic API key. Add one in Settings. Search and watches work without it.";
-export const NO_SEATS_KEY = "Ask searches seats.aero with your own Pro key. Add it in Settings first.";
+export const NO_SEATS_KEY = "Ask searches seats.aero through your own seats.aero account. Connect it in Settings first.";
 /** Release D10: the service's refusal when no permission was given. The Ask screen asks for it before this can show. */
 export const NO_CONSENT = "Nothing was sent: Ask needs your permission before it sends anything to Anthropic.";
 /** The same words core gives a wiring failure (errors.ts), for the state found before any request. */
@@ -508,7 +508,7 @@ export const CONTEXT_CHANGED = "The results this question was to be sent with ar
 
 export const ASK_TITLE = "Ask Claude";
 export const ASK_SUBLINE =
-  "Claude answers with your own Anthropic key. When it needs award data, this app searches seats.aero with your own Pro key, which is never sent to Anthropic. Claude sees the earlier questions in this conversation.";
+  "Claude answers with your own Anthropic key. When it needs award data, this app searches seats.aero with your own seats.aero API key, which is never sent to Anthropic. Claude sees the earlier questions in this conversation.";
 
 /** The composer's accessible name (design §6.3). */
 export const QUESTION_LABEL = "Question for Claude";

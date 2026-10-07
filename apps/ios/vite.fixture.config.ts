@@ -10,6 +10,12 @@ import { type Plugin, defineConfig, transformWithOxc } from "vite";
 
 const here = import.meta.dirname;
 const repo = path.resolve(here, "..", "..");
+/**
+ * The App Store flavour (src/app/flags.ts STORE): `UIUX_STORE=1` serves the host with Ask compiled out, for the
+ * `ios-store` Playwright project on its own port (playwright.uiux.config.ts). No VITE_* variable reaches this page
+ * (envPrefix below), so the flag is defined here, to "1" or to the empty string, never left to the shell.
+ */
+const STORE = process.env.UIUX_STORE === "1";
 
 /**
  * Parity with the shipped bundle for core's `process.env` defaults (seatsaero/cache.ts cacheTtlMinutesFromEnv,
@@ -36,6 +42,9 @@ export default defineConfig({
   // The app's own public/ (fonts), so the host renders with the same assets as the shell.
   publicDir: path.resolve(here, "public"),
   plugins: [processEnvParity(), react()],
+  define: { "import.meta.env.VITE_AG_STORE": JSON.stringify(STORE ? "1" : "") },
+  // The two hosts run side by side; each keeps its own pre-bundled dependencies so neither rewrites the other's.
+  cacheDir: path.join(here, "node_modules", STORE ? ".vite-uiux-store" : ".vite"),
   // No VITE_* variable reaches this page: a probe/e2e flag (VITE_AG_PROBES) exported in the shell would make App
   // boot the Simulator probe ports instead of the injected ones. main.tsx also refuses to start if one leaks.
   envPrefix: "UIUX_FIXTURE_PUBLIC_",

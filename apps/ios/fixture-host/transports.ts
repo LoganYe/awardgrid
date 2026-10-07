@@ -189,7 +189,7 @@ export function syntheticSeatsFetch(
 
     const headers = new Headers(init?.headers);
     if (!headers.get("partner-authorization")) return json({}, 401);
-    // A key the stand-in refuses, as seats.aero refuses a wrong or non-Pro key (T11's key check).
+    // A key the stand-in refuses, as seats.aero refuses a wrong key or one without API access (T11's key check).
     if (headers.get("partner-authorization") === "fixture-invalid-key") return json({ error: "invalid key" }, 401);
 
     if (path === "search" || path === "availability") {

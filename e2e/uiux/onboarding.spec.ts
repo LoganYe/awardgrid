@@ -58,7 +58,7 @@ test("missing AI key does not block existing search results", async ({ page }) =
 test("first run: one screen — what it does, connect seats.aero first, or look at an example that is marked as made up", async ({ page }) => {
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
   const welcome = page.getByTestId("welcome");
-  await expect(welcome.getByRole("link", { name: "Connect seats.aero" })).toBeVisible();
+  await expect(welcome.getByRole("link", { name: "Connect your seats.aero account" })).toBeVisible();
   await expect(welcome.getByRole("link", { name: "View an example" })).toBeVisible();
   // The AI key is not asked for here.
   await expect(welcome).not.toContainText("Anthropic");
@@ -78,10 +78,10 @@ test("first run: one screen — what it does, connect seats.aero first, or look 
 test("connecting seats.aero: a password field, paste only on request, the cost said before the check, last four only after", async ({ page }) => {
   await watchClipboard(page, "fixture-pasted-key-ABCD");
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
-  await page.getByTestId("welcome").getByRole("link", { name: "Connect seats.aero" }).click();
+  await page.getByTestId("welcome").getByRole("link", { name: "Connect your seats.aero account" }).click();
   // The page's title takes focus on arrival: the link that opened it is gone.
-  await expect(page.getByRole("heading", { level: 1, name: "Connect seats.aero" })).toBeFocused();
-  const field = page.getByLabel("seats.aero Pro key");
+  await expect(page.getByRole("heading", { level: 1, name: "Connect your seats.aero account" })).toBeFocused();
+  const field = page.getByLabel("seats.aero API key");
   await expect(field).toHaveAttribute("type", "password");
   expect((await field.boundingBox())!.height).toBeGreaterThanOrEqual(48);
   await expect(page.getByText("Checking this key sends a request to the data source.")).toBeVisible();
@@ -105,8 +105,8 @@ test("connecting seats.aero: a password field, paste only on request, the cost s
 
 test("a key the data source refuses is not saved, and says why", async ({ page }) => {
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
-  await page.getByTestId("welcome").getByRole("link", { name: "Connect seats.aero" }).click();
-  await page.getByLabel("seats.aero Pro key").fill("fixture-invalid-key");
+  await page.getByTestId("welcome").getByRole("link", { name: "Connect your seats.aero account" }).click();
+  await page.getByLabel("seats.aero API key").fill("fixture-invalid-key");
   await page.getByRole("button", { name: "Check and save", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("seats.aero did not accept this key");
   await expect(page.getByText(/Key on file/)).toHaveCount(0);
@@ -117,7 +117,7 @@ test("settings: data connection, then AI (optional), appearance and language, lo
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }).click();
   await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Data connection", "AI (optional)", "Appearance and language", "Local data", "About"]);
   // About says where the data comes from; the page does not say it twice.
-  await expect(page.getByText("Data: seats.aero · your own keys, on this device")).toHaveCount(1);
+  await expect(page.getByText("Data: seats.aero", { exact: true })).toHaveCount(1);
   // Release D7: the non-affiliation sentence, the site's two pages (opened in Safari) and the licenses, in the app.
   await expect(page.getByText("AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Privacy policy Opens in Safari" })).toHaveAttribute("href", "https://awardgrid.dowhiz.com/privacy/");
@@ -167,7 +167,7 @@ test("removing a key asks first, says what it affects, and leaves today's call c
   await confirm.getByRole("button", { name: "Remove", exact: true }).click();
   await expect(page.getByText(/Key on file/)).toHaveCount(0);
   await expect(page.getByRole("status").filter({ hasText: "seats.aero key removed from this device." })).toBeVisible();
-  await expect(page.getByLabel("seats.aero Pro key")).toBeFocused();
+  await expect(page.getByLabel("seats.aero API key")).toBeFocused();
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Search" }).click();
   await expect(page.locator(".ag-results-meta.tabular")).toHaveText(quota!);
 });
@@ -427,8 +427,8 @@ for (const theme of ["light", "dark"] as const) {
     await evidenceShot(page, `t11-welcome-${theme}`);
     await page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "设置" }).click();
     await evidenceShot(page, `t11-settings-${theme}`, { fullPage: true });
-    await page.getByRole("link", { name: /seats\.aero Pro 密钥/ }).click();
-    await expect(page.getByLabel("seats.aero Pro 密钥")).toBeVisible();
+    await page.getByRole("link", { name: /seats\.aero 账户/ }).click();
+    await expect(page.getByLabel("seats.aero API 密钥")).toBeVisible();
     await evidenceShot(page, `t11-seats-key-${theme}`);
     await page.evaluate(() => (location.hash = "#/settings/anthropic"));
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

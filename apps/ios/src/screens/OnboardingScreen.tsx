@@ -1,8 +1,8 @@
 /**
  * The first run (UI/UX v1 T11; docs/04 S08; spec §16 "首次配置"): one screen, shown where the Search screen would be
- * while there is no seats.aero key — what the app does, "Connect seats.aero" first, and "View an example". Nothing is
- * forced and nothing comes back once a key is saved. The Anthropic key is not asked for here: it waits for the first
- * AI entry.
+ * while there is no seats.aero key — what the app does, "Connect your seats.aero account" first, and "View an
+ * example". Nothing is forced and nothing comes back once a key is saved. The Anthropic key is not asked for here: it
+ * waits for the first AI entry.
  *
  * The example is made up in this file, marked on the page with the approved "Illustrative data — not live
  * availability", and sends nothing. It shows how results read — miles, fees and seats said as known or unknown — not
@@ -14,6 +14,7 @@ import type { WorkspaceRow } from "@awardgrid/core/workspace/types";
 import { useMemo, useRef, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { CAN_CONNECT } from "../app/flags";
 import { useFocusOnArrival } from "../app/focus";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import { AvailabilityCard } from "../components/results/AvailabilityCard";
@@ -21,20 +22,20 @@ import { Icon, Notice } from "../components/ui";
 
 export const WELCOME: Record<Locale, { value: string; connect: string; example: string; exampleTitle: string; exampleNote: string; exampleProgram: string; back: string }> = {
   en: {
-    value: "Find award seats across programs with your own seats.aero key. Every result says what is known and what is not.",
-    connect: "Connect seats.aero",
+    value: "Find award seats across programs, from your own seats.aero account. Every result says what is known and what is not.",
+    connect: "Connect your seats.aero account",
     example: "View an example",
     exampleTitle: "Example results",
-    exampleNote: "Made up to show how results read. Connect seats.aero to search real availability.",
+    exampleNote: "Made up to show how results read. Connect your seats.aero account to see results from it.",
     exampleProgram: "Example program",
     back: "Back",
   },
   zh: {
-    value: "用你自己的 seats.aero 密钥跨计划查找兑换座位，每条结果都写明已知与未知。",
-    connect: "连接 seats.aero",
+    value: "通过你自己的 seats.aero 账户跨计划查找兑换座位，每条结果都写明已知与未知。",
+    connect: "连接你的 seats.aero 账户",
     example: "查看示例",
     exampleTitle: "示例结果",
-    exampleNote: "以下内容为虚构，仅用于展示结果的读法。连接 seats.aero 后可查询真实库存。",
+    exampleNote: "以下内容为虚构，仅用于展示结果的读法。连接你的 seats.aero 账户后，可查看该账户的结果。",
     exampleProgram: "示例计划",
     back: "返回",
   },
@@ -46,9 +47,12 @@ export function Welcome({ locale }: { locale: Locale }) {
   return (
     <div className="ag-welcome" data-testid="welcome">
       <p className="ag-welcome-value">{w.value}</p>
-      <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
-        {w.connect}
-      </Link>
+      {/* Not in a build without a connection (VITE_AG_CONNECT=0, app/flags.ts). */}
+      {CAN_CONNECT ? (
+        <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
+          {w.connect}
+        </Link>
+      ) : null}
       <Link id="welcome-example" to="/example" className="ag-button ag-button-block">
         {w.example}
       </Link>
@@ -121,9 +125,11 @@ export function ExampleScreen() {
         ))}
       </div>
       <Notice tone="warning">{copy("demo.synthetic", locale)}</Notice>
-      <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
-        {w.connect}
-      </Link>
+      {CAN_CONNECT ? (
+        <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
+          {w.connect}
+        </Link>
+      ) : null}
     </div>
   );
 }

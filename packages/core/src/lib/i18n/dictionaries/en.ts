@@ -10,6 +10,8 @@
  * filler, no "→" / " · " / "..." inside strings, no em-dash-joined clauses, no trailing period on
  * a label or button.
  */
+import { NOTICES_EN } from "./notices-en";
+
 export const en = {
   // ---- app / nav ----
   "app.name": "awardgrid",
@@ -415,34 +417,10 @@ export const en = {
   "error.quota": "seats.aero daily limit reached. Resets at {resetAt}.",
 
   // ---- notices: server-side warnings / parse errors, rendered from {code, vars} ----
-  // English here is the source of truth for the CLI and plain `warnings` strings (lib/notices.ts).
-  "notice.parse.unknown_codes":
-    "{field} {codes} came from the language model and are not in the places list. Check the chips.",
-  "notice.parse.end_before_start": "End date {date_to} is before start date {date_from}. Searching a single day.",
-  "notice.parse.range_truncated":
-    "Date range truncated to {days} days ({date_from} to {date_to}). Split longer searches into several queries.",
-  // Lowercase fragment kept verbatim: pinned by src/lib/notices.test.ts:23 (sentence-case it there first).
-  "notice.parse.llm_retry": "the language model needed a retry to produce a valid answer",
-  "notice.parse.start_in_past": "Start date {date_from} is before today ({today}).",
-  "notice.parse.start_far_out": "Start date {date_from} is more than a year out. Award calendars rarely open that far.",
-  "notice.parse.range_end_first":
-    "The date range was written end-first ({from} to {to}). Searching {date_from} to {date_to}.",
-  "notice.parse.empty": "Enter a query first.",
-  "notice.parse.missing":
-    "Couldn't read the {fields} in \"{text}\". Name the cities (香港到西雅图 or HKG to SEA) and a date window (未来一个月 or next month).",
-  "notice.parse.invalid": "The parsed query is incomplete or invalid ({issues}).",
-  "notice.parse.llm_unreachable": "The query parser couldn't reach the language model. Try again in a minute.",
-  "notice.parse.llm_failed":
-    "Couldn't read the query after {attempts} attempts ({reason}). Name the cities, dates and cabin explicitly, for example \"HKG to SEA, next month, business\".",
-  "notice.find.quota_headroom": "Stopped before finishing the search: today's seats.aero quota headroom is used up.",
-  "notice.find.truncated_search":
-    "Results may be incomplete: stopped after {pages} page(s) of Cached Search to protect the daily quota.",
-  "notice.find.truncated_bulk":
-    "Results may be incomplete: stopped after {pages} page(s) of Bulk Availability ({source}) to protect the daily quota.",
-  "notice.find.routes_skipped":
-    "Couldn't check whether seats.aero monitors {pairs} empty pair(s): {skipped} program route list(s) skipped to stay within today's quota.",
-  "notice.find.routes_failed":
-    "Couldn't load the route list for {programs}. Blank cells on those routes may be unchecked rather than empty.",
+  // English here is the source of truth for the CLI and plain `warnings` strings (lib/notices.ts). They live in
+  // ./notices-en.ts, so lib/notices.ts can render them without bringing this whole dictionary into every bundle that
+  // parses a query (the iOS app's); spread here, the dictionary's keys and values are what they were.
+  ...NOTICES_EN,
   // ---- notify (Telegram digests + link bot replies; src/lib/notify) ----
   "notify.digest.title": "awardgrid · {name}",
   "notify.digest.new_header": "{n} new",

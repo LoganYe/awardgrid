@@ -71,7 +71,7 @@ test("no-seats-key boots the real app without a key and sends nothing", async ({
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
   // The shell's own no-key state (the T11 first run): connect first or see a marked example; there is no search to
   // run, and nothing is invented to fill the screen.
-  await expect(page.getByTestId("welcome").getByRole("link", { name: "Connect seats.aero" })).toBeVisible();
+  await expect(page.getByTestId("welcome").getByRole("link", { name: "Connect your seats.aero account" })).toBeVisible();
   await expect(page.getByTestId("text-search-run")).toHaveCount(0);
   await expect(page.getByTestId("availability-list")).toHaveCount(0);
   expect(await requestLog(page)).toMatchObject({ seats: 0, anthropic: 0, trips: 0 });

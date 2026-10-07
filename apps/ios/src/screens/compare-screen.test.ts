@@ -72,6 +72,10 @@ describe("CompareScreen markup", () => {
     expect(removeNames[0]).toMatch(/^Remove from comparison: Option 1, /);
     expect(removeNames[1]).toMatch(/^Remove from comparison: Option 2, /);
     expect(html.match(/From the search of/g)?.length).toBeGreaterThanOrEqual(2);
+    // seats.aero's figures carry "Data: seats.aero", the name linking to seats.aero (Safari), as the details do.
+    expect(html).toContain(
+      '<p class="ag-compare-note">Data: <a class="ag-attribution-link" href="https://seats.aero" target="_blank" rel="noreferrer noopener">seats.aero<span class="sr-only"> Opens in Safari</span></a></p>',
+    );
   });
 
   it("a chosen option found nowhere is said to be gone, and nothing is invented for it", () => {
@@ -81,5 +85,7 @@ describe("CompareScreen markup", () => {
     const html = render(workspace);
     expect(html.match(/This option is no longer on this device\./g)?.length).toBeGreaterThanOrEqual(2);
     expect(html).not.toMatch(/\d{1,3},\d{3} miles/);
+    // No figure of seats.aero's is shown, so nothing is attributed to it.
+    expect(html).not.toContain("ag-attribution-link");
   });
 });

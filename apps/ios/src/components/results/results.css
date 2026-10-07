@@ -51,6 +51,14 @@
   color: var(--ag-text-secondary);
 }
 
+/* "seats.aero" in "Data: seats.aero" (components/SeatsAttribution.tsx): a link inside a line of text, in the line's
+   own colour and underlined, so it reads as a link without relying on colour. */
+.ag-attribution-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* The comparison bar's place (T12): between the scrolling area and the tab bar, taking its own height. */
 .app-tray-slot {
   flex: none;

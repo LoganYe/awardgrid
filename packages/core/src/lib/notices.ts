@@ -7,7 +7,7 @@
  * CLI and the plain-string `warnings` arrays use via `noticeText()` — one source of truth,
  * so the strings tests assert on and the strings the client translates never drift apart.
  */
-import { en } from "./i18n/dictionaries/en";
+import { NOTICES_EN } from "./i18n/dictionaries/notices-en";
 import { interpolate } from "./i18n";
 
 export const NOTICE_CODES = [
@@ -54,7 +54,7 @@ export function notice(code: NoticeCode, vars?: NoticeVars): Notice {
 
 /** English rendering (CLI output, `warnings: string[]`, ParseError.message). */
 export function noticeText(n: Notice): string {
-  return interpolate(en[noticeKey(n.code)], n.vars);
+  return interpolate(NOTICES_EN[noticeKey(n.code)], n.vars);
 }
 
 export function noticesToText(list: readonly Notice[]): string[] {

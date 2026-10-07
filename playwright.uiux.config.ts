@@ -2,7 +2,8 @@
  * UI/UX v1 browser tests (docs/uiux-v1). Separate from playwright.config.ts on purpose:
  *
  *   - It drives the iOS shell through a test-only fixture host (apps/ios/fixture-host), served by Vite on
- *     127.0.0.1:4310 — never :3000 (production), :3400/:3999 (web e2e) or :4597/:4599 (Simulator probes).
+ *     127.0.0.1:4310 — never :3000 (production), :3400/:3999 (web e2e) or :4597/:4599 (Simulator probes) — and,
+ *     for the App Store flavour (Ask compiled out; project `ios-store`, e2e/uiux/store-*.spec.ts), on 127.0.0.1:4311.
  *   - Since T18 it also serves the Web surface: this worktree's Next app on 127.0.0.1:4330 (e2e/uiux/start-web.sh,
  *     which refuses to run outside a linked git worktree, so production's `.next` is never touched; U-003, U-053),
  *     a throwaway SQLite file, and the fixture's seats.aero on :4331 (scripts/uiux-web/mock-seatsaero.ts).
@@ -21,6 +22,13 @@ import { defineConfig } from "@playwright/test";
 
 export const FIXTURE_PORT = Number(process.env.UIUX_FIXTURE_PORT ?? 4310);
 export const FIXTURE_URL = `http://127.0.0.1:${FIXTURE_PORT}`;
+/**
+ * The App Store flavour (apps/ios/src/app/flags.ts STORE: Ask compiled out): the same fixture host, served with
+ * UIUX_STORE=1 on its own port. Only the `ios-store` project runs there, and it runs only e2e/uiux/store-*.spec.ts,
+ * which the `ios` project leaves out.
+ */
+export const STORE_FIXTURE_PORT = Number(process.env.UIUX_STORE_FIXTURE_PORT ?? 4311);
+export const STORE_FIXTURE_URL = `http://127.0.0.1:${STORE_FIXTURE_PORT}`;
 /** T18: the Web surface (the real Next app, this worktree's build) and its stand-in seats.aero. */
 export const WEB_PORT = Number(process.env.UIUX_WEB_PORT ?? 4330);
 export const WEB_URL = `http://127.0.0.1:${WEB_PORT}`;
@@ -61,8 +69,11 @@ export default defineConfig({
     proxy: { server: "http://127.0.0.1:9", bypass: "127.0.0.1,localhost" },
   },
   projects: [
-    // A project's testIgnore replaces the config's: the UIUX_WEB=0 exclusion is repeated here (T19 review REG-1).
-    { name: "ios", use: { ...IOS }, testIgnore: WITH_WEB ? ["**/web-layout*.spec.ts"] : ["**/web-*.spec.ts"] },
+    // A project's testIgnore replaces the config's: the UIUX_WEB=0 exclusion is repeated here (T19 review REG-1). The
+    // App Store flavour's specs need its own host, so they are left to `ios-store`.
+    { name: "ios", use: { ...IOS }, testIgnore: WITH_WEB ? ["**/web-layout*.spec.ts", "**/store-*.spec.ts"] : ["**/web-*.spec.ts", "**/store-*.spec.ts"] },
+    // The App Store flavour (Ask compiled out), on the second fixture host.
+    { name: "ios-store", use: { ...IOS, baseURL: STORE_FIXTURE_URL }, testMatch: ["**/store-*.spec.ts"] },
     // T19: the Web professional workspace at desktop sizes with a fine pointer, no touch (spec §17: hit areas follow
     // the pointer, not the width; the coarse-pointer desktop is checked inside the specs with its own context).
     ...(WITH_WEB ? [{ name: "web-desktop", use: { ...DESKTOP }, testMatch: ["**/web-layout*.spec.ts"] }] : []),
@@ -74,6 +85,17 @@ export default defineConfig({
       timeout: 60_000,
       // Never test whatever happens to be listening (a stale host, another checkout's): --strictPort fails loudly.
       reuseExistingServer: false,
+      // The default flavour (Ask on), whatever the shell exports: UIUX_STORE=1 belongs to the host below only.
+      env: { UIUX_STORE: "" },
+      stdout: "ignore",
+      stderr: "pipe",
+    },
+    {
+      command: `pnpm --filter @awardgrid/ios exec vite --config vite.fixture.config.ts --host 127.0.0.1 --port ${STORE_FIXTURE_PORT} --strictPort`,
+      url: `${STORE_FIXTURE_URL}/`,
+      timeout: 60_000,
+      reuseExistingServer: false,
+      env: { UIUX_STORE: "1" },
       stdout: "ignore",
       stderr: "pipe",
     },

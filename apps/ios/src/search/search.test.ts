@@ -103,7 +103,7 @@ describe("SearchEngine", () => {
     const fetchImpl = fakeFetch(() => textResponse("unauthorized", 401));
     const res = await engine(fetchImpl).search("HKG to SEA next 30 days business", KEY);
     expect(res).toMatchObject({ ok: false, error: "no_key" });
-    if (!res.ok) expect(res.message).toMatch(/Pro account/i);
+    if (!res.ok) expect(res.message).toBe("seats.aero did not accept the API key. Check it in Settings.");
   });
 
   it("maps a seats.aero 500 to seatsaero, not to no_key", async () => {

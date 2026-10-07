@@ -15,7 +15,7 @@ import type { SeatsPort } from "@awardgrid/core/ask/tools";
 import { LOCAL_USER, type SearchEngine } from "../search/search";
 
 export interface SeatsPortKeys {
-  /** The person's seats.aero Pro key. */
+  /** The person's own seats.aero API key. */
   seatsAero: string;
   /** The Anthropic key the question runs on, masked from every tool result. */
   anthropic: string | null;

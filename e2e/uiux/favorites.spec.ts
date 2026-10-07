@@ -96,7 +96,7 @@ test("search again from a saved snapshot shows the conditions first and runs onl
   // With the year, and what has already passed (the scenario's today is Oct 18; the dates start Oct 1).
   await expect(sheet).toContainText("2026-10-01 to 2026-10-30");
   await expect(sheet).toContainText("Some of these dates have passed");
-  await expect(sheet).toContainText("It sends requests to seats.aero with your key");
+  await expect(sheet).toContainText("It sends requests to seats.aero through your seats.aero account");
   await sheet.getByRole("button", { name: "Not now" }).click();
   expect((await requestLog(page)).seats).toBe(0);
 
@@ -179,14 +179,14 @@ test("dates that have all passed: the sheet says so and offers to change them, n
 test("without a key, Search again is off and says where to add one; nothing is sent", async ({ page }) => {
   await openScenario(page, "favorite-snapshot", "ios", { lang: "en" });
   await tab(page, "Settings").click();
-  await page.getByRole("link", { name: /seats\.aero Pro key/ }).click();
+  await page.getByRole("link", { name: /seats\.aero account/ }).click();
   await page.getByRole("button", { name: "Remove key", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Remove", exact: true }).click();
   await tab(page, "Saved").click();
   await page.getByRole("link", { name: /^Open saved results: / }).click();
   await expect(page.getByRole("button", { name: "Search again", exact: true })).toBeDisabled();
-  await page.getByRole("link", { name: "Add a key in Settings" }).click();
-  await expect(page.getByLabel("seats.aero Pro key")).toBeVisible();
+  await page.getByRole("link", { name: "Connect your seats.aero account" }).click();
+  await expect(page.getByLabel("seats.aero API key")).toBeVisible();
   expect((await requestLog(page)).seats).toBe(0);
 });
 

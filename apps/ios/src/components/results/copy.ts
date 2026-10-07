@@ -2,15 +2,14 @@
  * The results screen's own words, in English and Chinese (UI/UX v1 T07). Sentences about the data itself (fees,
  * seats, source time, coverage, run state) are core's (`@awardgrid/core/workspace/present`, from the approved copy);
  * this file holds the screen's labels. apps/ios/src/honesty.test.ts reads it.
+ *
+ * The ways into Ask (the header's AI assistance, "Ask Claude about this search", the details' Back from an answer)
+ * are ask/ask-surface-copy.ts, which the App Store build (app/flags.ts STORE) leaves out with Ask.
  */
 import type { Locale } from "../../app/locale";
-import { ASK_ABOUT_SEARCH } from "../../ask/labels";
 
 export interface ResultsCopy {
   title: string;
-  /** copy key ai.entry */
-  ai: string;
-  aiWorking: string;
   tabs: { search: string; watches: string; saved: string; settings: string };
   tabsLabel: string;
   unseen: (n: number) => string;
@@ -52,8 +51,6 @@ export interface ResultsCopy {
   detail: {
     title: string;
     back: string;
-    /** T15: the same Back, when the details were opened from an AI answer's reference. */
-    backToAsk: string;
     notInResults: string;
     via: (program: string) => string;
     loading: string;
@@ -102,14 +99,16 @@ export interface ResultsCopy {
   newSearch: string;
   searchAgain: string;
   watch: string;
-  /** The link to Ask with this search as context. English: Ask's own label (ask/labels.ts ASK_ABOUT_SEARCH). */
-  askAbout: string;
   watching: string;
   alreadyWatching: string;
   watchLimit: string;
   /** T14: the watches file is held (newer version, or unreadable), so no watch is added. */
   watchHeld: string;
-  noKey: { before: string; link: string; after: string };
+  /**
+   * No account connected (search is off): "Try sample data" (the example, which sample mode replaces) and, where the
+   * build has a connection (app/flags.ts CAN_CONNECT), the way to connect one in Settings, in each language's order.
+   */
+  noKey: { before: string; sample: string; or: string; connect: string; after: string; end: string };
   runFailed: Record<"no_key" | "quota" | "network" | "seatsaero" | "invalid_query" | "other", string>;
   quota: (used: number, limit: number) => string;
   /** The data line at the end of every screen in the chrome but Search, which says it in its status line. */
@@ -119,8 +118,6 @@ export interface ResultsCopy {
 export const RESULTS: Record<Locale, ResultsCopy> = {
   en: {
     title: "Search",
-    ai: "AI assistance",
-    aiWorking: "AI assistance (working)",
     tabs: { search: "Search", watches: "Watches", saved: "Saved", settings: "Settings" },
     tabsLabel: "Main navigation",
     unseen: (n) => `${n} unseen ${n === 1 ? "change" : "changes"}`,
@@ -152,7 +149,6 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     detail: {
       title: "Option details",
       back: "Return to results",
-      backToAsk: "Return to AI assistance",
       notInResults: "This option is not in your results.",
       via: (program) => `Redeemed through ${program}`,
       loading: "Loading flight itineraries",
@@ -207,14 +203,13 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     newSearch: "Build a search",
     searchAgain: "Search again",
     watch: "Watch this search",
-    askAbout: ASK_ABOUT_SEARCH,
     watching: "Watching this search. It is checked when you open the app.",
     alreadyWatching: "You are already watching this search.",
     watchLimit: "You have reached the limit of 20 watches.",
     watchHeld: "Watches cannot be changed on this device right now. Open Watches to see why.",
-    noKey: { before: "No seats.aero key on this device, so search is off. ", link: "Connect seats.aero", after: " with your own Pro key: awardgrid has no key of its own." },
+    noKey: { before: "No seats.aero account connected. ", sample: "Try sample data", or: ", or ", connect: "connect your seats.aero account", after: " in Settings.", end: "." },
     runFailed: {
-      no_key: "Add your seats.aero Pro API key in Settings.",
+      no_key: "Connect your seats.aero account in Settings.",
       quota: "Not enough seats.aero calls are left today for this search. It was not sent.",
       network: "seats.aero did not answer in time. The request may still have used a call.",
       seatsaero: "seats.aero returned an error for this search.",
@@ -222,12 +217,10 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
       other: "The search could not be completed.",
     },
     quota: (used, limit) => `seats.aero calls today: ${used} of ${limit}`,
-    attribution: "Data: seats.aero · your own keys, on this device",
+    attribution: "Data: seats.aero",
   },
   zh: {
     title: "查票",
-    ai: "AI辅助",
-    aiWorking: "AI辅助（进行中）",
     tabs: { search: "查票", watches: "关注", saved: "收藏", settings: "设置" },
     tabsLabel: "主导航",
     unseen: (n) => `${n} 项未看变化`,
@@ -259,7 +252,6 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     detail: {
       title: "兑换详情",
       back: "返回结果",
-      backToAsk: "返回 AI 辅助",
       notInResults: "该选项不在当前结果中。",
       via: (program) => `通过 ${program} 兑换`,
       loading: "正在载入具体航班",
@@ -313,14 +305,13 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
     newSearch: "设置查询条件",
     searchAgain: "重新查询",
     watch: "关注此查询",
-    askAbout: "就此查询问 AI",
     watching: "已关注此查询。打开本应用时检查。",
     alreadyWatching: "你已关注此查询。",
     watchLimit: "关注数量已达上限 20 个。",
     watchHeld: "目前无法在本机修改关注。打开“关注”页查看原因。",
-    noKey: { before: "本机没有 seats.aero 密钥，暂时无法查票。请", link: "连接 seats.aero", after: "，使用你自己的 Pro 密钥：awardgrid 没有自己的密钥。" },
+    noKey: { before: "未连接 seats.aero 账户。可以", sample: "试用示例数据", or: "，或在设置中", connect: "连接你的 seats.aero 账户", after: "。", end: "。" },
     runFailed: {
-      no_key: "请在设置中添加你的 seats.aero Pro API 密钥。",
+      no_key: "请在设置中连接你的 seats.aero 账户。",
       quota: "今日剩余的 seats.aero 调用不足以完成此查询，未发送。",
       network: "seats.aero 未在时限内响应，该请求可能已计入调用。",
       seatsaero: "seats.aero 对此查询返回了错误。",
@@ -328,6 +319,6 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
       other: "查询未能完成。",
     },
     quota: (used, limit) => `今日 seats.aero 调用：${used} / ${limit}`,
-    attribution: "数据：seats.aero · 使用你自己的密钥，保存在本机",
+    attribution: "数据：seats.aero",
   },
 };

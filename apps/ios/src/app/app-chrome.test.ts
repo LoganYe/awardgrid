@@ -42,11 +42,17 @@ describe("the chrome", () => {
     expect(render({ unseen: 0 })).not.toContain("unseen");
   });
 
-  it("puts the screen in a main landmark, and the attribution on screens that do not carry it themselves", () => {
+  it("puts the screen in a main landmark, and the attribution, linked to seats.aero, only under seats.aero's data", () => {
     const search = render({ path: "/" });
     expect(search).toContain("<main");
-    expect(search).not.toContain("Data: seats.aero · your own keys");
-    expect(render({ path: "/watches" })).toContain("Data: seats.aero · your own keys, on this device");
+    // Search says it in its own status line.
+    expect(search).not.toContain("app-attribution");
+    const link =
+      'Data: <a class="ag-attribution-link" href="https://seats.aero" target="_blank" rel="noreferrer noopener">seats.aero<span class="sr-only"> Opens in Safari</span></a>';
+    for (const path of ["/watches", "/saved", "/saved/fav-1"]) expect(render({ path }), path).toContain(`<p class="app-attribution">${link}</p>`);
+    expect(render({ path: "/saved", locale: "zh" })).toContain('数据：<a class="ag-attribution-link" href="https://seats.aero"');
+    // Settings and its pages, and the example, show none of seats.aero's data.
+    for (const path of ["/settings", "/settings/seats", "/settings/acknowledgements", "/example"]) expect(render({ path }), path).not.toContain("app-attribution");
   });
 
   it("marks the tab bar with the language it speaks", () => {

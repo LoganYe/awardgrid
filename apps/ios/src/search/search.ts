@@ -292,7 +292,7 @@ export class SearchEngine {
       return { ok: false, status: 504, error: "network", kind: "network", message: err.message };
     }
     if (err instanceof SeatsAeroHttpError) {
-      // 401/403 from seats.aero is a bad or non-Pro key, which for this app is a key problem.
+      // 401/403 from seats.aero is a key it does not accept (wrong, or an account without API access): a key problem.
       const isAuth = err.status === 401 || err.status === 403;
       return {
         ok: false,
@@ -300,7 +300,7 @@ export class SearchEngine {
         error: isAuth ? "no_key" : "seatsaero",
         kind: `http_${err.status}`,
         message: isAuth
-          ? "seats.aero rejected that key. Check it in Settings — the Partner API needs a Pro account."
+          ? "seats.aero did not accept the API key. Check it in Settings."
           : err.message,
       };
     }
@@ -335,7 +335,7 @@ export function routesFailedWarning(result: Pick<FindResult, "routes_failed" | "
 }
 
 function noKey(): ApiFailure {
-  return { ok: false, status: 400, error: "no_key", message: "Add your seats.aero Pro API key in Settings." };
+  return { ok: false, status: 400, error: "no_key", message: "Connect your seats.aero account in Settings." };
 }
 
 /** `ParseError` carries the field names the chip editors need; anything else has none. */

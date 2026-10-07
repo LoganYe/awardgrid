@@ -25,6 +25,7 @@ import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useOutletContext, useParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
+import { CAN_CONNECT } from "../app/flags";
 import { useFocusOnArrival } from "../app/focus";
 import { langTag, useLocale } from "../app/locale";
 import { TraySlot } from "../app/tray-slot";
@@ -320,10 +321,16 @@ export function SavedScreen() {
       <AvailabilityList rows={projected.rows} sort={item.query.sort_by} snapshotId={item.originalSnapshotId} selected={NO_SELECTION} now={now.toISOString()} locale={locale} testId="saved-list" />
       {hasKey === false ? (
         <p className="ag-saved-intro">
-          {f.noKey}{" "}
-          <Link to="/settings/seats" className="ag-saved-inline-link">
-            {f.goSettings}
-          </Link>
+          {f.noKey}
+          {/* The way to connect one, unless this build has none (VITE_AG_CONNECT=0, app/flags.ts). */}
+          {CAN_CONNECT ? (
+            <>
+              {" "}
+              <Link to="/settings/seats" className="ag-saved-inline-link">
+                {f.goSettings}
+              </Link>
+            </>
+          ) : null}
         </p>
       ) : null}
       <Button onClick={() => setConfirming(true)} disabled={hasKey !== true} disabledReason={hasKey === false ? f.noKey : null}>
