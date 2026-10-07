@@ -32,6 +32,7 @@ import { langTag, useLocale } from "../app/locale";
 import { shortDateTime } from "../app/when";
 import { COMPARE_OPENER } from "../components/CompareTray";
 import { RESULTS } from "../components/results/copy";
+import { SeatsAttribution } from "../components/SeatsAttribution";
 import { Icon, IconButton } from "../components/ui";
 import { COMPARE } from "./compare-copy";
 import "../components/compare.css";
@@ -370,6 +371,9 @@ export function CompareScreen() {
           </>
         )}
         {anyLink && entries.length >= 2 ? <p className="ag-compare-note">{copy("details.external", locale)}</p> : null}
+        {/* LEGAL.md: seats.aero's figures carry "Data: seats.aero", linked to seats.aero, beside them, as the details
+            do. Not when no option is left to show any. */}
+        {entries.some((entry) => entry.row !== null) ? <SeatsAttribution className="ag-compare-note" text={copy("data.source", locale)} locale={locale} /> : null}
       </div>
     </div>
   );

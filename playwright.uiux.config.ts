@@ -85,6 +85,8 @@ export default defineConfig({
       timeout: 60_000,
       // Never test whatever happens to be listening (a stale host, another checkout's): --strictPort fails loudly.
       reuseExistingServer: false,
+      // The default flavour (Ask on), whatever the shell exports: UIUX_STORE=1 belongs to the host below only.
+      env: { UIUX_STORE: "" },
       stdout: "ignore",
       stderr: "pipe",
     },

@@ -125,6 +125,14 @@ test("Data: seats.aero links to seats.aero beside seats.aero's data, and nowhere
   await page.getByTestId("availability-list").getByTestId("availability-card").first().getByRole("button", { name: /^View option/ }).click();
   await expect(seatsLink(page.locator(".ag-detail-meta").filter({ hasText: "Data: seats.aero" }))).toHaveAttribute("href", "https://seats.aero");
   await page.keyboard.press("Escape");
+  // The comparison, over the results too.
+  const boxes = page.getByTestId("availability-list").getByRole("checkbox");
+  for (let i = 0; i < 2; i++) await boxes.nth(i).check();
+  await page.getByRole("link", { name: "Compare selected options" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Compare selected options" })).toBeFocused();
+  await expect(seatsLink(page.locator(".ag-compare-note").filter({ hasText: "Data: seats.aero" }))).toHaveAttribute("href", "https://seats.aero");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { level: 1, name: "Search" })).toBeVisible();
   // Watches and Saved carry it at their end; Settings and its pages do not.
   await tab(page, "Watches").click();
   await expect(seatsLink(page.locator(".app-attribution"))).toHaveAttribute("href", "https://seats.aero");
