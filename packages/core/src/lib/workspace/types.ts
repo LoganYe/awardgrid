@@ -283,4 +283,10 @@ export interface FavoriteV1 {
   rows: WorkspaceRow[];
   coverage: CoverageEvidence;
   originalSnapshotId: SnapshotId;
+  /**
+   * Set when the rows were removed under a short-term caching limit (the iOS OAuth flavour keeps seats.aero's results
+   * for 24 hours at most): when, and how many options the copy showed. `rows` is then empty and `coverage` unknown,
+   * and the query, `savedAt` and `originalSnapshotId` are as they were. Absent on every other item.
+   */
+  rowsRemoved?: { at: ISOInstant; options: number };
 }
