@@ -224,10 +224,10 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/src/search/search.ts:160-161 \"async parseText(text: string, apiKey: string | null)\"",
-        "apps/ios/src/search/search.ts:195-196 \"async searchQuery(query: QueryObject, apiKey: string | null)\"",
-        "apps/ios/src/search/search.ts:349-351 \"function noKey(): ApiFailure {\"",
-        "apps/ios/src/screens/SearchScreen.tsx:641-645 \") : hasKey === false ? (\"",
+        "apps/ios/src/search/search.ts:161-162 \"async parseText(text: string, apiKey: string | null)\"",
+        "apps/ios/src/search/search.ts:197-198 \"async searchQuery(query: QueryObject, apiKey: string | null)\"",
+        "apps/ios/src/search/search.ts:351-353 \"function noKey(): ApiFailure {\"",
+        "apps/ios/src/screens/SearchScreen.tsx:642-646 \") : hasKey === false ? (\"",
         "apps/ios/src/screens/OnboardingScreen.tsx:23-27 \"Find award seats across programs, from your own seats.aero account.\"",
         "docs/reference/seatsaero/getting-started-p.md:25-27 \"Seats.aero Pro users may be able to access the partner API\"",
         "[external] https://docs.seats.aero/article/68 (read 2026-09-28)",
@@ -343,7 +343,7 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/src/search/search.ts:154-176 \"Check the key and parse free text, sending nothing.\"",
+        "apps/ios/src/search/search.ts:155-177 \"Check the key and parse free text, sending nothing.\"",
         "apps/ios/src/screens/QueryEditorScreen.tsx:4-11 \"A full-height page, outside the tab chrome\"",
         "packages/core/src/lib/query/deterministic.ts:2-5 \"Deterministic NL → partial QueryObject\"",
         "packages/core/data/places.json:3 \"\"cities\": {\"",
@@ -387,14 +387,14 @@
         "packages/core/src/lib/query/deterministic.ts:102-104 \"[\"F\", /头等|頭等|\"",
         "packages/core/src/lib/query/dates.ts:134 \"re: /未来一个月|未來一個月|\"",
         "packages/core/src/lib/query/places.ts:170 \"const TO_WORD_RE =\"",
-        "apps/ios/src/search/search.ts:175 \"const parsed = await parseQuery(trimmed, { today:\"",
+        "apps/ios/src/search/search.ts:177 \"const parsed = await parseQuery(trimmed, { today:\"",
         "apps/ios/src/app/locale.ts:11-19 \"Chinese for any zh-* language tag, English otherwise.\""
       ],
       "allowed_copy": "You can also type a query in traditional characters, such as 臺北到東京 10月 頭等.",
       "limitations": [
         "Pending: 飛 on its own, the shortest way to write a route (香港飛東京, 臺北飛紐約), is not read in 1.0, and neither are 下禮拜 or 桃園 (below). A query written that way fails in the iPhone app while the same route in simplified characters (香港飞东京) is read (zh-hant.test.ts:263-269), so this sentence is not used on a public surface until the parser reads those forms or the sentence is approved with these limits.",
         "Tested (packages/core/src/lib/query/zh-hant.test.ts): the place names 臺北, 台北, 東京, 倫敦, 紐約 and 香港 and the other Traditional aliases in packages/core/data/places.json; the cabins 頭等, 商務, 公務艙 and 經濟, with or without 艙; dates such as 10月, 下個月, 12月1日到12月15日, 12月1號, 未來兩週 and 下週; the direction words 到, 至, 往, 飛往, 前往, 從 and 由. 下個月, like 下个月, is read as the 30 days from today, not the calendar month, and 下週, like 下周, as the 7 days from today, not the calendar week (dates.ts:122, :134).",
-        "Not read in 1.0: 飛 on its own as a direction word (香港飛東京 names no destination, while 香港飛往東京 and 香港到東京 are read); 兩周 written with 周, 兩週之內 and 下禮拜; the spellings 伊斯坦堡, 伊斯坦布爾, 西貢, 休士頓, 蒙特利爾, 卡爾加里, 巴塞羅那 and 希思羅; 桃園, 松山, 高雄 and 澳門, which are not in the place list in either script; and 哩程 as a sort word (哩程最低 is not read, 里程最低 is; the sort defaults to the lowest miles either way). The iPhone app parses without an LLM (apps/ios/src/search/search.ts:175), so a query whose places or dates are not read is a parse failure that names the missing fields.",
+        "Not read in 1.0: 飛 on its own as a direction word (香港飛東京 names no destination, while 香港飛往東京 and 香港到東京 are read); 兩周 written with 周, 兩週之內 and 下禮拜; the spellings 伊斯坦堡, 伊斯坦布爾, 西貢, 休士頓, 蒙特利爾, 卡爾加里, 巴塞羅那 and 希思羅; 桃園, 松山, 高雄 and 澳門, which are not in the place list in either script; and 哩程 as a sort word (哩程最低 is not read, 里程最低 is; the sort defaults to the lowest miles either way). The iPhone app parses without an LLM (apps/ios/src/search/search.ts:177), so a query whose places or dates are not read is a parse failure that names the missing fields.",
         "The interface is in English or Simplified Chinese, not Traditional Chinese (released.interface_languages). A Traditional Chinese surface that uses this claim also carries the sentence App 介面為簡體中文與英文。",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
@@ -415,14 +415,14 @@
         "packages/core/src/lib/query/schema.ts:87 \"max_miles: z.number().int().optional(),\"",
         "packages/core/src/lib/query/deterministic.ts:184-188 \"const { programs, masked } = scanPrograms(text);\"",
         "packages/core/src/lib/query/deterministic.ts:214-230 \"const cabins = parseCabins(masked);\"",
-        "apps/ios/src/screens/QueryEditorScreen.tsx:288-291 \"<div className=\"ag-field query-field\" role=\"group\" aria-labelledby=\"query-cabins-label\">\"",
-        "apps/ios/src/screens/QueryEditorScreen.tsx:316-321 \"<div className=\"query-row\">\"",
-        "apps/ios/src/screens/QueryEditorScreen.tsx:348-354 \"<button id=\"query-programs-row\"\"",
-        "apps/ios/src/screens/QueryEditorScreen.tsx:366-369 \"<TextField\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:289-292 \"<div className=\"ag-field query-field\" role=\"group\" aria-labelledby=\"query-cabins-label\">\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:317-322 \"<div className=\"query-row\">\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:349-355 \"<button id=\"query-programs-row\"\"",
+        "apps/ios/src/screens/QueryEditorScreen.tsx:367-370 \"<TextField\"",
         "apps/ios/src/components/query/labels.ts:91-92 \"cabins: \"Cabins\",\"",
         "apps/ios/src/components/query/labels.ts:102-103 \"programs: \"Programs\",\"",
         "apps/ios/src/components/query/labels.ts:109-110 \"miles: \"Mileage cap\",\"",
-        "apps/ios/src/screens/QueryEditorScreen.tsx:70 \"cabins: [...DEFAULT_CABINS],\""
+        "apps/ios/src/screens/QueryEditorScreen.tsx:71 \"cabins: [...DEFAULT_CABINS],\""
       ],
       "allowed_copy": "Programs, nonstop only and a mileage cap are optional filters; a search asks for business and first unless you choose other cabins.",
       "limitations": [
@@ -589,7 +589,7 @@
         "apps/ios/src/app/App.tsx:425-433 \"Check watches now that the app is open\"",
         "packages/core/src/lib/watch/watch.ts:154 \"export const DEFAULT_MIN_QUOTA = 25;\"",
         "packages/core/src/lib/watch/watch.ts:163-178 \"export function dueForCheck(watch: Watch, opts: DueOptions)\"",
-        "apps/ios/src/watch/runner.ts:93 \"quotaRemaining: quota.remaining,\"",
+        "apps/ios/src/watch/runner.ts:94 \"quotaRemaining: quota.remaining,\"",
         "packages/core/src/lib/seatsaero/quota.ts:106-108 \"/** Calls left before the SOFT limit\""
       ],
       "allowed_copy": "Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.",
@@ -615,10 +615,10 @@
         "packages/core/src/lib/seatsaero/quota.ts:90 \"this.softLimit = opts.softLimit ?? DEFAULT_SOFT_LIMIT;\"",
         "apps/ios/src/store/quota-store.ts:10 \"used(day) = max(locally counted calls, DAILY_LIMIT - X-RateLimit-Remaining)\"",
         "apps/ios/src/store/quota-store.ts:20-23 \"**It is keyed by UTC day**\"",
-        "apps/ios/src/app/bootstrap.ts:345 \"quota: new Quota({ store: quotaStore, now }),\"",
+        "apps/ios/src/app/bootstrap.ts:346 \"quota: new Quota({ store: quotaStore, now }),\"",
         "packages/core/src/lib/seatsaero/cache.ts:17 \"export const DEFAULT_CACHE_TTL_MINUTES = 45;\"",
         "packages/core/src/lib/seatsaero/cache.ts:406-410 \"/** Parse CACHE_TTL_MINUTES, falling back to 45 on garbage. */\"",
-        "apps/ios/src/search/search.ts:207-216 \"const result = await runFind({\"",
+        "apps/ios/src/search/search.ts:209-218 \"const result = await runFind({\"",
         "docs/reference/seatsaero/getting-started-p.md:25 \"Seats.aero Pro users may be able to access the partner API for up to 1,000 API calls per day\"",
         "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
       ],
@@ -628,7 +628,7 @@
         "The app's own count restarts at midnight UTC, when seats.aero resets usage."
       ],
       "limitations": [
-        "The app passes no cache lifetime to the search (apps/ios/src/search/search.ts:207-216), so the core default of 45 minutes applies: the app's Vite build replaces process.env with an empty object.",
+        "The app passes no cache lifetime to the search (apps/ios/src/search/search.ts:209-218), so the core default of 45 minutes applies: the app's Vite build replaces process.env with an empty object.",
         "seats.aero's help centre says usage resets daily at midnight UTC; the comment at packages/core/src/lib/seatsaero/quota.ts:5-7 still calls that undocumented.",
         "The app counts calls by UTC day and raises its count to what seats.aero's X-RateLimit-Remaining header says has been used (apps/ios/src/store/quota-store.ts:10, :20-23).",
         "The Chinese sentence (sites/landing/support/index.html) is pending a native speaker's review.",
@@ -650,7 +650,7 @@
         "apps/ios/src/ask/ask-service.ts:558-559 \"Release D10: without the person's permission nothing goes to Anthropic\"",
         "LEGAL.md:35-36 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\"",
         "LEGAL.md:44-49 \"sent to Anthropic; the app makes every seats.aero call itself.\"",
-        "apps/ios/src/search/search.ts:156-157 \"No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key\""
+        "apps/ios/src/search/search.ts:157-158 \"No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key\""
       ],
       "allowed_copy": "Ask is optional: it answers questions about your results with Claude, on your own Anthropic API key, after you allow it. Anthropic bills each question to that key.",
       "allowed_copy_zh": "AI 辅助（Ask）是可选功能，需要你自己的 Anthropic API 密钥。每次提问由 Anthropic 按此密钥计费。",
@@ -663,7 +663,7 @@
         "只有 AI 辅助（Ask）需要，它是可选功能。查票只需要你的 seats.aero 密钥。"
       ],
       "limitations": [
-        "Search runs on your seats.aero key alone: the search parser is deterministic and needs no Anthropic key (apps/ios/src/search/search.ts:156-157).",
+        "Search runs on your seats.aero key alone: the search parser is deterministic and needs no Anthropic key (apps/ios/src/search/search.ts:157-158).",
         "No per-question cost is stated.",
         "In Chinese the feature is AI 辅助, as the app names it (apps/ios/src/ask/ask-surface-copy.ts, consent-copy.ts, screens/anthropic-copy.ts) and as /support/#zh does; the Chinese copy says AI 辅助（Ask） so a reader can match it to the English pages. 每次提问由 Anthropic 按此密钥计费 is the app's own sentence (screens/anthropic-copy.ts), which bills to the key without implying a flat price per question.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",

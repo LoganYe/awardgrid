@@ -24,6 +24,7 @@ import { anthropicKeychain } from "../native/anthropic-key";
 import { createNativeFetch } from "../native/http";
 import { type KeyStore, keychain } from "../native/keychain";
 import { type DataSourceControl, LIVE_ONLY } from "./data-source";
+import { localDate } from "./local-date";
 import { type Locale, detectLocale } from "./locale";
 import { type LastSearchStore, createWorkspaceLastSearch } from "../search/last-search";
 import { AskStore } from "../store/ask-store";
@@ -162,7 +163,7 @@ export async function migrateWatches(store: WatchStore, files: FileStore, now: D
   } catch {
     // The copy is a courtesy; the migration keeps the watches either way.
   }
-  const today = now.toISOString().slice(0, 10);
+  const today = localDate(now);
   for (const watch of legacy) {
     const migrated = await migrateLegacyWatch({ id: watch.id, name: watch.name, enabled: watch.enabled, text: watch.text }, today);
     store.update(watch.id, { draft: migrated.draft, review: migrated.review ?? null });

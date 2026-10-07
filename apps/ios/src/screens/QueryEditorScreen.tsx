@@ -33,6 +33,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useLocation, useNavigate, useOutletContext, useSearchParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { isSample } from "../app/data-source";
+import { localDate } from "../app/local-date";
 import { langTag, useLocale } from "../app/locale";
 import { SampleBanner } from "../components/SampleBanner";
 import { SAMPLE } from "../sample/sample-copy";
@@ -87,7 +88,7 @@ export function QueryEditorScreen() {
   const section = params.get("section");
   // The control that opened the editor (a filter chip), so focus goes back to it; else the summary.
   const returnTo = (useLocation().state as { from?: string } | null)?.from ?? RETURN_FOCUS;
-  const today = services.now().toISOString().slice(0, 10);
+  const today = localDate(services.now());
   // Opened from a saved snapshot whose dates have passed (T13): its conditions, to change the dates. Opened from a watch
   // (T14): its own conditions and date rule, saved back to it rather than run.
   const navState = (useLocation().state as { query?: QueryObject; watchId?: string } | null) ?? null;

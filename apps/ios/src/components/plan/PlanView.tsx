@@ -26,7 +26,7 @@ import "./plan.css";
 export interface PlanViewProps {
   plan: PlanDraft;
   locale: Locale;
-  /** Today (YYYY-MM-DD, UTC), for saying which dates have passed. */
+  /** Today (YYYY-MM-DD, this device's calendar day: app/local-date.ts), for saying which dates have passed. */
   today: string;
   /** The plan's heading: its level under the page's, its words, and its id (the plan section is named by it). */
   heading: { level: 2 | 3; text: string; id: string };

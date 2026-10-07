@@ -26,6 +26,7 @@ import {
   sampleWindow,
 } from "./generate";
 import { DEMO_PROGRAMS, type DemoProgram, addDays } from "./shared";
+import { localDate } from "../app/local-date";
 
 export const SEATS_PARTNER_API = "https://seats.aero/partnerapi/";
 
@@ -293,7 +294,7 @@ export function sampleTrips(id: string, today: string): Record<string, unknown> 
 }
 
 export interface SampleFetchOptions {
-  /** The app's clock: decides which days are covered (today … today + 364). */
+  /** The app's clock: decides which days are covered (today on this device's calendar … today + 364). */
   now: () => Date;
 }
 
@@ -306,7 +307,8 @@ export function createSampleFetch({ now }: SampleFetchOptions): typeof fetch {
     const url = new URL(href);
     const path = url.pathname.slice(new URL(SEATS_PARTNER_API).pathname.length);
     const params = url.searchParams;
-    const today = now().toISOString().slice(0, 10);
+    // The device's calendar day, as every other "today" in the app (app/local-date.ts).
+    const today = localDate(now());
     const cursor = Math.floor(now().getTime() / 1000);
 
     if (path === "search") {
