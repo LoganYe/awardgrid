@@ -296,6 +296,18 @@ reproducibly on the xcframework download (`docs/PHASE0.md` §6).
   sizes show some under 44 pt: the nav link "Ask" is 26.4 pt wide, and four Settings controls and
   Search's Run, Watch this search and example chips, all older than Phase 5, are 27 to 41.8 pt tall
   (`docs/PHASE5.md` §2.2; #91).
+- **Safe areas: one inset, the page's own (PR-D).** The page covers the screen (`viewport-fit=cover`) and each
+  screen's top chrome pads `env(safe-area-inset-top)` once, the tab bar `env(safe-area-inset-bottom)` once. The web
+  view's scroll view no longer insets it as well (`ios.contentInset: "never"` in `capacitor.config.ts`, and the same
+  in `AppViewController.swift`): with "always" a page one screen tall was scrollable by the inset, and depending on
+  launch timing showed a 62 pt empty band above its title on an iPhone or its title under an iPad window's controls.
+  On iPadOS 26 and later the controller adds the window controls (the corner-adapted safe area) to the web view's
+  safe area, so the title starts below them. Watches, Saved and Settings keep the top inset as a strip of canvas
+  above their scrolling area (`.app-status-area`), so what scrolls stops below the status bar instead of running
+  under it; Search, details, compare and the editor carry it in their own headers. Checked on the Simulator on
+  iOS 18.3, iOS 26.5 and an iPad in a window on iPadOS 27 (`src/native/safe-area.test.ts` holds the
+  configuration). Whether this also closes #90 (the scrolled grid under the status bar) needs that screenshot
+  retaken.
 - **The grid is not yet the web app's virtualised component.** `src/components/GridTable.tsx` is a
   flat, phone-sized reading of the core's `Grid`; `src/search/search.ts` keeps the `ApiResult` /
   `ApiFailureCode` shape from `src/components/grid/api.ts` exactly so the full port stays a small diff.

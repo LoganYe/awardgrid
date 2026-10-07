@@ -147,6 +147,9 @@ export function Chrome({ services }: { services: AppServices }) {
   return (
     <TraySlot.Provider value={traySlot}>
     <div className="app-shell">
+      {/* The pages that scroll as one keep the top inset outside their scrolling area, so what scrolls stops below the
+          status bar (or an iPad window's controls) instead of running under it; Search's sticky header carries its own. */}
+      {onSearch ? null : <div className="app-status-area" aria-hidden="true" />}
       <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(place, e.currentTarget.scrollTop)}>
         {/* Sample mode's banner on every tab; the Search screen draws its own under its sticky header. */}
         {onSearch ? null : <SampleBanner services={services} locale={locale} />}
