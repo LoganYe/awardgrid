@@ -27,14 +27,15 @@
         "China mainland"
       ]
     },
-    "checked_at": "2026-09-28",
+    "checked_at": "2026-10-06",
     "evidence_level": "observed",
     "evidence_ref": [
       "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\"",
-      "docs/release/IOS_1.0_RELEASE.md:66-67 \"B3 | Register the App ID `com.dowhiz.awardgrid`\"",
-      "docs/release/IOS_1.0_RELEASE.md:158 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
-      "docs/release/IOS_1.0_RELEASE.md:119 \"`ea4bf2d` | The new icon and build 3\"",
-      "docs/release/IOS_1.0_RELEASE.md:81-82 \"D4 | iPhone only\"",
+      "docs/release/IOS_1.0_RELEASE.md:37 \"P16 | App Review's decision on 1.0 (3) | Apple | **Rejected 2026-10-05 23:49 PT**\"",
+      "docs/release/IOS_1.0_RELEASE.md:100-101 \"B3 | Register the App ID `com.dowhiz.awardgrid`\"",
+      "docs/release/IOS_1.0_RELEASE.md:193 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
+      "docs/release/IOS_1.0_RELEASE.md:153 \"`ea4bf2d` | The new icon and build 3\"",
+      "docs/release/IOS_1.0_RELEASE.md:115-116 \"D4 | iPhone only\"",
       "apps/ios/ios/App/App.xcodeproj/project.pbxproj:366-374 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
       "apps/ios/ios/App/App.xcodeproj/project.pbxproj:387-394 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
       "docs/release/IOS_1.0_RELEASE.md:28-29 \"P7 | Price: Free\"",
@@ -45,7 +46,8 @@
       "[external] https://itunes.apple.com/lookup?id=6816321841&country=<cc>&cb=<epoch> (pattern): the cache-busted lookup that decides the switch to released; resultCount of 1 or more means the app is live in that storefront"
     ],
     "notes": [
-      "submitted_at_utc: docs/release/IOS_1.0_RELEASE.md:33 records the submission at 20:24 on 2026-09-26 without a time zone; the zone (Pacific, UTC-7) is from commit 334ecef, which recorded it at 2026-09-26T20:25:44-07:00. Release is automatic once Apple approves.",
+      "submitted_at_utc: docs/release/IOS_1.0_RELEASE.md:33 records the submission at 20:24 on 2026-09-26 without a time zone; the zone (Pacific, UTC-7) is from commit 334ecef, which recorded it at 2026-09-26T20:25:44-07:00. Build 3 was submitted with automatic release; on 2026-10-06 the owner decided on Manual release (docs/release/IOS_1.0_RELEASE.md §0.1 D9), set in App Store Connect with the next build.",
+      "Apple rejected 1.0 (3) on 2026-10-05 under Guideline 3.1.1 (docs/release/IOS_1.0_RELEASE.md §0 P16). The app has never been on the App Store and the next build (4) goes to the same version 1.0, so the status stays submitted_not_live; build and build_source_revision change when build 4 is submitted. A build is released only with seats.aero's written permission (§0.1 D15).",
       "build_source_revision is the commit that built 1.0 (3), as the release record lists it (the `ea4bf2d` evidence ref above); main_revision is the origin/main revision the 2026-09-28 source fixtures were taken at (scripts/growth/fixtures/2026-09-28/src-10c8e36).",
       "minimum_ios and platforms are also the App target's build settings: IPHONEOS_DEPLOYMENT_TARGET = 18.0 and TARGETED_DEVICE_FAMILY = 1 in apps/ios/ios/App/App.xcodeproj/project.pbxproj.",
       "App Store Connect prices the app at $0.00 in 175 countries or regions and makes it available in 174 (not China mainland): docs/release/IOS_1.0_RELEASE.md:28-29."
@@ -64,10 +66,10 @@
       "checked_at": "2026-09-28",
       "evidence_level": "observed",
       "evidence_ref": [
-        "docs/release/IOS_1.0_RELEASE.md:67 \"B4 | Create the App Store Connect record\"",
-        "docs/release/IOS_1.0_RELEASE.md:81 \"D4 | iPhone only\"",
-        "docs/release/IOS_1.0_RELEASE.md:158 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
-        "docs/release/IOS_1.0_RELEASE.md:273 \"**Copyright:** 2026 Curastone CORP.\"",
+        "docs/release/IOS_1.0_RELEASE.md:101 \"B4 | Create the App Store Connect record\"",
+        "docs/release/IOS_1.0_RELEASE.md:115 \"D4 | iPhone only\"",
+        "docs/release/IOS_1.0_RELEASE.md:193 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
+        "docs/release/IOS_1.0_RELEASE.md:317 \"**Copyright:** 2026 Curastone CORP.\"",
         "apps/ios/ios/App/App/Info.plist:7-8 \"<key>CFBundleDisplayName</key>\""
       ],
       "allowed_copy": "AwardGrid is an iPhone app by Curastone CORP.",
@@ -111,6 +113,7 @@
       "evidence_level": "observed",
       "evidence_ref": [
         "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\"",
+        "docs/release/IOS_1.0_RELEASE.md:37 \"P16 | App Review's decision on 1.0 (3) | Apple | **Rejected 2026-10-05 23:49 PT**\"",
         "[external] https://itunes.apple.com/lookup?id=6816321841&country=us&cb=<epoch> (read 2026-09-28): resultCount 0 in us, gb, hk, tw, sg, jp, ca and au"
       ],
       "allowed_copy_by_status": {
@@ -210,7 +213,7 @@
       "allowed_copy_zh": "AwardGrid 依赖 seats.aero 的 Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。",
       "limitations": [
         "Approved for public use on 2026-09-28.",
-        "Shortened on 2026-10-06 (decision D6, docs/release/IOS_1.0_RELEASE.md §0 P17): the second sentence, which asked readers to check their seats.aero settings for an API tab before buying a subscription, and its Chinese are gone. It was a call to action for a purchase outside the app, which App Review Guideline 3.1.3 does not allow on the storefronts outside the United States. What remains is AwardGrid's own paraphrase of seats.aero's policy, never quoted as seats.aero's words.",
+        "Shortened on 2026-10-06 (decision D6, docs/release/IOS_1.0_RELEASE.md §0.1): the second sentence, which asked readers to check their seats.aero settings for an API tab before buying a subscription, and its Chinese are gone. It was a call to action for a purchase outside the app, which App Review Guideline 3.1.3 does not allow on the storefronts outside the United States. What remains is AwardGrid's own paraphrase of seats.aero's policy, never quoted as seats.aero's words.",
         "In Chinese the API tab is API 页, the app's word (apps/ios/src/screens/settings-copy.ts); the same Chinese sentence is on /ios/zh-hans/ and /support/#zh. 只许可 states seats.aero's restriction; 授权 would read as an endorsement (the gate's AFFILIATION rule refuses \"seats.aero 授权\").",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
@@ -255,7 +258,7 @@
       ],
       "limitations": [
         "Not every seats.aero Pro account or country gets API access (docs/reference/seatsaero/getting-started-p.md:27).",
-        "allowed_copy is the D6 sentence, word for word (the owner's decision of 2026-10-06, docs/release/IOS_1.0_RELEASE.md §0 P17): the one neutral, link-free sentence about seats.aero Pro that the site and the store description keep. It replaced a sentence that called the prerequisite a paid subscription; on 2026-10-06 the words paid and subscription also left the extra sentences, in English and Chinese, so no public page reads as a call to buy something outside the app (App Review Guideline 3.1.3).",
+        "allowed_copy is the D6 sentence, word for word (the owner's decision of 2026-10-06, docs/release/IOS_1.0_RELEASE.md §0.1 D6): the one neutral, link-free sentence about seats.aero Pro that the site and the store description keep. It replaced a sentence that called the prerequisite a paid subscription; on 2026-10-06 the words paid and subscription also left the extra sentences, in English and Chinese, so no public page reads as a call to buy something outside the app (App Review Guideline 3.1.3).",
         "\"Sample data\" in the D6 sentence: without a key the app opens on its Welcome screen, whose \"View an example\" shows made-up results labelled \"Illustrative data — not live availability\" and sends nothing (OnboardingScreen.tsx:88-89; present.ts demo.synthetic); \"Connect seats.aero\" is how the key is added (OnboardingScreen.tsx:25). In build 3 that example is all the app shows without a key, and it searches nothing, as the extra sentences say. Build 4 extends the sample data to every screen and any route; the sentences that say the app searches nothing without a key change with it, in the next copy change (PR-S2).",
         "\"Which AwardGrid does not sell\": the app is free with no in-app purchase (the price claim), and nothing is sold by the developer (APP_STORE_HANDOFF.md:184).",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
