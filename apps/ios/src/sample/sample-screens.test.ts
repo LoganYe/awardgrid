@@ -137,6 +137,19 @@ describe("sample mode's details and comparison", () => {
     expect(words).toContain("View flight itineraries");
   });
 
+  it("an option's details with its itineraries drawn: no 'Loaded on this device' age, nor any other", async () => {
+    const services = await sampleServices();
+    await services.searchText("LAX to Tokyo next month");
+    const shown = services.workspace.getState().displayedSnapshot!;
+    const row = shown.rows[0]!;
+    expect((await services.details.load({ snapshotId: shown.id, rowKey: row.key })).kind).toBe("loaded");
+    const html = at(services, `/detail/${shown.id}/${encodeURIComponent(row.key)}`, "detail/:snapshotId/:rowKey", createElement(DetailScreen));
+    const words = text(html);
+    expect(html).toContain('data-testid="trip-card"');
+    expect(words).toContain("Sample data · on this device");
+    expect(words).not.toMatch(/Loaded on this device|just now|min ago|Source updated/);
+  });
+
   it("the comparison: the banner, a 'Data' field saying 'Sample data', and no program links", async () => {
     const services = await sampleServices();
     await services.searchText("Hong Kong to Seattle next month, business");

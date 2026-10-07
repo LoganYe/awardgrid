@@ -317,7 +317,9 @@ export function DetailScreen() {
             {d.dataHeading}
           </h2>
           <p className="ag-detail-meta">{timeLabel(found.row.time, now.toISOString(), locale, { sample })}</p>
-          {loaded ? <p className="ag-detail-meta">{d.loadedOnDevice(ageLabel(Math.max(0, now.getTime() - Date.parse(loaded.loadedAt)), locale))}</p> : null}
+          {/* No age over sample data: its itineraries are drawn on this device, not loaded from anywhere (as the Search
+              screen's status line drops its cache age in sample mode). */}
+          {loaded && !sample ? <p className="ag-detail-meta">{d.loadedOnDevice(ageLabel(Math.max(0, now.getTime() - Date.parse(loaded.loadedAt)), locale))}</p> : null}
           <p className="ag-detail-meta">{copy("help.program", locale)}</p>
           {sample ? (
             <p className="ag-detail-meta ag-sample-source">{SAMPLE[locale].attribution}</p>

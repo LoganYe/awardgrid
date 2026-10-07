@@ -754,7 +754,7 @@
         "packages/core/src/lib/grid/deeplinks/index.ts:26-45 \"Programs whose award-search URL shape is NOT implemented yet\"",
         "apps/ios/src/screens/DetailScreen.tsx:12-13 \"**One way out to the program**, and only on a trusted link\"",
         "apps/ios/src/screens/DetailScreen.tsx:183 \"const link = sample ? null : (loaded?.link ?? detailLink(row, []));\"",
-        "apps/ios/src/screens/DetailScreen.tsx:330-344 \"<footer className=\"ag-detail-actions\"\""
+        "apps/ios/src/screens/DetailScreen.tsx:332-346 \"<footer className=\"ag-detail-actions\"\""
       ],
       "allowed_copy": "For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.",
       "allowed_copy_zh": "某个选项有 seats.aero 提供的跳转链接时，App 会打开这个链接；没有时，你可以复制查询条件。App 从不订票。",
