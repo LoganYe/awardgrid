@@ -167,12 +167,28 @@ function localStamp(at: Date, locale: Locale, timeZone?: string): string {
 }
 
 /**
+ * What a row of sample data says where a source time would be (the iOS app's sample mode, release plan step 17): it
+ * is sample data, made up on the device, so it has no source and no source time to give an age to.
+ */
+export const SAMPLE_TIME_LABEL: Record<Locale, string> = { en: "Sample data", zh: "示例数据" };
+
+export interface TimeLabelOptions {
+  /** The device's zone, for the clock time of a local fetch. */
+  timeZone?: string;
+  /** The row is sample data: the line is SAMPLE_TIME_LABEL, never "Source updated …" or a fetch time. */
+  sample?: boolean;
+}
+
+/**
  * The source-time line for a row. The provider's time with its age; a provider time later than the display clock
  * (beyond the skew allowance) is not believed and reads as unknown, never "just now". Without a provider time: "source
  * update time unknown", and, when this device's fetch time is known, "fetched on this device at <day, time>" beside
- * it (spec §18) — the fetch time is never passed off as the source's. `timeZone` is the device's, for that clock time.
+ * it (spec §18) — the fetch time is never passed off as the source's. `timeZone` is the device's, for that clock time;
+ * it may be given alone or in `options`. A sample row (`options.sample`) says "Sample data" and nothing else.
  */
-export function timeLabel(time: TimeEvidence, now: ISOInstant, locale: Locale, timeZone?: string): string {
+export function timeLabel(time: TimeEvidence, now: ISOInstant, locale: Locale, options?: string | TimeLabelOptions): string {
+  const { timeZone, sample = false }: TimeLabelOptions = typeof options === "string" ? { timeZone: options } : (options ?? {});
+  if (sample) return SAMPLE_TIME_LABEL[locale];
   if ((time.basis === "provider_last_seen" || time.basis === "provider_updated") && time.providerAt) {
     const at = parseInstant(time.providerAt);
     const nowMs = parseInstant(now);
