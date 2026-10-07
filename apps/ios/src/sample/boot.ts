@@ -11,7 +11,7 @@
  *   - **transports**: the sample transport for seats.aero (./sample-fetch.ts), and one that refuses every Anthropic
  *     request. The native HTTP adapter is never built, let alone called.
  *   - **files**: the live file store under `sample/` (SampleFiles): the cache, the quota counter, watches, the
- *     workspace, Saved, settings. The real ones are never read or written, nor is today's real call count.
+ *     workspace, Saved, settings. These services never read or write the real ones, nor today's real call count.
  *   - **no account**: in the OAuth flavour too, sample mode boots with `oauth: null`, so the token store is never built
  *     and no token is read, renewed or removed; there is nothing to Disconnect, and Settings › seats.aero account says
  *     to exit sample data to connect. Sample data is made on this device, so no short-term limit applies to it.

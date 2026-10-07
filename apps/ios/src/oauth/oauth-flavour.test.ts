@@ -118,7 +118,11 @@ describe("the words that named the key", () => {
       for (const text of [oauth[locale].cacheNote, oauth[locale].cacheCleared, oauth[locale].aboutSent]) expect(text, text).not.toMatch(/API key|API 密钥|密钥/);
       expect(oauth[locale].aboutSent).toContain("awardgrid.dowhiz.com");
       expect(oauth[locale].aboutSent).toContain("24");
+      // The cache note and its result also show in sample mode and before anything is connected: they say the
+      // connection is untouched, never that an account is connected.
+      for (const text of [oauth[locale].cacheNote, oauth[locale].cacheCleared]) expect(text, text).not.toMatch(/stays connected|still connected|保持连接/);
     }
+    expect(oauth.en.cacheCleared).toBe("Cached results cleared. Your seats.aero connection is untouched.");
     expect(oauth.en.connected).toBe("Connected");
     const key = (await load("key")).copy.SETTINGS;
     expect(key.en.cacheNote).toContain("This does not touch your seats.aero key.");

@@ -88,13 +88,13 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
     language: "Language",
     clearCache: "Clear cached results",
     cacheNote: OAUTH
-      ? "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls, and nothing from seats.aero is kept longer than 24 hours. Clearing it costs one cold search, nothing more. Your seats.aero account stays connected."
+      ? "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls, and nothing from seats.aero is kept longer than 24 hours. Clearing it costs one cold search, nothing more. This does not touch your seats.aero connection."
       : STORE
         ? "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls. Clearing it costs one cold search, nothing more. This does not touch your seats.aero key."
         : ASK_SURFACES.en.settings.cacheNote,
     cacheKeeps: "Results already on the Search screen stay there, with the search they came from; clearing the cache does not remove them.",
     cacheCleared: OAUTH
-      ? "Cached results cleared. Your seats.aero account is still connected."
+      ? "Cached results cleared. Your seats.aero connection is untouched."
       : STORE
         ? "Cached results cleared. Your seats.aero key is untouched."
         : ASK_SURFACES.en.settings.cacheCleared,
@@ -163,12 +163,12 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
     language: "语言",
     clearCache: "清除缓存结果",
     cacheNote: OAUTH
-      ? "兑换结果在本机缓存 45 分钟，重复查询不消耗 seats.aero 调用；来自 seats.aero 的内容最多保留 24 小时。清除后下次查询需重新获取，seats.aero 账户保持连接。"
+      ? "兑换结果在本机缓存 45 分钟，重复查询不消耗 seats.aero 调用；来自 seats.aero 的内容最多保留 24 小时。清除后下次查询需重新获取，不影响 seats.aero 连接。"
       : STORE
         ? "兑换结果在本机缓存 45 分钟，重复查询不消耗 seats.aero 调用。清除后下次查询需重新获取，不影响 seats.aero 密钥。"
         : ASK_SURFACES.zh.settings.cacheNote,
     cacheKeeps: "查票页上已显示的结果会随其查询一起保留，清除缓存不会删除它们。",
-    cacheCleared: OAUTH ? "缓存结果已清除，seats.aero 账户仍保持连接。" : STORE ? "缓存结果已清除，seats.aero 密钥未受影响。" : ASK_SURFACES.zh.settings.cacheCleared,
+    cacheCleared: OAUTH ? "缓存结果已清除，seats.aero 连接未受影响。" : STORE ? "缓存结果已清除，seats.aero 密钥未受影响。" : ASK_SURFACES.zh.settings.cacheCleared,
     aboutData: "数据：seats.aero",
     aboutSent: OAUTH
       ? STORE
