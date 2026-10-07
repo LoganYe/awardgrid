@@ -218,6 +218,5 @@ export const SETTINGS: Record<Locale, SettingsCopy> = {
       confirmKeep: "保留密钥",
     },
     connected: "已连接",
-
   },
 };

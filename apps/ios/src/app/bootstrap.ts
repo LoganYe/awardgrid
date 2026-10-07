@@ -347,6 +347,12 @@ function whenWorkspaceSettled(workspace: WorkspaceStore, timeoutMs = 30_000): Pr
   });
 }
 
+/**
+ * Whether this build may load the OAuth parts (../oauth/kit.ts): the OAuth flavour, or a test (which passes `oauth` in
+ * any flavour). Written out as App.tsx's OAUTH_BUILT is, so the other flavours' bundles carry no OAuth chunk.
+ */
+const OAUTH_KIT = import.meta.env.VITE_AG_CONNECT === "oauth" || import.meta.env.MODE === "test";
+
 /** How many options a saved item shows: what Saved and the Search screen show of it (core projectResults). */
 function optionsShown(item: FavoriteV1): number {
   return projectResults(favoriteSnapshot(item), { kind: "list", calendarCabin: "J", sort: item.query.sort_by, localFilter: {} }).rows.length;
@@ -392,13 +398,21 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   // The OAuth flavour, unless a test says otherwise (null: the key flavour; an object: OAuth with those parts).
   const oauth: OAuthOptions | null = opts.oauth !== undefined ? opts.oauth : OAUTH ? {} : null;
   const shortTermMs = opts.shortTermMs !== undefined ? opts.shortTermMs : oauth ? SHORT_TERM_MAX_AGE_MS : null;
-  /** Anything from seats.aero fetched before this instant (ms) has passed the short-term limit. */
-  const cutoff = () => now().getTime() - (shortTermMs ?? 0);
+  /** True while Disconnect or a revoked grant purges: then everything fetched so far counts as past the limit. */
+  let purging = false;
+  /**
+   * When Disconnect or a revoked grant last purged (ms). Nothing fetched before it may stay, whatever its age, so a
+   * part the purge could not finish (a file that could not be written) is finished by the next sweep.
+   */
+  let purgedAt = Number.NEGATIVE_INFINITY;
+  /** Anything from seats.aero fetched before this instant (ms) has passed the short-term limit (all of it while purging). */
+  const cutoff = () => (purging ? Number.POSITIVE_INFINITY : Math.max(now().getTime() - (shortTermMs ?? 0), purgedAt));
   // Declared before the token store, which calls it when seats.aero revokes the grant; assigned once the stores exist.
   // Started, never awaited there: a revocation is found inside a request, and the purge waits for requests to finish.
   let purgeSeatsData: () => Promise<PersistReport> = async () => ({ ok: true });
-  // The OAuth parts are their own chunk, loaded only here and only for that flavour (../oauth/kit.ts).
-  const kit = oauth ? await import("../oauth/kit") : null;
+  // The OAuth parts are their own chunk, loaded only here and only for that flavour (../oauth/kit.ts). OAUTH_KIT is a
+  // build-time constant, so a build of another flavour drops the import and carries no such chunk at all.
+  const kit = oauth && OAUTH_KIT ? await import("../oauth/kit") : null;
   const tokenBroker = oauth && kit ? (oauth.broker ?? kit.createTokenBroker({ fetchImpl: oauth.tokenFetch ?? createNativeFetch({ timeoutMs: kit.TOKEN_SERVICE_TIMEOUT_MS }) })) : null;
   const tokenStore: TokenKeyStore | null =
     oauth && kit && tokenBroker
@@ -672,7 +686,15 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       const stale = workspace.history().some((snapshot) => !((snapshotFetchedAt(snapshot) ?? -Infinity) >= cutoff()));
       if (stale && workspace.getState().run.kind !== "running") {
         await workspace.persist();
-        await workspace.restore();
+        // A search started during the save would be set aside by reading back now (restore resets the run), so the
+        // read-back waits for the next sweep; every save meanwhile writes the workspace without the old rows.
+        if (workspace.getState().run.kind !== "running") {
+          await workspace.restore();
+          workspace.clearSelection();
+        }
+      }
+      // A chosen option is kept as a copy once its search leaves the history (core selection.ts): that copy, too.
+      if (workspace.selectionEntries().some((entry) => entry.row !== null && !(Date.parse(entry.row.value.fetched_at) >= cutoff()))) {
         workspace.clearSelection();
       }
       await expireFavorites();
@@ -690,24 +712,48 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     await requests.idle();
     await whenWorkspaceSettled(workspace);
     await whenWatchesIdle();
-    details.clear();
-    lastSearch.clear();
-    cache.restore(null);
-    await snapshots.clearCache().catch(() => undefined);
-    const state = workspace.getState();
+    // Every part that could not be purged is said: Disconnect must not claim results were removed when they were not.
+    const failed: string[] = [];
+    let message = "";
+    const fail = (part: string, text: string) => {
+      failed.push(part);
+      message ||= text;
+    };
+    purgedAt = now().getTime();
+    purging = true;
     try {
-      await workspaceStorage.writeAtomically(WORKSPACE_NAMESPACE, { schemaVersion: 1, revision: state.revision, displayedId: null, previousId: null, preferences: state.preferences, snapshots: [] });
-    } catch {
-      // Reported below: the workspace part of the save fails too.
+      details.clear();
+      lastSearch.clear();
+      cache.restore(null);
+      await snapshots.clearCache().catch(() => undefined);
+      const state = workspace.getState();
+      let workspaceWritten = true;
+      try {
+        await workspaceStorage.writeAtomically(WORKSPACE_NAMESPACE, { schemaVersion: 1, revision: state.revision, displayedId: null, previousId: null, preferences: state.preferences, snapshots: [] });
+      } catch {
+        workspaceWritten = false;
+      }
+      // Read back. While purging, the short-term storage drops every snapshot it reads, so the screen is emptied even
+      // when the write above failed and the old file is still there.
+      await workspace.restore();
+      workspace.clearSelection();
+      // That old file is then written over by the save below, and by every later save until one succeeds; the save
+      // below reports it if it fails again.
+      if (!workspaceWritten) workspace.setPreferences({});
+      const saved = await favorites.removeRows(() => true, now().toISOString(), optionsShown);
+      if (!saved.ok) fail("saved", saved.reason === "write_failed" ? saved.message : "Saved could not be changed on this device, so its seats.aero results were not removed.");
+      if (!watches.hold) for (const watch of watches.all()) watches.update(watch.id, watchReset());
+      if (ask.state().entries.length > 0 && ask.state().running === null) await ask.newConversation();
+      const report = await persist();
+      if (!report.ok) for (const part of report.failed) fail(part, report.message);
+    } catch (err) {
+      // Nothing above should throw; if something does, the purge is reported as unfinished, never as done.
+      fail("purge", err instanceof Error ? err.message || err.name : String(err));
+    } finally {
+      purging = false;
     }
-    await workspace.restore();
-    workspace.clearSelection();
-    await favorites.removeRows(() => true, now().toISOString(), optionsShown);
-    if (!watches.hold) for (const watch of watches.all()) watches.update(watch.id, watchReset());
-    if (ask.state().entries.length > 0 && ask.state().running === null) await ask.newConversation();
-    const report = await persist();
     notify();
-    return report;
+    return failed.length > 0 ? { ok: false, failed, message } : { ok: true };
   };
 
   const legacyKeys = oauth ? (oauth.legacyKeys !== undefined ? oauth.legacyKeys : opts.oauth === undefined ? keychain : null) : null;

@@ -263,6 +263,43 @@ describe("the OAuth flavour", () => {
     expect(await svc.searchText(QUERY)).toMatchObject({ ok: false, error: "no_key" });
   });
 
+  it("Disconnect that cannot write the workspace or Saved says so, still empties the screen, and a later sweep finishes it", async () => {
+    const s = session();
+    const svc = await boot(s);
+    await svc.searchText(QUERY);
+    const shown = svc.workspace.getState().displayedSnapshot!;
+    await svc.favorites.save(favoriteFromSnapshot(shown, new Date(s.now.t).toISOString(), "f1"));
+    await svc.persist();
+    expect(disk(s.files)).toContain("81234");
+    s.now.t += 60_000;
+
+    // The disk refuses every write to the workspace's and Saved's slot files.
+    const write = s.files.write.bind(s.files);
+    let refuse = true;
+    s.files.write = async (path: string, data: string) => {
+      if (refuse && /^(workspace-v1|favorites-v1)\./.test(path)) throw new Error("disk full");
+      return write(path, data);
+    };
+    const outcome = await svc.seatsAccount!.disconnect();
+    // Said, not claimed as done: the connection is gone, but a file still holds results.
+    expect(outcome).toMatchObject({ ok: false, reason: "saved", message: "disk full" });
+    expect(await s.vault.read()).toBeNull();
+    // Nothing from seats.aero is shown any more, although the old workspace file could not be written over.
+    expect(svc.workspace.getState().displayedSnapshot).toBeNull();
+    expect(svc.workspace.history()).toEqual([]);
+    expect(svc.cache.snapshot().users.every((u) => u.rows.length === 0)).toBe(true);
+
+    // The disk recovers: the next sweep (on returning to the app, or hourly) finishes the purge, well inside 24 hours.
+    refuse = false;
+    s.now.t += 60 * 60_000;
+    await svc.sweepShortTerm();
+    expect(svc.favorites.get("f1")).toMatchObject({ rows: [], query: shown.query });
+    const workspaceFiles = [...s.files.files.entries()].filter(([path]) => path.startsWith("workspace-v1.")).map(([, text]) => text);
+    expect(workspaceFiles.length).toBe(2);
+    expect(disk(s.files)).not.toContain("81234");
+    expect(await svc.persist()).toEqual({ ok: true });
+  });
+
   it("Disconnect also removes a key pasted in an earlier key-flavour build", async () => {
     const s = session();
     const legacy = new MemoryKeyStore();

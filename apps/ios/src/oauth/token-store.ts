@@ -76,7 +76,6 @@ export class TokenKeyStore implements KeyStore {
     this.#onRevoked = opts.onRevoked;
   }
 
-  /** "Bearer seats:ota:…", renewed first when it is about to run out; null when no account is connected. */
   /** The tokens on file, or the newer ones a renewal could not write there. */
   async #read(): Promise<SeatsTokens | null> {
     const stored = await this.#vault.read();
@@ -85,6 +84,7 @@ export class TokenKeyStore implements KeyStore {
     return latest && latest.access !== stored.access && latest.expiresAt > stored.expiresAt ? latest : stored;
   }
 
+  /** "Bearer seats:ota:…", renewed first when it is about to run out; null when no account is connected. */
   async get(): Promise<string | null> {
     const tokens = await this.#read();
     if (!tokens) return null;

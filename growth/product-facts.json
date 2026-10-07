@@ -615,7 +615,7 @@
         "packages/core/src/lib/seatsaero/quota.ts:90 \"this.softLimit = opts.softLimit ?? DEFAULT_SOFT_LIMIT;\"",
         "apps/ios/src/store/quota-store.ts:10 \"used(day) = max(locally counted calls, DAILY_LIMIT - X-RateLimit-Remaining)\"",
         "apps/ios/src/store/quota-store.ts:20-23 \"**It is keyed by UTC day**\"",
-        "apps/ios/src/app/bootstrap.ts:464 \"quota: new Quota({ store: quotaStore, now }),\"",
+        "apps/ios/src/app/bootstrap.ts:478 \"quota: new Quota({ store: quotaStore, now }),\"",
         "packages/core/src/lib/seatsaero/cache.ts:17 \"export const DEFAULT_CACHE_TTL_MINUTES = 45;\"",
         "packages/core/src/lib/seatsaero/cache.ts:406-410 \"/** Parse CACHE_TTL_MINUTES, falling back to 45 on garbage. */\"",
         "apps/ios/src/search/search.ts:196-205 \"const result = await runFind({\"",
