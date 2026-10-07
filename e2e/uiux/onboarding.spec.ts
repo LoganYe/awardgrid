@@ -1,8 +1,9 @@
 /**
  * T11 — settings, first run, both languages, and the keyboard (plan 02 T11; acceptance A20, A21).
  *
- * seats.aero comes first and the Anthropic key waits for the first AI entry; the clipboard is read only when the user
- * asks; checking a key says it sends a request before it does; a saved key shows its last four characters only. The
+ * The first run offers sample data first and the seats.aero account second (release plan step 17); the Anthropic key
+ * waits for the first AI entry; the clipboard is read only when the user asks; checking a key says it sends a request
+ * before it does; a saved key shows its last four characters only, and removing it returns to the first run. The
  * language can change at any time without losing what is on screen.
  *
  * Adapted from the plan's Step 1: "no-ai-key" starts with no results here (a search comes first), and "AI assistance"
@@ -55,23 +56,34 @@ test("missing AI key does not block existing search results", async ({ page }) =
   expect((await requestLog(page)).anthropic).toBe(0);
 });
 
-test("first run: one screen — what it does, connect seats.aero first, or look at an example that is marked as made up", async ({ page }) => {
+test("first run: one screen — what it does, sample data first, then connect seats.aero; sample data is marked as made up", async ({ page }) => {
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
   const welcome = page.getByTestId("welcome");
+  // Sample data first, the account second (release plan step 17).
+  await expect(welcome.getByRole("button", { name: "Try with sample data" })).toBeVisible();
   await expect(welcome.getByRole("link", { name: "Connect your seats.aero account" })).toBeVisible();
-  await expect(welcome.getByRole("link", { name: "View an example" })).toBeVisible();
+  const [tryBox, connectBox] = await Promise.all([welcome.getByRole("button", { name: "Try with sample data" }).boundingBox(), welcome.getByRole("link", { name: "Connect your seats.aero account" }).boundingBox()]);
+  expect(tryBox!.y).toBeLessThan(connectBox!.y);
+  await expect(welcome.getByRole("button", { name: "Try with sample data" })).toHaveClass(/ag-button-primary/);
   // The AI key is not asked for here.
   await expect(welcome).not.toContainText("Anthropic");
-  await welcome.getByRole("link", { name: "View an example" }).click();
-  await expect(page.getByText("Illustrative data — not live availability").first()).toBeVisible();
+  await welcome.getByRole("button", { name: "Try with sample data" }).click();
+  // Sample mode: the banner with the approved sentence and the way out, on Search, whose title has focus.
+  const banner = page.getByTestId("sample-banner");
+  await expect(banner).toContainText("Sample data");
+  await expect(banner).toContainText("Illustrative data — not live availability");
+  await expect(banner.getByRole("button", { name: "Exit sample data" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Search" })).toBeFocused();
+  await searchByText(page, "Hong Kong to Seattle next month, business");
   await expect(page.getByTestId("availability-card").first()).toBeVisible();
-  // Made up here, so the page does not carry the seats.aero data line, and the program says it is an example.
-  await expect(page.locator(".app-attribution")).toHaveCount(0);
-  await expect(page.getByTestId("availability-card").first()).toContainText("Example program");
-  await expect(page.getByRole("heading", { level: 1, name: "Example results" })).toBeFocused();
-  // Back: the welcome again, with focus on what opened the example.
-  await page.getByRole("link", { name: "Back" }).click();
-  await expect(page.getByTestId("welcome").getByRole("link", { name: "View an example" })).toBeFocused();
+  // Made up on this device, so the page does not carry the seats.aero data line, and every row says "Sample data".
+  await expect(page.getByTestId("results-status")).toContainText("Sample data · on this device");
+  await expect(page.locator(".ag-attribution-link")).toHaveCount(0);
+  await expect(page.getByTestId("availability-card").first().locator(".ag-result-time")).toHaveText("Sample data");
+  // Exit: the welcome again, with nothing of sample mode left on screen.
+  await banner.getByRole("button", { name: "Exit sample data" }).click();
+  await expect(page.getByTestId("welcome").getByRole("button", { name: "Try with sample data" })).toBeVisible();
+  await expect(page.getByTestId("sample-banner")).toHaveCount(0);
   expect(await requestLog(page)).toMatchObject({ seats: 0, anthropic: 0 });
 });
 
@@ -165,11 +177,13 @@ test("removing a key asks first, says what it affects, and leaves today's call c
   await expect(confirm).toContainText("Search stops until you add a key again.");
   await expect(confirm).toContainText("Today's call count is kept.");
   await confirm.getByRole("button", { name: "Remove", exact: true }).click();
-  await expect(page.getByText(/Key on file/)).toHaveCount(0);
+  // Without a key the app is back where it starts: Search, which says the key went, with focus on its title.
+  await expect(page).toHaveURL(/#\/$/);
   await expect(page.getByRole("status").filter({ hasText: "seats.aero key removed from this device." })).toBeVisible();
-  await expect(page.getByLabel("seats.aero API key")).toBeFocused();
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Search" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Search" })).toBeFocused();
   await expect(page.locator(".ag-results-meta.tabular")).toHaveText(quota!);
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }).click();
+  await expect(page.locator("#settings-row-seats")).toContainText("Not connected");
 });
 
 test("the query editor in Chinese: its labels, its errors and the approved submit; nothing sent", async ({ page }) => {
@@ -305,15 +319,14 @@ async function sidewaysProblems(page: Page): Promise<string[]> {
 }
 
 for (const lang of ["en", "zh"] as const) {
-  test(`${lang}, 320 wide at 130, 160 and 200% text: the first run, the example, settings, the key page, the editor and watches stay inside the screen`, async ({ page }) => {
-    test.setTimeout(60_000);
+  test(`${lang}, 320 wide at 130, 160 and 200% text: the first run, sample data, settings, the key page, the editor and watches stay inside the screen`, async ({ page }) => {
+    test.setTimeout(90_000);
     await page.setViewportSize({ width: 320, height: 568 });
     await openScenario(page, "no-seats-key", "ios", { lang });
     for (const scale of [1.3, 1.6, 2]) {
       await page.addStyleTag({ content: `:root { --ag-text-scale: ${scale}; }` });
       for (const [route, ready] of [
         ["#/", "[data-testid=welcome]"],
-        ["#/example", "[data-testid=availability-card]"],
         ["#/settings", ".ag-settings-label"],
         ["#/settings/seats", "input[type=password]"],
         ["#/settings/anthropic", "input[type=password]"],
@@ -324,6 +337,26 @@ for (const lang of ["en", "zh"] as const) {
         await page.evaluate((hash) => (location.hash = hash), route);
         await page.locator(ready).first().waitFor();
         expect(await sidewaysProblems(page), `${lang} ${scale} ${route}`).toEqual([]);
+      }
+    }
+    // Sample data (what the old example became): its banner, results, details and pages at the same widths.
+    await page.evaluate(() => (location.hash = "#/"));
+    await page.getByTestId("welcome").getByRole("button").first().click();
+    await page.getByTestId("sample-banner").waitFor();
+    await searchByText(page, lang === "en" ? "Hong Kong to Seattle next month, business" : "香港到西雅图 未来一个月 商务舱");
+    for (const scale of [1.3, 1.6, 2]) {
+      await page.addStyleTag({ content: `:root { --ag-text-scale: ${scale}; }` });
+      for (const [route, ready] of [
+        ["#/", "[data-testid=availability-card]"],
+        ["#/watches", "[data-testid=sample-banner]"],
+        ["#/settings/seats", "[data-testid=sample-banner]"],
+        ["#/edit", ".query-editor-footer"],
+      ] as const) {
+        await page.evaluate((hash) => (location.hash = hash), route);
+        await page.locator(ready).first().waitFor();
+        // The results' filter row scrolls sideways on purpose when its chips do not fit (SearchScreen, data-overflow).
+        const problems = (await sidewaysProblems(page)).filter((p) => p !== "scrolls sideways: DIV.ag-results-filters");
+        expect(problems, `${lang} ${scale} sample ${route}`).toEqual([]);
       }
     }
     expect(await requestLog(page)).toMatchObject({ seats: 0, anthropic: 0 });
@@ -375,9 +408,9 @@ test("removing one key leaves the other: seats.aero's removal keeps the Anthropi
   await seatsRow.click();
   await page.getByRole("button", { name: "Remove key", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Remove", exact: true }).click();
+  // Removing the seats.aero key returns to Search (the first run); Settings then shows what is left.
   await expect(page.getByRole("status").filter({ hasText: "seats.aero key removed from this device." })).toBeVisible();
-  await page.getByRole("link", { name: "Back to settings" }).click();
-  await expect(seatsRow).toBeFocused();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }).click();
   await expect(seatsRow).toContainText("Not connected");
   await expect(aiRow).toContainText("Key on file ending in WXYZ");
   const anthropicAfterSeats = (await requestLog(page)).anthropic;
@@ -433,9 +466,10 @@ for (const theme of ["light", "dark"] as const) {
     await page.evaluate(() => (location.hash = "#/settings/anthropic"));
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await evidenceShot(page, `t11-anthropic-key-${theme}`);
+    // The old example's address enters sample mode now (release plan step 17).
     await page.evaluate(() => (location.hash = "#/example"));
-    await expect(page.getByTestId("availability-card").first()).toBeVisible();
-    await evidenceShot(page, `t11-example-${theme}`, { fullPage: true });
+    await expect(page.getByTestId("sample-banner")).toBeVisible();
+    await evidenceShot(page, `t11-sample-${theme}`, { fullPage: true });
     await page.evaluate(() => (location.hash = "#/edit"));
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("编辑查询");
     await evidenceShot(page, `t11-editor-${theme}`);

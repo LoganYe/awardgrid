@@ -222,6 +222,28 @@ then the licenses check. `src/store-copy.test.ts` holds the wording of the sourc
 page), `0` (no connection: the connect page and every link to it are compiled out; prepared, not shipped), or
 `oauth` (reserved for seats.aero's own sign-in; `vite.config.ts` refuses to build it until it exists).
 
+### Sample mode
+
+The first run's "Try with sample data" switches the whole app to labelled sample data (`src/app/data-source.ts`,
+`src/sample/`): every feature — search, the three views, details and itineraries, compare, Saved, watches — on any
+route between the 84 airports in `packages/core/data/places.json`, for today and the 364 days after, in all four
+cabins. The numbers are made up on the device by a deterministic generator (`src/sample/generate.ts`: real program
+names, invented miles, taxes, seats and flight numbers; miles and leg times from great-circle distance; nonstop under
+7,500 miles, one connection through the shortest hub above it), and answered in seats.aero's documented shapes by an
+in-memory transport (`src/sample/sample-fetch.ts`), so the app's own planner, cache, normaliser and screens run
+unchanged.
+
+- **Isolated.** The choice is read before `bootstrap()` (`resolveBoot`). Sample mode boots on its own ports: an
+  in-memory key store holding a placeholder (never shown: Settings says "Sample data"), the sample transport, a
+  refusing Anthropic transport, and files under `sample/`. The Keychain item, the real snapshots and today's real
+  call count are never read or written, and the native HTTP adapter is never built. Its code is its own chunk, loaded
+  only in sample mode.
+- **Labelled.** A banner on every screen (the approved "Illustrative data — not live availability" under "Sample
+  data", with "Exit sample data"), "Sample data" where a source time would be, "Sample data · on this device" where
+  "Data: seats.aero" would be, no call counts or quota line, and no booking or program links.
+- **Leaving** keeps the language and appearance chosen meanwhile, deletes `sample/`, and boots again on the account.
+  `#/example`, the old static example's address, enters sample mode.
+
 ## Running it
 
 ```bash

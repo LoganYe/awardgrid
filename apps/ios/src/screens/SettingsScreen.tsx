@@ -20,19 +20,25 @@
  *
  * The keys' discipline is unchanged (LEGAL.md "Credentials"): a key is never rendered, logged, or shown beyond its last
  * four characters, and a Keychain failure is a failure, never painted like a success.
+ *
+ * Sample mode (release plan step 17; app/data-source.ts): the seats.aero row says "Sample data" (sample mode's
+ * placeholder is never read here, let alone shown), and its page says to exit sample data to connect the account,
+ * with the way to. Removing the key in live mode returns to Search, where the first run's welcome is.
  */
 import { type ReactNode, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
-import { Link, useLocation, useOutletContext } from "react-router";
+import { Link, useLocation, useNavigate, useOutletContext } from "react-router";
 import { scrubSecrets } from "@awardgrid/core/ask/errors";
 import { copy } from "@awardgrid/core/workspace/present";
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
+import { isSample } from "../app/data-source";
 import { CAN_CONNECT, STORE } from "../app/flags";
 import { useFocusOnArrival } from "../app/focus";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import { PRIVACY_POLICY_URL, SUPPORT_URL } from "../app/links";
 import { ASK_SURFACES } from "../ask/ask-surface-copy";
 import { Button, Icon, Sheet, type ThemePreference } from "../components/ui";
+import { SAMPLE } from "../sample/sample-copy";
 import { type KeyStore, last4 } from "../native/keychain";
 import { SETTINGS } from "./settings-copy";
 import "./settings.css";
@@ -145,7 +151,9 @@ export function SettingsScreen() {
   const services = useOutletContext<AppServices>();
   const locale = useLocale(services);
   const t = SETTINGS[locale];
-  const [seats] = useLast4(CAN_CONNECT ? services.keys : null);
+  const sample = isSample(services);
+  // Sample mode's key store holds a placeholder, never read here: the row says "Sample data" instead.
+  const [seats] = useLast4(CAN_CONNECT && !sample ? services.keys : null);
   // The App Store build has no Ask, so it never reads the Anthropic Keychain item.
   const [anthropic] = useLast4(STORE ? null : services.anthropicKeys);
   const theme = useSyncExternalStore(services.settings.subscribe, services.settings.theme, services.settings.theme);
@@ -155,7 +163,7 @@ export function SettingsScreen() {
   useEffect(() => {
     if (returnTo) document.getElementById(returnTo)?.focus();
   }, [returnTo]);
-  const row = (id: string, to: string, label: string, value: string | null | undefined, note?: string) => (
+  const row = (id: string, to: string, label: string, value: string | null | undefined, note?: string, said?: string) => (
     <Link id={id} to={to} className="ag-settings-row">
       {/* Label and value share a line while they fit; with larger text the value goes under the label. */}
       <span className="ag-settings-row-main">
@@ -163,7 +171,7 @@ export function SettingsScreen() {
           <span className="ag-settings-row-label">{label}</span>
           {note ? <span className="ag-settings-row-note">{note}</span> : null}
         </span>
-        <span className="ag-settings-value tabular">{value === undefined ? "" : value === null ? t.notConnected : t.onFile(value)}</span>
+        <span className="ag-settings-value tabular">{said ?? (value === undefined ? "" : value === null ? t.notConnected : t.onFile(value))}</span>
       </span>
       <Icon name="chevron-right" />
     </Link>
@@ -172,7 +180,9 @@ export function SettingsScreen() {
   return (
     <div className="ag-settings" lang={langTag(locale)}>
       <h1 className="ag-settings-title">{t.title}</h1>
-      {CAN_CONNECT ? <Group title={t.groups.data}>{row("settings-row-seats", "/settings/seats", t.seatsRow, seats)}</Group> : null}
+      {CAN_CONNECT ? (
+        <Group title={t.groups.data}>{row("settings-row-seats", "/settings/seats", t.seatsRow, seats, undefined, sample ? SAMPLE[locale].settingsValue : undefined)}</Group>
+      ) : null}
       {STORE ? null : (
         <Group title={ASK_SURFACES[locale].settings.group}>
           {row("settings-row-anthropic", "/settings/anthropic", ASK_SURFACES[locale].settings.row, anthropic, ASK_SURFACES[locale].settings.rowNote)}
@@ -249,9 +259,56 @@ export function SettingsScreen() {
   );
 }
 
-/** Connect seats.aero (S08 "连接数据源进入专页"). */
+/** Connect seats.aero (S08 "连接数据源进入专页"); in sample mode, the way back to the account first. */
 export function SeatsKeyScreen() {
   const services = useOutletContext<AppServices>();
+  return isSample(services) ? <SampleSeatsPage services={services} /> : <SeatsKeyPage services={services} />;
+}
+
+/**
+ * Settings › seats.aero account in sample mode: no key field (sample mode's key store is in memory and holds a
+ * placeholder, never shown), only that the account is connected after leaving sample data, and the way to leave.
+ */
+function SampleSeatsPage({ services }: { services: AppServices }) {
+  const locale = useLocale(services);
+  const t = SETTINGS[locale];
+  const s = SAMPLE[locale];
+  const title = useRef<HTMLHeadingElement>(null);
+  useFocusOnArrival(title);
+  const [leaving, setLeaving] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const exit = async () => {
+    setLeaving(true);
+    setFailed(null);
+    try {
+      await services.dataSource.exitSample();
+    } catch (err) {
+      setFailed(s.switchFailed(err instanceof Error ? err.message || err.name : String(err)));
+      setLeaving(false);
+    }
+  };
+  return (
+    <div className="ag-settings" lang={langTag(locale)}>
+      <BackToSettings label={t.back} from="seats" />
+      <h1 ref={title} tabIndex={-1} className="ag-settings-title">
+        {t.seats.title}
+      </h1>
+      <div className="ag-settings-card ag-settings-block">
+        <p className="ag-settings-copy">{s.connectHint}</p>
+        <Button variant="primary" block onClick={() => void exit()} loading={leaving} loadingLabel={s.exiting}>
+          {s.exit}
+        </Button>
+        {failed ? (
+          <p role="alert" className="ag-settings-status ag-settings-fail">
+            {failed}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SeatsKeyPage({ services }: { services: AppServices }) {
   const locale = useLocale(services);
   const t = SETTINGS[locale];
   const s = t.seats;
@@ -265,6 +322,7 @@ export function SeatsKeyScreen() {
   const title = useRef<HTMLHeadingElement>(null);
   const field = useRef<HTMLInputElement>(null);
   const start = useRef<HTMLAnchorElement>(null);
+  const navigate = useNavigate();
   useFocusOnArrival(title);
   // The Keychain's own words are English: marked so on a Chinese screen.
   const tailLang = locale === "en" ? undefined : "en";
@@ -342,9 +400,9 @@ export function SeatsKeyScreen() {
     }
     setOnFile(null);
     setSaved(false);
-    setStatus({ text: s.removed, ok: true });
-    // "Remove key" is gone with the key: focus goes to the field, ready for another.
-    window.requestAnimationFrame(() => field.current?.focus());
+    // Without a key the app is where it starts (release plan step 17): back to Search, which shows the welcome — sample
+    // data first, or connect again — and says the key was removed. Focus goes to its title.
+    navigate("/", { state: { focus: "search-title", said: s.removed } });
   };
 
   return (

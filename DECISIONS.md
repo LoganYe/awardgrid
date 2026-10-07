@@ -1827,3 +1827,33 @@ step 3's probe mode, §1's two (§1.7) and §2.12's one, each with a key it reje
 | AS12 | ATS blocks or allows cleartext to 127.0.0.1 without an exception | The probe harness only | **Measured** on the Simulator: allowed with no key (A0, again in §2.12) |
 | AS13 | A suspended app's in-flight request completes or fails with a network error on return | Leaving-app copy | **Measured** on the Simulator only: T5 settled once, with the whole body, after 44 s away; E7 saw one terminal state and no request during 27 s away; the pause before a step not exercised (§2.11); a device is K4's |
 | AS14 | The WebView at `capacitor://localhost` is a secure context (`crypto.subtle` exists) | T2's body hash | **Measured, holds** on the Simulator (T2: `secure_context: true`) |
+
+## 3.1.1 remediation — sample mode for any route (release plan steps 16-17, PR-B)
+
+- **What changed.** The first run's static example ("View an example", three made-up rows) became sample mode: "Try
+  with sample data" switches the whole app to labelled sample data for any route between the 84 airports of
+  `packages/core/data/places.json` (all 93 codes, metros mapped to their first airport), today to today + 364, in
+  all four cabins, with every feature working. It answers #80 (an App Review demo mode) for search, details, compare,
+  Saved and watches; Ask stays off in sample mode in the internal builds, and the App Store build has no Ask at all.
+- **One generator, two datasets.** The pure helpers (mulberry32, the day arithmetic, the programs, their invented
+  prices and taxes) moved from `fixtures/demo/generate.ts` to `apps/ios/src/sample/shared.ts`; the corridor generator
+  imports them back and its files stay byte-identical (`scripts/demo-dataset.test.ts` unchanged). The any-route
+  generator (`apps/ios/src/sample/generate.ts`) is seeded by `origin|destination|date|cabin`, prices by great-circle
+  distance, flies nonstop under 7,500 statute miles and connects once above it through the hub that adds the least
+  distance, and times legs at 8.6 miles a minute plus 30, as the corridor does. Real program names with invented
+  numbers (plan D10); real carrier codes with invented flight numbers; no booking links at all.
+- **The transport is in memory, the boot is isolated.** `apps/ios/src/sample/sample-fetch.ts` answers Cached Search,
+  Bulk Availability, Get Routes and Get Trips in the documented shapes with the filters `scripts/mock-seatsaero.ts`
+  applies, and 404s anything else. The choice (`data-source-v1`) is read before `bootstrap()` by
+  `apps/ios/src/app/data-source.ts`, in App's boot step rather than in `main.tsx`, so the fixture host goes through the
+  same path as the device. Sample mode boots with an in-memory key store holding a placeholder, the sample transport,
+  an Anthropic transport that refuses, and files under `sample/` (indexed in `sample/files.json`, since a FileStore
+  cannot list); the Keychain item, the real snapshots and today's real call count are never read or written, and the
+  native HTTP adapter is never built (`apps/ios/src/sample/boot.test.ts`). Locale and theme are copied into
+  `sample/` on the way in and back on the way out; leaving deletes `sample/`.
+- **Guards unchanged.** Nothing under `apps/ios/src/sample` is named for fixtures or imports the fixture host or core's
+  test fixtures, and `scripts/check-fixture-free-bundle.mjs` passes unchanged. The sample data and its transport are
+  their own chunk (`boot-*.js`), loaded only in sample mode.
+- **The time line.** Core's `timeLabel` takes `{ sample: true }` and then returns `SAMPLE_TIME_LABEL` ("Sample data" /
+  "示例数据") instead of "Source updated …"; the approved-copy table is unchanged (its keys are pinned by core's tests).
+- **Removing the key** in live mode now returns to Search, the first run, which says the key was removed.

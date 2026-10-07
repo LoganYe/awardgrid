@@ -14,6 +14,8 @@ if (import.meta.env.VITE_AG_PROBES === "1") window.location.hash = "#/probes";
 // An e2e build (VITE_AG_PROBES=e2e) opens on Ask, where its driver starts. The same constant-false rule applies.
 if (import.meta.env.VITE_AG_PROBES === "e2e") window.location.hash = "#/ask";
 
+// App reads where this run's results come from — the person's seats.aero account, or sample mode's labelled sample
+// data — before it bootstraps anything (app/data-source.ts resolveBoot), so the fixture host takes the same path.
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />

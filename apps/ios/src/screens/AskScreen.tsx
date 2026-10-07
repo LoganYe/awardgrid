@@ -28,13 +28,14 @@
  * the keyboard, with its one button, Ask or Stop, and the Stop note while a question runs. When native HTTP is
  * missing, only the wiring message is shown.
  */
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useNavigate, useOutletContext } from "react-router";
 import type { AskEntry as Entry } from "@awardgrid/core/ask/conversation";
 import { MAX_QUESTION_CHARS } from "@awardgrid/core/ask/limits";
 import { SEARCH_AWARDS } from "@awardgrid/core/ask/tools";
 import { copy, querySubline, routeLabel } from "@awardgrid/core/workspace/present";
 import type { AppServices } from "../app/bootstrap";
+import { isSample } from "../app/data-source";
 import { useFocusOnArrival } from "../app/focus";
 import { useKeepInView } from "../app/keyboard";
 import { type Locale, langTag, useLocale } from "../app/locale";
@@ -44,6 +45,7 @@ import type { AskNotice, AskState, ContextPreview } from "../ask/ask-service";
 import { ENTRY_LABELS } from "../ask/entry-labels";
 import { includeSearchLabel, searchSummary } from "../ask/labels";
 import { AskEntry } from "../components/AskEntry";
+import { SampleBanner } from "../components/SampleBanner";
 import { Button, IconButton, Sheet } from "../components/ui";
 import type { KeyStore } from "../native/keychain";
 import type { LastSearchEntry } from "../search/last-search";
@@ -160,7 +162,10 @@ export function AskScreen() {
     };
   }, [services]);
 
-  return <AskView services={services} keys={keys} />;
+  // Sample mode (release plan step 17): Ask stays off, under the sample banner.
+  const sample = isSample(services);
+  const locale = useLocale(services);
+  return <AskView services={services} keys={keys} sample={sample} banner={sample ? <SampleBanner services={services} locale={locale} /> : null} />;
 }
 
 export interface AskViewProps {
@@ -168,6 +173,10 @@ export interface AskViewProps {
   keys: KeyPresence;
   /** Milliseconds since the epoch, for the wait counter. */
   now?: () => number;
+  /** The app shows sample data: no question can start, and the screen says why. */
+  sample?: boolean;
+  /** Drawn under the header: sample mode's banner. */
+  banner?: ReactNode;
 }
 
 /**
@@ -186,7 +195,7 @@ function previewOf(services: AskViewProps["services"], includeSearch: boolean, a
 /** Within this many pixels of the end, the reader is "at the newest" and new content follows into view. */
 const AT_END_PX = 32;
 
-export function AskView({ services, keys, now = Date.now }: AskViewProps) {
+export function AskView({ services, keys, now = Date.now, sample = false, banner = null }: AskViewProps) {
   const locale = useLocale(services as Partial<Pick<AppServices, "locale" | "settings">>);
   const c = ASK_COPY[locale];
   const k = CONSENT[locale].sheet;
@@ -286,7 +295,7 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
   }
 
   const missing = missingKeys(state, atOpen, keys);
-  const composerDisabled = missing.anthropic || missing.seats;
+  const composerDisabled = sample || missing.anthropic || missing.seats;
   const keysRead = keys.anthropic !== null && keys.seats !== null;
   const cannotStart = composerDisabled || !keysRead || questionRunning || state.full !== null;
   const notice = state.notice !== null && !KEY_NOTICES.has(state.notice.kind) && state.notice.kind !== "wiring" ? state.notice : null;
@@ -371,6 +380,7 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
       </p>
 
       {header(true)}
+      {banner}
 
       <section className="ask-context" data-testid="ai-context" aria-labelledby="ask-context-title">
         <h2 id="ask-context-title" className="ask-context-title">
@@ -442,8 +452,13 @@ export function AskView({ services, keys, now = Date.now }: AskViewProps) {
           </ol>
         )}
 
-        {missing.anthropic ? <ConnectAnthropic locale={locale} /> : null}
-        {missing.seats ? <KeyCallout message={c.noSeatsKey} action={c.openSettings} /> : null}
+        {sample ? (
+          <p className="ask-callout" data-testid="ask-sample-off">
+            {c.sampleOff}
+          </p>
+        ) : null}
+        {missing.anthropic && !sample ? <ConnectAnthropic locale={locale} /> : null}
+        {missing.seats && !sample ? <KeyCallout message={c.noSeatsKey} action={c.openSettings} /> : null}
         {state.full !== null ? (
           <div className="ask-callout">
             <p lang={english}>{state.full}</p>

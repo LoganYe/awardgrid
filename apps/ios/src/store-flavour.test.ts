@@ -175,12 +175,15 @@ describe("VITE_AG_CONNECT=0 (no connection; prepared, not shipped)", () => {
     const settings = at("/settings", createElement(none.settings.SettingsScreen), settingsServices());
     expect(headings(settings)).toEqual(["Appearance and language", "Local data", "About"]);
     expect(settings).not.toContain("/settings/seats");
-    const welcome = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(none.onboarding.Welcome, { locale: "en" })));
+    const welcome = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(none.onboarding.Welcome, { locale: "en", onTrySample: () => {} })));
     expect(welcome).not.toContain("/settings/seats");
-    expect(welcome).toContain('href="/example"');
-    // With a connection (the default), the same three places link to it.
+    // Sample data is still offered, first (release plan step 17).
+    expect(welcome).toContain("Try with sample data");
+    // With a connection (the default), the same three places link to it, after the sample data.
     const key = await load({ store: true });
     expect(paths(key.app.appRoutes({} as AppServices))).toContain("/settings/seats");
-    expect(renderToStaticMarkup(createElement(MemoryRouter, null, createElement(key.onboarding.Welcome, { locale: "en" })))).toContain('href="/settings/seats"');
+    const keyed = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(key.onboarding.Welcome, { locale: "en", onTrySample: () => {} })));
+    expect(keyed).toContain('href="/settings/seats"');
+    expect(keyed.indexOf("Try with sample data")).toBeLessThan(keyed.indexOf('href="/settings/seats"'));
   });
 });

@@ -14,11 +14,13 @@
  * its 164 pt in both languages; named "Save option", then "Saved" (the plan's own test and the Web name it so), pressed, with
  * the bookmark filled, and described by the card, whose name is the option's full name, so no two read alike (T22 review PROD-4; the Web's
  * Save is described by its row's name the same way). It stays focusable, so focus is never dropped. "Selected" is said on the day line.
+ * In sample mode (app/data-source.ts SampleDataContext) the source-time line reads "Sample data".
  */
-import { useId } from "react";
+import { useContext, useId } from "react";
 import { cabinName } from "@awardgrid/core/workspace/query-editor";
 import { dayLabel, feesLabel, formatMiles, programLabel, resultName, seatsLabel, timeLabel } from "@awardgrid/core/workspace/present";
 import type { SnapshotId, WorkspaceRow } from "@awardgrid/core/workspace/types";
+import { SampleDataContext } from "../../app/data-source";
 import type { Locale } from "../../app/locale";
 import { Icon } from "../ui";
 import { RESULTS } from "./copy";
@@ -50,6 +52,8 @@ export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, loc
   const cabin = cabinName(v.cabin, locale);
   const name = resultName(v, locale);
   const cardId = useId();
+  // Sample mode (release plan step 17): the time line says "Sample data", never a source time.
+  const sample = useContext(SampleDataContext);
   return (
     <article id={cardId} className="ag-result-card" data-testid="availability-card" data-row-key={row.key} data-snapshot={snapshotId} aria-label={name}>
       <div className="ag-result-card-top">
@@ -99,7 +103,7 @@ export function AvailabilityCard({ row, snapshotId, selected, onToggle, now, loc
       </div>
       {/* The way into the details shares the source-time line, so the card keeps its 164 pt (spec §13). */}
       <div className="ag-result-foot">
-        <p className="ag-result-time">{timeLabel(row.time, now, locale)}</p>
+        <p className="ag-result-time">{timeLabel(row.time, now, locale, { sample })}</p>
         {onOpen ? (
           <button type="button" id={`open-${row.key}`} className="ag-result-open-button" aria-label={t.viewOptionName(name)} onClick={() => onOpen(`open-${row.key}`)}>
             <span>{t.viewOption}</span>

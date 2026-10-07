@@ -27,7 +27,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
+import { isSample } from "../app/data-source";
 import { type Locale, langTag, useLocale } from "../app/locale";
+import { SAMPLE } from "../sample/sample-copy";
 import { EDITOR_COPY } from "../components/query/labels";
 import { RESULTS } from "../components/results/copy";
 import { Button, Notice, Sheet, Switch } from "../components/ui";
@@ -194,7 +196,8 @@ export function WatchesScreen() {
         {/* What the platform does, from its capabilities (core capabilityMessageKey; T20): on iOS, checks on open and return only. */}
         <p>{watchCapabilityCopyKey() === "watch.unavailable" ? copy("watch.unavailable", locale) : copy("watch.ios", locale)}</p>
         {WATCH_CHECKS.inBackground ? null : <p>{t.noBackground}</p>}
-        <p>{t.skipSoon}</p>
+        {/* Over sample data the rule alone: the live sentence explains it by seats.aero's cache and today's calls. */}
+        <p>{isSample(services) ? SAMPLE[locale].watchSkipSoon : t.skipSoon}</p>
       </div>
       <p role="status" className="ag-watches-status">
         {said}

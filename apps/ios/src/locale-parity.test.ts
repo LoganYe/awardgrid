@@ -18,6 +18,7 @@ import { FAVORITES } from "./screens/favorites-copy";
 import { WELCOME } from "./screens/OnboardingScreen";
 import { SETTINGS } from "./screens/settings-copy";
 import { WATCHES } from "./screens/watches-copy";
+import { SAMPLE } from "./sample/sample-copy";
 
 const TABLES: Record<string, { en: unknown; zh: unknown }> = {
   results: RESULTS,
@@ -32,6 +33,7 @@ const TABLES: Record<string, { en: unknown; zh: unknown }> = {
   consent: CONSENT,
   compare: COMPARE,
   favorites: FAVORITES,
+  sample: SAMPLE,
 };
 
 /** Any Chinese character or Chinese punctuation: English must have none. */

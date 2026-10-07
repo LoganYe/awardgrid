@@ -32,7 +32,10 @@ import type { QueryDraft } from "@awardgrid/core/workspace/types";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useLocation, useNavigate, useOutletContext, useSearchParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { isSample } from "../app/data-source";
 import { langTag, useLocale } from "../app/locale";
+import { SampleBanner } from "../components/SampleBanner";
+import { SAMPLE } from "../sample/sample-copy";
 import { AirportField } from "../components/query/AirportField";
 import { DateRuleField } from "../components/query/DateRuleField";
 import { EDITOR_COPY, fieldErrorText } from "../components/query/labels";
@@ -223,6 +226,7 @@ export function QueryEditorScreen() {
       </header>
 
       <div className="query-editor-body">
+        <SampleBanner services={services} locale={locale} />
         <p className="query-editor-intro">{EDITOR.intro}</p>
 
         {editingWatch ? null : (
@@ -380,7 +384,8 @@ export function QueryEditorScreen() {
         <Button variant="primary" block onClick={submit}>
           {editingWatch ? W.saveWatch : EDITOR.submit}
         </Button>
-        <p className="query-editor-note">{editingWatch ? W.saveWatchNote : EDITOR.submitNote}</p>
+        {/* Over sample data the note says where the search runs: the live one is about the account's quota. */}
+        <p className="query-editor-note">{editingWatch ? W.saveWatchNote : isSample(services) ? SAMPLE[locale].editorNote : EDITOR.submitNote}</p>
       </footer>
 
       <Sheet open={programsOpen} title={EDITOR.programs} closeLabel={EDITOR.programsDone} onClose={closePrograms}>
