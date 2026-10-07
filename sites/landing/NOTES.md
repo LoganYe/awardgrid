@@ -126,14 +126,22 @@ the visible questions, never the JSON-LD.
     `apps/ios/src/app/App.tsx`), and "Without your seats.aero Pro key the app does nothing at all" (the app has an
     example screen that needs no key; the registry's words are "searches nothing"). Changing them is a two-word edit
     each, once the owner allows it.
-- The meta description names the key first and is 155 characters or fewer, so a search result does not cut the
-  prerequisite off; `sites/landing/test/crawl.test.ts` holds every page's description to that width (a CJK
-  character counts as two).
+- The meta description names the data source and is 155 characters or fewer, so a search result does not cut it
+  off; `sites/landing/test/crawl.test.ts` holds every page's description to that width (a CJK character counts as
+  two).
+- Build 4 (2026-10-07, release plan step 22): the H1 is "Award seats in one table." (it was "One table. Your own
+  key."), the meta descriptions and the home page's lead say "from your own seats.aero account or from sample data"
+  (they said "on your own seats.aero Pro key"), "What you need" marks the seats.aero account optional and says that
+  without it AwardGrid shows sample data only, the Ask item is gone, the questions add "Do I need a seats.aero
+  account?" (ten answers now) and answer "Do I need an AI key?" with Ask not being part of the App Store version 1.0,
+  and the kept rows "No airline sites" and "No key of its own" and the status paragraph no longer speak of Ask or of
+  a Pro key.
 
 ### `ios/award-grid/index.html`: how the table works
 
 - For someone asking whether an app puts several origins, destinations and dates into one table. The claim is the
-  narrow one: on iPhone, on your own seats.aero Pro key, several origins, several destinations and up to 92 days.
+  narrow one: on iPhone, from your own seats.aero account or from sample data (until 2026-10-07: "on your own
+  seats.aero Pro key"), several origins, several destinations and up to 92 days.
   It does not say no other tool does this.
 - Every sentence is registry copy: identity, grid, prerequisite, keys, query_input, filters, views, program_link,
   data_cached, cell_fields, programs, scope, quota, watches, dependency, not_offered and release_status.

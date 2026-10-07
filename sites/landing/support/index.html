@@ -23,6 +23,8 @@
       The support page for the iOS app (release decision D7): App Store Connect's Support URL. Facts only, in the
       product's own voice (docs/COPY.md); every one of them is true of the code (docs/release/APP_STORE_HANDOFF.md §6).
       No script in this file, no webfont request (honesty.test.ts scans this page). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the privacy policy says so ("This website").
+      Since 2026-10-07 (build 4, release plan step 22) it describes the App Store version: sample data without a
+      seats.aero account, and no Ask. "Do I need a seats.aero account?" names no price and links nowhere.
     -->
     <link rel="stylesheet" href="../styles.css" />
   </head>
@@ -49,18 +51,23 @@
         <ul>
           <li>An iPhone with iOS 18 or later.</li>
           <li>
-            Your own seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), and its
-            API key from the API tab of your seats.aero settings. Without it the app searches nothing.
-          </li>
-          <li>
-            For Ask, which is optional: your own Anthropic API key. Anthropic bills each question to that key, and the
-            app asks your permission before it sends anything to Anthropic.
+            Optional: your own seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not
+            sell), and its API key from the API tab of your seats.aero settings. Without it, AwardGrid shows sample data
+            only.
           </li>
         </ul>
       </section>
 
       <section aria-labelledby="faq-h">
         <h2 id="faq-h">Common questions</h2>
+
+        <h3>Do I need a seats.aero account?</h3>
+        <p>
+          No. Without one, AwardGrid shows sample data only: search, the List, Calendar and Matrix views, option details,
+          compare, Saved and Watches all work on sample data made on your iPhone, labelled as sample data, and nothing
+          is sent. If you have a seats.aero account with API access, you can connect it in Settings to see results from
+          that account instead.
+        </p>
 
         <h3>Where do I find my seats.aero API key?</h3>
         <p>
@@ -70,16 +77,17 @@
 
         <h3>My seats.aero settings show no API tab. Will AwardGrid work?</h3>
         <p>
-          No. seats.aero says not every Pro account or country gets API access; without a key AwardGrid searches
-          nothing. AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and
-          can limit or withdraw.
+          Only on sample data. seats.aero says not every Pro account or country gets API access; without a key,
+          AwardGrid shows sample data only. AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for
+          non-commercial use and can limit or withdraw.
         </p>
 
         <h3>Why does a search use seats.aero calls?</h3>
         <p>
-          Each search goes to seats.aero with your key, and seats.aero counts calls against your plan's daily limit.
-          The app stops at 950 of the 1,000 a Pro key allows, and keeps results on the device for 45 minutes, so
-          repeating a search costs nothing. The app's own count restarts at midnight UTC, when seats.aero resets usage.
+          Each search on your seats.aero account goes to seats.aero with your key, and seats.aero counts the calls
+          against a daily limit. The app stops at 950 of seats.aero's 1,000 daily calls and keeps results on the device
+          for 45 minutes, so repeating a search costs no calls. The app's own count restarts at midnight UTC, when
+          seats.aero resets usage. Sample data uses no seats.aero calls.
         </p>
 
         <h3>What does "not monitored" mean?</h3>
@@ -100,10 +108,10 @@
           program's own site before you transfer any points.
         </p>
 
-        <h3>How do I remove my keys or my data?</h3>
+        <h3>How do I remove my key or my data?</h3>
         <p>
-          Remove either key in Settings, clear cached results there, and start a new conversation in Ask to delete the
-          conversation. The <a href="../privacy/">privacy policy</a> lists everything the app keeps and sends.
+          Remove your seats.aero key in Settings and clear cached results there. Exit sample data to delete everything
+          sample data kept. The <a href="../privacy/">privacy policy</a> lists everything the app keeps and sends.
         </p>
       </section>
 
@@ -129,22 +137,23 @@
         <h3>使用前提</h3>
         <ul>
           <li>运行 iOS 18 或更高版本的 iPhone。</li>
-          <li>你自己的 seats.aero 账户（要有 API 权限，属于 seats.aero Pro，AwardGrid 不出售）及其 API 密钥，可在 seats.aero 设置的 API 页获取。没有它，应用无法查票。</li>
-          <li>AI 辅助是可选功能，需要你自己的 Anthropic API 密钥。每次提问由 Anthropic 按此密钥计费；应用在向 Anthropic 发送任何内容之前会征求你的许可。</li>
+          <li>可选：你自己的 seats.aero 账户，要有 API 权限（属于 seats.aero Pro，AwardGrid 不出售）；API 密钥在 seats.aero 设置的 API 页里。没有它，AwardGrid 只显示示例数据。</li>
         </ul>
 
         <h3>常见问题</h3>
+        <h4>需要 seats.aero 账户吗？</h4>
+        <p>不需要。不连接 seats.aero 账户时，AwardGrid 只显示示例数据：查票、列表、日历和矩阵视图、选项详情、比较、收藏和关注都可以使用本机生成的示例数据，并标注为示例数据，不会发送任何内容。如果你有带 API 权限的 seats.aero 账户，可以在设置中连接它，看到该账户的结果。</p>
         <h4>在哪里找到 seats.aero API 密钥？</h4>
         <p>在 seats.aero 设置的 API 页里，前提是你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售）。</p>
         <h4>我的 seats.aero 设置里没有 API 页，AwardGrid 还能用吗？</h4>
         <p>
-          不能。seats.aero 说明，并非每个 Pro 账户、每个国家或地区都能获得 API 权限；没有密钥，AwardGrid 无法查票。AwardGrid 依赖 seats.aero 的
+          只能用示例数据。seats.aero 说明，并非每个 Pro 账户、每个国家或地区都能获得 API 权限；没有密钥，AwardGrid 只显示示例数据。AwardGrid 依赖 seats.aero 的
           Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。
         </p>
         <h4>为什么查票会消耗 seats.aero 调用？</h4>
         <p>
-          每次查票都会携带你的密钥发往 seats.aero，seats.aero 按你套餐的每日上限计数。Pro 密钥每天允许 1,000 次，应用在 950 次时停止；结果在本机保留 45
-          分钟，重复查询不消耗调用。应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。
+          用你的 seats.aero 账户查票时，每次查票都会携带你的密钥发往 seats.aero，seats.aero 按每日上限计数。seats.aero 每天允许 1,000 次调用，应用在 950 次时停止；结果在本机保留 45
+          分钟，重复查询不消耗调用。应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。示例数据不消耗 seats.aero 调用。
         </p>
         <h4>“未监测”是什么意思？</h4>
         <p>seats.aero 没有为你所查的里程计划跟踪这条航线，所以那里没有结果不等于没有座位。航线列表无法加载时，应用会如实说明。</p>
@@ -153,7 +162,7 @@
         <h4>结果是实时的吗？</h4>
         <p>结果是 seats.aero 的缓存数据，并注明每条结果的数据时间。里程票随时会消失；转点前请先在里程计划官网确认。</p>
         <h4>如何移除密钥或数据？</h4>
-        <p>在设置中移除任一密钥、清除缓存结果；在 AI 辅助中开始新对话即可删除对话。<a href="../privacy/">隐私政策</a>列出了应用保存和发送的全部内容。</p>
+        <p>在设置中移除 seats.aero 密钥、清除缓存结果。退出示例数据即可删除示例数据保存的全部内容。<a href="../privacy/">隐私政策</a>列出了应用保存和发送的全部内容。</p>
 
         <h3>关于</h3>
         <p>

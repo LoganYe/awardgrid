@@ -26,7 +26,6 @@ _SPEC.loader.exec_module(v)
 SCRIPT = Path(v.__file__)
 RELEASE_DOC = v.REPO_ROOT / "docs" / "release" / "IOS_1.0_RELEASE.md"
 GATE = v.REPO_ROOT / "scripts" / "growth" / "validate-public-claims.mjs"
-APP_COPY = v.REPO_ROOT / "apps" / "ios" / "src" / "components" / "results" / "copy.ts"
 
 # A neutral, valid listing; each test changes one thing.
 BASE = {
@@ -659,7 +658,7 @@ def blockquote(section: str, label: str, until: str) -> str:
 
 
 class TestShippedMetadata(unittest.TestCase):
-    """The committed files: the next version's drafts pass strictly, and en-US is version 1.0 as recorded."""
+    """The committed files: the next/ drafts pass strictly, and en-US is version 1.0's fields with build 4's prose."""
 
     NEXT = v.DEFAULT_DIR
     V1 = v.METADATA_ROOT / "en-US"
@@ -701,7 +700,10 @@ class TestShippedMetadata(unittest.TestCase):
         report = v.validate_locale(self.V1)
         self.assertEqual({i.message.split(" ")[0] for i in report.errors}, {"'award'", "'seats'"})
 
-    def test_en_us_is_version_1_0_as_recorded_in_the_release_doc(self):
+    def test_en_us_is_build_4_on_version_1_0s_fields(self):
+        # Since 2026-10-07 en-US/ holds the texts for version 1.0 as resubmitted with build 4 (the 3.1.1 remediation
+        # plan's step 36): the name, subtitle, keywords and URLs are version 1.0's as recorded in the release doc, while
+        # the promotional text and the description are new; build 3's stay recorded in §7.6.
         info = release_doc_section("### 7.1 App Information", "### 7.2")
         privacy = release_doc_section("### 7.3 App Privacy", "### 7.4")
         listing = release_doc_section("### 7.6 Listing drafts", "\n---")
@@ -711,33 +713,45 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertIn(f"`{v.read_field(self.V1, 'marketing_url')}`", info)
         self.assertIn(f"**Privacy Policy URL:** `{v.read_field(self.V1, 'privacy_url')}`", privacy)
         self.assertIn(f"**Keywords** (97 of 100): `{v.read_field(self.V1, 'keywords')}`", listing)
-        self.assertIn(f"**Promotional text:** {v.read_field(self.V1, 'promotional_text')}\n", listing)
-        self.assertEqual(v.read_field(self.V1, "description"), blockquote(listing, "- **Description:**", "- **Description, Chinese:**"))
+        self.assertEqual(
+            v.read_field(self.V1, "promotional_text"),
+            "One table of award seats for the routes and dates you choose. Try every screen on built-in sample data, or connect your own seats.aero account to see its results.",
+        )
+        description = v.read_field(self.V1, "description")
+        self.assertNotEqual(description, blockquote(listing, "- **Description:**", "- **Description, Chinese:**"))
+        for needed in (
+            "• Sample data: search any route between the 84 airports AwardGrid recognises",
+            "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, by pasting the API key from your seats.aero settings. AwardGrid has no in-app purchases.",
+            "Results from seats.aero are its cached data: confirm on the program's own site before you transfer points.",
+            "Your seats.aero API key stays in your iPhone's Keychain and is sent only to seats.aero. AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.",
+            "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program.",
+        ):
+            self.assertIn(needed, description)
+        # No Ask, no Anthropic, no purchase wording (the plan's decisions D3 and D6).
+        self.assertIsNone(re.search(r"\bAsk\b|Anthropic|Claude|subscri|\bpaid\b|What it needs|searches nothing", description))
         self.assertFalse((self.V1 / "release_notes.txt").exists())
 
-    def test_zh_hans_is_the_release_doc_draft_with_three_changes(self):
-        listing = release_doc_section("### 7.6 Listing drafts", "\n---")
-        draft = blockquote(listing, "- **Description, Chinese:**", "")
-        caption = re.findall(r'matrixCaption: "([^"]+)"', APP_COPY.read_text(encoding="utf-8"))[1]
-        self.assertEqual(caption, "每格显示最低里程数；不同计划的里程不等值。")
-        first = draft.split("\n\n")[0]
-        cell = first[first.index("：") + 1:]
-        # Third change: Ask's billing in the app's own words (apps/ios/src/screens/settings-copy.ts), not a flat price.
-        billing_old = "，并由 Anthropic 按每次提问向你的账户计费。"
-        billing_new = "；每次提问由 Anthropic 按此密钥计费。"
-        self.assertIn(billing_old, draft)
-        self.assertIn("每次提问由 Anthropic 按此密钥计费", (v.REPO_ROOT / "apps" / "ios" / "src" / "screens" / "settings-copy.ts").read_text(encoding="utf-8"))
-        expected = (
-            draft.replace("：" + cell, "。" + caption, 1)
-            .replace("。没有账号", "。App 没有账号", 1)
-            .replace(billing_old, billing_new, 1)
-        )
-        self.assertNotEqual(expected, draft)
-        self.assertEqual(v.read_field(self.NEXT / "zh-Hans", "description"), expected)
-        promo = v.read_field(self.NEXT / "zh-Hans", "promotional_text")
-        for sentence in re.findall(r"[^。]+。", promo):
-            self.assertIn(sentence, draft.replace("\n", ""))
-
+    def test_next_repeats_build_4s_prose(self):
+        # next/ is superseded (apps/ios/store-metadata/README.md): its English descriptions and promotional texts repeat
+        # en-US's build-4 texts, and zh-Hans says the same in Chinese, so no draft says what build 4 no longer does.
+        for locale in ("en-US", "en-GB", "en-AU"):
+            with self.subTest(locale=locale):
+                for field in ("description", "promotional_text"):
+                    self.assertEqual(v.read_field(self.NEXT / locale, field), v.read_field(self.V1, field), field)
+        zh = v.read_field(self.NEXT / "zh-Hans", "description")
+        en = v.read_field(self.V1, "description")
+        self.assertEqual(zh.count("\n\n"), en.count("\n\n"))
+        self.assertEqual(zh.count("• "), en.count("• "))
+        for needed in (
+            "你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据",
+            "示例数据",
+            "84 个机场",
+            "AwardGrid iPhone 版没有账号、统计分析、广告或跟踪。",
+            "AwardGrid 与 seats.aero、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
+        ):
+            self.assertIn(needed, zh)
+        for text in (zh, v.read_field(self.NEXT / "zh-Hans", "promotional_text")):
+            self.assertIsNone(re.search(r"AI 辅助|Anthropic|Claude|订阅|无法查票|使用前提", text))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

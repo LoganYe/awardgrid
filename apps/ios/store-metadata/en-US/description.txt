@@ -1,12 +1,15 @@
-AwardGrid puts award availability for your routes and dates into one table: the cheapest award seat in each cell, with the miles, the fees, the seats left, the program that sells it, and how old the data is.
+AwardGrid puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
 
+• Sample data: search any route between the 84 airports AwardGrid recognises, over the next 12 months, and use every screen on built-in, clearly labelled sample data, without an account and with nothing sent anywhere.
 • Search in English or Chinese, for several origins and destinations over a range of dates.
 • List, calendar and matrix views, and a side-by-side comparison of up to four options.
 • Watches check your saved searches when you open the app. There is no background checking and there are no notifications.
-• Ask, which is optional: questions about your results, answered by Claude on your own Anthropic API key, once you allow it.
+• Plan a trip: type a trip to see how AwardGrid reads it, save the plan on your iPhone, and try it on sample data.
 
-What it needs: your own seats.aero Pro subscription and API key; without one, AwardGrid searches nothing. Ask needs your own Anthropic API key, and Anthropic bills your account for each question.
+Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, by pasting the API key from your seats.aero settings. AwardGrid has no in-app purchases.
 
-Your keys stay in your iPhone's Keychain. There are no accounts, no analytics, no ads and no tracking. Results are seats.aero's cached data: confirm on the program's own site before you transfer points.
+Results from seats.aero are its cached data: confirm on the program's own site before you transfer points.
 
-AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.
+Your seats.aero API key stays in your iPhone's Keychain and is sent only to seats.aero. AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.
+
+AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program.

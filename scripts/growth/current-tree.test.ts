@@ -45,9 +45,10 @@ describe("the facts registry", () => {
 
   it("holds exactly the claims the public copy is built from", () => {
     expect(CLAIMS.map((c) => c.claim_id)).toEqual([
-      "identity", "domain_collision", "release_status", "history", "webapp_note", "dependency", "prerequisite", "price", "grid",
-      "query_input", "query_zh_hant", "filters", "views", "cell_fields", "scope", "programs", "data_cached", "watches", "quota",
-      "ask", "privacy", "developer_data", "keys", "program_link", "not_offered", "affiliation", "availability",
+      "identity", "domain_collision", "release_status", "history", "webapp_note", "dependency", "prerequisite", "sample_mode",
+      "price", "grid", "query_input", "query_zh_hant", "filters", "views", "cell_fields", "scope", "programs", "data_cached",
+      "watches", "planner", "quota", "ask", "privacy", "developer_data", "keys", "program_link", "not_offered", "affiliation",
+      "availability",
     ]);
   });
 
@@ -57,6 +58,7 @@ describe("the facts registry", () => {
     // filters and cell_fields were registered on 2026-09-28 for /ios/award-grid/, from the app's source and its copy;
     // filters was reworded the same day (cabins are always asked, business and first by default), for the owner to see.
     // query_zh_hant: 1.0 does not read 飛 on its own, 下禮拜 or 桃園 (its limitations), so its sentence waits.
+    // sample_mode and planner were registered on 2026-10-07 for build 4 (release plan step 22), from the app's source.
     expect(CLAIMS.filter((c) => c.public_use === "pending_owner").map((c) => c.claim_id)).toEqual(["query_zh_hant"]);
     expect(CLAIMS.filter((c) => c.public_use !== "pending_owner").every((c) => c.public_use === "approved")).toBe(true);
   });
@@ -77,8 +79,19 @@ describe("the facts registry", () => {
   });
 
   it("registers Q6's sentence under ask, with its evidence", () => {
-    expect(claim("ask").allowed_copy_extra).toContain("Search runs on your seats.aero key alone.");
-    expect(claim("ask").limitations.join(" ")).toMatch(/seats\.aero key alone.*search\.ts/);
+    // Since 2026-10-07 (build 4) search needs no key at all: without one it runs on sample data. Q6's answer says only
+    // what stays true, that search needs no AI key; "Search runs on your seats.aero key alone." is retired.
+    expect(claim("ask").allowed_copy_extra).toContain("Search needs no AI key.");
+    expect(claim("ask").limitations.join(" ")).toMatch(/needs no AI key.*search\.ts/);
+    expect(claim("ask").retired_copy).toContain("Search runs on your seats.aero key alone.");
+  });
+
+  it("says Ask is not part of the App Store version, and that without an account the app shows sample data", () => {
+    expect(claim("ask").allowed_copy).toMatch(/is in testing; it is not part of the App Store version 1\.0\.$/);
+    expect(claim("sample_mode").allowed_copy).toMatch(/^Without a seats\.aero account, AwardGrid shows sample data only: /);
+    expect(claim("prerequisite").allowed_copy_extra?.[0]).toMatch(/Without it, AwardGrid shows sample data only\.$/);
+    const everything = CLAIMS.flatMap((c) => [c.allowed_copy, c.allowed_copy_zh, ...(c.allowed_copy_extra ?? []), ...(c.allowed_copy_zh_extra ?? [])]);
+    expect(everything.filter((s) => s && /searches nothing|什么也搜不到|无法查票|Pro key|Pro 密钥/.test(s))).toEqual([]);
   });
 
   it("records the release as submitted, not live, with nothing that only a release can fill", () => {
@@ -127,7 +140,17 @@ describe("the facts registry", () => {
       }
     }
     const retired = CLAIMS.flatMap((c) => (c.retired_copy ?? []).map((text) => [c.claim_id, text] as const));
-    expect(retired.map(([id]) => id).sort()).toEqual(["developer_data", "filters", "grid", "grid"]);
+    // Since 2026-10-07 (build 4): the prerequisite's "searches nothing", the grid's "Pro key" headlines, the quota's "a Pro
+    // key allows", Ask as a feature of the app, and the privacy sentence that sent searches to Anthropic for Ask.
+    expect(Object.fromEntries(CLAIMS.filter((c) => c.retired_copy).map((c) => [c.claim_id, c.retired_copy!.length]))).toEqual({
+      prerequisite: 3,
+      grid: 8,
+      filters: 1,
+      quota: 1,
+      ask: 4,
+      privacy: 1,
+      developer_data: 1,
+    });
     for (const [id, text] of retired) {
       expect(scanContent(text, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), id).toContain("PENDING_CLAIM_TEXT");
     }
@@ -172,7 +195,9 @@ describe("the current tree", () => {
   });
 
   it("uses every exemption at least once, so a stale one fails", () => {
-    expect(result.exemptions.length).toBeGreaterThan(0);
+    // Since 2026-10-07 there are none: the privacy policy names AwardGrid for iPhone as the subject of "no accounts / no
+    // server" and links seats.aero in its footer, and en-US/ holds build 4's description, written from the registry.
+    expect(result.exemptions).toEqual([]);
     expect(result.exemptions.filter((e: { used: number }) => e.used === 0)).toEqual([]);
   });
 
@@ -348,7 +373,7 @@ describe("the public copy is the registry's", () => {
       .split(/^## .*$/m)
       .slice(1)
       .map((block) => block.replace(/\s+/g, " ").trim());
-    expect(answers).toHaveLength(9);
+    expect(answers).toHaveLength(10);
     const loose = sentences(answers).filter((s) => s !== "No." && s !== "Yes." && !registered.has(s));
     expect(loose).toEqual([]);
   });
