@@ -722,11 +722,12 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertEqual(caption, "每格显示最低里程数；不同计划的里程不等值。")
         first = draft.split("\n\n")[0]
         cell = first[first.index("：") + 1:]
-        # Third change: Ask's billing in the app's own words (apps/ios/src/screens/settings-copy.ts), not a flat price.
+        # Third change: Ask's billing in the app's own words (apps/ios/src/screens/anthropic-copy.ts, the Anthropic key
+        # page's copy since the App Store flavour split it out of settings-copy.ts), not a flat price.
         billing_old = "，并由 Anthropic 按每次提问向你的账户计费。"
         billing_new = "；每次提问由 Anthropic 按此密钥计费。"
         self.assertIn(billing_old, draft)
-        self.assertIn("每次提问由 Anthropic 按此密钥计费", (v.REPO_ROOT / "apps" / "ios" / "src" / "screens" / "settings-copy.ts").read_text(encoding="utf-8"))
+        self.assertIn("每次提问由 Anthropic 按此密钥计费", (v.REPO_ROOT / "apps" / "ios" / "src" / "screens" / "anthropic-copy.ts").read_text(encoding="utf-8"))
         expected = (
             draft.replace("：" + cell, "。" + caption, 1)
             .replace("。没有账号", "。App 没有账号", 1)
