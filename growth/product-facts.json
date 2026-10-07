@@ -35,8 +35,8 @@
       "docs/release/IOS_1.0_RELEASE.md:158 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
       "docs/release/IOS_1.0_RELEASE.md:119 \"`ea4bf2d` | The new icon and build 3\"",
       "docs/release/IOS_1.0_RELEASE.md:81-82 \"D4 | iPhone only\"",
-      "apps/ios/ios/App/App.xcodeproj/project.pbxproj:366-374 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
-      "apps/ios/ios/App/App.xcodeproj/project.pbxproj:387-394 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
+      "apps/ios/ios/App/App.xcodeproj/project.pbxproj:370-378 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
+      "apps/ios/ios/App/App.xcodeproj/project.pbxproj:391-398 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
       "docs/release/IOS_1.0_RELEASE.md:28-29 \"P7 | Price: Free\"",
       "apps/ios/ios/App/App/Info.plist:9-13 \"<key>CFBundleLocalizations</key>\"",
       "apps/ios/src/app/locale.ts:11-19 \"Chinese for any zh-* language tag, English otherwise.\"",
@@ -224,14 +224,14 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/src/search/search.ts:160-161 \"async parseText(text: string, apiKey: string | null)\"",
-        "apps/ios/src/search/search.ts:183-184 \"async searchQuery(query: QueryObject, apiKey: string | null)\"",
-        "apps/ios/src/search/search.ts:337-339 \"function noKey(): ApiFailure {\"",
+        "apps/ios/src/search/search.ts:161-162 \"async parseText(text: string, apiKey: string | null)\"",
+        "apps/ios/src/search/search.ts:184-185 \"async searchQuery(query: QueryObject, apiKey: string | null)\"",
+        "apps/ios/src/search/search.ts:340-342 \"function noKey(): ApiFailure {\"",
         "apps/ios/src/screens/SearchScreen.tsx:563-565 \") : hasKey === false ? (\"",
         "apps/ios/src/screens/OnboardingScreen.tsx:25-29 \"Find award seats across programs, from your own seats.aero account.\"",
         "docs/reference/seatsaero/getting-started-p.md:25-27 \"Seats.aero Pro users may be able to access the partner API\"",
         "[external] https://docs.seats.aero/article/68 (read 2026-09-28)",
-        "apps/ios/src/screens/settings-copy.ts:112 \"where: \"No API tab in your seats.aero settings? Then your account has no API access\"",
+        "apps/ios/src/screens/settings-copy.ts:127 \"where: \"No API tab in your seats.aero settings? Then your account has no API access\"",
         "docs/reference/seatsaero/getting-started-p.md:27 \"Not all Pro users can access the partner API key or retrieve an API key.\"",
         "apps/ios/src/components/results/copy.ts:212 \"no_key: \"Connect your seats.aero account in Settings.\",\""
       ],
@@ -343,7 +343,7 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/src/search/search.ts:154-166 \"Check the key and parse free text, sending nothing.\"",
+        "apps/ios/src/search/search.ts:155-167 \"Check the key and parse free text, sending nothing.\"",
         "apps/ios/src/screens/QueryEditorScreen.tsx:4-11 \"A full-height page, outside the tab chrome\"",
         "packages/core/src/lib/query/deterministic.ts:2-5 \"Deterministic NL → partial QueryObject\"",
         "packages/core/data/places.json:3 \"\"cities\": {\"",
@@ -387,7 +387,7 @@
         "packages/core/src/lib/query/deterministic.ts:102-104 \"[\"F\", /头等|頭等|\"",
         "packages/core/src/lib/query/dates.ts:134 \"re: /未来一个月|未來一個月|\"",
         "packages/core/src/lib/query/places.ts:170 \"const TO_WORD_RE =\"",
-        "apps/ios/src/search/search.ts:165 \"const parsed = await parseQuery(trimmed, { today:\"",
+        "apps/ios/src/search/search.ts:166 \"const parsed = await parseQuery(trimmed, { today:\"",
         "apps/ios/src/app/locale.ts:11-19 \"Chinese for any zh-* language tag, English otherwise.\""
       ],
       "allowed_copy": "You can also type a query in traditional characters, such as 臺北到東京 10月 頭等.",
@@ -586,10 +586,10 @@
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/watch/capabilities.ts:29-44 \"export const WATCH_CHECKS = {\"",
-        "apps/ios/src/app/App.tsx:369-377 \"Check watches now that the app is open\"",
+        "apps/ios/src/app/App.tsx:389-398 \"Check watches now that the app is open\"",
         "packages/core/src/lib/watch/watch.ts:154 \"export const DEFAULT_MIN_QUOTA = 25;\"",
         "packages/core/src/lib/watch/watch.ts:163-178 \"export function dueForCheck(watch: Watch, opts: DueOptions)\"",
-        "apps/ios/src/watch/runner.ts:93 \"quotaRemaining: quota.remaining,\"",
+        "apps/ios/src/watch/runner.ts:112 \"quotaRemaining: quota.remaining,\"",
         "packages/core/src/lib/seatsaero/quota.ts:106-108 \"/** Calls left before the SOFT limit\""
       ],
       "allowed_copy": "Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.",
@@ -615,10 +615,10 @@
         "packages/core/src/lib/seatsaero/quota.ts:90 \"this.softLimit = opts.softLimit ?? DEFAULT_SOFT_LIMIT;\"",
         "apps/ios/src/store/quota-store.ts:10 \"used(day) = max(locally counted calls, DAILY_LIMIT - X-RateLimit-Remaining)\"",
         "apps/ios/src/store/quota-store.ts:20-23 \"**It is keyed by UTC day**\"",
-        "apps/ios/src/app/bootstrap.ts:323 \"quota: new Quota({ store: quotaStore, now }),\"",
+        "apps/ios/src/app/bootstrap.ts:464 \"quota: new Quota({ store: quotaStore, now }),\"",
         "packages/core/src/lib/seatsaero/cache.ts:17 \"export const DEFAULT_CACHE_TTL_MINUTES = 45;\"",
         "packages/core/src/lib/seatsaero/cache.ts:406-410 \"/** Parse CACHE_TTL_MINUTES, falling back to 45 on garbage. */\"",
-        "apps/ios/src/search/search.ts:195-204 \"const result = await runFind({\"",
+        "apps/ios/src/search/search.ts:196-205 \"const result = await runFind({\"",
         "docs/reference/seatsaero/getting-started-p.md:25 \"Seats.aero Pro users may be able to access the partner API for up to 1,000 API calls per day\"",
         "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
       ],
@@ -650,7 +650,7 @@
         "apps/ios/src/ask/ask-service.ts:558-559 \"Release D10: without the person's permission nothing goes to Anthropic\"",
         "LEGAL.md:35-36 \"In the iOS app, Ask is optional and runs only on the user's own Anthropic API key\"",
         "LEGAL.md:44-49 \"sent to Anthropic; the app makes every seats.aero call itself.\"",
-        "apps/ios/src/search/search.ts:156-157 \"No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key\""
+        "apps/ios/src/search/search.ts:157-158 \"No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key\""
       ],
       "allowed_copy": "Ask is optional: it answers questions about your results with Claude, on your own Anthropic API key, after you allow it. Anthropic bills each question to that key.",
       "allowed_copy_zh": "AI 辅助（Ask）是可选功能，需要你自己的 Anthropic API 密钥。每次提问由 Anthropic 按此密钥计费。",
@@ -804,8 +804,8 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/src/screens/settings-copy.ts:95 \"\"AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero\"",
-        "apps/ios/src/screens/settings-copy.ts:154 \"notAffiliated: STORE ? \"AwardGrid 与 seats.aero\"",
+        "apps/ios/src/screens/settings-copy.ts:110 \"\"AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero\"",
+        "apps/ios/src/screens/settings-copy.ts:180 \"notAffiliated: STORE ? \"AwardGrid 与 seats.aero\"",
         "LEGAL.md:57-59 \"Programs are referred to by their plain text names.\"",
         "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\""
