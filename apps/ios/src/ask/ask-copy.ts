@@ -25,6 +25,8 @@ export interface AskCopy {
   suggestionsWithoutSearch: readonly string[];
   openSettings: string;
   noSeatsKey: string;
+  /** Sample mode (release plan step 17): Ask stays off over sample data. */
+  sampleOff: string;
   busy: string;
   /** Release D10: the service refused because Ask has no permission to send data to Anthropic. */
   noConsent: string;
@@ -98,6 +100,7 @@ export const ASK_COPY: Record<Locale, AskCopy> = {
     ],
     openSettings: "Open Settings",
     noSeatsKey: "Ask searches seats.aero through your own seats.aero account. Connect it in Settings first.",
+    sampleOff: "Ask is off while the app shows sample data. Exit sample data to use it with your own accounts.",
     busy: "A question is already running. Stop it or wait for the answer.",
     noConsent: "Nothing was sent: Ask needs your permission before it sends anything to Anthropic.",
     cleared: "Conversation cleared.",
@@ -156,6 +159,7 @@ export const ASK_COPY: Record<Locale, AskCopy> = {
     suggestionsWithoutSearch: ["未来 60 天从 SFO 到东京最便宜的商务舱？", "下个月从伦敦到纽约的头等舱：哪些计划有座位？"],
     openSettings: "打开设置",
     noSeatsKey: "AI 辅助通过你自己的 seats.aero 账户查询。请先在设置中连接。",
+    sampleOff: "显示示例数据时，AI 辅助不可用。退出示例数据后，可用你自己的账户使用。",
     busy: "已有问题在进行中。请停止它，或等待回答。",
     noConsent: "没有发送任何内容：AI 辅助需要先获得你的许可，才会向 Anthropic 发送数据。",
     cleared: "对话已清除。",

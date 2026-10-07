@@ -10,6 +10,9 @@
  * above the tab bar, for 5 seconds — longer while focus or a pointer is in it. A restore that cannot be written keeps
  * the Undo offered and says the item is still deleted.
  *
+ * Trip plans (release plan step 18) come first when there are any (components/plan/SavedPlans.tsx): searches typed into
+ * the planner and kept without being run, each with the way to run it. Deleting one works the same way, with Undo.
+ *
  * A saved snapshot opened (`SavedScreen`) shows what the Search screen showed — the rows the query asked for, in its
  * order (core projectResults) — from this device, with the note and its coverage. Nothing is fetched or refreshed.
  * "Search again" shows the conditions (with the year) and what it sends, and runs only when confirmed; dates that
@@ -26,21 +29,27 @@ import { cabinName } from "@awardgrid/core/workspace/query-editor";
 import type { Cabin } from "@awardgrid/core/query/schema";
 import type { FavoriteV1 } from "@awardgrid/core/workspace/types";
 import type { Locale } from "../app/locale";
-import { useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useOutletContext, useParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
+import { isSample } from "../app/data-source";
+import { localDate } from "../app/local-date";
 import { CAN_CONNECT } from "../app/flags";
 import { useFocusOnArrival } from "../app/focus";
 import { langTag, useLocale } from "../app/locale";
 import { TraySlot } from "../app/tray-slot";
 import { shortDateTime } from "../app/when";
+import { SavedPlans, planTitleId } from "../components/plan/SavedPlans";
 import { AvailabilityList } from "../components/results/AvailabilityList";
 import { RESULTS } from "../components/results/copy";
 import { Button, Icon, Notice, Sheet } from "../components/ui";
 import { favoriteSnapshot, savedOptionIdentity } from "../store/favorites-store";
+import type { PlanV1 } from "../store/plans-store";
 import { DEFAULT_PREFERENCES } from "../workspace/workspace-store";
+import { SAMPLE } from "../sample/sample-copy";
+import { PLAN } from "../components/plan/plan-copy";
 import { FAVORITES } from "./favorites-copy";
 import "./favorites.css";
 
@@ -88,17 +97,32 @@ export function FavoritesScreen() {
   const locale = useLocale(services);
   const f = FAVORITES[locale];
   const items = useFavorites(services);
+  const plans = useSyncExternalStore(services.plans.subscribe, services.plans.all, services.plans.all);
   const usage = services.favorites.usage();
   const readOnly = services.favorites.isReadOnly();
   const unreadable = services.favorites.unreadableCount();
   const [status, setStatus] = useState<{ text: string; tail?: string; ok: boolean } | null>(null);
-  const [undo, setUndo] = useState<{ token: string; id: string } | null>(null);
+  // A deleted saved result or trip plan, with the token that puts it back.
+  const [undo, setUndo] = useState<{ token: string; id: string; kind: "result" | "plan" } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const undoButton = useRef<HTMLButtonElement>(null);
   const traySlot = useContext(TraySlot);
   const english = locale === "en" ? undefined : "en";
+  // Whether a data source is connected, for the trip plans' action: read once, sending nothing; unknown until the
+  // Keychain answers.
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void services.keys
+      .get()
+      .then((key) => live && setHasKey(Boolean(key)))
+      .catch(() => live && setHasKey(false));
+    return () => {
+      live = false;
+    };
+  }, [services]);
 
   // Arrived from a link that unmounts (Back from a snapshot, "View in Saved"): focus goes where it asks.
   const returnTo = (useLocation().state as { focus?: string } | null)?.focus ?? null;
@@ -109,25 +133,29 @@ export function FavoritesScreen() {
   // The undo: offered for 5 seconds, held while focus or a pointer is in its bar; forgotten when it closes or the
   // screen is left, and focus is not left on nothing when it closes.
   const [held, setHeld] = useState(false);
-  const pending = useRef<string | null>(null);
+  const pending = useRef<{ token: string; kind: "result" | "plan" } | null>(null);
+  const forget = useCallback(
+    (offered: { token: string; kind: "result" | "plan" }) => (offered.kind === "plan" ? services.plans : services.favorites).forget(offered.token),
+    [services],
+  );
   // A closed bar holds nothing.
   if (!undo && held) setHeld(false);
   useEffect(() => {
     if (!undo || held) return;
     const timer = window.setTimeout(() => {
       const hadFocus = bar.current?.contains(document.activeElement) ?? false;
-      services.favorites.forget(undo.token);
+      forget(undo);
       pending.current = null;
       setUndo(null);
       if (hadFocus) window.requestAnimationFrame(() => title.current?.focus());
     }, UNDO_MS);
     return () => window.clearTimeout(timer);
-  }, [undo, held, services]);
+  }, [undo, held, forget]);
   useEffect(
     () => () => {
-      if (pending.current) services.favorites.forget(pending.current);
+      if (pending.current) forget(pending.current);
     },
-    [services],
+    [forget],
   );
 
   const name = (item: FavoriteV1) => `${routeLabel(item.query, locale)}, ${savedOptionLine(item, locale) ?? querySubline(item.query, locale)}`;
@@ -145,10 +173,31 @@ export function FavoritesScreen() {
       return;
     }
     // An earlier undo still offered is replaced: forget it.
-    if (pending.current) services.favorites.forget(pending.current);
-    pending.current = result.undo;
-    setUndo({ token: result.undo, id: item.id });
+    if (pending.current) forget(pending.current);
+    pending.current = { token: result.undo, kind: "result" };
+    setUndo({ token: result.undo, id: item.id, kind: "result" });
     // Said, with the way back; focus goes to Undo, so the way back is one action away.
+    window.requestAnimationFrame(() => {
+      setStatus({ text: f.removedUndo, ok: true });
+      undoButton.current?.focus();
+    });
+  };
+
+  /** Delete a trip plan, the same way: at once, said, with Undo for 5 seconds. */
+  const removePlan = async (plan: PlanV1) => {
+    if (busy) return;
+    setBusy(plan.id);
+    setStatus(null);
+    const result = await services.plans.remove(plan.id);
+    setBusy(null);
+    if (!result.ok) {
+      if (result.reason === "unknown") return;
+      setStatus(result.reason === "write_failed" ? { text: f.removeFailed(result.message), tail: result.message, ok: false } : { text: PLAN[locale].readOnly, ok: false });
+      return;
+    }
+    if (pending.current) forget(pending.current);
+    pending.current = { token: result.undo, kind: "plan" };
+    setUndo({ token: result.undo, id: plan.id, kind: "plan" });
     window.requestAnimationFrame(() => {
       setStatus({ text: f.removedUndo, ok: true });
       undoButton.current?.focus();
@@ -157,24 +206,24 @@ export function FavoritesScreen() {
 
   const restore = async () => {
     if (!undo) return;
-    const { token, id } = undo;
-    const result = await services.favorites.undo(token);
+    const { token, id, kind } = undo;
+    const result = await (kind === "plan" ? services.plans : services.favorites).undo(token);
     if (result.ok) {
       pending.current = null;
       setUndo(null);
       setStatus({ text: f.undone, ok: true });
-      window.requestAnimationFrame(() => document.getElementById(`saved-open-${id}`)?.focus());
+      window.requestAnimationFrame(() => document.getElementById(kind === "plan" ? planTitleId(id) : `saved-open-${id}`)?.focus());
       return;
     }
     if (result.reason === "write_failed") {
       // Still deleted, and still offered: said so, with the time to try again.
-      setUndo({ token, id });
+      setUndo({ token, id, kind });
       setStatus({ text: f.undoFailed(result.message), tail: result.message, ok: false });
       return;
     }
     pending.current = null;
     setUndo(null);
-    setStatus({ text: result.reason === "capacity" ? f.undoFull : f.gone, ok: false });
+    setStatus({ text: result.reason === "capacity" ? f.undoFull : kind === "plan" ? PLAN[locale].gone : f.gone, ok: false });
     window.requestAnimationFrame(() => title.current?.focus());
   };
 
@@ -213,9 +262,12 @@ export function FavoritesScreen() {
         {status ? <WithTail text={status.text} tail={status.tail} tailLang={english} /> : ""}
       </p>
 
+      <SavedPlans services={services} locale={locale} hasKey={hasKey} busy={busy} onRemove={(plan) => void removePlan(plan)} />
+
       {items.length === 0 ? (
         // A store that cannot be read is not an empty one: the notice above says so, and nothing here invites saving.
-        readOnly ? null : (
+        // Kept trip plans are not results either, but they are something saved: no "Nothing saved yet" over them.
+        readOnly || plans.length > 0 ? null : (
           <div className="ag-saved-empty">
             <h2 className="ag-saved-empty-title">{f.emptyTitle}</h2>
             <p className="ag-saved-intro">{f.emptyBody}</p>
@@ -299,7 +351,7 @@ export function SavedScreen() {
     else setRefresh(null);
   };
   const stale = Boolean(item?.rowsRemoved);
-  const pastNow = item ? item.query.date_to < now.toISOString().slice(0, 10) : false;
+  const pastNow = item ? item.query.date_to < localDate(now) : false;
   useEffect(() => {
     if (!stale || pastNow || hasKey !== true || refreshed.current) return;
     refreshed.current = true;
@@ -327,8 +379,8 @@ export function SavedScreen() {
   }
 
   const projected = shown(item);
-  // The saved dates against today (UTC, the query's own clock): all past, or partly.
-  const today = now.toISOString().slice(0, 10);
+  // The saved dates against today on this device's calendar: all past, or partly.
+  const today = localDate(now);
   const allPast = item.query.date_to < today;
   const somePast = !allPast && item.query.date_from < today;
   const removed = item.rowsRemoved ?? null;
@@ -423,7 +475,8 @@ export function SavedScreen() {
           <>
             {somePast ? <p className="ag-saved-confirm">{f.pastSome}</p> : null}
             <p className="ag-saved-confirm">{f.confirmBody}</p>
-            <p className="ag-saved-confirm">{f.confirmSends}</p>
+            {/* Over sample data nothing is sent: the live sentence is about seats.aero requests and today's calls. */}
+            <p className="ag-saved-confirm">{isSample(services) ? SAMPLE[locale].savedSearchAgain : f.confirmSends}</p>
             <div className="ag-saved-card-actions">
               <Button variant="primary" onClick={run}>
                 {f.confirmRun}

@@ -3,6 +3,10 @@
  * renew a refused token, the 24-hour limit at launch and on a sweep, Saved searched again, Disconnect's purge and a
  * revoked grant's — with seats.aero, the token service and the sign-in sheet faked, and the files in memory. The key
  * flavour is checked beside it: no account, no limit, nothing pruned.
+ *
+ * Sample mode (release plan steps 16-17) in the OAuth flavour, at the end: it boots with no account, so no token is
+ * read, written or removed; the account's own files still lose what passes 24 hours while it runs; and Disconnect
+ * never touches sample/.
  */
 import { describe, expect, it, vi } from "vitest";
 import { fakeFetch, jsonResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
@@ -11,9 +15,11 @@ import type { Watch } from "@awardgrid/core/watch";
 import { MemoryKeyStore } from "../native/keychain";
 import type { BrokerResult, TokenBroker } from "../oauth/broker";
 import { CALLBACK_SCHEME } from "../oauth/connect";
-import { MemoryTokenVault } from "../oauth/token-vault";
+import { MemoryTokenVault, type TokenVault } from "../oauth/token-vault";
+import { SAMPLE_PREFIX, enterSampleData } from "../sample/boot";
 import { CACHE_FILE, MemoryFileStore, SnapshotStore } from "../store/persistence";
 import { type BootstrapOptions, bootstrap } from "./bootstrap";
+import { readDataSource, resolveBoot, writeDataSource } from "./data-source";
 
 const T0 = Date.parse("2026-10-01T00:00:00.000Z");
 const HOUR = 3600_000;
@@ -91,20 +97,24 @@ function session(over: Partial<Session> = {}): Session {
   };
 }
 
-function boot(s: Session, extra: Partial<BootstrapOptions> = {}) {
-  return bootstrap({
+/** The options the account's services boot with in the OAuth flavour, over the session's parts (`vault` by default). */
+function liveOptions(s: Session, vault: TokenVault = s.vault): BootstrapOptions {
+  return {
     snapshots: new SnapshotStore(s.files),
     now: () => new Date(s.now.t),
     fetchImpl: s.seats.fetchImpl,
     oauth: {
-      vault: s.vault,
+      vault,
       broker: s.service.broker,
       clientId: "test-client",
       legacyKeys: null,
       authorize: async (url) => ({ ok: true, url: `${CALLBACK_SCHEME}://oauth/seats?code=good-code&state=${new URL(url).searchParams.get("state")}` }),
     },
-    ...extra,
-  });
+  };
+}
+
+function boot(s: Session, extra: Partial<BootstrapOptions> = {}) {
+  return bootstrap({ ...liveOptions(s), ...extra });
 }
 
 function watch(): Watch {
@@ -328,5 +338,162 @@ describe("the OAuth flavour", () => {
       expect(disk(s.files)).not.toContain("81234");
     });
     expect(await svc.seatsAccount!.connected()).toBe(false);
+  });
+});
+
+/** A token vault that counts every read, write and removal (sample mode must make none), over `inner`. */
+function countingVault(inner: TokenVault) {
+  const counts = { read: 0, write: 0, clear: 0 };
+  const vault: TokenVault = {
+    read: async () => {
+      counts.read += 1;
+      return inner.read();
+    },
+    write: async (tokens) => {
+      counts.write += 1;
+      await inner.write(tokens);
+    },
+    clear: async () => {
+      counts.clear += 1;
+      await inner.clear();
+    },
+  };
+  return { vault, counts };
+}
+
+/** sample/'s files, by path: what sample mode keeps. */
+const sampleFiles = (files: MemoryFileStore) => Object.fromEntries([...files.files].filter(([path]) => path.startsWith(SAMPLE_PREFIX)));
+/** Every other file's text, joined: the account's files. */
+const accountDisk = (files: MemoryFileStore) =>
+  [...files.files]
+    .filter(([path]) => !path.startsWith(SAMPLE_PREFIX))
+    .map(([, text]) => text)
+    .join("\n");
+
+/** The account's results on disk at s.now: a search, a Saved item and a watch's baseline, as in the tests above. */
+async function accountWithResults(s: Session) {
+  const live = await boot(s);
+  expect((await live.searchText(QUERY)).ok).toBe(true);
+  await live.favorites.save(favoriteFromSnapshot(live.workspace.getState().displayedSnapshot!, new Date(s.now.t).toISOString(), "f1"));
+  live.watches.add(watch());
+  await live.checkWatches();
+  await live.persist();
+  expect(accountDisk(s.files)).toContain("81234");
+  return live;
+}
+
+const noHooks = { beforeSwitch: async () => {}, reboot: () => {} };
+
+describe("sample mode in the OAuth flavour", () => {
+  it("boots with no account: no token is read, nothing can be disconnected, no limit on sample data; searches run on sample data", async () => {
+    const s = session();
+    const { vault, counts } = countingVault(s.vault);
+    await enterSampleData(s.files);
+    const options = await resolveBoot(liveOptions(s, vault), noHooks);
+    expect(options.oauth).toBeNull();
+    expect(options.shortTermMs).toBeNull();
+    const svc = await bootstrap(options);
+    expect(svc.dataSource.kind).toBe("sample");
+    expect(svc.seatsAccount).toBeNull();
+    expect(svc.shortTermMs).toBeNull();
+    expect((await svc.searchText(QUERY)).ok).toBe(true);
+    const shown = svc.workspace.getState().displayedSnapshot!;
+    expect(shown.rows.length).toBeGreaterThan(0);
+    await svc.favorites.save(favoriteFromSnapshot(shown, new Date(s.now.t).toISOString(), "f1"));
+    await svc.persist();
+    // Sample data is made on this device: a day later it is all still there.
+    s.now.t += 25 * HOUR;
+    await svc.sweepShortTerm();
+    expect(svc.workspace.getState().displayedSnapshot?.rows.length).toBe(shown.rows.length);
+    expect(svc.favorites.get("f1")!.rowsRemoved).toBeUndefined();
+    // Nothing went to seats.aero, and the Keychain's tokens were never read, written or removed.
+    expect(s.seats.state.calls).toBe(0);
+    expect(counts).toEqual({ read: 0, write: 0, clear: 0 });
+    expect(await s.vault.read()).not.toBeNull();
+  });
+
+  it("the account's own files lose what passes 24 hours while sample mode runs; no token is read and sample/ is untouched", async () => {
+    const s = session();
+    await accountWithResults(s);
+    const calls = s.seats.state.calls;
+
+    // Into sample mode; the account's services are not running any more.
+    const { vault, counts } = countingVault(s.vault);
+    await enterSampleData(s.files);
+    const svc = await bootstrap(await resolveBoot(liveOptions(s, vault), noHooks));
+    expect((await svc.searchText(QUERY)).ok).toBe(true);
+    await svc.persist();
+    const sweepAccount = svc.dataSource.sweepAccount;
+    expect(sweepAccount).toBeTypeOf("function");
+    const sampleBefore = sampleFiles(s.files);
+    expect(Object.keys(sampleBefore).length).toBeGreaterThan(0);
+
+    // Within 24 hours the sweep keeps the account's results.
+    s.now.t += 23 * HOUR;
+    await sweepAccount!();
+    expect(accountDisk(s.files)).toContain("81234");
+
+    // Past them, it removes them from every file and both slots: cache, workspace, Saved rows, the watch's baseline.
+    s.now.t += 2 * HOUR;
+    await sweepAccount!();
+    expect(accountDisk(s.files)).not.toContain("81234");
+    expect(sampleFiles(s.files)).toEqual(sampleBefore);
+    expect(s.seats.state.calls).toBe(calls);
+    expect(counts).toEqual({ read: 0, write: 0, clear: 0 });
+
+    // Back on the account (its next launch): Saved keeps the search and a summary, and the watch starts over.
+    await writeDataSource(s.files, "live");
+    s.vault = new MemoryTokenVault({ access: "seats:ota:first", refresh: "seats:otr:one", expiresAt: s.now.t + 3599_000 });
+    const later = await boot(s);
+    expect(later.favorites.get("f1")).toMatchObject({ rows: [], query: expect.anything() });
+    expect(later.favorites.get("f1")!.rowsRemoved).toBeDefined();
+    expect(later.watches.get("w1")).toMatchObject({ baseline: [], text: QUERY });
+  });
+
+  it("leaving sample mode waits for a sweep under way and runs no more", async () => {
+    const s = session();
+    await accountWithResults(s);
+    await enterSampleData(s.files);
+    const reboot = vi.fn();
+    const svc = await bootstrap(await resolveBoot(liveOptions(s), { beforeSwitch: async () => {}, reboot }));
+    s.now.t += 25 * HOUR;
+    let swept = false;
+    const sweeping = svc.dataSource.sweepAccount!().then(() => (swept = true));
+    await svc.dataSource.exitSample();
+    // The sweep finished before the exit went on to boot the account's services over the same files.
+    expect(swept).toBe(true);
+    await sweeping;
+    expect(reboot).toHaveBeenCalledTimes(1);
+    expect(await readDataSource(s.files)).toBe("live");
+    const write = vi.spyOn(s.files, "write");
+    await svc.dataSource.sweepAccount!();
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("the key flavour's sample mode has no account sweep", async () => {
+    const files = new MemoryFileStore();
+    await enterSampleData(files);
+    const options = await resolveBoot({ snapshots: new SnapshotStore(files), now: () => new Date(T0), oauth: null }, noHooks);
+    expect(options.dataSource?.kind).toBe("sample");
+    expect(options.dataSource?.sweepAccount).toBeUndefined();
+  });
+
+  it("Disconnect never touches sample/", async () => {
+    const s = session();
+    // sample/ as an exit that stopped part-way leaves it: the choice written back to the account, the files not yet
+    // deleted (the next visit clears them on the way in).
+    await enterSampleData(s.files);
+    const sample = await bootstrap(await resolveBoot(liveOptions(s), noHooks));
+    expect((await sample.searchText(QUERY)).ok).toBe(true);
+    await sample.persist();
+    await writeDataSource(s.files, "live");
+    const sampleBefore = sampleFiles(s.files);
+    expect(Object.keys(sampleBefore).length).toBeGreaterThan(1);
+
+    const live = await accountWithResults(s);
+    expect(live.dataSource.kind).toBe("live");
+    expect(await live.seatsAccount!.disconnect()).toEqual({ ok: true });
+    expect(accountDisk(s.files)).not.toContain("81234");
+    expect(sampleFiles(s.files)).toEqual(sampleBefore);
   });
 });

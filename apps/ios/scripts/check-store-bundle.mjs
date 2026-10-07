@@ -43,6 +43,10 @@ export const NEEDLES = [
   "AI 对话",
   "AI (optional)",
   "AI（可选）",
+  // The query editor's note that no AI is used: true in every build, but in this one, which has no AI, it only points
+  // at a feature that is not there (simulator QA, plan step 20). The store build says what the editor does instead.
+  "No AI",
+  "不使用 AI",
   // A paid plan, a purchase or a subscription.
   "Paste your Pro key",
   "Pro 密钥",

@@ -24,6 +24,10 @@
       docs/release/APP_STORE_HANDOFF.md §6 lists what is sent and kept, with its sources, and LEGAL.md says the same
       for the repository. The App Privacy answers in App Store Connect and apps/ios/ios/App/App/PrivacyInfo.xcprivacy
       must match this page. Change them together, and change this page first.
+      Since 2026-10-07 (build 4, release plan step 22) the page describes the App Store version: sample data sends
+      nothing; Ask, and so Anthropic, is in test builds and the web app only; the label lists Search History alone
+      (decision D8); and "no accounts / no server of its own" is said of AwardGrid for iPhone, never of AwardGrid alone,
+      which is also the web app's name.
       No script in this file and no webfont request (honesty.test.ts scans it). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the section "This website" says so.
     -->
     <link rel="stylesheet" href="../styles.css" />
@@ -39,22 +43,29 @@
       <header>
         <p class="eyebrow">Privacy policy</p>
         <h1>AwardGrid for iPhone</h1>
-        <p class="doc-meta">Last updated 27 September 2026.</p>
+        <p class="doc-meta">Last updated 7 October 2026.</p>
       </header>
 
       <section aria-labelledby="short-h">
         <h2 id="short-h">In short</h2>
         <ul>
           <li>
-            AwardGrid has no accounts and no server of its own. Its developer receives none of your data: there is no
-            analytics, advertising, tracking or crash reporting in the app.
+            AwardGrid for iPhone has no accounts and no server of its own. Its developer receives none of your data:
+            there is no analytics, advertising, tracking or crash reporting in the app.
           </li>
-          <li>To search, the app sends your search to seats.aero, with your own seats.aero API key.</li>
+          <li>With sample data, the app sends nothing: sample data is made on your device.</li>
           <li>
-            Only if you add your own Anthropic API key and allow it, Ask sends your questions, and the search data
-            they need, to Anthropic.
+            With your own seats.aero account connected, the app sends your search to seats.aero, with your own
+            seats.aero API key.
           </li>
-          <li>Your keys stay in your device's Keychain. Everything else the app keeps stays in its own storage on your device.</li>
+          <li>
+            The App Store version sends nothing to Anthropic: Ask, which does, is only in the app's test builds and in
+            the separate web app.
+          </li>
+          <li>
+            Your seats.aero key, if you add one, stays in your device's Keychain. Everything else the app keeps stays in
+            its own storage on your device.
+          </li>
           <li>
             This website, not the app, counts visits with Cloudflare Web Analytics, without cookies (see
             <a href="#site-h">This website</a>).
@@ -65,10 +76,18 @@
       <section aria-labelledby="sent-h">
         <h2 id="sent-h">What the app sends, and to whom</h2>
 
-        <h3>seats.aero, for every search</h3>
+        <h3>Sample data: nothing</h3>
         <p>
-          AwardGrid gets award availability only from the seats.aero Partner API, with the API key you add. It sends
-          seats.aero:
+          Without a seats.aero account, AwardGrid shows sample data: invented results, made on your device for the
+          routes and dates you search, and labelled "Sample data" on every screen that shows them. While sample data is
+          on, searching, flight details, watches and the app's other features send nothing to seats.aero or to anyone
+          else.
+        </p>
+
+        <h3>seats.aero, for every search on your account</h3>
+        <p>
+          With your own seats.aero account connected, AwardGrid gets award availability only from the seats.aero
+          Partner API, with the API key you add. It sends seats.aero:
         </p>
         <ul>
           <li>your seats.aero API key, in the header that authorizes each request;</li>
@@ -77,15 +96,20 @@
         </ul>
         <p>
           These requests are made when you search, when you check a key before saving it, when you open flight
-          details, when you open or return to the app while you have watches, and when Ask searches for a question.
-          seats.aero handles them under its own terms (<a href="https://seats.aero/terms">seats.aero/terms</a>) and
+          details, and when you open or return to the app while you have watches (in a test build with Ask, also when
+          Ask searches for a question). seats.aero handles them under its own terms (<a href="https://seats.aero/terms">seats.aero/terms</a>) and
           privacy practices.
         </p>
 
-        <h3>Anthropic, only for Ask, only with your permission</h3>
+        <h3>Anthropic: only for Ask, in test builds</h3>
         <p>
-          Ask is optional. It works only with your own Anthropic API key, and before your first question the app asks
-          for your permission to send data to Anthropic. A question sends Anthropic:
+          The App Store version of AwardGrid for iPhone has no Ask and sends nothing to Anthropic. Ask, which answers
+          questions about your results with Claude on your own Anthropic API key, is in the app's test builds and in
+          the separate web app only. The rest of this section is for a test build of the iPhone app.
+        </p>
+        <p>
+          In a test build, Ask is optional. It works only with your own Anthropic API key, and before your first
+          question the app asks for your permission to send data to Anthropic. A question sends Anthropic:
         </p>
         <ul>
           <li>the question, and today's date;</li>
@@ -111,8 +135,8 @@
 
         <h3>Nothing else</h3>
         <p>
-          Like any internet request, a request to seats.aero or Anthropic shows that service your device's IP address.
-          The app sends nothing to any other server, and none to its developer. If you choose, in iOS, to share
+          Like any internet request, a request to seats.aero (or, in a test build with Ask, to Anthropic) shows that
+          service your device's IP address. The app sends nothing to any other server, and none to its developer. If you choose, in iOS, to share
           analytics with app developers, or you test the app through TestFlight, Apple may pass crash reports or the
           feedback you send to the developer; those are Apple's features, under your device's settings and Apple's
           policies.
@@ -123,14 +147,22 @@
         <h2 id="kept-h">What stays on your device</h2>
         <ul>
           <li>
-            <strong>Keychain:</strong> your seats.aero key and, if you add one, your Anthropic key. They are kept for
-            this device only and not synced through iCloud Keychain. The app shows only their last four characters.
+            <strong>Keychain:</strong> your seats.aero key, if you connect your account (and, in a test build with Ask,
+            your Anthropic key, if you add one). Keys are kept for this device only and not synced through iCloud
+            Keychain. The app shows only their last four characters.
           </li>
           <li>
-            <strong>The app's own files:</strong> search results it has cached (for 45 minutes, so repeating a search
-            costs no calls); today's count of seats.aero calls; your watches; the search and results on screen, and how
-            you view them; results you save; your settings (language, appearance, and whether Ask may send data to
-            Anthropic); and your Ask conversation, until you start a new one.
+            <strong>The app's own files:</strong> whether you use sample data or your seats.aero account; search
+            results it has cached (for 45 minutes, so repeating a search costs no calls); today's count of seats.aero
+            calls; your watches; the search and results on screen, and how you view them; results you save; trip plans
+            you save; and your settings (language and appearance). In a test build with Ask, also whether Ask may send
+            data to Anthropic, and your Ask conversation, until you start a new one.
+          </li>
+          <li>
+            <strong>Sample data:</strong> while it is on, the app keeps its own copies of these files (its cached
+            results, watches, saved results and plans, the search on screen and settings) in a separate folder, and
+            exiting sample data deletes them. Sample data never reads or changes your seats.aero key or today's count
+            of seats.aero calls.
           </li>
         </ul>
         <p>
@@ -142,27 +174,30 @@
       <section aria-labelledby="choices-h">
         <h2 id="choices-h">Your choices</h2>
         <ul>
-          <li>Remove either key in Settings.</li>
+          <li>Remove your seats.aero key in Settings.</li>
           <li>Clear cached results in Settings.</li>
-          <li>Start a new conversation in Ask to delete the conversation from the device.</li>
-          <li>Withdraw Ask's permission on the Anthropic key page in Settings.</li>
+          <li>Exit sample data to delete everything sample data kept.</li>
           <li>
-            Delete the app to delete its files. iOS may keep the keys in the Keychain after the app is deleted, so
-            remove them in Settings first if you want them gone.
+            In a test build with Ask: remove the Anthropic key in Settings, start a new conversation in Ask to delete
+            the conversation from the device, and withdraw Ask's permission on the Anthropic key page in Settings.
+          </li>
+          <li>
+            Delete the app to delete its files. iOS may keep keys in the Keychain after the app is deleted, so remove
+            them in Settings first if you want them gone.
           </li>
         </ul>
         <p>
-          What seats.aero or Anthropic received is held by them, under their own policies; ask them about it. AwardGrid
-          has no copy, so it cannot delete it for you.
+          What seats.aero (or, for Ask in a test build, Anthropic) received is held by them, under their own policies;
+          ask them about it. AwardGrid has no copy, so it cannot delete it for you.
         </p>
       </section>
 
       <section aria-labelledby="label-h">
         <h2 id="label-h">The App Store privacy label</h2>
         <p>
-          The label lists Search History and Other User Content as data linked to you, used for app functionality, and
-          no data used to track you. That is what the app sends to seats.aero and Anthropic on your own accounts, as set
-          out above. The developer does not receive it.
+          The label of the App Store version lists Search History as data linked to you, used for app functionality,
+          and no data used to track you. That is what the app sends to seats.aero on your own account, as set out
+          above. The developer does not receive it.
         </p>
       </section>
 
@@ -185,15 +220,16 @@
         </p>
         <p>
           The app does not include this script and sends nothing to Cloudflare. Opening one of these pages from the app
-          is a visit like any other.
+          (Settings › Privacy policy or Support) opens it in Safari, as a visit like any other; as you tap the link,
+          iOS may already open a connection to awardgrid.dowhiz.com, which shows Cloudflare your IP address.
         </p>
       </section>
 
       <section aria-labelledby="changes-h">
         <h2 id="changes-h">Changes</h2>
         <p>
-          If what the app sends changes, this page changes first, with a new date. If Ask would send something new to
-          Anthropic, the app asks for your permission again.
+          If what the app sends changes, this page changes first, with a new date. In a test build with Ask, if Ask
+          would send something new to Anthropic, the app asks for your permission again.
         </p>
       </section>
 
@@ -214,32 +250,43 @@
       <section id="zh" lang="zh-CN" aria-labelledby="zh-h">
         <p class="eyebrow">隐私政策</p>
         <h2 id="zh-h">AwardGrid iPhone 版</h2>
-        <p class="doc-meta">最后更新：2026 年 9 月 27 日。</p>
+        <p class="doc-meta">最后更新：2026 年 10 月 7 日。</p>
 
         <h3>概要</h3>
         <ul>
-          <li>AwardGrid 没有账号，也没有自己的服务器。开发者不会收到你的任何数据：应用中没有统计分析、广告、跟踪或崩溃报告。</li>
-          <li>查票时，应用使用你自己的 seats.aero API 密钥，把你的查询发送给 seats.aero。</li>
-          <li>只有在你添加了自己的 Anthropic API 密钥并允许之后，AI 辅助才会把你的问题及其所需的查询数据发送给 Anthropic。</li>
-          <li>你的密钥保存在本机钥匙串中。应用保存的其他内容都留在本机上它自己的存储中。</li>
+          <li>AwardGrid iPhone 版没有账号，也没有自己的服务器。开发者不会收到你的任何数据：应用中没有统计分析、广告、跟踪或崩溃报告。</li>
+          <li>使用示例数据时，应用不发送任何内容：示例数据在本机生成。</li>
+          <li>连接你自己的 seats.aero 账户后，查票时应用使用你自己的 seats.aero API 密钥，把你的查询发送给 seats.aero。</li>
+          <li>App Store 版本不向 Anthropic 发送任何内容：会发送的 AI 辅助（Ask）只在应用的测试版本和独立的网页应用里。</li>
+          <li>你添加的 seats.aero 密钥保存在本机钥匙串中。应用保存的其他内容都留在本机上它自己的存储中。</li>
           <li>本网站（不是应用）用 Cloudflare Web Analytics 统计访问，不使用 cookie（见<a href="#zh-site">本网站</a>）。</li>
         </ul>
 
         <h3>应用发送什么，发给谁</h3>
-        <h4>seats.aero：每次查票</h4>
-        <p>AwardGrid 只通过 seats.aero Partner API、使用你添加的 API 密钥获取里程票数据。它会向 seats.aero 发送：</p>
+        <h4>示例数据：不发送任何内容</h4>
+        <p>
+          没有 seats.aero 账户时，AwardGrid 显示示例数据：在本机按你查询的航线和日期生成的虚构结果，每个显示它的页面都标注“示例数据”。示例数据开启期间，查票、航班详情、关注以及应用的其他功能都不会向
+          seats.aero 或任何其他方发送内容。
+        </p>
+
+        <h4>seats.aero：用你的账户每次查票</h4>
+        <p>连接你自己的 seats.aero 账户后，AwardGrid 只通过 seats.aero Partner API、使用你添加的 API 密钥获取里程票数据。它会向 seats.aero 发送：</p>
         <ul>
           <li>你的 seats.aero API 密钥，放在为每个请求授权的请求头中；</li>
           <li>你的查询：机场、日期、舱位、里程计划及类似筛选条件；</li>
           <li>打开某个结果的航班详情时，该结果的 availability ID。</li>
         </ul>
         <p>
-          这些请求发生在：你查票时、保存前检查密钥时、打开航班详情时、你有关注并打开或回到应用时，以及 AI 辅助为问题查票时。seats.aero
+          这些请求发生在：你查票时、保存前检查密钥时、打开航班详情时，以及你有关注并打开或回到应用时（在有 AI 辅助的测试版本中，还包括 AI 辅助为问题查票时）。seats.aero
           按其自身的条款（<a href="https://seats.aero/terms">seats.aero/terms</a>）和隐私做法处理这些请求。
         </p>
 
-        <h4>Anthropic：仅用于 AI 辅助，且需你允许</h4>
-        <p>AI 辅助是可选功能。它只使用你自己的 Anthropic API 密钥；在你第一次提问之前，应用会先征求你同意向 Anthropic 发送数据。一次提问会向 Anthropic 发送：</p>
+        <h4>Anthropic：仅用于测试版本中的 AI 辅助</h4>
+        <p>
+          AwardGrid iPhone 版的 App Store 版本没有 AI 辅助，不向 Anthropic 发送任何内容。AI 辅助（Ask）用你自己的 Anthropic API 密钥、由 Claude
+          回答关于结果的问题，只在应用的测试版本和独立的网页应用里。本节其余内容适用于 iPhone 应用的测试版本。
+        </p>
+        <p>在测试版本中，AI 辅助是可选功能。它只使用你自己的 Anthropic API 密钥；在你第一次提问之前，应用会先征求你同意向 Anthropic 发送数据。一次提问会向 Anthropic 发送：</p>
         <ul>
           <li>问题本身和今天的日期；</li>
           <li>同一对话中之前的问答；</li>
@@ -255,36 +302,40 @@
 
         <h4>其他</h4>
         <p>
-          与任何网络请求一样，发往 seats.aero 或 Anthropic 的请求会让对方看到你设备的 IP 地址。应用不会向任何其他服务器发送数据，也不会发给开发者。如果你在
+          与任何网络请求一样，发往 seats.aero（或在有 AI 辅助的测试版本中发往 Anthropic）的请求会让对方看到你设备的 IP 地址。应用不会向任何其他服务器发送数据，也不会发给开发者。如果你在
           iOS 中选择与应用开发者共享分析数据，或通过 TestFlight 测试本应用，Apple 可能会把崩溃报告或你提交的反馈转交给开发者；这些是 Apple
           的功能，受你的设备设置和 Apple 的政策约束。
         </p>
 
         <h3>留在你设备上的内容</h3>
         <ul>
-          <li><strong>钥匙串：</strong>你的 seats.aero 密钥，以及你添加的 Anthropic 密钥。它们只保存在本机，不通过 iCloud 钥匙串同步。应用只显示末四位。</li>
+          <li><strong>钥匙串：</strong>你连接账户时添加的 seats.aero 密钥（在有 AI 辅助的测试版本中，还有你添加的 Anthropic 密钥）。密钥只保存在本机，不通过 iCloud 钥匙串同步。应用只显示末四位。</li>
           <li>
-            <strong>应用自己的文件：</strong>缓存的查票结果（保留 45 分钟，重复查询不消耗调用）；今天的 seats.aero
-            调用次数；你的关注；屏幕上的查询和结果及其显示方式；你保存的结果；你的设置（语言、外观，以及是否允许 AI 辅助向 Anthropic
-            发送数据）；以及你的 AI 辅助对话，直到你开始新对话。
+            <strong>应用自己的文件：</strong>你使用示例数据还是 seats.aero 账户；缓存的查票结果（保留 45 分钟，重复查询不消耗调用）；今天的 seats.aero
+            调用次数；你的关注；屏幕上的查询和结果及其显示方式；你保存的结果；你保存的行程规划；以及你的设置（语言和外观）。在有 AI 辅助的测试版本中，还有是否允许 AI 辅助向 Anthropic
+            发送数据，以及你的 AI 辅助对话，直到你开始新对话。
+          </li>
+          <li>
+            <strong>示例数据：</strong>开启期间，应用把自己的一套文件（缓存结果、关注、保存的结果和行程规划、屏幕上的查询和设置）放在单独的文件夹里，退出示例数据时会删除它们。示例数据从不读取或更改你的
+            seats.aero 密钥，也不读取或更改今天的 seats.aero 调用次数。
           </li>
         </ul>
         <p>你备份设备时（到 iCloud 或电脑），应用的文件会包含在备份中。</p>
 
         <h3>你的选择</h3>
         <ul>
-          <li>在设置中移除任一密钥。</li>
+          <li>在设置中移除 seats.aero 密钥。</li>
           <li>在设置中清除缓存结果。</li>
-          <li>在 AI 辅助中开始新对话，即从本机删除该对话。</li>
-          <li>在设置的 Anthropic 密钥页撤回 AI 辅助的许可。</li>
+          <li>退出示例数据，即删除示例数据保存的全部内容。</li>
+          <li>在有 AI 辅助的测试版本中：在设置中移除 Anthropic 密钥；在 AI 辅助中开始新对话，即从本机删除该对话；在设置的 Anthropic 密钥页撤回 AI 辅助的许可。</li>
           <li>删除应用即删除其文件。应用删除后，iOS 可能仍在钥匙串中保留密钥；如需删除，请先在设置中移除。</li>
         </ul>
-        <p>seats.aero 或 Anthropic 收到的内容由它们按各自的政策保存，请直接向它们询问。AwardGrid 没有副本，因此无法替你删除。</p>
+        <p>seats.aero（或在测试版本中为 AI 辅助接收内容的 Anthropic）收到的内容由它们按各自的政策保存，请直接向它们询问。AwardGrid 没有副本，因此无法替你删除。</p>
 
         <h3>App Store 隐私标签</h3>
         <p>
-          标签列出与你关联的“搜索历史”和“其他用户内容”，用于应用功能，且没有用于跟踪你的数据。这就是上文所述、应用使用你自己的账户发送给 seats.aero 和
-          Anthropic 的内容。开发者不会收到这些数据。
+          App Store 版本的标签列出与你关联的“搜索历史”，用于应用功能，且没有用于跟踪你的数据。这就是上文所述、应用使用你自己的账户发送给 seats.aero
+          的内容。开发者不会收到这些数据。
         </p>
 
         <h3>跟踪与广告</h3>
@@ -296,10 +347,10 @@
           的一小段脚本会记录访问的页面、你从哪个网站过来、你的浏览器、操作系统和设备类型、所在国家或地区，以及页面加载速度。它不使用
           cookie，也不做指纹识别，开发者只能看到汇总数字。与任何网站一样，Cloudflare 在提供页面时会看到你的 IP 地址。
         </p>
-        <p>应用本身不包含这段脚本，也不向 Cloudflare 发送任何内容。从应用里打开这些页面，与其他访问一样。</p>
+        <p>应用本身不包含这段脚本，也不向 Cloudflare 发送任何内容。从应用里打开这些页面（设置 › 隐私政策或支持）会在 Safari 中打开，与其他访问一样；你点按链接时，iOS 可能已经开始连接 awardgrid.dowhiz.com，这会让 Cloudflare 看到你的 IP 地址。</p>
 
         <h3>变更</h3>
-        <p>如果应用发送的内容有变，本页会先更新，并注明新的日期。如果 AI 辅助要向 Anthropic 发送新的内容，应用会重新征求你的许可。</p>
+        <p>如果应用发送的内容有变，本页会先更新，并注明新的日期。在有 AI 辅助的测试版本中，如果 AI 辅助要向 Anthropic 发送新的内容，应用会重新征求你的许可。</p>
 
         <h3>联系</h3>
         <p>
@@ -311,7 +362,7 @@
 
     <footer>
       <p>
-        <a href="../ios/">AwardGrid</a> · <a href="../support/">Support</a> · Data: seats.aero. AwardGrid is not affiliated
+        <a href="../ios/">AwardGrid</a> · <a href="../support/">Support</a> · Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated
         with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program. © 2026 Curastone CORP.
       </p>
     </footer>

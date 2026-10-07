@@ -11,15 +11,19 @@
  * "Disconnect" asks first and says what it removes: the tokens and every seats.aero result on the device (the OAuth
  * Addendum's purge). Saved searches and watches stay, without their results. Each outcome is said, in the page's
  * language; a sign-in that was cancelled or declined saves nothing and says so.
+ *
+ * In sample mode (app/data-source.ts) the page is sample mode's own, as in the key flavour: the way back to the
+ * account first. Sample mode has no account (no token is read there), so neither Connect nor Disconnect is offered.
  */
 import { useEffect, useRef, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
+import { isSample } from "../app/data-source";
 import { useFocusOnArrival } from "../app/focus";
 import { langTag, useLocale } from "../app/locale";
 import { Button } from "../components/ui";
-import { BackToSettings, ConfirmRemove } from "./SettingsScreen";
+import { BackToSettings, ConfirmRemove, SampleSeatsPage } from "./SettingsScreen";
 import { OAUTH_CONNECT } from "./oauth-copy";
 import { SETTINGS } from "./settings-copy";
 import "./settings.css";
@@ -29,6 +33,10 @@ const CONNECT_BUTTON = "seats-connect-button";
 
 export function SeatsConnectScreen() {
   const services = useOutletContext<AppServices>();
+  return isSample(services) ? <SampleSeatsPage services={services} /> : <SeatsConnectPage services={services} />;
+}
+
+function SeatsConnectPage({ services }: { services: AppServices }) {
   const locale = useLocale(services);
   const t = SETTINGS[locale];
   const o = OAUTH_CONNECT[locale];

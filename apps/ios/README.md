@@ -4,8 +4,10 @@ Phase 2 of `docs/PIVOT.md`: *"Vite SPA, react-router, the native-HTTP adapter wi
 assertion, Keychain key storage, in-memory cache with a JSON snapshot. Device SQLite can wait for
 watches."* Phase 3 put it on the shared design tokens; Phase 4 added watches; Phase 5 added Ask.
 
-**There is no server.** No accounts, no sessions, no database, no key of ours. One device, your own
-keys in its Keychain: a seats.aero Pro key, and an Anthropic key if you use Ask. That deletes the
+**There is no server.** No accounts, no sessions, no database, no key of ours. One device, and your
+own keys in its Keychain: the API key of your own seats.aero account if you connect one (without it
+the app shows sample data made on the device, release plan steps 16-17), and an Anthropic key if you
+use Ask in a build that has it (the App Store build, `build:store`, compiles Ask out). That deletes the
 ~5,500 lines PIVOT §1 counted — `auth`, `server`, `keys`, `crypto`, `db` — because every one of them
 existed to protect a shared host.
 
@@ -208,7 +210,8 @@ normal `npm run build`, no chunk in `dist/assets/` may be named `*[Pp]robe*` or 
 
 `npm run build:store` (`VITE_AG_STORE=1`, `src/app/flags.ts`) builds the app the App Store gets: Ask is compiled
 out — no `#/ask` or `#/settings/anthropic` route (an old link lands on Search), no AI link in the Search header or
-under the results, no AI group in Settings, and none of the copy that names Ask or Anthropic. AppServices.ask is
+under the results, no AI group in Settings, and none of the copy that names Ask or Anthropic (nor the query editor's
+"No AI" notes, which only point at what this build has not got). AppServices.ask is
 still built at launch and never opened, so both flavours bundle the same npm modules and share one licenses list
 (`@anthropic-ai/sdk` stays in it: a license notice, not a feature). The plain `npm run build` keeps Ask for
 development, the probes and the UI/UX e2e, whose `ios-store` project runs `e2e/uiux/store-*.spec.ts` against the
@@ -244,6 +247,33 @@ cd apps/ios && VITE_AG_CONNECT=oauth VITE_AG_SEATS_CLIENT_ID=<client id> npm run
 
 `scripts/mock-seatsaero.ts` mocks seats.aero's `/oauth2/consent` and `/oauth2/token` for development and tests.
 
+### Sample mode
+
+The first run's "Try with sample data" switches the whole app to labelled sample data (`src/app/data-source.ts`,
+`src/sample/`): every feature — search, the three views, details and itineraries, compare, Saved, watches — on any
+route between the 84 airports in `packages/core/data/places.json`, for today and the 364 days after, in all four
+cabins. The numbers are made up on the device by a deterministic generator (`src/sample/generate.ts`: real program
+names, invented miles, taxes, seats and flight numbers; miles and leg times from great-circle distance; nonstop under
+7,500 miles, one connection through the shortest hub above it), and answered in seats.aero's documented shapes by an
+in-memory transport (`src/sample/sample-fetch.ts`), so the app's own planner, cache, normaliser and screens run
+unchanged.
+
+- **Isolated.** The choice is read before `bootstrap()` (`resolveBoot`). Sample mode boots on its own ports: an
+  in-memory key store holding a placeholder (never shown: Settings says "Sample data"), the sample transport, a
+  refusing Anthropic transport, and files under `sample/`. The Keychain item, the real snapshots and today's real
+  call count are never read or written, and the native HTTP adapter is never built. Its code is its own chunk, loaded
+  only in sample mode. In the OAuth flavour sample mode boots with no account (`oauth: null`): the token store is
+  never built, no token is read, renewed or removed, Settings › seats.aero account offers only "Exit sample data", and
+  sample data has no 24-hour limit. The account's own files keep theirs: while sample mode runs, `sweepAccount`
+  removes what passed 24 hours from them (at start, on each return to the foreground, and hourly), reading no token
+  and sending nothing. Disconnect never touches `sample/`.
+- **Labelled.** A banner on every screen (the approved "Illustrative data — not live availability" under "Sample
+  data", with "Exit sample data"), "Sample data" where a source time would be, "Sample data · on this device" where
+  "Data: seats.aero" would be, no call counts or quota line, and no booking or program links. Settings › About says
+  what is true there: sample data is made on this device, nothing is sent, and connecting an account is optional.
+- **Leaving** keeps the language and appearance chosen meanwhile, deletes `sample/`, and boots again on the account.
+  `#/example`, the old static example's address, enters sample mode.
+
 ## Running it
 
 ```bash
@@ -254,9 +284,9 @@ cd apps/ios && npm run build:store && npx cap copy ios  # the App Store flavour:
 ```
 
 `cap copy`, not `cap sync`: sync also runs `pod install` against the network, and the Pods are already
-installed and pinned by the committed `ios/App/Podfile.lock`. Then build and install on a Simulator made for
-this app, always by its UDID (never `booted`: another project's devices, or one holding real keys, may be
-booted too):
+installed and pinned by the committed `ios/App/Podfile.lock` (after a dependency bump, see "Release" step 3).
+Then build and install on a Simulator made for this app, always by its UDID (never `booted`: another
+project's devices, or one holding real keys, may be booted too):
 
 ```bash
 xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug \
@@ -295,6 +325,24 @@ reproducibly on the xcframework download (`docs/PHASE0.md` §6).
   sizes show some under 44 pt: the nav link "Ask" is 26.4 pt wide, and four Settings controls and
   Search's Run, Watch this search and example chips, all older than Phase 5, are 27 to 41.8 pt tall
   (`docs/PHASE5.md` §2.2; #91).
+- **Safe areas: one inset, the page's own (PR-D).** The page covers the screen (`viewport-fit=cover`) and each
+  screen's top chrome pads `env(safe-area-inset-top)` once, the tab bar `env(safe-area-inset-bottom)` once. The web
+  view's scroll view no longer insets it as well (`ios.contentInset: "never"` in `capacitor.config.ts`, and the same
+  in `AppViewController.swift`): with "always" a page one screen tall was scrollable by the inset, and depending on
+  launch timing showed a 62 pt empty band above its title on an iPhone or its title under an iPad window's controls.
+  On iPadOS 26 and later the controller adds the window controls (the corner-adapted safe area) to the web view's
+  safe area, so the title starts below them. Watches, Saved and Settings keep the top inset as a strip of canvas
+  above their scrolling area (`.app-status-area`), so what scrolls stops below the status bar instead of running
+  under it; Search, details, compare and the editor carry it in their own headers. What spans the screen outside
+  the tab chrome (the editor, Ask, sheets and the bare "Starting…" page) pads the side insets too, so a phone in
+  landscape keeps it clear of the Dynamic Island. Checked on the Simulator on iOS 18.3, iOS 26.5 (also in
+  landscape) and an iPad in a window on iPadOS 27 (`src/native/safe-area.test.ts` holds the configuration).
+  Whether this also closes #90 (the scrolled grid under the status bar) needs that screenshot retaken.
+- **"Today" is the device's calendar day (PR-D).** Every place that turns the clock into a date (the parser's today,
+  the editor, plans, Saved, watches, sample data) uses `src/app/local-date.ts`, so "next 14 days" typed at 22:53 in
+  California starts that day, not tomorrow. Only seats.aero's daily call count stays on UTC, as seats.aero resets
+  it. Drafts still store `clock: "UTC"` on a relative date rule (core's type); it is a stored tag, and the day it is
+  counted from is the one the app passes in.
 - **The grid is not yet the web app's virtualised component.** `src/components/GridTable.tsx` is a
   flat, phone-sized reading of the core's `Grid`; `src/search/search.ts` keeps the `ApiResult` /
   `ApiFailureCode` shape from `src/components/grid/api.ts` exactly so the full port stays a small diff.
@@ -314,10 +362,16 @@ everything from a worktree, never from the checkout production serves.
 1. **Gates:** `pnpm typecheck && pnpm lint && pnpm test`, then
    `UIUX_WEB=0 pnpm exec playwright test --config=playwright.uiux.config.ts` (the iOS browser mock).
 2. **Bundle:** `env -u VITE_AG_PROBES -u VITE_AG_STORE pnpm --filter @awardgrid/ios build:store` (the App Store
-   flavour, above). It fails on any fixture marker, on a source map inside `dist/` (they are moved to
-   `dist-sourcemaps/`), on Ask or a paid-plan phrase in the bundle, and on a licenses list that is not what ships.
-   Then R1 (above) over `dist/assets/*.js` and the maps beside them.
-3. **Copy:** `npx cap copy ios` (not `sync`).
+   flavour, above; never the plain `build`, which keeps Ask). It fails on any fixture marker, on a source map inside
+   `dist/` (they are moved to `dist-sourcemaps/`), on Ask or a paid-plan phrase in the bundle, and on a licenses list
+   that is not what ships. Then R1 (above) over `dist/assets/*.js` and the maps beside them.
+3. **Copy:** `npx cap copy ios`, then `node scripts/check-store-bundle.mjs ios/App/App/public`: the folder Xcode
+   archives is gitignored and keeps whatever was copied last, so this checks that it holds the store flavour, not
+   an earlier `build`. `cap sync` only after a dependency bump: it runs `pod install` against the network (the
+   owner's OK), and the licenses list must then be written again. That is the release plan's step 4b sequence —
+   `env -u VITE_AG_PROBES npx vite build`, `LANG=en_US.UTF-8 npx cap sync ios`, `node scripts/acknowledgements.mjs`,
+   then steps 2 and 3 again with `cap copy` — and `ios/App/Podfile`, `ios/App/Podfile.lock`, any
+   `project.pbxproj` change and `src/about/acknowledgements.json` go in a commit before the archive.
 4. **Build number:** raise `CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` (both
    configurations) in a commit before every archive after the first; 1.0 (1) is the first.
 5. **Archive**, once the App ID is registered and the signing identity is on this Mac (the owner's steps):

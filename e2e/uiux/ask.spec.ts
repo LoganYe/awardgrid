@@ -77,7 +77,9 @@ test("the payload is what the page said: search only, then the attached results 
   const name = await r1.textContent();
   await r1.click();
   await expect(page).toHaveURL(/#\/detail\//);
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  // By name: the Search screen's title is under the details too (inert, which Playwright's role queries do not read),
+  // so an unnamed level-1 heading passed only when it was checked before the details had rendered.
+  await expect(page.getByRole("heading", { level: 1, name: "Option details" })).toBeVisible();
   expect(decodeURIComponent(page.url())).toContain("/detail/");
   await page.getByRole("button", { name: "Return to AI assistance" }).click();
   await expect(page).toHaveURL(/#\/ask/);

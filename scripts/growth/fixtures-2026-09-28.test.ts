@@ -50,6 +50,10 @@ const LIVE_ALWAYS = [
   // Store description says the same.
   "PENDING_CLAIM_TEXT sites/landing/ios/index.html:26 the cheapest award seat in each cell",
   "PENDING_CLAIM_TEXT sites/landing/ios/index.html:26 the miles, the fees, the seats left, the program that sells it",
+  // Wording retired on 2026-10-07 for build 4 (release plan step 22), true of build 3 that day: without a key the app
+  // searched nothing (prerequisite.retired_copy), and Ask was a feature of the app (ask.retired_copy).
+  "PENDING_CLAIM_TEXT sites/landing/support/index.html:41 Without it the app searches nothing",
+  "PENDING_CLAIM_TEXT sites/landing/support/index.html:45 Anthropic bills each question to that key",
   // The "No accounts, no analytics" row names no subject; the web app on the same host has accounts and a server.
   "NO_SERVER_SUBJECT sites/landing/ios/index.html:143 No accounts",
   "NO_SERVER_SUBJECT sites/landing/ios/index.html:145 no server",
@@ -92,6 +96,9 @@ const SOURCE_ALWAYS = [
   "STALE_STATUS sites/landing/ios/index.html:164 testing it privately",
   "PENDING_CLAIM_TEXT sites/landing/ios/index.html:26 the cheapest award seat in each cell",
   "PENDING_CLAIM_TEXT sites/landing/ios/index.html:26 the miles, the fees, the seats left, the program that sells it",
+  // Retired on 2026-10-07 (build 4), as in the served pages above.
+  "PENDING_CLAIM_TEXT sites/landing/support/index.html:41 Without it the app searches nothing",
+  "PENDING_CLAIM_TEXT sites/landing/support/index.html:45 Anthropic bills each question to that key",
   "NO_SERVER_SUBJECT sites/landing/ios/index.html:143 No accounts",
   "NO_SERVER_SUBJECT sites/landing/ios/index.html:145 no server",
   "ATTRIBUTION_LINK sites/landing/ios/index.html:70 Data: seats.aero",

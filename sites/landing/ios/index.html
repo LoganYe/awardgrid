@@ -6,7 +6,7 @@
     <title>AwardGrid for iPhone: award seats for many routes and dates in one table</title>
     <meta
       name="description"
-      content="On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for many routes and up to 92 days into one table."
+      content="AwardGrid for iPhone puts award seats for many routes and up to 92 days into one table, from your own seats.aero account or from sample data."
     />
     <link rel="canonical" href="https://awardgrid.dowhiz.com/ios/" />
     <link rel="alternate" hreflang="en" href="https://awardgrid.dowhiz.com/ios/" />
@@ -17,7 +17,7 @@
     <meta property="og:title" content="AwardGrid for iPhone: award seats for many routes and dates in one table" />
     <meta
       property="og:description"
-      content="On your own seats.aero Pro key, AwardGrid for iPhone puts seats.aero's cached award availability for many routes and up to 92 days into one table."
+      content="AwardGrid for iPhone puts award seats for many routes and up to 92 days into one table, from your own seats.aero account or from sample data."
     />
     <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -50,6 +50,14 @@
                 "acceptedAnswer": {
                   "@type": "Answer",
                   "text": "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Do I need a seats.aero account?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Without one, AwardGrid shows sample data only: search, the List, Calendar and Matrix views, option details, compare, Saved and Watches all work on sample data made on your iPhone, labelled as sample data, and nothing is sent. If you have a seats.aero account with API access, you can connect it in Settings to see results from that account instead."
                 }
               },
               {
@@ -89,7 +97,7 @@
                 "name": "Do I need an AI key?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Only for Ask, which is optional. Search runs on your seats.aero key alone."
+                  "text": "No. Search needs no AI key. Ask, the optional AI feature, is in testing and is not part of the App Store version 1.0."
                 }
               },
               {
@@ -134,7 +142,9 @@
       Matrix: dates as rows, routes as columns, one line per cabin, and words for an empty slot. The FAQPage node of the JSON-LD is generated
       from the "Questions" section (data-faq) by scripts/growth/sync-faq-schema.mjs --write: edit the questions, then
       run it. "Ask" names only the AI feature; searching is "type". hreflang: this page (en and x-default) and
-      /ios/zh-hans/, its Chinese version (zh-Hans).
+      /ios/zh-hans/, its Chinese version (zh-Hans). Since 2026-10-07 (build 4, release plan step 22) the page says
+      that without a seats.aero account the app shows sample data only (sample_mode), and that Ask is not part of the
+      App Store version (ask); "Pro key" is gone from its headlines and rows.
     -->
     <link rel="stylesheet" href="../styles.css" />
   </head>
@@ -142,7 +152,7 @@
     <main>
       <header class="hero">
         <p class="eyebrow">Award seat search for iPhone</p>
-        <h1>One table. Your own key.</h1>
+        <h1>Award seats in one table.</h1>
         <p class="lead">
           Type the routes and dates in English or Chinese, or set them in the editor. AwardGrid puts seats.aero's
           cached award availability for several origins, several destinations and up to 92 days into one table. Each
@@ -156,10 +166,10 @@
         <ul>
           <li>An iPhone with iOS 18 or later.</li>
           <li>
-            Your own seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), and its
-            API key from the API tab of your seats.aero settings. Without it the app searches nothing.
+            Optional: your own seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not
+            sell), and its API key from the API tab of your seats.aero settings. Without it, AwardGrid shows sample data
+            only.
           </li>
-          <li>For Ask, which is optional: your own Anthropic API key. Anthropic bills each question to that key.</li>
           <li>
             AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can
             limit or withdraw.
@@ -225,7 +235,8 @@
           </table>
         </div>
         <p class="attribution">
-          Illustrative figures, not seats.aero data. In the app, results come from seats.aero.
+          Illustrative figures, not seats.aero data. In the app, results come from your seats.aero account, or from
+          sample data.
         </p>
         <p class="more"><a href="./award-grid/">How the table works</a></p>
       </section>
@@ -243,6 +254,14 @@
           AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data
           (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not
           sell), you can connect it to see results from that account instead of sample data.
+        </p>
+
+        <h3>Do I need a seats.aero account?</h3>
+        <p>
+          No. Without one, AwardGrid shows sample data only: search, the List, Calendar and Matrix views, option details,
+          compare, Saved and Watches all work on sample data made on your iPhone, labelled as sample data, and nothing
+          is sent. If you have a seats.aero account with API access, you can connect it in Settings to see results from
+          that account instead.
         </p>
 
         <h3>Is AwardGrid affiliated with seats.aero?</h3>
@@ -270,7 +289,10 @@
         </p>
 
         <h3>Do I need an AI key?</h3>
-        <p>Only for Ask, which is optional. Search runs on your seats.aero key alone.</p>
+        <p>
+          No. Search needs no AI key. Ask, the optional AI feature, is in testing and is not part of the App Store
+          version 1.0.
+        </p>
 
         <h3>Can I search in Chinese?</h3>
         <p>
@@ -304,9 +326,8 @@
               <tr>
                 <th scope="row">No airline sites</th>
                 <td>
-                  It reads the seats.aero cache. If you add your own Anthropic key, Ask also sends
-                  your question and the results it reads to Anthropic. It never opens an airline site
-                  for you, and it never asks for an airline or bank password.
+                  It reads the seats.aero cache, or uses sample data made on your iPhone. It never opens
+                  an airline site for you, and it never asks for an airline or bank password.
                 </td>
               </tr>
               <tr>
@@ -320,8 +341,8 @@
               <tr>
                 <th scope="row">No key of its own</th>
                 <td>
-                  Without your seats.aero Pro key the app searches nothing. It cannot search on
-                  someone else's behalf, and nobody can search on yours.
+                  Without your own seats.aero account, AwardGrid shows sample data only. It cannot
+                  search on someone else's behalf, and nobody can search on yours.
                 </td>
               </tr>
               <tr>
@@ -350,7 +371,8 @@
       <section class="status" aria-labelledby="status-h">
         <h2 id="status-h">Where this is up to</h2>
         <p>
-          AwardGrid is an iPhone app that runs on your own keys. AwardGrid for iPhone is submitted to
+          AwardGrid is an iPhone app that runs on sample data or on your own seats.aero account.
+          AwardGrid for iPhone is submitted to
           the App Store and not available there yet. This page will link to the App Store listing once
           the app is available. AwardGrid is not affiliated with, endorsed by, or sponsored by
           seats.aero. Each user connects their own seats.aero account. What the app sends, and to

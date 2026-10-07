@@ -18,6 +18,8 @@ import { FAVORITES } from "./screens/favorites-copy";
 import { WELCOME } from "./screens/OnboardingScreen";
 import { SETTINGS } from "./screens/settings-copy";
 import { WATCHES } from "./screens/watches-copy";
+import { SAMPLE } from "./sample/sample-copy";
+import { PLAN } from "./components/plan/plan-copy";
 
 const TABLES: Record<string, { en: unknown; zh: unknown }> = {
   results: RESULTS,
@@ -32,6 +34,8 @@ const TABLES: Record<string, { en: unknown; zh: unknown }> = {
   consent: CONSENT,
   compare: COMPARE,
   favorites: FAVORITES,
+  sample: SAMPLE,
+  plan: PLAN,
 };
 
 /** Any Chinese character or Chinese punctuation: English must have none. */
@@ -62,6 +66,9 @@ const CASES: Record<string, unknown[][]> = {
   ],
   "watches.unseen": [[{ new: 1, dropped: 0, cheaper: 0 }], [{ new: 0, dropped: 2, cheaper: 3 }]],
   "favorites.usage": [[3, 100, "0.4", "5.0"]],
+  "plan.dayCount": [[1], [30]],
+  "plan.usage": [[1, 100], [3, 100]],
+  "plan.unreadable": [[1], [2]],
   "ask.sendsEarlier": [[1], [3]],
   "ask.attachRows": [[1], [3]],
   "ask.sentSearchAndRows": [[1], [3]],

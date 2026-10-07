@@ -15,6 +15,9 @@
  * Nothing is ranked, scored or totalled. Miles from different programs are not worth the same, fees in different
  * currencies are not converted, a fee with no currency is not comparable, and an unknown fee is said as unknown.
  *
+ * Sample mode (release plan step 17): the banner at the top, "Sample data" for the source time under a "Data" field,
+ * no program links ("Sample options have no booking links.") and "Sample data · on this device" for the data line.
+ *
  * Layout (core `compareLayout`): on a phone two columns at a time, with a picker above each column for a third or
  * fourth option; "Read one by one" shows every option in turn; at 320 or 200% text only that. Wider screens show up to
  * four side by side, 16 apart and 220 or more each; when they do not fit only the table scrolls sideways, and the
@@ -27,12 +30,15 @@ import { COMPARE_FIELDS, type CompareEntry, type CompareField, MAX_COMPARE, comp
 import { type ReactNode, useEffect, useEffectEvent, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { isSample } from "../app/data-source";
 import { useFocusOnArrival } from "../app/focus";
 import { langTag, useLocale } from "../app/locale";
 import { shortDateTime } from "../app/when";
 import { COMPARE_OPENER } from "../components/CompareTray";
 import { RESULTS } from "../components/results/copy";
 import { SeatsAttribution } from "../components/SeatsAttribution";
+import { SampleBanner } from "../components/SampleBanner";
+import { SAMPLE } from "../sample/sample-copy";
 import { Icon, IconButton } from "../components/ui";
 import { COMPARE } from "./compare-copy";
 import "../components/compare.css";
@@ -43,7 +49,10 @@ const searchWhen = shortDateTime;
 export function CompareScreen() {
   const services = useOutletContext<AppServices>();
   const locale = useLocale(services);
-  const c = COMPARE[locale];
+  const sample = isSample(services);
+  // In sample mode the source-time field is named "Data", and it says "Sample data" (release plan step 17).
+  const base = COMPARE[locale];
+  const c = sample ? { ...base, fields: { ...base.fields, source_time: SAMPLE[locale].compareField }, noLink: SAMPLE[locale].noLinks } : base;
   const t = RESULTS[locale];
   const navigate = useNavigate();
   // Drawn again whenever the workspace changes (a removal here, a search finishing): at most four options are read
@@ -137,7 +146,8 @@ export function CompareScreen() {
 
   const loadedFor = (entry: CompareEntry) => (entry.source === "snapshot" ? services.details.peek(entry.ref) : null);
   function linkFor(entry: CompareEntry) {
-    if (!entry.row) return null;
+    // Sample options have no booking or program links.
+    if (!entry.row || sample) return null;
     return loadedFor(entry)?.link ?? detailLink(entry.row.value, []);
   }
   const anyLink = entries.some((e) => linkFor(e) !== null);
@@ -194,7 +204,7 @@ export function CompareScreen() {
       case "source_time":
         return (
           <>
-            <span>{timeLabel(entry.row!.time, now.toISOString(), locale)}</span>
+            <span>{timeLabel(entry.row!.time, now.toISOString(), locale, { sample })}</span>
             {entry.source === "kept_copy" ? <span className="ag-compare-muted">{c.keptCopy}</span> : null}
           </>
         );
@@ -257,6 +267,7 @@ export function CompareScreen() {
         <p role="status" className="sr-only">
           {status}
         </p>
+        <SampleBanner services={services} locale={locale} />
         <p className="ag-compare-note">{c.nothingSent}</p>
         {notes.programs.length > 1 ? <p className="ag-compare-note">{c.noRanking}</p> : null}
         {notes.currencies.length > 1 ? <p className="ag-compare-note">{c.currencies(notes.currencies.join(locale === "zh" ? "、" : ", "))}</p> : null}
@@ -373,7 +384,13 @@ export function CompareScreen() {
         {anyLink && entries.length >= 2 ? <p className="ag-compare-note">{copy("details.external", locale)}</p> : null}
         {/* LEGAL.md: seats.aero's figures carry "Data: seats.aero", linked to seats.aero, beside them, as the details
             do. Not when no option is left to show any. */}
-        {entries.some((entry) => entry.row !== null) ? <SeatsAttribution className="ag-compare-note" text={copy("data.source", locale)} locale={locale} /> : null}
+        {entries.some((entry) => entry.row !== null) ? (
+          sample ? (
+            <p className="ag-compare-note ag-sample-source">{SAMPLE[locale].attribution}</p>
+          ) : (
+            <SeatsAttribution className="ag-compare-note" text={copy("data.source", locale)} locale={locale} />
+          )
+        ) : null}
       </div>
     </div>
   );

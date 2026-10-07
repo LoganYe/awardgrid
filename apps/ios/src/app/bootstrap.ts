@@ -29,6 +29,8 @@ import { type AskService, type Visibility, createAskService } from "../ask/ask-s
 import { anthropicKeychain } from "../native/anthropic-key";
 import { createNativeFetch } from "../native/http";
 import { type KeyStore, keychain } from "../native/keychain";
+import { type DataSourceControl, LIVE_ONLY } from "./data-source";
+import { localDate } from "./local-date";
 import { type Locale, detectLocale } from "./locale";
 import { type LastSearchStore, createWorkspaceLastSearch } from "../search/last-search";
 import { AskStore } from "../store/ask-store";
@@ -43,6 +45,7 @@ import { createDetailService, type DetailService } from "../workspace/detail-ser
 import { RequestCoordinator } from "../workspace/request-coordinator";
 import { SettingsStore } from "./settings-store";
 import { FavoritesStore } from "../store/favorites-store";
+import { PlansStore } from "../store/plans-store";
 import type { KeyCheckOutcome } from "@awardgrid/core/seatsaero/key-check";
 import { SlotFileStorage } from "../workspace/slot-storage";
 import { type PersistResult, WorkspaceStore } from "../workspace/workspace-store";
@@ -95,6 +98,11 @@ export interface AppServices {
   searchText(text: string): Promise<ApiResult<FindValue>>;
   /** The first half of `searchText`: the key check and the deterministic parse. Sends nothing. */
   prepareText(text: string): Promise<ApiResult<ParsedText>>;
+  /**
+   * The planner (release plan step 18): the same deterministic parse with no key asked for, since nothing is fetched —
+   * a plan to look at, save, or try on sample data. A search still goes through `prepareText`'s key check.
+   */
+  parsePlan(text: string): Promise<ApiResult<ParsedText>>;
   /** The second half: run a parsed text as a workspace revision, labelled with the text. */
   runParsed(text: string, parsed: ParsedText): Promise<ApiResult<FindValue>>;
   /**
@@ -129,6 +137,11 @@ export interface AppServices {
    */
   favorites: FavoritesStore;
   /**
+   * Saved trip plans (release plan step 18): searches not run yet, as typed and as read, in their own namespace. Loaded
+   * at launch without fetching anything. In sample mode they are sample mode's own, under sample/ like its other files.
+   */
+  plans: PlansStore;
+  /**
    * Empty the availability cache, in memory AND on disk. Quota, watches, both keys and ask.json are left alone.
    * See `SnapshotStore.clearCache` for why both halves are required.
    */
@@ -144,6 +157,11 @@ export interface AppServices {
   whenWatchesIdle(): Promise<void>;
   /** T17: the one queue for the entries that spend seats.aero calls; read-only use (what runs, what waits). */
   requests: Pick<RequestCoordinator, "active" | "waiting" | "idle">;
+  /**
+   * Where these services' results come from (release plan steps 16-17): the person's seats.aero account, or sample
+   * mode's labelled sample data (./data-source.ts), and the way to switch between them.
+   */
+  dataSource: DataSourceControl;
   /** Subscribe to "the watches changed"; returns the unsubscribe function. */
   onWatchesChanged(listener: () => void): () => void;
   /** Tell subscribers the watches changed, after a screen edits the store itself. */
@@ -212,7 +230,7 @@ export async function migrateWatches(store: WatchStore, files: FileStore, now: D
   } catch {
     // The copy is a courtesy; the migration keeps the watches either way.
   }
-  const today = now.toISOString().slice(0, 10);
+  const today = localDate(now);
   for (const watch of legacy) {
     const migrated = await migrateLegacyWatch({ id: watch.id, name: watch.name, enabled: watch.enabled, text: watch.text }, today);
     store.update(watch.id, { draft: migrated.draft, review: migrated.review ?? null });
@@ -309,6 +327,11 @@ export interface BootstrapOptions {
   oauth?: OAuthOptions | null;
   /** The short-term caching limit in ms. Default: 24 hours with OAuth, none without. */
   shortTermMs?: number | null;
+  /**
+   * Live or sample data, and the way to switch (./data-source.ts resolveBoot, which App boots through). Default: live,
+   * with no way to switch.
+   */
+  dataSource?: DataSourceControl;
 }
 
 export interface OAuthOptions {
@@ -393,11 +416,24 @@ export function seatsTransport(inner: typeof fetch, quotaStore: DeviceQuotaStore
   return withRateLimitObserver(inner, (headers) => quotaStore.observeRateLimitRemaining(headers.get("x-ratelimit-remaining"), now()));
 }
 
+/** The OAuth flavour's parts these options boot with, or null for the key flavour (tests may pass either, in any build). */
+function oauthOf(opts: Pick<BootstrapOptions, "oauth">): OAuthOptions | null {
+  return opts.oauth !== undefined ? opts.oauth : OAUTH ? {} : null;
+}
+
+/**
+ * The short-term caching limit (ms) services booted with `opts` keep seats.aero's results under: 24 hours with OAuth,
+ * none without, unless `opts` says. Sample mode (../sample/boot.ts) reads it for the account it was entered from.
+ */
+export function shortTermLimitOf(opts: Pick<BootstrapOptions, "oauth" | "shortTermMs">): number | null {
+  return opts.shortTermMs !== undefined ? opts.shortTermMs : oauthOf(opts) ? SHORT_TERM_MAX_AGE_MS : null;
+}
+
 export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppServices> {
   const now = opts.now ?? (() => new Date());
   // The OAuth flavour, unless a test says otherwise (null: the key flavour; an object: OAuth with those parts).
-  const oauth: OAuthOptions | null = opts.oauth !== undefined ? opts.oauth : OAUTH ? {} : null;
-  const shortTermMs = opts.shortTermMs !== undefined ? opts.shortTermMs : oauth ? SHORT_TERM_MAX_AGE_MS : null;
+  const oauth = oauthOf(opts);
+  const shortTermMs = shortTermLimitOf(opts);
   /** True while Disconnect or a revoked grant purges: then everything fetched so far counts as past the limit. */
   let purging = false;
   /**
@@ -525,6 +561,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     await favorites.removeRows((item) => favoriteExpired(item, cutoff()), now().toISOString(), optionsShown);
   };
   await expireFavorites();
+  // Saved trip plans (release plan step 18): read at launch, the same way. Over sample mode's files in sample mode.
+  const plans = new PlansStore(new SlotFileStorage(snapshots.files));
+  await plans.load();
   let lastWorkspaceSave: PersistResult | null = null;
 
   const listeners = new Set<() => void>();
@@ -805,6 +844,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     },
     searchText,
     prepareText: async (text) => engine.parseText(text, await readKey(keys)),
+    parsePlan: (text) => engine.parsePlan(text),
     runParsed: (text, parsed) => runTyped({ text, parsed }),
     rerunShown,
     lastSearch,
@@ -815,6 +855,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     persist,
     saveStatus,
     favorites,
+    plans,
     async clearCache() {
       // Memory first: if the file went first and a persist() landed in between, it would write
       // the rows straight back — which is precisely the Phase 2 bug this replaces.
@@ -842,6 +883,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     lastWatchRun: () => lastRun,
     whenWatchesIdle,
     requests,
+    dataSource: opts.dataSource ?? LIVE_ONLY,
     onWatchesChanged(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

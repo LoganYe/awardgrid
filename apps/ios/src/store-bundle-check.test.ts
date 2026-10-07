@@ -59,6 +59,8 @@ describe("check-store-bundle", () => {
     ["the Chinese cache note's Ask", "`不影响密钥和 AI 对话。`"],
     ["the AI group", "groups:{ai:`AI（可选）`}"],
     ["a subscription call to action", "`Check the API tab before you subscribe.`"],
+    ["the editor's note that no AI is used", "intro:`Change the conditions directly. No AI is used.`"],
+    ["the Chinese editor note", "submitNote:`使用你自己的 seats.aero 额度 · 不使用 AI`"],
   ])("fails on %s", (_, chunk) => {
     const result = run({ "assets/index-abc.js": `${KNOWN};\n${chunk}` });
     expect(result.ok).toBe(false);

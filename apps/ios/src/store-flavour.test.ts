@@ -175,12 +175,60 @@ describe("VITE_AG_CONNECT=0 (no connection; prepared, not shipped)", () => {
     const settings = at("/settings", createElement(none.settings.SettingsScreen), settingsServices());
     expect(headings(settings)).toEqual(["Appearance and language", "Local data", "About"]);
     expect(settings).not.toContain("/settings/seats");
-    const welcome = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(none.onboarding.Welcome, { locale: "en" })));
+    const welcome = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(none.onboarding.Welcome, { locale: "en", onTrySample: () => {} })));
     expect(welcome).not.toContain("/settings/seats");
-    expect(welcome).toContain('href="/example"');
-    // With a connection (the default), the same three places link to it.
+    // Sample data is still offered, first (release plan step 17).
+    expect(welcome).toContain("Try with sample data");
+    // With a connection (the default), the same three places link to it, after the sample data.
     const key = await load({ store: true });
     expect(paths(key.app.appRoutes({} as AppServices))).toContain("/settings/seats");
-    expect(renderToStaticMarkup(createElement(MemoryRouter, null, createElement(key.onboarding.Welcome, { locale: "en" })))).toContain('href="/settings/seats"');
+    const keyed = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(key.onboarding.Welcome, { locale: "en", onTrySample: () => {} })));
+    expect(keyed).toContain('href="/settings/seats"');
+    expect(keyed.indexOf("Try with sample data")).toBeLessThan(keyed.indexOf('href="/settings/seats"'));
+  });
+});
+
+describe("Settings › About over sample data (PR-D), in both flavours", () => {
+  const sampleMode = (locale: "en" | "zh") => ({ ...settingsServices(locale), dataSource: { kind: "sample", coverage: null } }) as unknown as AppServices;
+  /** The About group's sentences: the block before its links. */
+  const about = (html: string) => {
+    const group = html.slice(html.lastIndexOf('<section class="ag-settings-group"'));
+    return [...group.matchAll(/<p class="ag-settings-copy[^"]*">([^<]*)<\/p>/g)].map((m) => m[1]);
+  };
+  const SAMPLE_EN = "Sample data is made on this device, and nothing is sent. Connecting a seats.aero account is optional.";
+  const SAMPLE_ZH = "示例数据在本机生成，不会发送任何内容。连接 seats.aero 账户是可选的。";
+
+  it("says the sample data is made on this device, nothing is sent and an account is optional; no 'Data: seats.aero'", async () => {
+    for (const flavour of [{ store: true }, {}] as const) {
+      const { settings } = await load(flavour);
+      const en = about(at("/settings", createElement(settings.SettingsScreen), sampleMode("en")));
+      expect(en, JSON.stringify(flavour)).toEqual([SAMPLE_EN, "Sample data · on this device", expect.stringContaining("not affiliated")]);
+      const zh = about(at("/settings", createElement(settings.SettingsScreen), sampleMode("zh")));
+      expect(zh, JSON.stringify(flavour)).toEqual([SAMPLE_ZH, "示例数据 · 仅在本机", expect.stringContaining("无关联")]);
+      for (const line of [...en, ...zh]) expect(line).not.toMatch(/API key|API 密钥|Data: seats\.aero|数据：seats\.aero|Searches go to seats\.aero|发往 seats\.aero/);
+    }
+  });
+
+  it("with an account, About keeps the account's sentences, in each flavour's wording", async () => {
+    const store = await load({ store: true });
+    expect(about(at("/settings", createElement(store.settings.SettingsScreen), settingsServices("en"))).slice(0, 2)).toEqual([
+      "Searches go to seats.aero with your seats.aero API key. Keeping the key on this device does not keep searches off the network.",
+      "Data: seats.aero",
+    ]);
+    expect(about(at("/settings", createElement(store.settings.SettingsScreen), settingsServices("zh"))).slice(0, 2)).toEqual([
+      "查票请求会携带你的 seats.aero API 密钥发往 seats.aero。密钥保存在本机，不代表查询内容不外发。",
+      "数据：seats.aero",
+    ]);
+    const full = await load({});
+    const fullAbout = about(at("/settings", createElement(full.settings.SettingsScreen), { ...settingsServices("en"), anthropicKeys: new MemoryKeyStore() } as AppServices));
+    expect(fullAbout[0]).toMatch(/^Searches go to seats\.aero with your seats\.aero API key\. When you use AI assistance/);
+    expect(fullAbout[1]).toBe("Data: seats.aero");
+  });
+
+  it("a build with no way to connect does not offer an account", async () => {
+    const none = await load({ store: true, connect: "0" });
+    const lines = about(at("/settings", createElement(none.settings.SettingsScreen), sampleMode("en")));
+    expect(lines[0]).toBe("Sample data is made on this device, and nothing is sent.");
+    expect(about(at("/settings", createElement(none.settings.SettingsScreen), sampleMode("zh")))[0]).toBe("示例数据在本机生成，不会发送任何内容。");
   });
 });

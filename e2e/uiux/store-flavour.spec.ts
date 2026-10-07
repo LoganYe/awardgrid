@@ -10,12 +10,14 @@ import { openScenario, requestLog, searchByText } from "./helpers";
 import { expect, test } from "./test";
 
 const SEARCH_TEXT = "Synthetic HKG to SEA October business and first";
+/** A search sample mode answers (apps/ios/src/sample): any route the app knows. */
+const SAMPLE_TEXT = "Hong Kong to Seattle next month, business";
 
 /** A paid plan, a purchase, an unlock or live data, in either language (the store-copy.test.ts deny-list). */
 const PAID = /\bPro\b|Pro 密钥|subscri|订阅|upgrade|unlock|purchas|\bbuy\b|购买|解锁|付费|\bpaid\b|premium|trial|\blive (?:results|data)\b|实时结果/i;
 
-/** Ask, Claude, Anthropic or the AI entry, in either language. */
-const ASK_WORDS = /\bAsk\b|Anthropic|Claude|AI assistance|AI ?辅助|AI 对话|AI（可选）|AI \(optional\)/;
+/** Ask, Claude, Anthropic, the AI entry, or a note that no AI is used, in either language. */
+const ASK_WORDS = /\bAsk\b|Anthropic|Claude|AI assistance|AI ?辅助|AI 对话|AI（可选）|AI \(optional\)|\bNo AI\b|不使用 AI/;
 
 const tab = (page: Page, name: string) => page.getByRole("navigation").getByRole("link", { name, exact: true });
 
@@ -146,12 +148,15 @@ test("Data: seats.aero links to seats.aero beside seats.aero's data, and nowhere
   expect((await requestLog(page)).anthropic).toBe(0);
 });
 
-test("the example, made up, carries no seats.aero attribution", async ({ page }) => {
+test("sample data, made up, carries no seats.aero attribution and names no paid plan (release plan step 17)", async ({ page }) => {
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
-  await page.getByTestId("welcome").getByRole("link", { name: "View an example" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Example results" })).toBeVisible();
+  await page.getByTestId("welcome").getByRole("button", { name: "Try with sample data" }).click();
+  await expect(page.getByTestId("sample-banner")).toBeVisible();
+  await searchByText(page, SAMPLE_TEXT);
+  await expect(page.getByTestId("availability-list")).toBeVisible();
   await expect(page.locator(".ag-attribution-link, .app-attribution")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(PAID);
+  await expect(page.locator("main")).not.toContainText(ASK_WORDS);
 });
 
 test("an account removed after a search: try sample data, or connect it again in Settings", async ({ page }) => {
@@ -165,7 +170,8 @@ test("an account removed after a search: try sample data, or connect it again in
   const callout = page.getByRole("alert").filter({ hasText: "No seats.aero account connected." });
   await expect(callout).toHaveText("No seats.aero account connected. Try sample data, or connect your seats.aero account in Settings.");
   await callout.getByRole("link", { name: "Try sample data" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Example results" })).toBeVisible();
+  await expect(page.getByTestId("sample-banner")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Search" })).toBeVisible();
 });
 
 for (const lang of ["en", "zh"] as const) {
@@ -175,8 +181,10 @@ for (const lang of ["en", "zh"] as const) {
     const saved = lang === "en" ? "Saved" : "收藏";
     await openScenario(page, "complete", "ios", { lang });
     await searchByText(page, SEARCH_TEXT);
-    const checkScreen = async (where: string) => {
-      const text = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+    // `ignore`: words a screen shows that only look like the deny-lists' (the editor's cabin "Premium economy").
+    const checkScreen = async (where: string, ignore?: RegExp) => {
+      const shown = (await page.locator("body").innerText()).replace(/\s+/g, " ");
+      const text = ignore ? shown.replace(ignore, "") : shown;
       expect(text.match(PAID)?.[0] ?? null, `${where}: ${text.slice(0, 200)}`).toBeNull();
       expect(text.match(ASK_WORDS)?.[0] ?? null, `${where}: ${text.slice(0, 200)}`).toBeNull();
     };
@@ -192,6 +200,9 @@ for (const lang of ["en", "zh"] as const) {
     }
     await page.locator("#settings-row-seats").click();
     await checkScreen("settings/seats");
+    await page.evaluate(() => (location.hash = "#/edit"));
+    await expect(page.getByRole("heading", { level: 1, name: lang === "en" ? "Edit search" : "编辑查询" })).toBeVisible();
+    await checkScreen("edit", /Premium economy/g);
     // Not scanned: Settings › Licenses, which names @anthropic-ai/sdk among the packages that ship (a license notice,
     // not a feature: the SDK stays bundled with the Ask service this build never opens, release plan D3).
   });

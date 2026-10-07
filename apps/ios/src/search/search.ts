@@ -12,7 +12,7 @@
  */
 import { buildGrid } from "@awardgrid/core/grid/pivot";
 import type { AvailabilityRow, Grid } from "@awardgrid/core/grid/types";
-import type { Notice } from "@awardgrid/core/notices";
+import { type Notice, isNotice } from "@awardgrid/core/notices";
 import { parseQuery } from "@awardgrid/core/query/parse";
 import { type Cabin, QueryObject } from "@awardgrid/core/query/schema";
 import { isRealDate } from "@awardgrid/core/workspace/semantics";
@@ -35,6 +35,7 @@ import { SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
 import { type GetTripsResult, runGetTrips } from "@awardgrid/core/seatsaero/trips";
 import { type KeyCheckOutcome, checkSeatsKey } from "@awardgrid/core/seatsaero/key-check";
 import { OAUTH } from "../app/flags";
+import { localDate } from "../app/local-date";
 
 /**
  * There is exactly one user, and `runFind` still wants an id because the core is shared with the
@@ -160,18 +161,31 @@ export class SearchEngine {
    */
   async parseText(text: string, apiKey: string | null): Promise<ApiResult<ParsedText>> {
     if (!apiKey) return noKey();
+    return this.parsePlan(text);
+  }
+
+  /**
+   * The planner (release plan step 18): free text read by the same deterministic parser with no key asked for, since
+   * nothing is fetched. What it returns is a plan to look at or save; only `parseText`, a search's first half, keeps
+   * the key gate. A failure carries the parser's notice and the fields it could not read, so the planner can say them
+   * in the screen's language.
+   */
+  async parsePlan(text: string): Promise<ApiResult<ParsedText>> {
     const trimmed = text.trim();
-    if (!trimmed) return { ok: false, status: 400, error: "invalid_body", message: "Type a query first." };
+    if (!trimmed) return { ok: false, status: 400, error: "invalid_body", message: "Type a query first.", notice: { code: "parse.empty" } };
     try {
-      const parsed = await parseQuery(trimmed, { today: this.#now().toISOString().slice(0, 10) });
+      // "Today" on the person's own calendar, not UTC's: in the US evening UTC is already tomorrow (PR-D).
+      const parsed = await parseQuery(trimmed, { today: localDate(this.#now()) });
       return { ok: true, value: { query: parsed.query, warnings: parsed.warnings, notices: parsed.notices } };
     } catch (err) {
+      const notice = noticeFrom(err);
       return {
         ok: false,
         status: 422,
         error: "parse",
         message: err instanceof Error ? err.message : "Could not read that query.",
         missing: missingFrom(err),
+        ...(notice ? { notice } : {}),
       };
     }
   }
@@ -345,4 +359,10 @@ function noKey(): ApiFailure {
 function missingFrom(err: unknown): string[] | undefined {
   const missing = (err as { missing?: unknown })?.missing;
   return Array.isArray(missing) ? missing.filter((m): m is string => typeof m === "string") : undefined;
+}
+
+/** `ParseError` also carries its message as a notice ({code, vars}), which a screen can say in its own language. */
+function noticeFrom(err: unknown): Notice | undefined {
+  const notice = (err as { notice?: unknown })?.notice;
+  return isNotice(notice) ? notice : undefined;
 }

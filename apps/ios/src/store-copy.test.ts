@@ -2,7 +2,8 @@
  * The App Store build's wording (3.1.1 remediation, plan step 15), enforced on the source it is made from.
  *
  * Nothing the App Store build can show may sell, unlock or upgrade anything, name a paid plan, call cached data live,
- * or name Ask, Claude, Anthropic or the AI entry: the store build has no Ask (src/app/flags.ts STORE), and the account
+ * or name Ask, Claude, Anthropic, the AI entry or the AI it does not use ("No AI"): the store build has no Ask
+ * (src/app/flags.ts STORE), so a note that it does not use AI only points at a feature it has not got; and the account
  * a person connects only changes where results come from. Two deny-lists, PAID and ASK below, in English and Chinese.
  *
  * What is scanned:
@@ -27,8 +28,8 @@ const MAIN = path.join(SRC, "main.tsx");
 
 /** A paid plan, a purchase or a subscription, an unlock or an upgrade, or cached data called live. */
 const PAID = /\bPro\b|Pro 密钥|subscri|订阅|upgrade|unlock|purchas|\bbuy\b|购买|解锁|付费|\bpaid\b|premium|trial|\blive (?:results|data)\b|实时结果/i;
-/** Ask, Claude, Anthropic or the AI entry. */
-const ASK = /\bAsk\b|Anthropic|Claude|AI 对话|AI ?辅助|AI assistance|AI（可选）|AI \(optional\)/;
+/** Ask, Claude, Anthropic, the AI entry, or a note that no AI is used (simulator QA, plan step 20). */
+const ASK = /\bAsk\b|Anthropic|Claude|AI 对话|AI ?辅助|AI assistance|AI（可选）|AI \(optional\)|\bNo AI\b|不使用 AI/;
 
 /**
  * Modules the store build reaches only to construct AppServices.ask (app/bootstrap.ts), which it never opens: no
@@ -156,7 +157,7 @@ describe("the deny-lists and the flavour reading are precise", () => {
     "实时结果",
   ])("PAID catches %j", (text) => expect(PAID.test(text)).toBe(true));
 
-  it.each(["AI assistance", "AI assistance (working)", "Ask Claude about this search", "AI辅助", "AI 辅助", "AI 对话", "AI（可选）", "AI (optional)", "Anthropic API key", "Return to AI assistance"])(
+  it.each(["AI assistance", "AI assistance (working)", "Ask Claude about this search", "AI辅助", "AI 辅助", "AI 对话", "AI（可选）", "AI (optional)", "Anthropic API key", "Return to AI assistance", "Change the conditions directly. No AI is used.", "Searches the sample data on this device · No AI", "直接修改查询条件，不使用 AI。", "使用你自己的 seats.aero 额度 · 不使用 AI"])(
     "ASK catches %j",
     (text) => expect(ASK.test(text)).toBe(true),
   );

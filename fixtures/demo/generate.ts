@@ -16,15 +16,17 @@
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { SOURCE_NAMES, type SeatsSource } from "@awardgrid/core/seatsaero/types";
+import { SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
+// The helpers sample mode shares with this corridor (mulberry32, the day arithmetic, the programs, their invented prices
+// and taxes) live with the app's sample data now, and are imported back from there; the files stay byte-identical.
+import { BASE_MILES, DEMO_PROGRAMS, DYNAMIC_PRONE, type DemoProgram, TAXES, addDays, mulberry32 } from "../../apps/ios/src/sample/shared";
+
+export { DEMO_PROGRAMS, addDays, mulberry32, type DemoProgram };
 
 export const DEMO_ORIGINS = ["HKG", "PVG", "SHA", "NRT", "HND", "ICN", "GMP"] as const;
 export const DEMO_DEST = "SEA";
 export const DEMO_ANCHOR = "2026-10-01";
 export const DEMO_DAYS = 30;
-/** Only real seats.aero source codes (SEATS_SOURCES). */
-export const DEMO_PROGRAMS = ["american", "alaska", "united", "aeroplan", "singapore", "jetblue", "flyingblue"] as const satisfies readonly SeatsSource[];
-export type DemoProgram = (typeof DEMO_PROGRAMS)[number];
 /** No program monitors this pair: no availability rows, absent from every /routes list. */
 export const DEMO_UNMONITORED_ORIGIN = "ICN";
 /** Freshness bounds in minutes before "now" (the mock turns these into UpdatedAt at serve time). */
@@ -42,28 +44,8 @@ const CARRIERS: Record<DemoProgram, string[]> = {
   jetblue: ["JL"],
   flyingblue: ["KE", "DL"],
 };
-/** Invented base prices per program (miles). Clamped to J 55k–120k / F 70k–160k below. */
-const BASE_MILES: Record<DemoProgram, { J: number; F: number }> = {
-  american: { J: 60_000, F: 80_000 },
-  alaska: { J: 70_000, F: 85_000 },
-  united: { J: 80_000, F: 110_000 },
-  aeroplan: { J: 75_000, F: 105_000 },
-  singapore: { J: 92_000, F: 118_000 },
-  jetblue: { J: 90_000, F: 120_000 },
-  flyingblue: { J: 85_000, F: 130_000 },
-};
-/** Programs whose rows may be dynamic-priced (hidden unless include_filtered=true). */
-const DYNAMIC_PRONE: readonly DemoProgram[] = ["united", "aeroplan", "flyingblue", "jetblue"];
-/** Invented taxes in minor units (cents) per program: [min, max]. */
-const TAXES: Record<DemoProgram, [number, number]> = {
-  american: [560, 4_000],
-  alaska: [560, 3_500],
-  united: [560, 6_000],
-  aeroplan: [6_000, 20_000],
-  singapore: [5_000, 15_000],
-  jetblue: [560, 3_000],
-  flyingblue: [20_000, 45_000],
-};
+/* Base prices (BASE_MILES, J and F here), dynamic-prone programs and taxes are in apps/ios/src/sample/shared.ts. */
+/** Clamped to J 55k–120k / F 70k–160k below. */
 const MILES_RANGE = { J: [55_000, 120_000], F: [70_000, 160_000] } as const;
 const REGION: Record<string, string> = { HKG: "Asia", PVG: "Asia", SHA: "Asia", NRT: "Asia", HND: "Asia", ICN: "Asia", GMP: "Asia", SEA: "North America" };
 /** Great-circle-ish distances in miles, for realism only. */
@@ -92,17 +74,6 @@ const CITY: Record<string, string> = { HKG: "HKG", PVG: "SHA", SHA: "SHA", NRT: 
 const AIRCRAFT = ["77W", "789", "359", "781", "333", "78J"] as const;
 const FARE_CLASS = { J: "I", F: "O" } as const;
 
-/** mulberry32 — tiny seeded PRNG; good enough for fixtures. */
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 type Rand = () => number;
 
 const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -131,11 +102,6 @@ function sample<T>(rand: Rand, list: readonly T[], n: number): T[] {
     [a[i], a[j]] = [a[j]!, a[i]!];
   }
   return a.slice(0, n);
-}
-export function addDays(iso: string, n: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
 }
 /** "Z"-suffixed AIRPORT LOCAL time, as the Concepts page describes for trips. */
 function localIso(date: string, minutesFromMidnight: number): string {

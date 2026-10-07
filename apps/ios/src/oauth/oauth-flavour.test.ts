@@ -2,7 +2,8 @@
  * The OAuth flavour (VITE_AG_CONNECT=oauth) as screens and routes, beside the key flavour, read the way a build reads
  * the flags (the environment stubbed, the modules imported afresh): the connect page is a "Connect seats.aero" button
  * with no paste field, Settings says "Connected" rather than characters of a key, the sentences that named the key
- * name the account and the 24-hour limit, and Saved says what opening an item past 24 hours does.
+ * name the account and the 24-hour limit, and Saved says what opening an item past 24 hours does. In sample mode the
+ * connect page is sample mode's own (the way back to the account), as in the key flavour.
  */
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -14,6 +15,9 @@ import type { FavoriteV1 } from "@awardgrid/core/workspace/types";
 import type { AppServices } from "../app/bootstrap";
 import { SettingsStore } from "../app/settings-store";
 import { MemoryKeyStore } from "../native/keychain";
+import { MemoryFileStore } from "../store/persistence";
+import { PlansStore } from "../store/plans-store";
+import { SlotFileStorage } from "../workspace/slot-storage";
 
 async function load(connect: "key" | "oauth", store = true) {
   vi.resetModules();
@@ -55,6 +59,8 @@ function services(over: Partial<AppServices> = {}): AppServices {
     seatsAccount: { configured: true, connected: async () => false, connect: async () => ({ ok: true }), disconnect: async () => ({ ok: true }) },
     shortTermMs: 24 * 3600_000,
     now: () => new Date(FIXTURE_NOW),
+    // Saved draws the trip plans too (release plan step 18): none here.
+    plans: new PlansStore(new SlotFileStorage(new MemoryFileStore())),
     ...over,
   } as unknown as AppServices;
 }
@@ -79,6 +85,19 @@ describe("the connect page", () => {
     const html = at("/settings/seats", createElement(oauth.connectScreen.SeatsConnectScreen), services({ seatsAccount: { configured: false, connected: async () => false, connect: async () => ({ ok: false, reason: "not_configured" }), disconnect: async () => ({ ok: true }) } }));
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*Connect seats\.aero/);
     expect(html).toContain("made without a seats.aero client ID");
+  });
+
+  it("OAuth in sample mode: sample mode's own page, the way back to the account, with no Connect or Disconnect", async () => {
+    const oauth = await load("oauth");
+    const sample = services({ dataSource: { kind: "sample", coverage: null, enterSample: async () => {}, exitSample: async () => {} } });
+    const html = at("/settings/seats", createElement(oauth.connectScreen.SeatsConnectScreen), sample);
+    expect(html).toContain("Exit sample data to connect your account.");
+    expect(html).toContain("Exit sample data");
+    expect(html).not.toMatch(/Connect seats\.aero|Disconnect|type="password"|Paste/);
+    // Settings' row says "Sample data", never "Connected" or "Not connected".
+    const settings = at("/settings", createElement(oauth.settings.SettingsScreen), sample);
+    expect(settings).toContain("Sample data");
+    expect(settings).not.toMatch(/>Connected<|>Not connected</);
   });
 
   it("key: the paste field, as before; the OAuth page is not routed", async () => {

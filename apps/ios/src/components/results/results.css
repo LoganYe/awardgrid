@@ -39,8 +39,19 @@
   overscroll-behavior: contain;
 }
 
+/*
+ * Watches, Saved, Settings and its pages scroll as one area. The top inset is a strip of the page's own canvas above
+ * that area (App.tsx), not padding inside it: padding scrolls away with the content, which then ran under the
+ * transparent status bar (#90) or an iPad window's controls. Search keeps the inset in its sticky header instead.
+ */
+.app-status-area {
+  flex: none;
+  height: env(safe-area-inset-top);
+  background: var(--ag-canvas);
+}
+
 .app-page {
-  padding-top: calc(env(safe-area-inset-top) + var(--ag-space-4));
+  padding-top: var(--ag-space-4);
   padding-bottom: var(--ag-space-4);
 }
 
@@ -1496,20 +1507,6 @@
   font-size: var(--ag-type-reading);
   line-height: var(--ag-leading-reading);
 }
-
-.ag-example {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ag-space-3);
-  max-width: 640px;
-  margin: 0 auto;
-}
-
-.ag-example-list {
-  display: grid;
-  gap: var(--ag-card-gap);
-}
-
 
 /* Saving the results (T13): the line that says it, with a way to the Saved tab. */
 .ag-results-save:empty {

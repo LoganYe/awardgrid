@@ -296,13 +296,20 @@ const CASES: ReadonlyArray<{ rule: string; lang: "en" | "zh"; fail: string[]; pa
     rule: "NO_SERVER_SUBJECT",
     lang: "en",
     fail: ["No accounts. No server.", "There is no server to collect any of it.", "AwardGrid (App ID 6816321841) has no accounts and no server."],
-    pass: ["The AwardGrid iPhone app has no accounts and no server of its own.", "There is no shared key and no server key.", "The app needs no account."],
+    pass: [
+      "The AwardGrid iPhone app has no accounts and no server of its own.",
+      "There is no shared key and no server key.",
+      "The app needs no account.",
+      // The privacy policy and the store description since 2026-10-07 (release plan step 22): the app's public name.
+      "AwardGrid for iPhone has no accounts and no server of its own.",
+      "AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.",
+    ],
   },
   {
     rule: "NO_SERVER_SUBJECT",
     lang: "zh",
     fail: ["AwardGrid 没有账号，也没有自己的服务器。", "这个网页版没有帐号。", "Web App 没有账号。"],
-    pass: ["AwardGrid iPhone App 没有账户，也没有自己的服务器。", "App 没有账号，也没有自己的服务器。"],
+    pass: ["AwardGrid iPhone App 没有账户，也没有自己的服务器。", "App 没有账号，也没有自己的服务器。", "AwardGrid iPhone 版没有账号，也没有自己的服务器。"],
   },
 ];
 
@@ -396,13 +403,18 @@ describe("content rules: each fails on a claim and passes on the honest sentence
     expect(hits("It’s not available on the App Store yet.")).toEqual([]);
   });
 
-  it('NO_SERVER_SUBJECT takes "the app", "iPhone app" or Chinese copy\'s "App" as the subject, never "Web App", "App ID" or "App Store"', () => {
+  it('NO_SERVER_SUBJECT takes "the app", "iPhone app", "AwardGrid for iPhone" or Chinese copy\'s "App" / "AwardGrid iPhone 版" as the subject, never "Web App", "App ID" or "App Store"', () => {
     expect(rules(html("<h2>Web App</h2><p>AwardGrid has no accounts and no server of its own.</p>"), { logical: PAGE })).toEqual(["NO_SERVER_SUBJECT"]);
     expect(rules(html("<p>AwardGrid (App ID 6816321841) has no accounts and no server.</p>"), { logical: PAGE })).toEqual(["NO_SERVER_SUBJECT"]);
     expect(rules(html("<p>The Web App has no accounts.</p>"), { logical: PAGE })).toEqual(["NO_SERVER_SUBJECT"]);
     expect(rules("Web App 没有账号。")).toEqual(["NO_SERVER_SUBJECT"]);
     expect(hits(html("<h2>The iPhone app</h2><p>AwardGrid has no accounts and no server of its own.</p>"), { logical: PAGE })).toEqual([]);
     expect(hits("App 没有账号，也没有自己的服务器。")).toEqual([]);
+    // "AwardGrid for iPhone" / "AwardGrid iPhone 版" name the iPhone app; "AwardGrid" alone, or "AwardGrid for the web", does not.
+    expect(hits(html("<p>AwardGrid for iPhone has no accounts and no server of its own.</p>"), { logical: PAGE })).toEqual([]);
+    expect(hits("AwardGrid iPhone 版没有账号，也没有自己的服务器。")).toEqual([]);
+    expect(rules(html("<p>AwardGrid for the web has no accounts.</p>"), { logical: PAGE })).toEqual(["NO_SERVER_SUBJECT"]);
+    expect(rules("AwardGrid 网页版没有账号。")).toEqual(["NO_SERVER_SUBJECT"]);
   });
 
   it("NO_SERVER_SUBJECT reads a table row's header, or a heading, as the subject of the text right after it", () => {

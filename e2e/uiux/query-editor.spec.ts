@@ -198,9 +198,9 @@ test("a draft that cannot run: each error under its field, focus on the first, n
   await page.getByRole("button", { name: "Find award options" }).click();
   await expect(page.getByText("Enter a number of days from 1 to 92.")).toBeVisible();
   await page.getByLabel("Days from today").fill("30");
-  await expect(page.getByText("2026-10-18 to 2026-11-16, counted in UTC from today.")).toBeVisible();
+  await expect(page.getByText("2026-10-18 to 2026-11-16, counted from today.")).toBeVisible();
   await page.getByRole("button", { name: "Next 60 days", exact: true }).click();
-  await expect(page.getByText("2026-10-18 to 2026-12-16, counted in UTC from today.")).toBeVisible();
+  await expect(page.getByText("2026-10-18 to 2026-12-16, counted from today.")).toBeVisible();
   // Back to fixed dates: the fixed range used before is restored, with its day count.
   await page.getByRole("radio", { name: "Fixed dates" }).click();
   await expect(page.getByLabel("Start")).toHaveValue("2026-10-01");
@@ -258,16 +258,17 @@ for (const theme of ["light", "dark"] as const) {
 }
 
 test.describe("where the UTC day is not the local day", () => {
-  // 08:30Z on 18 October is 22:30 on 17 October in Honolulu: the rule counts in UTC, so it still starts on the 18th.
+  // 08:30Z on 18 October is 22:30 on 17 October in Honolulu. "Today" is the device's calendar day (PR-D,
+  // apps/ios/src/app/local-date.ts), so the rule starts on the 17th; before PR-D it counted in UTC and started on the 18th.
   test.use({ timezoneId: "Pacific/Honolulu" });
-  test("relative days start on the UTC day", async ({ page }) => {
+  test("relative days start on the local day", async ({ page }) => {
     await openScenario(page, "complete");
     await openEditor(page);
-    await expect(page.getByText("2026-10-18 to 2026-11-16, counted in UTC from today.")).toBeVisible();
+    await expect(page.getByText("2026-10-17 to 2026-11-15, counted from today.")).toBeVisible();
     // Switching to fixed dates for the first time keeps that range.
     await page.getByRole("radio", { name: "Fixed dates" }).click();
-    await expect(page.getByLabel("Start")).toHaveValue("2026-10-18");
-    await expect(page.getByLabel("End")).toHaveValue("2026-11-16");
+    await expect(page.getByLabel("Start")).toHaveValue("2026-10-17");
+    await expect(page.getByLabel("End")).toHaveValue("2026-11-15");
     await expect(page.getByText("30 days (up to 92).")).toBeVisible();
   });
 });

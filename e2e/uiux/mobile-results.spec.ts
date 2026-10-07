@@ -195,10 +195,13 @@ test("in Chinese, the text search speaks Chinese since T11, and the matrix since
 });
 
 test("no key: there is no search to run, and the way to add one is a link; results already shown stay", async ({ page }) => {
-  // First run: the welcome, not a search box (T11).
+  // First run: the welcome, not a search box (T11). The one text box is the trip planner's, which reads a plan and runs
+  // nothing (release plan step 18): no search Run.
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
   await expect(page.getByTestId("welcome")).toBeVisible();
-  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByTestId("text-search-run")).toHaveCount(0);
+  await expect(page.getByRole("textbox")).toHaveCount(1);
+  await expect(page.getByTestId("planner").getByRole("textbox", { name: "Describe a trip" })).toBeVisible();
   // A key removed after a search: the results stay, "Search again" is off, and the callout links to the key page.
   await openScenario(page, "complete", "ios", { lang: "en" });
   await searchByText(page, "Synthetic HKG to SEA October business and first");
