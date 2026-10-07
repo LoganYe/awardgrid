@@ -9,10 +9,14 @@
  *
  * This is also where watches are checked: once when the app opens and again each time it returns
  * to the foreground, and at no other time. There is no background check (../watch/capabilities.ts).
+ *
+ * And where the app's data source is read, before bootstrap (./data-source.ts): the person's own seats.aero account, or
+ * sample mode's labelled sample data. Switching boots the app again in place, on Search.
  */
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Navigate, NavLink, Outlet, type RouteObject, RouterProvider, createHashRouter, useLocation } from "react-router";
 import { type AppServices, type BootstrapOptions, bootstrap } from "./bootstrap";
+import { SampleDataContext, isSample, resolveBoot } from "./data-source";
 import { RESULTS } from "../components/results/copy";
 import { Button, Icon, type IconName, applyThemePreference } from "../components/ui";
 import { FAVORITES } from "../screens/favorites-copy";
@@ -23,11 +27,13 @@ import { installSystemTextSize } from "../native/text-size";
 import { type Locale, langTag, useLocale } from "./locale";
 import { TraySlot } from "./tray-slot";
 import { SeatsAttribution } from "../components/SeatsAttribution";
+import { SampleBanner } from "../components/SampleBanner";
+import { SAMPLE } from "../sample/sample-copy";
 import { CAN_CONNECT } from "./flags";
 import { CompareScreen } from "../screens/CompareScreen";
 import { QueryEditorScreen } from "../screens/QueryEditorScreen";
 import { DetailScreen } from "../screens/DetailScreen";
-import { ExampleScreen } from "../screens/OnboardingScreen";
+import { EnterSample } from "../screens/OnboardingScreen";
 import { FavoritesScreen, SavedScreen } from "../screens/FavoritesScreen";
 import { SearchScreen } from "../screens/SearchScreen";
 import { SeatsKeyScreen, SettingsScreen } from "../screens/SettingsScreen";
@@ -89,7 +95,10 @@ export function FullPage({ services }: { services: AppServices }) {
   );
 }
 
-/** The chrome's pages that show results from seats.aero, and so carry "Data: seats.aero" at their end. */
+/**
+ * The chrome's pages that show results, and so carry their source at their end: "Data: seats.aero", or in sample mode
+ * "Sample data · on this device".
+ */
 export function showsSeatsData(place: string): boolean {
   return place === "/watches" || place === "/saved" || place.startsWith("/saved/");
 }
@@ -102,6 +111,8 @@ export function showsSeatsData(place: string): boolean {
  *
  * LEGAL.md: "Every screen that shows award data carries the attribution 'Data: seats.aero'", with "seats.aero" linking to
  * its site. The Search screen says it in its status line; Watches and Saved carry it at the end of their content.
+ * Sample mode (release plan step 17) shows its banner at the top of every tab instead (Search under its sticky header),
+ * and "Sample data · on this device" where the attribution would be: its rows are not seats.aero's.
  */
 export function Chrome({ services }: { services: AppServices }) {
   const unseen = useUnseenCount(services);
@@ -126,6 +137,7 @@ export function Chrome({ services }: { services: AppServices }) {
   }, [place]);
   const [traySlot, setTraySlot] = useState<HTMLDivElement | null>(null);
   const saveProblem = useSyncExternalStore(services.saveStatus.subscribe, services.saveStatus.get, services.saveStatus.get);
+  const sample = isSample(services);
   const tabs: Array<{ to: string; icon: IconName; label: string; badge: number }> = [
     { to: "/", icon: "search", label: t.tabs.search, badge: 0 },
     { to: "/watches", icon: "bell", label: t.tabs.watches, badge: unseen },
@@ -136,10 +148,18 @@ export function Chrome({ services }: { services: AppServices }) {
     <TraySlot.Provider value={traySlot}>
     <div className="app-shell">
       <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(place, e.currentTarget.scrollTop)}>
+        {/* Sample mode's banner on every tab; the Search screen draws its own under its sticky header. */}
+        {onSearch ? null : <SampleBanner services={services} locale={locale} />}
         <Outlet context={services} />
-        {/* Only over seats.aero's data: Watches and Saved. Search says it in its status line; Settings, its pages and the
-            example (made up, not seats.aero's) show none of it. */}
-        {showsSeatsData(place) ? <SeatsAttribution className="app-attribution" text={t.attribution} locale={locale} /> : null}
+        {/* Only over seats.aero's data: Watches and Saved. Search says it in its status line; Settings and its pages show
+            none of it. Over sample data, the sample line instead, with no link: the rows are made up on this device. */}
+        {showsSeatsData(place) ? (
+          sample ? (
+            <p className="app-attribution ag-sample-source">{SAMPLE[locale].attribution}</p>
+          ) : (
+            <SeatsAttribution className="app-attribution" text={t.attribution} locale={locale} />
+          )
+        ) : null}
       </main>
       <SaveProblemBar services={services} problem={saveProblem} locale={locale} />
       {/* The comparison bar (T12) sits here, above the tab bar and outside the scrolling area, so it never covers a
@@ -318,7 +338,8 @@ export function appRoutes(services: AppServices): RouteObject[] {
             </Suspense>
           ),
         },
-        { path: "example", element: <ExampleScreen /> },
+        // The first run's "View an example" became sample mode (release plan step 17): an old link enters it.
+        { path: "example", element: <EnterSample /> },
         ...(ProbesScreen
           ? [
               {
@@ -344,22 +365,47 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
   const [error, setError] = useState<string | null>(null);
   // Read once, at boot: a new options object on a later render must not boot a second set of services.
   const boot = useRef({ bootstrapOptions, onReady });
+  // Each switch between the account and sample data boots again (./data-source.ts): the services, the router and every
+  // screen are new, on the data the person chose.
+  const [generation, setGeneration] = useState(0);
+  const current = useRef<AppServices | null>(null);
+  const switched = useRef(false);
 
   useEffect(() => {
+    let live = true;
+    const hooks = {
+      // Entering sample mode saves what the account's services hold first, as leaving the app would.
+      beforeSwitch: async () => current.current?.persist(),
+      reboot: () => {
+        // The new router starts on Search, without a history entry for the page the switch was made from.
+        window.history.replaceState(null, "", "#/");
+        switched.current = true;
+        current.current = null;
+        setServices(null);
+        setGeneration((n) => n + 1);
+      },
+    };
     // A probe build sends seats.aero requests to the local mock (../probes/probe-transport.ts); any other build is unchanged.
     const booted = PROBES
       ? import("../probes/probe-transport").then((m) => bootstrap(m.probeBootstrapOptions()))
       : E2E
         ? import("../probes/probe-transport").then((m) => bootstrap(m.e2eBootstrapOptions()))
-        : bootstrap(boot.current.bootstrapOptions);
+        : resolveBoot(boot.current.bootstrapOptions ?? {}, hooks).then(bootstrap);
     booted.then(
       (ready) => {
+        if (!live) return;
+        current.current = ready;
         setServices(ready);
         boot.current.onReady?.(ready);
       },
-      (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+      (e: unknown) => {
+        if (live) setError(e instanceof Error ? e.message : String(e));
+      },
     );
-  }, []);
+    return () => {
+      live = false;
+    };
+  }, [generation]);
 
   useEffect(() => {
     if (!services) return;
@@ -387,6 +433,13 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
 
   // Created once per bootstrap. Re-creating the router on every render would reset navigation.
   const router = useMemo(() => (services ? createHashRouter(appRoutes(services)) : null), [services]);
+  // After a switch, focus goes to the Search screen's title, where the new data starts.
+  useEffect(() => {
+    if (!router || !switched.current) return;
+    switched.current = false;
+    const frame = window.requestAnimationFrame(() => document.getElementById("search-title")?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [router]);
 
   if (error) {
     return (
@@ -405,9 +458,9 @@ export function App({ bootstrapOptions, onReady }: AppProps = {}) {
   if (!services || !router) return <div style={{ padding: 24, color: "var(--fg-muted)" }}>Starting…</div>;
 
   return (
-    <>
+    <SampleDataContext.Provider value={isSample(services)}>
       <ShellEffects services={services} />
       <RouterProvider router={router} />
-    </>
+    </SampleDataContext.Provider>
   );
 }

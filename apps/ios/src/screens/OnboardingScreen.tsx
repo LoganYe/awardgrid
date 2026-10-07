@@ -1,134 +1,105 @@
 /**
- * The first run (UI/UX v1 T11; docs/04 S08; spec §16 "首次配置"): one screen, shown where the Search screen would be
- * while there is no seats.aero key — what the app does, "Connect your seats.aero account" first, and "View an
- * example". Nothing is forced and nothing comes back once a key is saved. The Anthropic key is not asked for here: it
- * waits for the first AI entry.
+ * The first run (UI/UX v1 T11; docs/04 S08; spec §16 "首次配置"; release plan step 17): one screen, shown where the
+ * Search screen would be while there is no seats.aero key — what the app does, then "Try with sample data" first and
+ * "Connect your seats.aero account" second. Nothing is forced and nothing comes back once a key is saved. The Anthropic
+ * key is not asked for here: it waits for the first AI entry.
  *
- * The example is made up in this file, marked on the page with the approved "Illustrative data — not live
- * availability", and sends nothing. It shows how results read — miles, fees and seats said as known or unknown — not
- * any real availability.
+ * "Try with sample data" switches the whole app to sample mode (app/data-source.ts): every feature, on any route the
+ * app knows, on made-up data that every screen labels as such. It replaces the old static example: `#/example` now
+ * enters sample mode too (EnterSample), so an old link still leads somewhere useful.
  */
-import { copy } from "@awardgrid/core/workspace/present";
-import type { AvailabilityRow } from "@awardgrid/core/grid/types";
-import type { WorkspaceRow } from "@awardgrid/core/workspace/types";
-import { useMemo, useRef, useState } from "react";
-import { Link, useOutletContext } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, Navigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { isSample } from "../app/data-source";
 import { CAN_CONNECT } from "../app/flags";
-import { useFocusOnArrival } from "../app/focus";
 import { type Locale, langTag, useLocale } from "../app/locale";
-import { AvailabilityCard } from "../components/results/AvailabilityCard";
-import { Icon, Notice } from "../components/ui";
+import { RESULTS } from "../components/results/copy";
+import { Button } from "../components/ui";
+import { SAMPLE } from "../sample/sample-copy";
 
-export const WELCOME: Record<Locale, { value: string; connect: string; example: string; exampleTitle: string; exampleNote: string; exampleProgram: string; back: string }> = {
+export const WELCOME: Record<Locale, { value: string; connect: string }> = {
   en: {
     value: "Find award seats across programs, from your own seats.aero account. Every result says what is known and what is not.",
     connect: "Connect your seats.aero account",
-    example: "View an example",
-    exampleTitle: "Example results",
-    exampleNote: "Made up to show how results read. Connect your seats.aero account to see results from it.",
-    exampleProgram: "Example program",
-    back: "Back",
   },
   zh: {
     value: "通过你自己的 seats.aero 账户跨计划查找兑换座位，每条结果都写明已知与未知。",
     connect: "连接你的 seats.aero 账户",
-    example: "查看示例",
-    exampleTitle: "示例结果",
-    exampleNote: "以下内容为虚构，仅用于展示结果的读法。连接你的 seats.aero 账户后，可查看该账户的结果。",
-    exampleProgram: "示例计划",
-    back: "返回",
   },
 };
 
+/** Switch to sample mode, saying so while it happens and what went wrong if it could not. */
+export function useEnterSample(services: Pick<AppServices, "dataSource">, locale: Locale): { busy: boolean; failed: string | null; enter: () => void } {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const enter = () => {
+    if (busy) return;
+    setBusy(true);
+    setFailed(null);
+    services.dataSource.enterSample().catch((err: unknown) => {
+      setFailed(SAMPLE[locale].switchFailed(err instanceof Error ? err.message || err.name : String(err)));
+      setBusy(false);
+    });
+  };
+  return { busy, failed, enter };
+}
+
 /** The one first-run screen, inside the Search screen while there is no seats.aero key. */
-export function Welcome({ locale }: { locale: Locale }) {
+export function Welcome({ locale, onTrySample, busy = false, failed = null }: { locale: Locale; onTrySample: () => void; busy?: boolean; failed?: string | null }) {
   const w = WELCOME[locale];
+  const s = SAMPLE[locale];
   return (
     <div className="ag-welcome" data-testid="welcome">
       <p className="ag-welcome-value">{w.value}</p>
+      <Button id="welcome-sample" variant="primary" block onClick={onTrySample} loading={busy} loadingLabel={s.opening}>
+        {s.tryIt}
+      </Button>
       {/* Not in a build without a connection (VITE_AG_CONNECT=0, app/flags.ts). */}
       {CAN_CONNECT ? (
-        <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
+        <Link to="/settings/seats" className="ag-button ag-button-block">
           {w.connect}
         </Link>
       ) : null}
-      <Link id="welcome-example" to="/example" className="ag-button ag-button-block">
-        {w.example}
-      </Link>
+      {failed ? (
+        <p role="alert" className="ag-callout ag-callout-danger">
+          {failed}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-/** The made-up rows the example shows: plainly an example program, dated from today, nothing fetched. */
-function exampleRows(today: Date, program: string): WorkspaceRow[] {
-  const day = (n: number) => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + n)).toISOString().slice(0, 10);
-  const row = (id: string, offset: number, cabin: AvailabilityRow["cabin"], miles: number, fees_cents: number | null, currency: string | null, seats_left: number): AvailabilityRow => ({
-    program,
-    origin: "HKG",
-    dest: "SEA",
-    date: day(offset),
-    cabin,
-    miles,
-    fees_cents,
-    currency,
-    seats_left,
-    direct: true,
-    airlines: [],
-    computed_last_seen: "",
-    source_id: id,
-    booking_url: null,
-    fetched_at: "",
-  });
-  const rows = [
-    row("example-1", 30, "J", 70000, 5600, "USD", 2),
-    row("example-2", 32, "J", 85000, null, null, 0),
-    row("example-3", 32, "F", 120000, 12050, "USD", 1),
-  ];
-  // No source time: an example has none, and says so.
-  return rows.map((value) => ({ key: `${value.source_id}-${value.cabin}`, value, time: { basis: "unknown", providerAt: null, fetchedAt: null } }));
-}
-
-/** "View an example": made-up results, marked as such, with nothing sent. */
-export function ExampleScreen() {
+/**
+ * `#/example`: the old example's address, which now enters sample mode. Already in sample mode, it opens Search. A
+ * switch that fails says why, with the way back to Search.
+ */
+export function EnterSample() {
   const services = useOutletContext<AppServices>();
   const locale = useLocale(services);
-  const w = WELCOME[locale];
-  const [now] = useState(() => services.now());
-  // Keyed as before whatever the language, so a selection survives switching it.
-  const rows = useMemo(() => exampleRows(now, w.exampleProgram), [now, w.exampleProgram]);
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const title = useRef<HTMLHeadingElement>(null);
-  useFocusOnArrival(title);
+  const sample = isSample(services);
+  const { failed, enter } = useEnterSample(services, locale);
+  const started = useRef(false);
+  useEffect(() => {
+    if (sample || started.current) return;
+    started.current = true;
+    enter();
+  }, [sample, enter]);
+  if (sample) return <Navigate to="/" replace />;
   return (
-    <div className="ag-example" lang={langTag(locale)}>
-      <Link to="/" state={{ focus: "welcome-example" }} className="ag-settings-back">
-        <Icon name="chevron-left" />
-        <span>{w.back}</span>
-      </Link>
-      <h1 ref={title} tabIndex={-1} className="ag-settings-title">
-        {w.exampleTitle}
-      </h1>
-      <Notice tone="warning">{copy("demo.synthetic", locale)}</Notice>
-      <p className="ag-results-meta">{w.exampleNote}</p>
-      <div className="ag-example-list">
-        {rows.map((row) => (
-          <AvailabilityCard
-            key={row.key}
-            row={row}
-            snapshotId="example"
-            selected={selected.has(row.key)}
-            onToggle={(on) => setSelected((s) => (on ? new Set([...s, row.key]) : new Set([...s].filter((k) => k !== row.key))))}
-            now={now.toISOString()}
-            locale={locale}
-          />
-        ))}
-      </div>
-      <Notice tone="warning">{copy("demo.synthetic", locale)}</Notice>
-      {CAN_CONNECT ? (
-        <Link to="/settings/seats" className="ag-button ag-button-primary ag-button-block">
-          {w.connect}
-        </Link>
+    <div className="ag-welcome" lang={langTag(locale)}>
+      <p className="ag-welcome-value" role="status">
+        {failed ? "" : SAMPLE[locale].opening}
+      </p>
+      {failed ? (
+        <>
+          <p role="alert" className="ag-callout ag-callout-danger">
+            {failed}
+          </p>
+          <Link to="/" className="ag-button ag-button-block">
+            {RESULTS[locale].tabs.search}
+          </Link>
+        </>
       ) : null}
     </div>
   );

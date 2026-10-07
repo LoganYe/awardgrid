@@ -26,8 +26,13 @@
  * Searches run through the workspace (T05); the last search is its shown snapshot, which a relaunch shows with the
  * time it was saved, without running it. The screen marks itself with its language (the other screens are English
  * until T11).
+ *
+ * Sample mode (release plan step 17; app/data-source.ts): the banner under the sticky header, "Sample data · on this
+ * device" where the status line names seats.aero, no call counts and no quota line (no seats.aero call is made). A
+ * search that reaches past what sample data covers says what it covers, and an empty result or a text the parser
+ * could not read offers one tap to a search that has rows: Hong Kong to Seattle, the next 30 days, business.
  */
-import { SortBy } from "@awardgrid/core/query/schema";
+import { QueryObject, SortBy } from "@awardgrid/core/query/schema";
 import { projectResults } from "@awardgrid/core/workspace/projection";
 import { type Locale, ageLabel, copy, coverageNotices, moreConditionsCount, optionsCount, sortLabel, sortShortLabel } from "@awardgrid/core/workspace/present";
 import { describeQuery, textReproducesQuery } from "@awardgrid/core/workspace/query-editor";
@@ -37,6 +42,7 @@ import { createPortal } from "react-dom";
 import { Link, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { useAskRunning } from "../app/ask-running";
+import { isSample } from "../app/data-source";
 import { CAN_CONNECT, STORE } from "../app/flags";
 import { langTag, useLocale } from "../app/locale";
 import { ASK_SURFACES } from "../ask/ask-surface-copy";
@@ -56,8 +62,10 @@ import { SAVED_TITLE } from "./FavoritesScreen";
 import { RESULTS } from "../components/results/copy";
 import { QuerySummary } from "../components/results/QuerySummary";
 import { SeatsAttribution } from "../components/SeatsAttribution";
+import { SampleBanner } from "../components/SampleBanner";
+import { SAMPLE } from "../sample/sample-copy";
 import { Button, Icon, Notice, SegmentedControl } from "../components/ui";
-import { Welcome } from "./OnboardingScreen";
+import { Welcome, useEnterSample } from "./OnboardingScreen";
 import { RETURN_FOCUS } from "./QueryEditorScreen";
 
 /**
@@ -90,6 +98,37 @@ function freshness(shown: LastSearchEntry, now: Date, locale: Locale): string {
   return shown.value.api_calls_used === null ? t.callsUnknown : t.calls(shown.value.api_calls_used);
 }
 
+/** The day `n` days after `iso` (YYYY-MM-DD), in UTC. */
+function addDaysUtc(iso: string, n: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** The words of sample mode's one-tap search, which the parser reads back as the same search (so Search again rolls). */
+export const SAMPLE_STARTER_TEXT = "HKG to SEA next 30 days business";
+
+/** Sample mode's one-tap search (release plan step 17): Hong Kong to Seattle, today and the 29 days after, business. */
+export function sampleStarterQuery(today: string): QueryObject {
+  return QueryObject.parse({
+    origins: ["HKG"],
+    destinations: ["SEA"],
+    date_from: today,
+    date_to: addDaysUtc(today, 29),
+    cabins: ["J"],
+    raw_text: SAMPLE_STARTER_TEXT,
+    language: "en",
+  });
+}
+
+/** Whether a sample search reaches past what sample data covers: a code outside the seed, or a day outside the window. */
+function pastSampleCoverage(services: AppServices, query: Pick<QueryObject, "origins" | "destinations" | "date_from" | "date_to">, today: string): boolean {
+  const coverage = services.dataSource?.coverage;
+  if (!coverage) return false;
+  const codes = [...query.origins, ...query.destinations];
+  return codes.some((code) => !coverage.covers(code)) || !coverage.coversDate(query.date_from, today) || !coverage.coversDate(query.date_to, today);
+}
+
 /** Where focus goes back to when the editor closes: the control that opened it (U-027). */
 const CHIP_IDS = { programs: "chip-programs", stops: "chip-stops", more: "chip-more" } as const;
 
@@ -120,6 +159,8 @@ export function SearchScreen() {
   const [saveMessage, setSaveMessage] = useState<{ snapshotId: string; text: string; ok: boolean; tail?: string } | null>(null);
   const now = services.now();
   const asking = useAskRunning(services);
+  const sample = isSample(services);
+  const entering = useEnterSample(services, locale);
 
   useEffect(() => {
     void services.keys.get().then((k) => setHasKey(Boolean(k)));
@@ -136,6 +177,8 @@ export function SearchScreen() {
   // that arrival. The history entry keeps its state, so closing an option's details (which returns to the same entry)
   // must not apply it again.
   const returnFocus = (location.state as { focus?: string } | null)?.focus;
+  // What the page this one was opened from had to say on the way here: a removed key (SeatsKeyScreen).
+  const said = (location.state as { said?: string } | null)?.said ?? null;
   const focusedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!returnFocus || focusedFor.current === location.key) return;
@@ -162,6 +205,24 @@ export function SearchScreen() {
     },
     [services],
   );
+
+  // Sample mode's one tap: a structured search with rows, from an empty result or a text the parser could not read.
+  const trySampleSearch = () => {
+    const query = sampleStarterQuery(services.now().toISOString().slice(0, 10));
+    void runSearch(() => services.runParsed(SAMPLE_STARTER_TEXT, { query, warnings: [], notices: [] }));
+  };
+  const sampleTry = sample ? (
+    <Button className="ag-sample-try" onClick={trySampleSearch} loading={busy || running} loadingLabel={t.searching}>
+      {SAMPLE[locale].trySearch}
+    </Button>
+  ) : null;
+  const saidNote = said ? (
+    <div className="ag-results-notes">
+      <Notice tone="success" live>
+        {said}
+      </Notice>
+    </div>
+  ) : null;
 
   // Search again: the words, when they reproduce the search (a rolling "next 30 days" rolls); else the search itself.
   const searchAgain = () => {
@@ -253,6 +314,8 @@ export function SearchScreen() {
   const rows = projected?.rows ?? [];
   // Coverage speaks for the search, so it counts the snapshot's rows, not the ones a view filter lets through.
   const coverage = snapshot && value ? coverageNotices(snapshot.coverage, snapshot.rows.length, locale) : [];
+  // Sample mode: a search past what sample data covers says what it covers; an empty one offers the one tap.
+  const pastCoverage = sample && value ? pastSampleCoverage(services, value.query, now.toISOString().slice(0, 10)) : false;
   // "Show all" takes its own button away: focus goes to the status line, and the change is announced.
   const [announcement, setAnnouncement] = useState("");
   const showAll = () => {
@@ -388,6 +451,8 @@ export function SearchScreen() {
         </header>
         {snapshot && value ? <QuerySummary id={RETURN_FOCUS} query={value.query} locale={locale} waitNote={running ? t.editWhileRunning : null} /> : null}
       </div>
+      <SampleBanner services={services} locale={locale} className="ag-sample-banner-inset" />
+      {saidNote}
 
       {snapshot && value ? (
         <>
@@ -447,9 +512,10 @@ export function SearchScreen() {
           <div className="ag-results-status" data-testid="results-status" id="results-status" tabIndex={-1}>
             <span>
               {optionsCount(rows.length, locale)}
-              {shown ? ` · ${freshness(shown, now, locale)}` : ""}
+              {/* No call count or cache age over sample data: no seats.aero call was made for it. */}
+              {shown && !sample ? ` · ${freshness(shown, now, locale)}` : ""}
             </span>
-            <SeatsAttribution as="span" text={copy("data.source", locale)} locale={locale} />
+            {sample ? <span className="ag-sample-source">{SAMPLE[locale].attribution}</span> : <SeatsAttribution as="span" text={copy("data.source", locale)} locale={locale} />}
           </div>
 
           <p className="sr-only" role="status">
@@ -467,11 +533,18 @@ export function SearchScreen() {
               </Notice>
             ) : null}
             {failureCallout}
-            {coverage.map((notice) => (
+            {/* Past what sample data covers, the sample note says it: "not monitored" would only repeat it, less clearly. */}
+            {coverage.filter((notice) => !(pastCoverage && notice.kind === "unmonitored")).map((notice) => (
               <Notice key={notice.kind} tone={notice.kind === "none" ? "info" : "warning"} data-testid="coverage-notice">
                 {notice.text}
               </Notice>
             ))}
+            {pastCoverage && services.dataSource.coverage ? (
+              <Notice tone="info" data-testid="sample-coverage">
+                {SAMPLE[locale].coverage(services.dataSource.coverage.airports)}
+              </Notice>
+            ) : null}
+            {snapshot.rows.length === 0 ? sampleTry : null}
             {value.warnings.map((w) => (
               <Callout key={w} tone="warn" lang={english}>
                 {w}
@@ -558,11 +631,11 @@ export function SearchScreen() {
             </p>
           ) : null}
           {keyCallout}
-          {quota ? <p className="ag-results-meta tabular">{t.quota(quota.used, quota.softLimit)}</p> : null}
+          {quota && !sample ? <p className="ag-results-meta tabular">{t.quota(quota.used, quota.softLimit)}</p> : null}
         </>
       ) : hasKey === false ? (
-        // First run (T11): no seats.aero key yet — what the app does, connect first, or look at an example.
-        <Welcome locale={locale} />
+        // First run (T11): no seats.aero key yet — what the app does, sample data first, or connect an account.
+        <Welcome locale={locale} onTrySample={entering.enter} busy={entering.busy} failed={entering.failed} />
       ) : (
         <div className="ag-results-empty">
           <p className="ag-results-meta">{t.emptyIntro}</p>
@@ -578,7 +651,9 @@ export function SearchScreen() {
             </Link>
           )}
           {failureCallout}
-          {quota ? <p className="ag-results-meta tabular">{t.quota(quota.used, quota.softLimit)}</p> : null}
+          {/* Sample mode: one tap to a search with rows, from the empty screen or after a text the parser could not read. */}
+          {sampleTry}
+          {quota && !sample ? <p className="ag-results-meta tabular">{t.quota(quota.used, quota.softLimit)}</p> : null}
         </div>
       )}
     </div>

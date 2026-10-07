@@ -13,6 +13,9 @@
  *     caveat beside it; without one, "Copy search details". Never "book", "lock" or "ticketed".
  *   - **Back** — the button, Esc, the browser — closes the page; the results underneath were never unmounted, and
  *     focus returns to what opened it. A reference that is not one of the shown results is refused: nothing is sent.
+ *   - **Sample mode** (release plan step 17): the banner at the top, "Sample data" for the source time, "Sample data ·
+ *     on this device" for the data line, and no way out to a program: sample options have no booking or program
+ *     links, and the page says so.
  */
 import { detailLink } from "@awardgrid/core/grid/deeplinks/trusted";
 import { cabinName } from "@awardgrid/core/workspace/query-editor";
@@ -34,11 +37,14 @@ import type { TripSummary } from "@awardgrid/core/seatsaero/trips";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useLocation, useNavigate, useOutletContext, useParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
+import { isSample } from "../app/data-source";
 import { STORE } from "../app/flags";
 import { langTag, useLocale } from "../app/locale";
 import { ASK_SURFACES } from "../ask/ask-surface-copy";
 import { RESULTS } from "../components/results/copy";
 import { SeatsAttribution } from "../components/SeatsAttribution";
+import { SampleBanner } from "../components/SampleBanner";
+import { SAMPLE } from "../sample/sample-copy";
 import { Button, Icon, IconButton, Notice } from "../components/ui";
 import type { DetailLoaded } from "../workspace/detail-service";
 import type { ApiFailure } from "../search/search";
@@ -172,7 +178,9 @@ export function DetailScreen() {
 
   const row = found.row.value;
   const now = services.now();
-  const link = loaded?.link ?? detailLink(row, []);
+  const sample = isSample(services);
+  // Sample options have no booking or program links (release plan D10): none is offered, whatever the row would allow.
+  const link = sample ? null : (loaded?.link ?? detailLink(row, []));
   const fees = feesLabel(row.fees_cents, row.currency, locale);
 
   const trip = (trip: TripSummary, i: number) => {
@@ -267,6 +275,7 @@ export function DetailScreen() {
     <div className="ag-detail" data-testid="detail-screen" lang={langTag(locale)} role="dialog" aria-modal="true" aria-labelledby="detail-summary-title">
       {header}
       <div className="ag-detail-body">
+        <SampleBanner services={services} locale={locale} />
         <section className="ag-detail-summary" aria-labelledby="detail-summary-title">
           <p className="ag-detail-when">
             {dayLabel(row.date, locale)} · {cabinName(row.cabin, locale)}
@@ -307,16 +316,21 @@ export function DetailScreen() {
           <h2 className="ag-detail-section-title" id="detail-data">
             {d.dataHeading}
           </h2>
-          <p className="ag-detail-meta">{timeLabel(found.row.time, now.toISOString(), locale)}</p>
+          <p className="ag-detail-meta">{timeLabel(found.row.time, now.toISOString(), locale, { sample })}</p>
           {loaded ? <p className="ag-detail-meta">{d.loadedOnDevice(ageLabel(Math.max(0, now.getTime() - Date.parse(loaded.loadedAt)), locale))}</p> : null}
           <p className="ag-detail-meta">{copy("help.program", locale)}</p>
-          <SeatsAttribution className="ag-detail-meta" text={copy("data.source", locale)} locale={locale} />
+          {sample ? (
+            <p className="ag-detail-meta ag-sample-source">{SAMPLE[locale].attribution}</p>
+          ) : (
+            <SeatsAttribution className="ag-detail-meta" text={copy("data.source", locale)} locale={locale} />
+          )}
         </section>
       </div>
 
       <footer className="ag-detail-actions" data-links={link ? "2" : "1"}>
-        {/* The approved caveat stands above the way out whenever there is one, loaded or not. */}
+        {/* The approved caveat stands above the way out whenever there is one, loaded or not. Sample options have none. */}
         {link ? <p className="ag-detail-caveat">{copy("details.external", locale)}</p> : null}
+        {sample ? <p className="ag-detail-caveat">{SAMPLE[locale].noLinks}</p> : null}
         <Button
           onClick={() => {
             // Cleared first, so a second copy is announced again; cleared after a while so it does not linger.

@@ -25,6 +25,7 @@ import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useOutletContext, useParams } from "react-router";
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
+import { isSample } from "../app/data-source";
 import { CAN_CONNECT } from "../app/flags";
 import { useFocusOnArrival } from "../app/focus";
 import { langTag, useLocale } from "../app/locale";
@@ -35,6 +36,7 @@ import { RESULTS } from "../components/results/copy";
 import { Button, Icon, Notice, Sheet } from "../components/ui";
 import { favoriteSnapshot } from "../store/favorites-store";
 import { DEFAULT_PREFERENCES } from "../workspace/workspace-store";
+import { SAMPLE } from "../sample/sample-copy";
 import { FAVORITES } from "./favorites-copy";
 import "./favorites.css";
 
@@ -358,7 +360,8 @@ export function SavedScreen() {
           <>
             {somePast ? <p className="ag-saved-confirm">{f.pastSome}</p> : null}
             <p className="ag-saved-confirm">{f.confirmBody}</p>
-            <p className="ag-saved-confirm">{f.confirmSends}</p>
+            {/* Over sample data nothing is sent: the live sentence is about seats.aero requests and today's calls. */}
+            <p className="ag-saved-confirm">{isSample(services) ? SAMPLE[locale].savedSearchAgain : f.confirmSends}</p>
             <div className="ag-saved-card-actions">
               <Button variant="primary" onClick={run}>
                 {f.confirmRun}

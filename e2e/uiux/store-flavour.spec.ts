@@ -10,6 +10,8 @@ import { openScenario, requestLog, searchByText } from "./helpers";
 import { expect, test } from "./test";
 
 const SEARCH_TEXT = "Synthetic HKG to SEA October business and first";
+/** A search sample mode answers (apps/ios/src/sample): any route the app knows. */
+const SAMPLE_TEXT = "Hong Kong to Seattle next month, business";
 
 /** A paid plan, a purchase, an unlock or live data, in either language (the store-copy.test.ts deny-list). */
 const PAID = /\bPro\b|Pro 密钥|subscri|订阅|upgrade|unlock|purchas|\bbuy\b|购买|解锁|付费|\bpaid\b|premium|trial|\blive (?:results|data)\b|实时结果/i;
@@ -146,12 +148,15 @@ test("Data: seats.aero links to seats.aero beside seats.aero's data, and nowhere
   expect((await requestLog(page)).anthropic).toBe(0);
 });
 
-test("the example, made up, carries no seats.aero attribution", async ({ page }) => {
+test("sample data, made up, carries no seats.aero attribution and names no paid plan (release plan step 17)", async ({ page }) => {
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
-  await page.getByTestId("welcome").getByRole("link", { name: "View an example" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Example results" })).toBeVisible();
+  await page.getByTestId("welcome").getByRole("button", { name: "Try with sample data" }).click();
+  await expect(page.getByTestId("sample-banner")).toBeVisible();
+  await searchByText(page, SAMPLE_TEXT);
+  await expect(page.getByTestId("availability-list")).toBeVisible();
   await expect(page.locator(".ag-attribution-link, .app-attribution")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(PAID);
+  await expect(page.locator("main")).not.toContainText(ASK_WORDS);
 });
 
 test("an account removed after a search: try sample data, or connect it again in Settings", async ({ page }) => {
@@ -165,7 +170,8 @@ test("an account removed after a search: try sample data, or connect it again in
   const callout = page.getByRole("alert").filter({ hasText: "No seats.aero account connected." });
   await expect(callout).toHaveText("No seats.aero account connected. Try sample data, or connect your seats.aero account in Settings.");
   await callout.getByRole("link", { name: "Try sample data" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Example results" })).toBeVisible();
+  await expect(page.getByTestId("sample-banner")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Search" })).toBeVisible();
 });
 
 for (const lang of ["en", "zh"] as const) {
