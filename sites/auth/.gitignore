@@ -1,0 +1,4 @@
+# wrangler's local secrets file and state: the client secret must never be committed.
+.dev.vars
+.dev.vars.*
+.wrangler/

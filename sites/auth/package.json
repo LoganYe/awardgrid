@@ -1,0 +1,11 @@
+{
+  "name": "@awardgrid/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "awardgrid-auth: the stateless Cloudflare Worker that exchanges and refreshes seats.aero OAuth tokens for AwardGrid for iPhone (release plan step 18b). Not deployed; see DEPLOY.md.",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  }
+}
