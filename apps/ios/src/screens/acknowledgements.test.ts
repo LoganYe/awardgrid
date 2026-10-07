@@ -112,7 +112,9 @@ describe("Acknowledgements", () => {
     const en = render(createElement(AcknowledgementsScreen), "/settings/acknowledgements");
     expect(en).toContain(`>${SETTINGS.en.acknowledgements.title}</h1>`);
     for (const entry of ACKNOWLEDGEMENTS) expect(en).toContain(`<span class="ag-ack-name" lang="en">${escape(entry.name)}</span>`);
-    expect(en).toContain(escape(SETTINGS.en.acknowledgements.meta("19.2.8", "MIT")));
+    // React's own entry, at whatever version the list holds (dependency bumps regenerate it).
+    const react = ACKNOWLEDGEMENTS.find((e) => e.name === "react")!;
+    expect(en).toContain(escape(SETTINGS.en.acknowledgements.meta(react.version, "MIT")));
     const zh = render(createElement(AcknowledgementsScreen), "/settings/acknowledgements", "zh");
     expect(zh).toContain(`>${SETTINGS.zh.acknowledgements.title}</h1>`);
     expect(zh).toContain('<pre class="ag-ack-text" lang="en">');
