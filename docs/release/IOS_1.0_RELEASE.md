@@ -73,7 +73,7 @@ not §2's or the handoff's. Facts only: what was decided, and what has been done
 | D3 | Ask | Compiled out of the App Store build: the `/ask` and `/settings/anthropic` routes, every entry point, and the copy that mentions Ask or Anthropic. Kept in the default build for development, probes and e2e. **Known artifact:** Settings › Acknowledgements still lists `@anthropic-ai/sdk` in the App Store build, because the SDK stays bundled; it is a licence notice, not a feature. Removing it is optional |
 | D4 | seats.aero (revises P1) | Ask seats.aero in writing. Done: seats.aero was asked for written permission on 2026-10-06 (P19) |
 | D5 | First resubmission | Wait for App Review's written answer to the reply (P18), up to the end of Tue 2026-10-13 |
-| D6 | Wording | In the app, in English and Chinese: no "Pro", "paid", "subscribe", "upgrade", "unlock", "buy", "purchase", and no "live" for seats.aero data. In the description and on the site, one neutral, link-free sentence: "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data." The public-claims gate's FREE_WITHOUT_PRO rule stays; on 2026-10-06 its reach grew from 120 to 160 characters around "free" (60 to 100 around 免费), because this sentence names seats.aero Pro about 140 characters after the "free" of the price sentence before it |
+| D6 | Wording | In the app, in English and Chinese: no "Pro", "paid", "subscribe", "upgrade", "unlock", "buy", "purchase", and no "live" for seats.aero data. In the description and on the site, one neutral, link-free sentence: "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data." The public-claims gate's FREE_WITHOUT_PRO rule stays; on 2026-10-06 its reach grew from 120 to 160 characters around "free" (60 to 100 around 免费), because this sentence names seats.aero Pro about 140 characters after the "free" of the price sentence before it. *Since 2026-10-08, per the data provider's trademark guidance, no App Store listing text names seats.aero:* the description gives this sentence unnamed, "Your own award data (optional): if you have an account with API access at the award-data provider AwardGrid supports (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data" (`apps/ios/store-metadata/en-US/description.txt`); the site keeps the sentence above |
 | D7 | The /ios/ status paragraph | Until a letter from seats.aero exists, it says, in LEGAL.md's words: "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero. Each user connects their own seats.aero account." |
 | D8 | App Privacy and age rating | Other User Content leaves App Store Connect, `PrivacyInfo.xcprivacy` and the privacy policy together; Search History stays. The age rating's AI question is answered again |
 | D9 | Version Release | **Manual** (revises P9 and P12). Set in App Store Connect with the build-4 changes |
@@ -315,10 +315,13 @@ and the Keychain, both provided by the OS. The declaration is the owner's to mak
 *Superseded on 2026-10-06 by the 3.1.1 remediation (§0 P16-P17, §0.1): this is version 1.0's listing as submitted
 with build 3, kept as the record. Build 4's listing has no Ask (D3) and keeps one neutral sentence about seats.aero
 Pro (D6): since 2026-10-07 its promotional text and description are in `apps/ios/store-metadata/en-US/` (the plan's
-step-36 texts), which no longer holds build 3's. Name, subtitle, keywords and URLs are unchanged.*
+step-36 texts), which no longer holds build 3's. Name, subtitle, keywords and URLs are unchanged. Since 2026-10-08,
+per the data provider's trademark guidance, no listing text names seats.aero, the description and promotional text
+included (`apps/ios/store-metadata/README.md`); the record below is build 3's, as submitted.*
 
 Not needed for internal TestFlight. Trademark rule (2.3.7): no seats.aero, airline, Claude or Anthropic in the name,
-subtitle or keywords; the description names them only to say what the app works with.
+subtitle or keywords; the description names them only to say what the app works with. *(Build 3's rule. Since
+2026-10-08 the description and promotional text do not name seats.aero either.)*
 
 - **Keywords** (97 of 100): `award,miles,points,award seats,award flights,business class,first class,frequent flyer,redemption`
 - **Keywords, Chinese:** `里程票,里程,积分,兑换,商务舱,头等舱,奖励机票,航空里程,常旅客`

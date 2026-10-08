@@ -1,1 +1,1 @@
-One table of award seats for the routes and dates you choose. Try every screen on built-in sample data, or connect your own seats.aero account to see its results.
+One table of award seats for the routes and dates you choose. Try every screen on built-in sample data, or connect your own data-provider account to see its results.

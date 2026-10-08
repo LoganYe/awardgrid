@@ -923,6 +923,14 @@ export const PROGRAM_BRANDS = {
 export const TRADEMARK_BASE = ["seats.aero", "seats aero", "seatsaero", "Claude", "Anthropic", "point.me", "Roame", "AwardFares", "PointsYeah", "AwardTool", "MilesUp", "Flightpoints"];
 /** A localization's name, subtitle and keyword fields: <locale>/ (as submitted) and next/<locale>/ (drafts), with the byte-limited keyword fallback. */
 const STORE_FIELD = /^apps\/ios\/store-metadata\/(?:next\/)?[^/]+\/(?:name|subtitle|keywords|keywords_fallback)\.txt$/;
+/** Every listing text of a localization: the fields above and the prose (promotional text, description, What's New). */
+const STORE_TEXT = /^apps\/ios\/store-metadata\/(?:next\/)?[^/]+\/(?:name|subtitle|keywords|keywords_fallback|promotional_text|description|release_notes)\.txt$/;
+/**
+ * Store listing texts must not use the data provider's trademark: not in the name, subtitle or keywords (the list
+ * above has it), and not in the prose either, where the listing says "the award-data provider" instead. Any case, with
+ * or without the dot or a space, and "Login with Seats". The app itself names it, and the website is not a listing.
+ */
+export const PROVIDER_TRADEMARK = ["seats.aero", "seats aero", "seatsaero", "Login with Seats"];
 
 /** The program list in packages/core: source codes and full names, read from its source so the two cannot drift. */
 export function programList(root = DEFAULT_ROOT) {
@@ -1273,12 +1281,26 @@ function htmlFindings(doc, ctx, out) {
   }
 }
 
+const termPattern = (term) => {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s*");
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "giu");
+};
+/** "seats.aero" as a listing might space or join it: "seats aero", "seatsaero", "Seats . Aero". */
+const PROVIDER_NAME = /(?<![\p{L}\p{N}])seats[\s.]*aero(?![\p{L}\p{N}])/giu;
+
 function trademarkFindings(doc, ctx, out) {
-  if (!STORE_FIELD.test(doc.logical)) return;
-  for (const term of ctx.trademarks) {
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s*");
-    for (const m of doc.raw.matchAll(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "giu"))) {
-      push(out, doc, "TRADEMARK_ASO", "raw", m.index, m.index + m[0].length, `"${term}" does not go in the App Store name, subtitle or keywords (Guideline 2.3.7)`, doc.raw);
+  if (!STORE_TEXT.test(doc.logical)) return;
+  if (STORE_FIELD.test(doc.logical)) {
+    for (const term of ctx.trademarks) {
+      for (const m of doc.raw.matchAll(termPattern(term))) {
+        push(out, doc, "TRADEMARK_ASO", "raw", m.index, m.index + m[0].length, `"${term}" does not go in the App Store name, subtitle or keywords (Guideline 2.3.7)`, doc.raw);
+      }
+    }
+  }
+  // Store listing texts must not use the data provider's trademark: every field, the prose included.
+  for (const re of [PROVIDER_NAME, ...PROVIDER_TRADEMARK.map(termPattern)]) {
+    for (const m of doc.raw.matchAll(re)) {
+      push(out, doc, "TRADEMARK_ASO", "raw", m.index, m.index + m[0].length, `"${m[0]}": store listing texts must not use the data provider's trademark`, doc.raw);
     }
   }
 }

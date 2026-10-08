@@ -6,10 +6,10 @@ AwardGrid 把里程票排进一张表，可以同时包含多个出发地、多�
 • 关注会在你打开应用时检查保存的查询。没有后台检查，也没有通知。
 • 规划行程：输入一段行程，看看 AwardGrid 如何理解它，把规划保存在 iPhone 上，并用示例数据试查。
 
-你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据；连接时使用 seats.aero 自己的登录。AwardGrid 没有内购。
+你自己的里程票数据（可选）：如果你在 AwardGrid 支持的里程票数据提供方有带 API 权限的账户（属于该提供方的 Pro 方案，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据；连接时使用该提供方自己的登录。AwardGrid 没有内购。
 
-来自 seats.aero 的结果是它的缓存数据，转点前请先在里程计划官网确认。
+结果是数据提供方的缓存数据，转点前请先在里程计划官网确认。
 
-AwardGrid 不会看到你的 seats.aero 密码，登录令牌保存在 iPhone 的钥匙串中，不通过 iCloud 钥匙串同步。查票请求从 iPhone 直接发往 seats.aero。awardgrid.dowhiz.com 上的一个小型令牌服务为 AwardGrid 交换和续期登录令牌；它不保存任何内容，也不记录令牌。AwardGrid iPhone 版没有账号、统计分析、广告或跟踪。
+AwardGrid 不会看到你在数据提供方的账户密码，登录令牌保存在 iPhone 的钥匙串中，不通过 iCloud 钥匙串同步。查票请求从 iPhone 直接发往数据提供方。awardgrid.dowhiz.com 上的一个小型令牌服务为 AwardGrid 交换和续期登录令牌；它不保存任何内容，也不记录令牌。AwardGrid iPhone 版没有账号、统计分析、广告或跟踪。
 
-AwardGrid 与 seats.aero、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。
+AwardGrid 与其数据提供方、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。

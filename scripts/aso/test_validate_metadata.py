@@ -237,9 +237,35 @@ class TestTrademarks(unittest.TestCase):
                 self.assertNotEqual(v.trademark_hits(text), [], text)
                 self.assertTrue(any("TRADEMARK" in m for m in messages(check(keywords=f"cook,{text}"), "error")))
 
-    def test_prose_fields_may_name_what_the_app_works_with(self):
-        report = check(description="Needs your own seats.aero Pro key. Ask uses Claude on your Anthropic key.")
+    def test_prose_fields_may_name_other_things_the_app_works_with(self):
+        # Guideline 2.3.7 is about the name, subtitle and keywords: in prose an airline or a program is a fact.
+        report = check(description="Ask uses Claude on your Anthropic key. Programs include United MileagePlus and Qantas.")
         self.assertFalse(any("TRADEMARK" in m for m in messages(report)))
+
+    def test_no_listing_text_names_the_data_provider(self):
+        # Store listing texts must not use the data provider's trademark: in prose too, in any case or spelling.
+        for field_name in ("description", "promotional_text", "release_notes"):
+            for text in (
+                "Needs your own seats.aero account.",
+                "Results are Seats.aero's cached data.",
+                "Connect your SEATS.AERO account.",
+                "Works with seats aero.",
+                "Works with seatsaero.",
+                "Sign in with Login with Seats.",
+            ):
+                with self.subTest(field=field_name, text=text):
+                    found = [m for m in messages(check(**{field_name: text}), "error") if "data provider's trademark" in m]
+                    self.assertEqual(len(found), 1, messages(check(**{field_name: text})))
+        zh = check("zh-Hans", subtitle="一张表", keywords="余票,里程", description="你自己的 seats.aero 数据（可选）。")
+        self.assertTrue(any("data provider's trademark" in m for m in messages(zh, "error")))
+        for text in (
+            "Results are the provider's cached data: confirm on the program's own site before you transfer points.",
+            "Award seats in one table, from your own data-provider account.",
+            "结果是数据提供方的缓存数据。",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(v.provider_hits(text), [])
+                self.assertFalse(any("TRADEMARK" in m for m in messages(check(description=text))))
 
     def test_every_program_in_packages_core_is_a_trademark(self):
         sources, names = v.programs_from_core()
@@ -713,25 +739,31 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertIn(f"`{v.read_field(self.V1, 'marketing_url')}`", info)
         self.assertIn(f"**Privacy Policy URL:** `{v.read_field(self.V1, 'privacy_url')}`", privacy)
         self.assertIn(f"**Keywords** (97 of 100): `{v.read_field(self.V1, 'keywords')}`", listing)
+        promotional = v.read_field(self.V1, "promotional_text")
         self.assertEqual(
-            v.read_field(self.V1, "promotional_text"),
-            "One table of award seats for the routes and dates you choose. Try every screen on built-in sample data, or connect your own seats.aero account to see its results.",
+            promotional,
+            "One table of award seats for the routes and dates you choose. Try every screen on built-in sample data, or connect your own data-provider account to see its results.",
         )
         description = v.read_field(self.V1, "description")
         self.assertNotEqual(description, blockquote(listing, "- **Description:**", "- **Description, Chinese:**"))
         for needed in (
             "• Sample data: search any route between the 84 airports AwardGrid recognises",
-            "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with seats.aero's own sign-in. AwardGrid has no in-app purchases.",
-            "Results from seats.aero are its cached data: confirm on the program's own site before you transfer points.",
-            "AwardGrid never sees your seats.aero password, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off.",
+            "Your own award data (optional): if you have an account with API access at the award-data provider AwardGrid supports (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases.",
+            "Results are the provider's cached data: confirm on the program's own site before you transfer points.",
+            "AwardGrid never sees the password to your provider account, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off.",
+            "Searches go from the iPhone directly to the provider.",
             "A small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens for AwardGrid; it stores nothing and keeps no logs of tokens. AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.",
-            "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program.",
+            "AwardGrid is not affiliated with, endorsed by, or sponsored by its data provider, any airline, or any loyalty program.",
         ):
             self.assertIn(needed, description)
         # No Ask, no Anthropic, no purchase wording (the plan's decisions D3 and D6), and since the OAuth build (plan
-        # step 47F.5) no pasted key: the App Store build connects only through seats.aero's own sign-in.
+        # step 47F.5) no pasted key: the App Store build connects only through the provider's own sign-in.
         self.assertIsNone(re.search(r"\bAsk\b|Anthropic|Claude|subscri|\bpaid\b|What it needs|searches nothing", description))
         self.assertIsNone(re.search(r"API key|API tab|past(?:e|ing)|no server of its own", description))
+        # Since 2026-10-08 no listing text names the data provider (its trademark guidance), in any spelling.
+        for text in (promotional, description):
+            self.assertIsNone(re.search(r"seats[\s.]*aero|Login\s+with\s+Seats", text, re.IGNORECASE))
+            self.assertEqual(v.provider_hits(text), [])
         self.assertFalse((self.V1 / "release_notes.txt").exists())
 
     def test_next_repeats_build_4s_prose(self):
@@ -746,17 +778,33 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertEqual(zh.count("\n\n"), en.count("\n\n"))
         self.assertEqual(zh.count("• "), en.count("• "))
         for needed in (
-            "你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据",
+            "你自己的里程票数据（可选）：如果你在 AwardGrid 支持的里程票数据提供方有带 API 权限的账户（属于该提供方的 Pro 方案，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据",
             "示例数据",
             "84 个机场",
+            "结果是数据提供方的缓存数据，转点前请先在里程计划官网确认。",
+            "查票请求从 iPhone 直接发往数据提供方。",
             "AwardGrid iPhone 版没有账号、统计分析、广告或跟踪。",
-            "AwardGrid 与 seats.aero、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
-            "连接时使用 seats.aero 自己的登录",
+            "AwardGrid 与其数据提供方、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
+            "连接时使用该提供方自己的登录",
         ):
             self.assertIn(needed, zh)
         self.assertIsNone(re.search(r"API 密钥|API 页|粘贴", zh))
         for text in (zh, v.read_field(self.NEXT / "zh-Hans", "promotional_text")):
             self.assertIsNone(re.search(r"AI 辅助|Anthropic|Claude|订阅|无法查票|使用前提", text))
+
+    def test_no_listing_text_names_the_data_provider(self):
+        # Store listing texts must not use the data provider's trademark: every field of every locale, as submitted
+        # (en-US/) and as drafted (next/), in any case or spelling.
+        dirs = [self.V1] + v.locale_dirs(self.NEXT)[0]
+        self.assertEqual(len(dirs), 5)
+        for d in dirs:
+            for path in sorted(d.glob("*.txt")):
+                text = path.read_text(encoding="utf-8")
+                with self.subTest(file=str(path.relative_to(v.METADATA_ROOT))):
+                    self.assertIsNone(re.search(r"seats[\s.]*aero|Login\s+with\s+Seats", text, re.IGNORECASE))
+                    self.assertEqual(v.provider_hits(text), [])
+                    if path.stem in ("name", "subtitle", "keywords", "keywords_fallback"):
+                        self.assertEqual(v.trademark_hits(text), [])
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
