@@ -7,7 +7,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // The native HTTP adapter (CapacitorHttp) runs on URLSession.shared or a default-configured session, and both
+        // write cacheable answers to URLCache.shared, a Cache.db in Library/Caches that neither the 24-hour sweep nor
+        // Disconnect reaches. seats.aero's answers may only live where those purges do (the app's own files), so the
+        // system cache is emptied, which also clears what an earlier build left, and replaced by one that keeps
+        // nothing, before the first request.
+        URLCache.shared.removeAllCachedResponses()
+        URLCache.shared = URLCache(memoryCapacity: 0, diskCapacity: 0, directory: nil)
         return true
     }
 
