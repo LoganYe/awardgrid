@@ -14,7 +14,9 @@
 - Watches: Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.
 - Trip planner: Plan a trip shows how AwardGrid reads a trip you type, as airports, dates and cabins, without an account and without sending anything. A plan can be saved on the device, in Saved › Trip plans, and tried on sample data.
 - Ask: Ask, which answers questions about your results with Claude on your own Anthropic API key, is in testing; it is not part of the App Store version 1.0. Search needs no AI key.
-- Privacy: The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go to seats.aero; sample data sends nothing.
+- Connecting: You connect your seats.aero account with seats.aero's own sign-in (Login with Seats.aero): seats.aero asks you to sign in and approve AwardGrid, and AwardGrid never sees your password. You can disconnect at any time, in AwardGrid or in your seats.aero settings.
+- Privacy: The AwardGrid iPhone app has no accounts of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go from the iPhone directly to seats.aero, and a small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens and stores nothing; sample data sends nothing.
+- Short-term caching: Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term Caching rule); a saved search keeps the search and a summary, and opening it searches again.
 - Availability: AwardGrid for iPhone will be offered in 174 countries or regions; not in mainland China.
 - Dependency: AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.
 

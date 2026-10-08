@@ -41,9 +41,10 @@ function sourceMapsBesideBundle(): Plugin {
 /**
  * The build's flavour flags (src/app/flags.ts), checked before anything is built: a value the app does not know would
  * otherwise build the default flavour without a word. VITE_AG_STORE is "1" (the App Store build, `npm run build:store`)
- * or unset. VITE_AG_CONNECT is "key" (the default), "0" or "oauth". VITE_AG_SEATS_CLIENT_ID is the seats.aero OAuth
- * client's ID: an App Store build of the OAuth flavour needs one (its Connect button would otherwise open a consent
- * page seats.aero refuses), and a value that is not a plausible client ID is refused in any build.
+ * or unset. VITE_AG_CONNECT is "key" (the default), "0" or "oauth"; `npm run build:store` sets "oauth", the only way
+ * the App Store build connects an account. VITE_AG_SEATS_CLIENT_ID is the seats.aero OAuth client's ID: an App Store
+ * build of the OAuth flavour needs one (its Connect button would otherwise open a consent page seats.aero refuses), and
+ * a value that is not a plausible client ID is refused in any build.
  */
 export function checkFlavour(env: Record<string, string>, command: "build" | "serve"): void {
   const store = env.VITE_AG_STORE;
@@ -55,7 +56,9 @@ export function checkFlavour(env: Record<string, string>, command: "build" | "se
   const clientId = (env.VITE_AG_SEATS_CLIENT_ID ?? "").trim();
   if (clientId !== "" && !/^[\x21-\x7e]{1,200}$/.test(clientId)) throw new Error("VITE_AG_SEATS_CLIENT_ID must be printable ASCII with no spaces, at most 200 characters");
   if (connect === "oauth" && store === "1" && command === "build" && clientId === "") {
-    throw new Error("VITE_AG_CONNECT=oauth needs VITE_AG_SEATS_CLIENT_ID for an App Store build (the seats.aero OAuth client's ID)");
+    throw new Error(
+      "VITE_AG_CONNECT=oauth needs VITE_AG_SEATS_CLIENT_ID for an App Store build (`npm run build:store` builds the OAuth flavour): the seats.aero OAuth client's ID, not its secret (sites/auth/DEPLOY.md)",
+    );
   }
 }
 

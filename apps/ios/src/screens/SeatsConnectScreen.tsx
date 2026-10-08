@@ -2,11 +2,13 @@
  * Connect seats.aero in the OAuth flavour (app/flags.ts OAUTH; release plan step 18b): the page Settings › seats.aero
  * account opens instead of the key page (SeatsKeyScreen).
  *
- * There is no paste field. "Connect seats.aero" opens seats.aero's own sign-in and consent page in the system's sign-in
- * sheet (AppServices.seatsAccount.connect, ../oauth/connect.ts); AwardGrid never sees the person's seats.aero password,
- * and no token is ever shown — the page says "Connected", nothing more. What the connection means is said before it is
- * made: searches go from the device to seats.aero, their results stay on the device for 24 hours at most, and the token
- * service at awardgrid.dowhiz.com renews the connection and keeps nothing.
+ * The App Store build's connect page (`npm run build:store` builds this flavour). There is no paste field. "Connect
+ * seats.aero" opens seats.aero's own sign-in and consent page in the system's sign-in sheet
+ * (AppServices.seatsAccount.connect, ../oauth/connect.ts), and one sentence says so before it opens: seats.aero asks
+ * the person to sign in and approve AwardGrid, AwardGrid never sees the password, and Disconnect is always there. No
+ * token is ever shown — the page says "Connected", nothing more. The rest of what the connection means is said before
+ * it is made too: searches go from the device to seats.aero, their results stay on the device for 24 hours at most, and
+ * the token service at awardgrid.dowhiz.com renews the connection and keeps nothing.
  *
  * "Disconnect" asks first and says what it removes: the tokens and every seats.aero result on the device (the OAuth
  * Addendum's purge). Saved searches and watches stay, without their results. Each outcome is said, in the page's
@@ -122,6 +124,9 @@ function SeatsConnectPage({ services }: { services: AppServices }) {
         {t.seats.title}
       </h1>
       <p className="ag-settings-copy">{o.purpose}</p>
+      <p className="ag-settings-copy" data-testid="seats-connect-how">
+        {o.how}
+      </p>
       <p className="ag-settings-copy ag-settings-muted">{o.where}</p>
       <p className="ag-settings-copy ag-settings-muted">{o.keeps}</p>
       {connected ? <p className="ag-settings-on-file">{o.onFile}</p> : null}

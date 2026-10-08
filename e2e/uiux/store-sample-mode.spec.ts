@@ -130,7 +130,9 @@ test("Welcome › Try sample › Hong Kong to Seattle › List, Calendar, Matrix
   await sampleScreen(page, "settings");
   await page.locator("#settings-row-seats").click();
   await expect(page.getByText("Exit sample data to connect your account.")).toBeVisible();
-  await expect(page.getByLabel("seats.aero API key")).toHaveCount(0);
+  // Sample mode has no account: neither Connect seats.aero nor Disconnect, and no field of any kind.
+  await expect(page.getByRole("button", { name: /^(Connect seats\.aero|Disconnect)$/ })).toHaveCount(0);
+  await expect(page.locator("main input")).toHaveCount(0);
   await sampleScreen(page, "settings/seats");
   await page.evaluate(() => (location.hash = "#/edit"));
   await expect(page.getByRole("heading", { level: 1, name: "Edit search" })).toBeVisible();
@@ -221,7 +223,7 @@ test("in Chinese: the banner, the sample time line and nothing that says 来源,
   expect(await requestLog(page)).toMatchObject({ seats: 0, anthropic: 0, trips: 0 });
 });
 
-test("the old example's address enters sample mode, and an account removed after a search offers it too", async ({ page }) => {
+test("the old example's address enters sample mode, and an account disconnected after a search offers it too", async ({ page }) => {
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
   await page.evaluate(() => (location.hash = "#/example"));
   await expect(banner(page)).toBeVisible();
@@ -232,20 +234,20 @@ test("the old example's address enters sample mode, and an account removed after
   await searchByText(page, "Synthetic HKG to SEA October business and first");
   await tab(page, "Settings").click();
   await page.locator("#settings-row-seats").click();
-  await page.getByRole("button", { name: "Remove key", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Remove", exact: true }).click();
-  // Removing the key returns to Search, which says so and offers sample data or the account again.
-  await expect(page).toHaveURL(/#\/$/);
-  await expect(page.getByRole("status").filter({ hasText: "seats.aero key removed from this device." })).toBeVisible();
-  const callout = page.getByRole("alert").filter({ hasText: "No seats.aero account connected." });
-  await callout.getByRole("link", { name: "Try sample data" }).click();
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Disconnect", exact: true }).click();
+  // Disconnect stays on the page and says what went: the connection and every seats.aero result on the device.
+  await expect(page.getByRole("status").filter({ hasText: "Disconnected. Results from seats.aero were removed from this device." })).toBeVisible();
+  // Search is where the app starts again (the results went with the connection): sample data first, or the account.
+  await tab(page, "Search").click();
+  await page.getByTestId("welcome").getByRole("button", { name: "Try with sample data" }).click();
   await expect(banner(page)).toBeVisible();
-  await sampleScreen(page, "after removing the key");
-  // The account's search results are not in sample mode, and come back on exit.
+  await sampleScreen(page, "after disconnecting");
   await expect(page.getByTestId("availability-list")).toHaveCount(0);
+  // On exit the account's results do not come back: Disconnect removed them (the OAuth Addendum's purge).
   await banner(page).getByRole("button", { name: "Exit sample data" }).click();
-  await expect(page.getByTestId("availability-list")).toBeVisible();
-  // The one seats.aero request is the account's own search, before sample mode.
+  await expect(page.getByTestId("availability-list")).toHaveCount(0);
+  // The one seats.aero request is the account's own search, before Disconnect.
   expect((await requestLog(page)).seats).toBe(1);
 });
 

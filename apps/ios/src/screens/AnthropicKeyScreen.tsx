@@ -22,6 +22,7 @@ import { PRICING_URL } from "../ask/labels";
 import { type KeyStore, maskedKey } from "../native/keychain";
 import { ANTHROPIC_PAGE } from "./anthropic-copy";
 import { BackToSettings, ConfirmRemove } from "./SettingsScreen";
+import { SEATS_KEY } from "./seats-key-copy";
 import { SETTINGS } from "./settings-copy";
 import "./settings.css";
 
@@ -286,7 +287,7 @@ export function AnthropicKeySection({
         </div>
       ) : null}
       {services.settings ? <AskPermission settings={services.settings} locale={locale} /> : null}
-      <ConfirmRemove open={confirming} title={a.confirmTitle} body={a.confirmBody} confirm={r.seats.confirmRemove} keep={r.seats.confirmKeep} close={r.close} onConfirm={() => void remove()} onClose={() => setConfirming(false)} />
+      <ConfirmRemove open={confirming} title={a.confirmTitle} body={a.confirmBody} confirm={SEATS_KEY[locale].confirmRemove} keep={SEATS_KEY[locale].confirmKeep} close={r.close} onConfirm={() => void remove()} onClose={() => setConfirming(false)} />
     </section>
   );
 }

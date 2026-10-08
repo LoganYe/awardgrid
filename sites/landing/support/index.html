@@ -6,7 +6,7 @@
     <title>AwardGrid support</title>
     <meta
       name="description"
-      content="Help for the AwardGrid iPhone app: what it needs, how its keys and calls work, and how to reach its developer."
+      content="Help for the AwardGrid iPhone app: what it needs, how connecting and calls work, and how to reach its developer."
     />
     <link rel="canonical" href="https://awardgrid.dowhiz.com/support/" />
     <meta property="og:type" content="website" />
@@ -14,7 +14,7 @@
     <meta property="og:title" content="AwardGrid support" />
     <meta
       property="og:description"
-      content="Help for the AwardGrid iPhone app: what it needs, how its keys and calls work, and how to reach its developer."
+      content="Help for the AwardGrid iPhone app: what it needs, how connecting and calls work, and how to reach its developer."
     />
     <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -24,7 +24,11 @@
       product's own voice (docs/COPY.md); every one of them is true of the code (docs/release/APP_STORE_HANDOFF.md §6).
       No script in this file, no webfont request (honesty.test.ts scans this page). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the privacy policy says so ("This website").
       Since 2026-10-07 (build 4, release plan step 22) it describes the App Store version: sample data without a
-      seats.aero account, and no Ask. "Do I need a seats.aero account?" names no price and links nowhere.
+      seats.aero account, and no Ask. "Do I need a seats.aero account?" names no price and links nowhere. Since the
+      same day (release plan 47F) the account is connected only with seats.aero's own sign-in (Login with Seats.aero):
+      the answers about finding and pasting an API key are gone, "How do I connect my seats.aero account?" says how,
+      and results from the account are kept on the iPhone for at most 24 hours (registry claims oauth_connection and
+      short_term_caching).
     -->
     <link rel="stylesheet" href="../styles.css" />
   </head>
@@ -41,8 +45,8 @@
         <h1>AwardGrid for iPhone</h1>
         <p class="lead">
           Write to <a href="mailto:%AWARDGRID_SUPPORT_EMAIL%">%AWARDGRID_SUPPORT_EMAIL%</a>. Say what you tapped, what
-          you expected and what happened. Never send an API key: the app shows only a key's last four characters, and
-          that is all anyone helping you needs.
+          you expected and what happened. Never send your seats.aero password: AwardGrid never sees it, and nobody
+          helping you needs it.
         </p>
       </header>
 
@@ -52,8 +56,7 @@
           <li>An iPhone with iOS 18 or later.</li>
           <li>
             Optional: your own seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not
-            sell), and its API key from the API tab of your seats.aero settings. Without it, AwardGrid shows sample data
-            only.
+            sell), connected with seats.aero's own sign-in. Without it, AwardGrid shows sample data only.
           </li>
         </ul>
       </section>
@@ -69,25 +72,32 @@
           that account instead.
         </p>
 
-        <h3>Where do I find my seats.aero API key?</h3>
+        <h3>How do I connect my seats.aero account?</h3>
         <p>
-          In the API tab of your seats.aero settings, if your seats.aero account has API access (part of seats.aero Pro,
-          which AwardGrid does not sell).
+          In AwardGrid, open Settings › seats.aero account and tap Connect seats.aero. It opens seats.aero's own sign-in
+          (Login with Seats.aero), where you sign in to seats.aero and approve AwardGrid. AwardGrid never sees your
+          password. You can disconnect at any time, in AwardGrid or in your seats.aero settings.
         </p>
 
-        <h3>My seats.aero settings show no API tab. Will AwardGrid work?</h3>
+        <h3>My seats.aero account has no API access. Will AwardGrid work?</h3>
         <p>
-          Only on sample data. seats.aero says not every Pro account or country gets API access; without a key,
-          AwardGrid shows sample data only. AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for
+          Only on sample data. seats.aero says not every Pro account or country gets API access; without it, AwardGrid
+          shows sample data only. AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for
           non-commercial use and can limit or withdraw.
         </p>
 
         <h3>Why does a search use seats.aero calls?</h3>
         <p>
-          Each search on your seats.aero account goes to seats.aero with your key, and seats.aero counts the calls
-          against a daily limit. The app stops at 950 of seats.aero's 1,000 daily calls and keeps results on the device
+          Each search on your seats.aero account goes from the iPhone directly to seats.aero, and seats.aero counts the
+          calls against a daily limit. The app stops at 950 of seats.aero's 1,000 daily calls and keeps results on the device
           for 45 minutes, so repeating a search costs no calls. The app's own count restarts at midnight UTC, when
           seats.aero resets usage. Sample data uses no seats.aero calls.
+        </p>
+
+        <h3>How long are results from my seats.aero account kept?</h3>
+        <p>
+          Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term
+          Caching rule); a saved search keeps the search and a summary, and opening it searches again.
         </p>
 
         <h3>What does "not monitored" mean?</h3>
@@ -108,10 +118,12 @@
           program's own site before you transfer any points.
         </p>
 
-        <h3>How do I remove my key or my data?</h3>
+        <h3>How do I disconnect, or remove my data?</h3>
         <p>
-          Remove your seats.aero key in Settings and clear cached results there. Exit sample data to delete everything
-          sample data kept. The <a href="../privacy/">privacy policy</a> lists everything the app keeps and sends.
+          Disconnect in Settings › seats.aero account: it removes the sign-in tokens and all results from seats.aero
+          from the iPhone. You can also remove AwardGrid's access in your seats.aero settings. Clear cached results in
+          Settings. Exit sample data to delete everything sample data kept. The <a href="../privacy/">privacy policy</a>
+          lists everything the app keeps and sends.
         </p>
       </section>
 
@@ -130,39 +142,47 @@
         <p class="eyebrow">支持</p>
         <h2 id="zh-h">AwardGrid iPhone 版</h2>
         <p>
-          请发邮件至 <a href="mailto:%AWARDGRID_SUPPORT_EMAIL%">%AWARDGRID_SUPPORT_EMAIL%</a>，说明你点了什么、预期是什么、实际发生了什么。不要发送任何 API
-          密钥：应用只显示密钥的末四位，帮助你的人只需要这些。
+          请发邮件至 <a href="mailto:%AWARDGRID_SUPPORT_EMAIL%">%AWARDGRID_SUPPORT_EMAIL%</a>，说明你点了什么、预期是什么、实际发生了什么。不要发送你的
+          seats.aero 密码：AwardGrid 不会看到它，帮助你的人也不需要它。
         </p>
 
         <h3>使用前提</h3>
         <ul>
           <li>运行 iOS 18 或更高版本的 iPhone。</li>
-          <li>可选：你自己的 seats.aero 账户，要有 API 权限（属于 seats.aero Pro，AwardGrid 不出售）；API 密钥在 seats.aero 设置的 API 页里。没有它，AwardGrid 只显示示例数据。</li>
+          <li>可选：你自己的 seats.aero 账户，要有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），用 seats.aero 自己的登录连接。没有它，AwardGrid 只显示示例数据。</li>
         </ul>
 
         <h3>常见问题</h3>
         <h4>需要 seats.aero 账户吗？</h4>
         <p>不需要。不连接 seats.aero 账户时，AwardGrid 只显示示例数据：查票、列表、日历和矩阵视图、选项详情、比较、收藏和关注都可以使用本机生成的示例数据，并标注为示例数据，不会发送任何内容。如果你有带 API 权限的 seats.aero 账户，可以在设置中连接它，看到该账户的结果。</p>
-        <h4>在哪里找到 seats.aero API 密钥？</h4>
-        <p>在 seats.aero 设置的 API 页里，前提是你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售）。</p>
-        <h4>我的 seats.aero 设置里没有 API 页，AwardGrid 还能用吗？</h4>
+        <h4>如何连接我的 seats.aero 账户？</h4>
         <p>
-          只能用示例数据。seats.aero 说明，并非每个 Pro 账户、每个国家或地区都能获得 API 权限；没有密钥，AwardGrid 只显示示例数据。AwardGrid 依赖 seats.aero 的
+          在 AwardGrid 中打开“设置 › seats.aero 账户”，点按“连接 seats.aero”。它会打开 seats.aero 自己的登录页面（Login with Seats.aero），你在那里登录 seats.aero 并批准
+          AwardGrid。AwardGrid 不会看到你的密码。你可以随时在 AwardGrid 或 seats.aero 设置中断开连接。
+        </p>
+        <h4>我的 seats.aero 账户没有 API 权限，AwardGrid 还能用吗？</h4>
+        <p>
+          只能用示例数据。seats.aero 说明，并非每个 Pro 账户、每个国家或地区都能获得 API 权限；没有 API 权限，AwardGrid 只显示示例数据。AwardGrid 依赖 seats.aero 的
           Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。
         </p>
         <h4>为什么查票会消耗 seats.aero 调用？</h4>
         <p>
-          用你的 seats.aero 账户查票时，每次查票都会携带你的密钥发往 seats.aero，seats.aero 按每日上限计数。seats.aero 每天允许 1,000 次调用，应用在 950 次时停止；结果在本机保留 45
+          用你的 seats.aero 账户查票时，每次查票都从 iPhone 直接发往 seats.aero，seats.aero 按每日上限计数。seats.aero 每天允许 1,000 次调用，应用在 950 次时停止；结果在本机保留 45
           分钟，重复查询不消耗调用。应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。示例数据不消耗 seats.aero 调用。
         </p>
+        <h4>来自我的 seats.aero 账户的结果会保留多久？</h4>
+        <p>来自你的 seats.aero 账户的结果在 iPhone 上最多保留 24 小时（seats.aero 的短期缓存规则）；收藏的查询会保留查询条件和摘要，打开时会重新查询。</p>
         <h4>“未监测”是什么意思？</h4>
         <p>seats.aero 没有为你所查的里程计划跟踪这条航线，所以那里没有结果不等于没有座位。航线列表无法加载时，应用会如实说明。</p>
         <h4>关注什么时候检查？</h4>
         <p>在你打开或回到应用时检查，其他时间不会。iOS 无法保证应用在你没有打开它时运行，所以 AwardGrid 不作这样的承诺。</p>
         <h4>结果是实时的吗？</h4>
         <p>结果是 seats.aero 的缓存数据，并注明每条结果的数据时间。里程票随时会消失；转点前请先在里程计划官网确认。</p>
-        <h4>如何移除密钥或数据？</h4>
-        <p>在设置中移除 seats.aero 密钥、清除缓存结果。退出示例数据即可删除示例数据保存的全部内容。<a href="../privacy/">隐私政策</a>列出了应用保存和发送的全部内容。</p>
+        <h4>如何断开连接或删除数据？</h4>
+        <p>
+          在“设置 › seats.aero 账户”中断开连接：这会从 iPhone 上移除登录令牌和所有来自 seats.aero 的结果。你也可以在 seats.aero 设置中移除 AwardGrid
+          的访问权限。在设置中清除缓存结果。退出示例数据即可删除示例数据保存的全部内容。<a href="../privacy/">隐私政策</a>列出了应用保存和发送的全部内容。
+        </p>
 
         <h3>关于</h3>
         <p>

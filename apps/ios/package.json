@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The awardgrid client shell (docs/PIVOT.md \u00a76 Phase 2): a Capacitor app that runs on the user's own seats.aero key, with no server of ours anywhere.",
+  "description": "The awardgrid client shell (docs/PIVOT.md \u00a76 Phase 2): a Capacitor app that runs on the user's own seats.aero account (the App Store build through seats.aero's own sign-in, with the stateless token service in sites/auth; development builds with a pasted key), with no server of ours in the data path.",
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/check-fixture-free-bundle.mjs && node scripts/acknowledgements.mjs --check",
-    "build:store": "VITE_AG_STORE=1 vite build && node scripts/check-fixture-free-bundle.mjs && node scripts/check-store-bundle.mjs && node scripts/acknowledgements.mjs --check",
+    "build:store": "VITE_AG_STORE=1 VITE_AG_CONNECT=oauth vite build && node scripts/check-fixture-free-bundle.mjs && node scripts/check-store-bundle.mjs && node scripts/acknowledgements.mjs --check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

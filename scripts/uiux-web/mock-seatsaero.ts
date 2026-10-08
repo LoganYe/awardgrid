@@ -22,7 +22,7 @@ const logs = new Map<string, FixtureRequestLog>();
 function logFor(scenario: string): FixtureRequestLog {
   let log = logs.get(scenario);
   if (!log) {
-    log = { seats: 0, trips: 0, anthropic: 0, writes: 0, seatsPaths: [], directSeats: 0, directAnthropic: 0, anthropicContext: [] };
+    log = { seats: 0, trips: 0, anthropic: 0, writes: 0, seatsPaths: [], directSeats: 0, directAnthropic: 0, anthropicContext: [], oauth: { consent: 0, token: 0, refresh: 0 } };
     logs.set(scenario, log);
   }
   return log;

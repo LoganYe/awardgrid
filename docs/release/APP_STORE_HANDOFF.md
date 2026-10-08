@@ -98,7 +98,7 @@ Run from the worktree `/Users/yegaoyang/Desktop/workspace/awardgrid-uiux` (all p
 1. **Local gates.** The release branch is not pushed, so CI will not run on it. On `main`, CI runs typecheck, lint and unit tests for every package, iOS included, but never the iOS bundle build, the UI/UX Playwright suite or Xcode:
    - `pnpm typecheck && pnpm lint && pnpm test` (at d998cf5: root 964 passed / 2 skipped, core 966, iOS 811);
    - `UIUX_WEB=0 pnpm exec playwright test --config=playwright.uiux.config.ts` (the iOS browser mock; never at the same time as `pnpm e2e`).
-2. **Web bundle:** `pnpm --filter @awardgrid/ios build:store`, run as `env -u VITE_AG_PROBES -u VITE_AG_STORE` (the script sets `VITE_AG_STORE=1` itself). This builds the App Store flavour, with Ask compiled out, and then runs `scripts/check-fixture-free-bundle.mjs` (it must print "none found in dist"), `scripts/check-store-bundle.mjs` and `scripts/acknowledgements.mjs --check`. The plain `build` keeps Ask: it is for development, the probes and e2e, never for an archive. *(Builds 1-3 were archived from `build`; build 4 is the first from `build:store`, release plan steps 14 and 29.)*
+2. **Web bundle:** `pnpm --filter @awardgrid/ios build:store`, run as `env -u VITE_AG_PROBES -u VITE_AG_STORE -u VITE_AG_CONNECT VITE_AG_SEATS_CLIENT_ID=<client id>` (the script sets `VITE_AG_STORE=1` and `VITE_AG_CONNECT=oauth` itself; the client ID comes from seats.aero › Settings › Developer Tools › Apps, `sites/auth/DEPLOY.md`). This builds the App Store flavour, with Ask compiled out and the account connected only through seats.aero's own sign-in (no paste field), and then runs `scripts/check-fixture-free-bundle.mjs` (it must print "none found in dist"), `scripts/check-store-bundle.mjs` and `scripts/acknowledgements.mjs --check`. The plain `build` keeps Ask and the paste field: it is for development, the probes and e2e, never for an archive. *(Builds 1-3 were archived from `build`; build 4 from `build:store` when it was still the key flavour, an internal TestFlight build only; since 2026-10-07 `build:store` is the OAuth flavour, release plan steps 14, 29 and 47F.)*
 3. **R1 (probe-free), by hand:**
    - `ls apps/ios/dist/assets | grep -Ei 'probe|e2e'` prints nothing;
    - `grep -c '127.0.0.1:45\|localhost:45\|probe-server\|sk-ant-' apps/ios/dist/assets/*.js` counts 0 in every file;
@@ -155,6 +155,26 @@ Full context for each A-number is in `docs/uiux-v1/ACCEPTANCE.md` and `docs/uiux
 ## 6. Facts for the listing, the privacy label and the review notes
 
 **What the app sends, and where (from code):**
+
+*Since 2026-10-07 the App Store build is the OAuth flavour (`build:store` sets `VITE_AG_CONNECT=oauth`; release plan
+47F). Where it differs from the list below, which describes the key flavour (build 4, internal TestFlight only):*
+- *seats.aero sign-in:* Connect seats.aero opens `https://seats.aero/oauth2/consent` (client ID, redirect URI, a
+  random state, `scope=openid`) in ASWebAuthenticationSession (`apps/ios/ios/App/App/SeatsAuthPlugin.swift`); the
+  password is typed on seats.aero's page, never in the app.
+- *Token service:* `https://awardgrid.dowhiz.com/oauth/seats/token` (`{code, state}`) and `/refresh`
+  (`{refresh_token}`), over native HTTP (`apps/ios/src/oauth/broker.ts`); the Worker (`sites/auth`) adds the client
+  ID and secret, calls `https://seats.aero/oauth2/token` and answers with the token fields only. It keeps nothing
+  and logs nothing (no storage binding, no console call, observability and Logpush off). It never sees a search.
+- *seats.aero searches:* `Partner-Authorization: Bearer seats:ota:…` (the access token) instead of a key; no key
+  check. A refused token is renewed and the request sent once more (`apps/ios/src/oauth/refresh-retry.ts`).
+- *Keychain:* one item, `seats_aero_oauth` (access token, refresh token, expiry; afterFirstUnlockThisDeviceOnly,
+  sync off), never shown (`apps/ios/src/oauth/token-vault.ts`). No `anthropic_api_key` read (no Ask).
+- *24 hours at most:* everything from seats.aero (cache rows, workspace snapshots, Saved rows, watch baselines,
+  details) is removed once older than 24 hours; Saved keeps each item's query and summary
+  (`apps/ios/src/retention/short-term.ts`). Disconnect, or a grant revoked in seats.aero, removes the tokens and all
+  of it at once.
+- *App Privacy:* unchanged (Search History only): the token service keeps nothing it receives (plan 47F step 6).
+
 - **seats.aero:**
   - Destination: `https://seats.aero/partnerapi/`, with the user's key in the `Partner-Authorization` header, over native URLSession via CapacitorHttp, never the WebView's fetch.
   - Content: search parameters (airports, dates, cabins, programs), an availability id for Get Trips.
@@ -166,7 +186,7 @@ Full context for each A-number is in `docs/uiux-v1/ACCEPTANCE.md` and `docs/uiux
   - the seats.aero results of the searches and flight lookups Ask's own tools make, with the remaining seats.aero calls;
   - every earlier question and answer in the same conversation.
 
-  Requests also carry the SDK's headers and Accept-Language. Saving or checking the key sends `GET /v1/models/claude-opus-5`, with no question. The seats.aero key is never sent to Anthropic (LEGAL.md:33-44, `apps/ios/src/ask/labels.ts:547`, `ANTHROPIC_DATA_SENT`).
+  Requests also carry the SDK's headers and Accept-Language. Saving or checking the key sends `GET /v1/models/claude-opus-5`, with no question. The seats.aero key is never sent to Anthropic (LEGAL.md:43-61, `apps/ios/src/ask/labels.ts:547`, `ANTHROPIC_DATA_SENT`).
 - **Nothing else:** no AwardGrid server (since `release/ios-1.0`, `awardgrid.dowhiz.com` is in the bundle only as Settings › About's links to the privacy and support pages, opened in Safari; the app sends it no request, though the step-20 Simulator QA saw the app's WebKit network process open a connection to the host as a link is tapped, a preconnect with no HTTP request, which the privacy policy discloses since 2026-10-07), no Telegram, no analytics, crash reporting, ads, tracking, accounts or login. The only native pods are Capacitor, CapacitorCordova, AparajitaCapacitorSecureStorage (KeychainSwift) and CapacitorFilesystem (IONFilesystemLib).
 
 **What stays on the device:**

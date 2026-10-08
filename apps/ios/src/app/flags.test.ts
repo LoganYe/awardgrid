@@ -50,14 +50,26 @@ describe("the flavour flags", () => {
     expect((await flagsWith({ VITE_AG_SEATS_CLIENT_ID: "" })).SEATS_CLIENT_ID).toBe("");
   });
 
-  it("OAUTH is a literal test of the environment, and App.tsx writes the same test out for the lazy OAuth connect page", () => {
+  it("OAUTH is a literal test of the environment, and App.tsx writes the same test out to pick its connect page", () => {
     const here = import.meta.dirname;
     const flags = readFileSync(path.join(here, "flags.ts"), "utf8");
     const app = readFileSync(path.join(here, "App.tsx"), "utf8");
     expect(flags).toContain('export const OAUTH: boolean = import.meta.env.VITE_AG_CONNECT === "oauth";');
     expect(app).toContain('const OAUTH_BUILT = import.meta.env.VITE_AG_CONNECT === "oauth";');
-    expect(app).toMatch(/const SeatsConnectScreen = OAUTH_BUILT \? lazy\(\(\) => import\("\.\.\/screens\/SeatsConnectScreen"\)/);
+    // Each connect page is imported once and used once, in its branch of that constant, so a build drops the other.
+    expect(app).toContain("element: OAUTH_BUILT ? <SeatsConnectScreen /> : <SeatsKeyScreen />,");
     expect(app.match(/screens\/SeatsConnectScreen"/g)).toHaveLength(1);
+    expect(app.match(/screens\/SeatsKeyScreen"/g)).toHaveLength(1);
+    expect(app.match(/<SeatsConnectScreen \/>/g)).toHaveLength(1);
+    expect(app.match(/<SeatsKeyScreen \/>/g)).toHaveLength(1);
+  });
+
+  it("`npm run build:store` builds the OAuth flavour: the App Store build has no paste field", () => {
+    const pkg = JSON.parse(readFileSync(path.join(import.meta.dirname, "..", "..", "package.json"), "utf8")) as { scripts: Record<string, string> };
+    expect(pkg.scripts["build:store"]).toMatch(/^VITE_AG_STORE=1 VITE_AG_CONNECT=oauth vite build && /);
+    expect(pkg.scripts["build:store"]).toContain("node scripts/check-store-bundle.mjs");
+    // The default build keeps the key flavour, for development, the probes and the UI/UX e2e.
+    expect(pkg.scripts.build).not.toContain("VITE_AG_CONNECT");
   });
 
   it("App.tsx writes the store condition out for its lazy Ask pages, and it is the same condition as STORE's", () => {

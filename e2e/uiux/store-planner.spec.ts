@@ -157,11 +157,10 @@ test("with an account connected, a kept plan's action is Search, which runs it t
   await page.getByTestId("plan-view").getByRole("button", { name: "Save plan", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Plan saved on this device." })).toBeVisible();
 
-  // Connect an account (the host's stand-in accepts this test key).
+  // Connect an account through seats.aero's own sign-in (played in the page by the host's stand-in).
   await page.getByTestId("welcome").getByRole("link", { name: "Connect your seats.aero account" }).click();
-  await page.getByLabel("seats.aero API key", { exact: true }).fill("fixture-planner-key-WXYZ");
-  await page.getByRole("button", { name: "Check and save", exact: true }).click();
-  await expect(page.getByText(/Key on file ending in WXYZ/)).toBeVisible();
+  await page.getByRole("button", { name: "Connect seats.aero", exact: true }).click();
+  await expect(page.getByText("Your seats.aero account is connected.")).toBeVisible();
   const before = (await requestLog(page)).seats;
 
   // Search now runs searches: the planner is gone from it.

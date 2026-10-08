@@ -1,5 +1,5 @@
 /**
- * TEST-ONLY: which of the shell's source files the App Store build (src/app/flags.ts STORE) is made from, read from
+ * TEST-ONLY: which of the shell's source files the App Store build (src/app/flags.ts STORE, the OAuth flavour) is made from, read from
  * the source rather than from a build, so store-copy.test.ts can hold their wording without building anything.
  *
  * It walks the imports from src/main.tsx the way the bundler keeps them in that build. An import is followed when the
@@ -16,17 +16,23 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-/** What the App Store build fixes, by name: ./flags.ts and the constants App.tsx writes out (VITE_AG_CONNECT=key). */
+/**
+ * What the App Store build fixes, by name: ./flags.ts and the constants App.tsx and bootstrap.ts write out. The App Store
+ * build is the OAuth flavour (`npm run build:store` sets VITE_AG_CONNECT=oauth), so the key page is not reached.
+ */
 export const STORE_CONSTANTS: Readonly<Record<string, boolean>> = {
   STORE: true,
   CAN_CONNECT: true,
+  OAUTH: true,
+  OAUTH_BUILT: true,
+  OAUTH_KIT: true,
   ASK_BUILT: false,
   PROBES: false,
   E2E: false,
 };
 
 /** The `import.meta.env` values the App Store build is made with. */
-const STORE_ENV: Readonly<Record<string, string>> = { VITE_AG_STORE: "1", VITE_AG_PROBES: "", VITE_AG_CONNECT: "" };
+const STORE_ENV: Readonly<Record<string, string>> = { VITE_AG_STORE: "1", VITE_AG_PROBES: "", VITE_AG_CONNECT: "oauth" };
 
 type Known = boolean | undefined;
 

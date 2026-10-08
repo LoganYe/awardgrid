@@ -4,19 +4,23 @@ The App Store Connect fields of the AwardGrid iPhone app, one plain-text file pe
 `keywords.txt`, `promotional_text.txt`, `description.txt`, `release_notes.txt`, `support_url.txt`, `marketing_url.txt`
 and `privacy_url.txt`.
 
-## en-US/: version 1.0, build 4 (since 2026-10-07)
+## en-US/: version 1.0, the resubmission (since 2026-10-07)
 
-`en-US/` holds the texts for version 1.0 as it is resubmitted with build 4, after App Review rejected build 3 under
-Guideline 3.1.1 on 2026-10-05 (`docs/release/IOS_1.0_RELEASE.md` §0 P16-P17). Until build 4 is submitted, the rule
+`en-US/` holds the texts for version 1.0 as it is resubmitted, after App Review rejected build 3 under Guideline 3.1.1
+on 2026-10-05 (`docs/release/IOS_1.0_RELEASE.md` §0 P16-P17). They were written for build 4 and, the same day,
+rewritten for the build that connects only through seats.aero's own sign-in. Until that build is submitted, the rule
 that these files "change only when App Store Connect does" is suspended: `description.txt` and `promotional_text.txt`
 are the step-36 texts of the 3.1.1 remediation plan, for the owner to paste in App Store Connect's single pass before
 resubmission; App Store Connect still shows build 3's texts until then. The name, subtitle, keywords and URLs are
 unchanged.
 
-- The description is for the build that connects with a pasted key: it says "by pasting the API key from your
-  seats.aero settings" and "AwardGrid has no in-app purchases" after the one neutral sentence about seats.aero Pro
-  (decision D6). A build that connects through seats.aero's own sign-in needs that paragraph and the privacy line
-  rewritten first (plan step 47F.5).
+- Since 2026-10-07 (plan step 47F.5) the description is for the build that connects through seats.aero's own
+  sign-in (Login with Seats.aero), the only connection the App Store build has: it says "with seats.aero's own
+  sign-in" and "AwardGrid has no in-app purchases" after the one neutral sentence about seats.aero Pro (decision D6),
+  and its privacy paragraph says that AwardGrid never sees the seats.aero password, that the sign-in tokens stay in
+  the Keychain, that searches go directly to seats.aero, and that the token service at awardgrid.dowhiz.com stores
+  nothing. Build 4 connects with a pasted key and is an internal TestFlight build only: these texts are not for it.
+  The build they go with is the next one built with an OAuth client ID (`sites/auth/DEPLOY.md`).
 - Its first sentence, like the promotional text, names no data source ("AwardGrid puts award seats for several
   origins, several destinations and up to 92 days into one table."): the sample-data bullet and the D6 paragraph say
   where results come from, so the listing does not open by presenting seats.aero's data as what the app is for (plan
@@ -24,7 +28,7 @@ unchanged.
 - It has no Ask (decision D3), names no Anthropic, and mentions the trip planner only because build 4 has it (plan
   step 18, decision D11): if the planner does not ship, its bullet goes too.
 - Every sentence is in `growth/product-facts.json`: claims grid, sample_mode, query_input, views, watches, planner,
-  prerequisite, data_cached, keys, privacy and affiliation. The bullets on search languages, views and watches, and
+  prerequisite, data_cached, oauth_connection, privacy and affiliation. The bullets on search languages, views and watches, and
   the cached-data sentence, are build 3's, kept word for word.
 - Build 3's texts, as submitted on 2026-09-26, are the record in `docs/release/IOS_1.0_RELEASE.md` §7.6.
 

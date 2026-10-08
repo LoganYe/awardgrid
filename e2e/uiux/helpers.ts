@@ -35,6 +35,11 @@ export interface ScenarioOptions {
    */
   preserveStorage?: boolean;
   /**
+   * The App Store flavour only (project `ios-store`, the OAuth flavour): how this launch's seats.aero sign-in ends when
+   * Connect seats.aero is tapped. Default: the person allows AwardGrid.
+   */
+  oauth?: "decline" | "cancel";
+  /**
    * T15: give the app an Anthropic key and the host's scripted Anthropic, which answers one synthetic text and records
    * each question's context shape (`anthropicContexts`). Without it, every Anthropic request is refused and counted.
    */
@@ -133,6 +138,7 @@ export async function openScenario(page: Page, id: string, surface: Surface = "i
   if (options.preserveStorage) params.set("preserve", "1");
   if (options.ai) params.set("ai", "1");
   if (options.consent === false) params.set("consent", "0");
+  if (options.oauth) params.set("oauth", options.oauth);
   await page.goto(`/?${params.toString()}`);
   await page.waitForFunction(() => document.getElementById("fixture-status")?.dataset.state !== "booting", null, {
     timeout: 15_000,
@@ -237,6 +243,16 @@ export async function requestLog(page: Page): Promise<RequestCounts> {
     trips: log.trips + leakedTrips.length,
     writes: log.writes,
   };
+}
+
+/**
+ * The App Store flavour's sign-in, as the fixture host counted it: seats.aero consent pages opened, and calls to the
+ * token service (exchanges and refreshes). Counts only.
+ */
+export async function oauthLog(page: Page): Promise<FixtureRequestLog["oauth"]> {
+  const log: FixtureRequestLog | null = await page.evaluate(() => window.__uiuxFixture?.log ?? null);
+  if (!log) throw new Error("The fixture host is not loaded on this page.");
+  return log.oauth;
 }
 
 export const EVIDENCE_DIR = path.resolve(import.meta.dirname, "..", "..", "docs", "uiux-v1", "evidence", "screens");

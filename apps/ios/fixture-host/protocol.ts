@@ -30,6 +30,12 @@ export interface FixtureRequestLog {
    * the history resent, and whether partial coverage was said. A shape, never the text, the key or a header.
    */
   anthropicContext: FixtureAnthropicContext[];
+  /**
+   * The App Store flavour (OAuth, `UIUX_STORE=1`): seats.aero's consent pages the sign-in sheet opened, and calls to
+   * the token service (code exchanges, refreshes). Counts only: no code, state or token is recorded. Zero in the
+   * key flavour.
+   */
+  oauth: { consent: number; token: number; refresh: number };
 }
 
 export interface FixtureAnthropicContext {

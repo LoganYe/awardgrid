@@ -11,9 +11,10 @@ import { type Plugin, defineConfig, transformWithOxc } from "vite";
 const here = import.meta.dirname;
 const repo = path.resolve(here, "..", "..");
 /**
- * The App Store flavour (src/app/flags.ts STORE): `UIUX_STORE=1` serves the host with Ask compiled out, for the
- * `ios-store` Playwright project on its own port (playwright.uiux.config.ts). No VITE_* variable reaches this page
- * (envPrefix below), so the flag is defined here, to "1" or to the empty string, never left to the shell.
+ * The App Store flavour (src/app/flags.ts STORE, and OAUTH, as `npm run build:store` builds it): `UIUX_STORE=1` serves
+ * the host with Ask compiled out and seats.aero's own sign-in instead of the key field, for the `ios-store` Playwright
+ * project on its own port (playwright.uiux.config.ts). No VITE_* variable reaches this page (envPrefix below), so the
+ * flags are defined here, never left to the shell.
  */
 const STORE = process.env.UIUX_STORE === "1";
 
@@ -42,7 +43,13 @@ export default defineConfig({
   // The app's own public/ (fonts), so the host renders with the same assets as the shell.
   publicDir: path.resolve(here, "public"),
   plugins: [processEnvParity(), react()],
-  define: { "import.meta.env.VITE_AG_STORE": JSON.stringify(STORE ? "1" : "") },
+  // The App Store flavour is the OAuth flavour, as `npm run build:store` builds it, with the test client's ID (the
+  // HTTP mock's, scripts/mock-seatsaero-oauth-core.ts); the default flavour is the key flavour.
+  define: {
+    "import.meta.env.VITE_AG_STORE": JSON.stringify(STORE ? "1" : ""),
+    "import.meta.env.VITE_AG_CONNECT": JSON.stringify(STORE ? "oauth" : ""),
+    "import.meta.env.VITE_AG_SEATS_CLIENT_ID": JSON.stringify(STORE ? "mock-client-id" : ""),
+  },
   // The two hosts run side by side; each keeps its own pre-bundled dependencies so neither rewrites the other's.
   cacheDir: path.join(here, "node_modules", STORE ? ".vite-uiux-store" : ".vite"),
   // No VITE_* variable reaches this page: a probe/e2e flag (VITE_AG_PROBES) exported in the shell would make App
@@ -55,7 +62,8 @@ export default defineConfig({
     // git-ignored logs and the runtime SQLite files under data/runtime.
     fs: {
       strict: true,
-      allow: [here, path.join(repo, "packages", "core"), path.join(repo, "packages", "tokens"), path.join(repo, "node_modules")],
+      // One file of scripts/: the sign-in mock's rules, shared with the HTTP mock (fixture-host/transports.ts).
+      allow: [here, path.join(repo, "packages", "core"), path.join(repo, "packages", "tokens"), path.join(repo, "node_modules"), path.join(repo, "scripts", "mock-seatsaero-oauth-core.ts")],
       deny: [".env", ".env.*", "*.{crt,pem}", "**/.git/**", "**/*.db", "**/*.db-*", "**/data/runtime/**"],
     },
   },

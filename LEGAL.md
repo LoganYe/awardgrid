@@ -18,6 +18,19 @@ awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no c
   a commercial agreement). Every screen that shows award data carries the attribution
   **"Data: seats.aero"**. In the iOS app, every Ask answer that used seats.aero data carries the
   same attribution. Terms: <https://seats.aero/terms>.
+
+  The iOS app's App Store build connects each user's own seats.aero account only through
+  seats.aero's own sign-in, Login with Seats.aero (OAuth 2.0; `npm run build:store` builds that
+  flavour, `apps/ios/src/app/flags.ts`): seats.aero asks the user to sign in and approve AwardGrid,
+  AwardGrid never sees the password, and no API key is pasted. The user can disconnect at any time,
+  in AwardGrid or in their seats.aero settings. A small token service at awardgrid.dowhiz.com
+  (`sites/auth`, the Worker awardgrid-auth) exchanges and refreshes the sign-in tokens for AwardGrid,
+  with AwardGrid's client secret, which never ships in the app; it stores nothing and keeps no logs of
+  tokens. The tokens stay in the iPhone's Keychain, and searches go from the iPhone directly to
+  seats.aero. Results from seats.aero are kept on the iPhone for at most 24 hours (Short-Term
+  Caching); saved searches keep the search and a summary. Disconnect, or a grant revoked in
+  seats.aero, removes the tokens and every seats.aero result from the iPhone. The iOS app's
+  development and internal test builds connect with a pasted key instead.
 - **No scraping.** awardgrid never automates, crawls or scrapes any airline, alliance,
   loyalty-program, bank or portal website. In the web app, links to a program's own award-search
   page are plain deep links the user opens and completes themselves.
@@ -59,8 +72,8 @@ awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no c
   app recognises, labelled "Sample data" on every screen that shows it, with no booking or program
   links and no "Data: seats.aero" attribution, because it is not seats.aero data. While it is on,
   the app sends nothing to seats.aero or anyone else; it keeps its own files apart from the
-  account's, and never reads or writes the user's seats.aero key or the day's count of seats.aero
-  calls.
+  account's, and never reads or writes the user's seats.aero key or sign-in tokens or the day's
+  count of seats.aero calls.
 
 ## Trademarks and logos
 
@@ -73,8 +86,11 @@ any loyalty program.
 
 awardgrid never accepts, stores, or transmits airline, bank or travel-portal usernames or
 passwords. Only API keys the user generates in their own account settings are accepted:
-seats.aero (both apps), Anthropic (the iOS app's test builds, for Ask; the App Store build asks for
-none), and Duffel and Ignav (web app). Only the last four characters are ever displayed or logged.
+seats.aero (the web app, and the iOS app's development and test builds), Anthropic (the iOS app's
+test builds, for Ask), and Duffel and Ignav (web app). Only the last four characters are ever
+displayed or logged. The iOS app's App Store build asks for no key at all: the user signs in on
+seats.aero's own page, and the app keeps only the sign-in tokens seats.aero issues, in the Keychain,
+never shown or logged.
 
 ## Disable on request
 
