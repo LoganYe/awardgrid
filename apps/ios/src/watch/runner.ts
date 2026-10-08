@@ -51,7 +51,7 @@ import {
 import { resolveDraft } from "@awardgrid/core/workspace/query-editor";
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import { DEFAULT_CACHE_TTL_MINUTES } from "@awardgrid/core/seatsaero/cache";
-import { refusedByProvider } from "../oauth/refresh-retry";
+import { type Renewal, afterRenewal, refusalKind, refusedByProvider, sayRefusal } from "../oauth/refresh-retry";
 import { localDate } from "../app/local-date";
 import type { ApiFailureCode, SearchEngine } from "../search/search";
 import type { WatchStore } from "../store/watch-store";
@@ -71,8 +71,8 @@ export interface CheckWatchesOptions {
   now: () => Date;
   ttlMinutes?: number;
   minQuota?: number;
-  /** The OAuth flavour: a renewed token after seats.aero refused `rejected`, or null (../oauth/refresh-retry.ts). */
-  renewKey?: (rejected: string | null) => Promise<string | null>;
+  /** The OAuth flavour: the renewal after seats.aero refused `rejected` (../oauth/refresh-retry.ts renewedKey). */
+  renewKey?: (rejected: string | null) => Promise<Renewal>;
   /** The OAuth flavour: a baseline taken longer ago than this (ms) has been purged, and is not compared against. */
   baselineMaxAgeMs?: number | null;
 }
@@ -96,8 +96,9 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
   const ttlMinutes = opts.ttlMinutes ?? DEFAULT_CACHE_TTL_MINUTES;
   const results: WatchCheckResult[] = [];
   let apiKey = opts.apiKey;
-  // A refused token is renewed once per run, not once per watch: a second refusal is the answer.
-  let renewed = false;
+  // A refused token is renewed once per run, not once per watch: a second refusal is the answer, said as what that
+  // renewal found (../oauth/refresh-retry.ts).
+  let renewal: Renewal | null = null;
 
   // Ids, not records: each watch is read when its turn comes, so an edit made during an earlier watch's check is run.
   for (const id of opts.store.all().map((w) => w.id)) {
@@ -138,12 +139,13 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
 
     const send = (key: string | null) => (structured ? opts.engine.searchQuery(structured, key) : opts.engine.search(watch.text, key));
     let res = await send(apiKey);
-    if (refusedByProvider(res) && opts.renewKey && !renewed) {
-      renewed = true;
-      const fresh = await opts.renewKey(apiKey);
-      if (fresh && fresh !== apiKey) {
-        apiKey = fresh;
-        res = await send(apiKey);
+    if (refusedByProvider(res) && opts.renewKey) {
+      if (renewal === null) {
+        renewal = await opts.renewKey(apiKey);
+        if (renewal.key) apiKey = renewal.key;
+        res = await afterRenewal(res, renewal, send);
+      } else {
+        res = sayRefusal(res, renewal);
       }
     }
     const iso = now.toISOString();
@@ -155,10 +157,12 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
       const message = res.message ?? res.error;
       // Do NOT touch the baseline or the unseen changes: a failed check says nothing about
       // availability, and must not wipe news an earlier check found.
-      // A refused key (401/403) is its own reason, so the screen can say the key, not the watch, is the problem.
-      const refused = res.error === "no_key" && (res.status === 401 || res.status === 403);
+      // A refused key (401/403) is its own reason, so the screen can say the key, not the watch, is the problem. A
+      // refusal said after a renewal (the account refused even so, or a token that could not be renewed just now) is
+      // not that: connecting again would not fix it, and its message says what would.
+      const refused = refusedByProvider(res) && refusalKind(res) === null;
       opts.store.update(watch.id, {
-        ...(COSTLY_FAILURES.has(res.error) || refused ? { lastAttemptAt: iso } : {}),
+        ...(COSTLY_FAILURES.has(res.error) || refusedByProvider(res) ? { lastAttemptAt: iso } : {}),
         lastResult: { at: iso, status: "failed", firstCheck, message, refused },
       });
       results.push(result(watch, { status: "failed", message }, firstCheck));

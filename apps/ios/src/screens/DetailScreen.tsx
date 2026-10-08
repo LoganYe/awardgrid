@@ -48,6 +48,7 @@ import { SAMPLE } from "../sample/sample-copy";
 import { Button, Icon, IconButton, Notice } from "../components/ui";
 import type { DetailLoaded } from "../workspace/detail-service";
 import type { ApiFailure } from "../search/search";
+import { refusalKind } from "../oauth/refresh-retry";
 
 /** Put text on the clipboard: the async API where the page may use it, else a selected textarea. */
 async function copyText(text: string): Promise<boolean> {
@@ -82,6 +83,8 @@ export function DetailScreen() {
   // A load of this option may still be running (the page was closed and opened again): join it, never send another.
   const [busy, setBusy] = useState(() => services.details.pending(ref) !== null);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
+  // A refusal after a renewal has its own sentence in the screen's language; other failures are the engine's English.
+  const refusal = failure ? refusalKind(failure) : null;
   const [copied, setCopied] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -313,7 +316,11 @@ export function DetailScreen() {
           )}
           {failure ? (
             <Notice tone="danger" live>
-              <span lang={locale === "en" ? undefined : "en"}>{failure.message ?? failure.error}</span>
+              {refusal ? (
+                <span>{RESULTS[locale].runFailed[refusal]}</span>
+              ) : (
+                <span lang={locale === "en" ? undefined : "en"}>{failure.message ?? failure.error}</span>
+              )}
             </Notice>
           ) : null}
         </section>

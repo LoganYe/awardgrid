@@ -19,7 +19,7 @@ import type { Cabin } from "@awardgrid/core/query/schema";
 import type { GetTripsResult, TripSummary } from "@awardgrid/core/seatsaero/trips";
 import { CABIN_LETTER_TO_NAME } from "@awardgrid/core/seatsaero/types";
 import type { ResultRef, ResultSnapshot, WorkspaceRow } from "@awardgrid/core/workspace/types";
-import { refusedByProvider } from "../oauth/refresh-retry";
+import { type Renewal, afterRenewal, refusedByProvider } from "../oauth/refresh-retry";
 import type { ApiFailure, ApiResult } from "../search/search";
 
 export interface DetailLoaded {
@@ -52,10 +52,10 @@ export interface DetailServiceDeps {
   getTrips(option: { availabilityId: string; cabin: Cabin; include_filtered: boolean; min_cabin_pct: number }, apiKey: string | null): Promise<ApiResult<GetTripsResult>>;
   readKey(): Promise<string | null>;
   /**
-   * The OAuth flavour: a renewed token after seats.aero refused `rejected`, or null (../oauth/refresh-retry.ts
-   * renewedKey). The lookup is then sent once more. Absent for a pasted key, which has nothing to renew.
+   * The OAuth flavour: the renewal after seats.aero refused `rejected` (../oauth/refresh-retry.ts renewedKey). With a
+   * new token the lookup is sent once more. Absent for a pasted key, which has nothing to renew.
    */
-  renewKey?(rejected: string | null): Promise<string | null>;
+  renewKey?(rejected: string | null): Promise<Renewal>;
   now(): Date;
   /**
    * How long loaded itineraries may be shown again, in ms (the OAuth flavour's short-term caching: 24 hours). Older
@@ -126,10 +126,7 @@ export function createDetailService(deps: DetailServiceDeps): DetailService {
         const apiKey = await deps.readKey();
         let res = await deps.getTrips(option, apiKey);
         // The OAuth flavour: a refused token is renewed and the lookup sent once more (../oauth/refresh-retry.ts).
-        if (refusedByProvider(res) && deps.renewKey) {
-          const fresh = await deps.renewKey(apiKey);
-          if (fresh) res = await deps.getTrips(option, fresh);
-        }
+        if (refusedByProvider(res) && deps.renewKey) res = await afterRenewal(res, await deps.renewKey(apiKey), (key) => deps.getTrips(option, key));
         if (!res.ok) return { kind: "failed", error: res };
         const cabinName = CABIN_LETTER_TO_NAME[row.value.cabin];
         const value: DetailLoaded = {

@@ -10,9 +10,10 @@
  *     starts just before the hour is not the one refused.
  *   - **Single flight.** Any number of callers asking at once share one renewal: one request to the service, one new
  *     token, written once.
- *   - **After a refusal.** `refresh(rejected)` renews on demand when seats.aero refused a token anyway (the device's
+ *   - **After a refusal.** `renew(rejected)` renews on demand when seats.aero refused a token anyway (the device's
  *     clock, or a token revoked and reissued); a caller that hands in the token it was refused, when another caller
- *     has already replaced it, gets the new one without a second renewal (../oauth/refresh-retry.ts).
+ *     has already replaced it, gets the new one without a second renewal (../oauth/refresh-retry.ts). When there is
+ *     no new token it says why: the service could not renew it now, or there is nothing to renew.
  *   - **A passing failure is not a disconnection.** Offline, or the service down: the token on file is handed out
  *     as it is, so the request says what went wrong instead of claiming no account is connected.
  *   - **A revoked grant is.** When seats.aero refuses the refresh token itself (the person removed AwardGrid in
@@ -27,6 +28,7 @@
  */
 import type { KeyStore } from "../native/keychain";
 import { type BrokerResult, type TokenBroker, meansRevoked } from "./broker";
+import type { Renewal } from "./refresh-retry";
 import { ACCESS_PREFIX, type SeatsTokens, type TokenVault } from "./token-vault";
 
 /** Renew when less than this is left. */
@@ -111,15 +113,16 @@ export class TokenKeyStore implements KeyStore {
 
   /**
    * Renew now, because seats.aero refused `rejected` (a Bearer value or a bare token). When the token on file is no
-   * longer that one, another caller has renewed it already, and it is returned as it is. Null when nothing is
-   * connected, the grant was revoked, or the renewal failed.
+   * longer that one, another caller has renewed it already, and it is returned as it is. No key when nothing is
+   * connected or the grant was revoked ("none"), or when the token service could not renew it ("unavailable").
    */
-  async refresh(rejected?: string | null): Promise<string | null> {
+  async renew(rejected?: string | null): Promise<Renewal> {
     const tokens = await this.#read();
-    if (!tokens) return null;
-    if (rejected && accessOf(rejected) !== tokens.access) return bearer(tokens.access);
+    if (!tokens) return { key: null, reason: "none" };
+    if (rejected && accessOf(rejected) !== tokens.access) return { key: bearer(tokens.access) };
     const outcome = await this.#renew(tokens);
-    return outcome.kind === "fresh" ? bearer(outcome.tokens.access) : null;
+    if (outcome.kind === "fresh") return { key: bearer(outcome.tokens.access) };
+    return { key: null, reason: outcome.kind === "failed" ? "unavailable" : "none" };
   }
 
   /** Whether an account is connected, read from the Keychain (and a renewal it has not kept yet): nothing is sent. */

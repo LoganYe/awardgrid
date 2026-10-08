@@ -181,6 +181,29 @@ describe("the OAuth flavour", () => {
     expect((await s.vault.read())?.access).toBe("seats:ota:renewed2");
   });
 
+  it("a token the service cannot renew says to try again, not to connect again; an account refused with a new token says why", async () => {
+    const s = session();
+    s.seats.state.valid.delete("seats:ota:first");
+    s.service = tokenService(s.seats, [
+      { ok: false, reason: "unavailable", status: 502, error: "upstream_unavailable" },
+      // Renewed, but seats.aero refuses that token's searches too (it is never added to the accepted ones).
+      { ok: true, grant: { access: "seats:ota:no-api", refresh: null, expiresIn: 3599 } },
+    ]);
+    const svc = await boot(s);
+    const down = await svc.searchText(QUERY);
+    expect(down).toMatchObject({ ok: false, error: "no_key", kind: "renewal_unavailable" });
+    if (!down.ok) expect(down.message).not.toMatch(/Connect your seats\.aero account/);
+    // The editor's runs, which only keep the run's code, say the same.
+    expect(svc.workspace.getState().run).toMatchObject({ kind: "failed", code: "renewal_unavailable" });
+    expect(await s.vault.read()).toMatchObject({ access: "seats:ota:first" });
+
+    const account = await svc.searchText(QUERY);
+    expect(account).toMatchObject({ ok: false, error: "no_key", kind: "refused_renewed" });
+    if (!account.ok) expect(account.message).toMatch(/API access/);
+    expect(s.seats.state.auth.filter(Boolean).slice(-1)).toEqual(["Bearer seats:ota:no-api"]);
+    expect(await svc.seatsAccount!.connected()).toBe(true);
+  });
+
   it("at launch, everything older than 24 hours is gone: cache, workspace, Saved rows, a watch's baseline", async () => {
     const s = session();
     const first = await boot(s);

@@ -44,6 +44,7 @@ import { shortDateTime } from "../app/when";
 import { SavedPlans, planTitleId } from "../components/plan/SavedPlans";
 import { AvailabilityList } from "../components/results/AvailabilityList";
 import { RESULTS } from "../components/results/copy";
+import { refusalKind } from "../oauth/refresh-retry";
 import { Button, Icon, Notice, Sheet } from "../components/ui";
 import { favoriteSnapshot, savedOptionIdentity } from "../store/favorites-store";
 import type { PlanV1 } from "../store/plans-store";
@@ -327,7 +328,8 @@ export function SavedScreen() {
   const [confirming, setConfirming] = useState(false);
   const [now] = useState(() => services.now());
   // The OAuth flavour: an item whose results passed 24 hours is searched again when opened (once per visit).
-  const [refresh, setRefresh] = useState<{ state: "searching" | "searched" } | { state: "failed"; message: string } | null>(null);
+  // `english`: the message is the engine's (English), not one of this screen's own sentences.
+  const [refresh, setRefresh] = useState<{ state: "searching" | "searched" } | { state: "failed"; message: string; english: boolean } | null>(null);
   const refreshed = useRef(false);
   // Whether there is a key to search with: read once, sending nothing; unknown until the Keychain answers.
   const [hasKey, setHasKey] = useState<boolean | null>(null);
@@ -346,8 +348,11 @@ export function SavedScreen() {
     setRefresh({ state: "searching" });
     const outcome = await services.refreshSaved(id);
     if (outcome.ok) setRefresh({ state: "searched" });
-    else if (outcome.reason === "search") setRefresh({ state: "failed", message: outcome.error.message ?? outcome.error.error });
-    else if (outcome.reason === "write") setRefresh({ state: "failed", message: outcome.detail.reason === "write_failed" ? outcome.detail.message : outcome.detail.reason });
+    else if (outcome.reason === "search") {
+      // A refusal after a renewal has its own sentence in the screen's language.
+      const refusal = refusalKind(outcome.error);
+      setRefresh(refusal ? { state: "failed", message: RESULTS[locale].runFailed[refusal], english: false } : { state: "failed", message: outcome.error.message ?? outcome.error.error, english: true });
+    } else if (outcome.reason === "write") setRefresh({ state: "failed", message: outcome.detail.reason === "write_failed" ? outcome.detail.message : outcome.detail.reason, english: true });
     else setRefresh(null);
   };
   const stale = Boolean(item?.rowsRemoved);
@@ -409,7 +414,7 @@ export function SavedScreen() {
       </p>
       {refresh?.state === "failed" ? (
         <p role="alert" className="ag-saved-status ag-saved-fail">
-          <WithTail text={f.shortTerm.failed(refresh.message)} tail={refresh.message} tailLang={locale === "en" ? undefined : "en"} />
+          <WithTail text={f.shortTerm.failed(refresh.message)} tail={refresh.message} tailLang={locale === "en" || !refresh.english ? undefined : "en"} />
         </p>
       ) : null}
       {removed ? <Notice tone="info">{f.shortTerm.removedNote}</Notice> : <Notice tone="warning">{copy("favorite.snapshot", locale)}</Notice>}

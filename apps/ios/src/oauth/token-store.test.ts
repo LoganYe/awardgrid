@@ -61,19 +61,19 @@ describe("TokenKeyStore", () => {
     let release: (r: BrokerResult) => void = () => {};
     const { broker: b, calls } = broker(() => new Promise<BrokerResult>((resolve) => (release = resolve)));
     const store = new TokenKeyStore({ vault: new MemoryTokenVault({ ...TOKENS, expiresAt: T0 }), broker: b, now: () => T0 });
-    const all = Promise.all([store.get(), store.get(), store.get(), store.refresh("Bearer seats:ota:first")]);
+    const all = Promise.all([store.get(), store.get(), store.get(), store.renew("Bearer seats:ota:first").then((r) => r.key)]);
     await vi.waitFor(() => expect(calls).toHaveLength(1));
     release(fresh("seats:ota:second"));
     expect(await all).toEqual(["Bearer seats:ota:second", "Bearer seats:ota:second", "Bearer seats:ota:second", "Bearer seats:ota:second"]);
     expect(calls).toHaveLength(1);
   });
 
-  it("refresh(rejected) renews on demand, but not again when another caller already replaced the refused token", async () => {
+  it("renew(rejected) renews on demand, but not again when another caller already replaced the refused token", async () => {
     const vault = new MemoryTokenVault(TOKENS);
     const { broker: b, calls } = broker([fresh("seats:ota:second")]);
     const store = new TokenKeyStore({ vault, broker: b, now: () => T0 });
-    expect(await store.refresh("Bearer seats:ota:first")).toBe("Bearer seats:ota:second");
-    expect(await store.refresh("Bearer seats:ota:first")).toBe("Bearer seats:ota:second");
+    expect(await store.renew("Bearer seats:ota:first")).toEqual({ key: "Bearer seats:ota:second" });
+    expect(await store.renew("Bearer seats:ota:first")).toEqual({ key: "Bearer seats:ota:second" });
     expect(calls).toHaveLength(1);
   });
 
@@ -84,9 +84,9 @@ describe("TokenKeyStore", () => {
     expect(await store.get()).toBe("Bearer seats:ota:first");
     expect(await vault.read()).not.toBeNull();
     expect(onRevoked).not.toHaveBeenCalled();
-    // A forced renewal that fails gives nothing new to retry with.
+    // A forced renewal that fails gives nothing new to retry with, and says the service could not renew it.
     const again = new TokenKeyStore({ vault, broker: broker([{ ok: false, reason: "unavailable", status: 502, error: "upstream_unavailable" }]).broker, now: () => T0 });
-    expect(await again.refresh("Bearer seats:ota:first")).toBeNull();
+    expect(await again.renew("Bearer seats:ota:first")).toEqual({ key: null, reason: "unavailable" });
     expect(await vault.read()).not.toBeNull();
   });
 
@@ -98,6 +98,8 @@ describe("TokenKeyStore", () => {
     expect(await vault.read()).toBeNull();
     expect(onRevoked).toHaveBeenCalledTimes(1);
     expect(await store.connected()).toBe(false);
+    // Nothing left to renew: "none", which is said as connecting again.
+    expect(await store.renew("Bearer seats:ota:first")).toEqual({ key: null, reason: "none" });
   });
 
   it("AwardGrid's own client being refused (invalid_client) is not the person's revocation", async () => {
