@@ -1,0 +1,25 @@
+// awardgrid-auth: NOT DEPLOYED. This file states the deployment the owner would make (release plan 47F step 2), so
+// what would run is written down next to the code. Nothing in CI deploys it, and no secret value is in this file or
+// anywhere in the repository: the client ID and secret are Worker secrets the owner types (DEPLOY.md).
+{
+  "name": "awardgrid-auth",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // Only the OAuth paths of awardgrid.dowhiz.com. The static site (sites/landing, Worker awardgrid-site) and the web
+  // app (the tunnel) keep every other path; neither uses /oauth/.
+  "routes": [{ "pattern": "awardgrid.dowhiz.com/oauth/*", "zone_name": "dowhiz.com" }],
+  // No second address: the redirect URI registered with seats.aero names awardgrid.dowhiz.com only.
+  "workers_dev": false,
+  "preview_urls": false,
+  // Nothing is logged or kept: no Workers Logs, no traces, no Logpush. The code itself has no console call.
+  "observability": { "enabled": false, "logs": { "enabled": false } },
+  "logpush": false,
+  "send_metrics": false,
+  // Per-IP rate limit (Workers Rate Limiting): 20 requests a minute per address, across the three paths. A device
+  // refreshes about once an hour. The counters are held in Cloudflare's memory, not in any storage. Without this
+  // binding the Worker answers 503 and serves nothing.
+  "ratelimits": [{ "name": "RATE_LIMITER", "namespace_id": "18101", "simple": { "limit": 20, "period": 60 } }]
+  // Deliberately absent: "vars" (the two values are secrets: `wrangler secret put SEATS_CLIENT_ID` and
+  // `wrangler secret put SEATS_CLIENT_SECRET`), and every storage binding (kv_namespaces, d1_databases, r2_buckets,
+  // durable_objects, queues). test/worker.test.ts holds this file to that.
+}

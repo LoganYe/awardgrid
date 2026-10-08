@@ -17,6 +17,10 @@
  *     is shown from it and nothing is written over it.
  *   - **Deleting can be undone** (the screen offers it for 5 seconds): the item goes back in its place.
  *   - Nothing saved holds a key, a header or a prompt: only what the results showed.
+ *   - **Short-term caching** (the iOS OAuth flavour, where seats.aero's results may be kept for 24 hours at most):
+ *     `removeRows` takes the rows out of the items a rule names, keeping each one's query, saved time, origin and how
+ *     many options it showed (`rowsRemoved`); `replaceRows` puts fresh rows from a search of the item's own query back.
+ *     Neither is used where no such limit applies, and an item without `rowsRemoved` reads exactly as before.
  */
 import { QueryObject } from "../query/schema";
 import { restoreCoverage } from "./coverage";
@@ -37,6 +41,8 @@ export type FavoriteWrite =
 
 export type FavoriteRemoval = { ok: true; undo: string } | { ok: false; reason: "unknown" | "read_only" } | { ok: false; reason: "write_failed"; message: string };
 export type FavoriteUndo = { ok: true } | { ok: false; reason: "gone" | "capacity" | "read_only" } | { ok: false; reason: "write_failed"; message: string };
+export type FavoriteRowsRemoval = { ok: true; removed: number } | { ok: false; reason: "read_only" } | { ok: false; reason: "write_failed"; message: string };
+export type FavoriteRowsReplacement = { ok: true; item: FavoriteV1 } | { ok: false; reason: "unknown" | "read_only" | "capacity" | "mismatch" } | { ok: false; reason: "write_failed"; message: string };
 
 export interface FavoritesLoad {
   loaded: number;
@@ -83,6 +89,24 @@ export function optionOrigin(snapshotId: string, rowKey: string): string {
 }
 
 /**
+ * Which option a saved option is (program, route, day and cabin), read from its origin's row key (identity.ts rowKey:
+ * digest~program~source~origin~dest~date~cabin~scope), so it can be named and found again once its row is removed.
+ * Null for a saved search, or an origin that is not one.
+ */
+export function savedOptionIdentity(item: Pick<FavoriteV1, "originalSnapshotId">): { program: string; origin: string; dest: string; date: string; cabin: string } | null {
+  const hash = item.originalSnapshotId.indexOf("#");
+  if (hash < 0) return null;
+  const parts = item.originalSnapshotId.slice(hash + 1).split("~");
+  if (parts.length !== 8) return null;
+  try {
+    const [, program, , origin, dest, date, cabin] = parts.map((p) => decodeURIComponent(p)) as [string, string, string, string, string, string, string, string];
+    return isRealDate(date) && /^[YWJF]$/.test(cabin) ? { program, origin, dest, date, cabin } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * A favourite read back as the snapshot it copied, so it is shown and counted exactly as the Search screen showed it
  * (core `projectResults`: only the rows the query asked for, in its order).
  */
@@ -112,15 +136,23 @@ function readFavorite(value: unknown): FavoriteV1 | null {
   const query = QueryObject.safeParse(value.query);
   if (!query.success || !isRealDate(query.data.date_from) || !isRealDate(query.data.date_to)) return null;
   if (!Array.isArray(value.rows) || !value.rows.every(isWorkspaceRow)) return null;
+  const removed = readRowsRemoved(value.rowsRemoved);
   return {
     schemaVersion: 1,
     id: value.id,
     savedAt: value.savedAt,
     query: query.data,
-    rows: value.rows,
-    coverage: restoreCoverage(value.coverage, scopeKey(query.data)),
+    rows: removed ? [] : value.rows,
+    coverage: restoreCoverage(removed ? null : value.coverage, scopeKey(query.data)),
     originalSnapshotId: value.originalSnapshotId,
+    ...(removed ? { rowsRemoved: removed } : {}),
   };
+}
+
+/** A saved `rowsRemoved`, or null when absent or not one (the item is then read as it is). */
+function readRowsRemoved(value: unknown): { at: string; options: number } | null {
+  if (!isRecord(value) || typeof value.at !== "string" || parseInstant(value.at) === null) return null;
+  return Number.isSafeInteger(value.options) && (value.options as number) >= 0 ? { at: value.at, options: value.options as number } : null;
 }
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message || err.name : String(err));
@@ -265,6 +297,54 @@ export class FavoritesStore {
   /** Forget an undo that is no longer offered (its 5 seconds are over). */
   forget(token: string): void {
     this.#removed.delete(token);
+  }
+
+  /**
+   * Short-term caching: take the rows (and the coverage they proved) out of every item `expired` names, keeping its
+   * query, saved time, origin and `options(item)`, the number of options it showed, as `rowsRemoved`. An item already
+   * without rows is left as it is. One write for all of them; nothing changes in memory unless it succeeds. The undo
+   * of a deletion still offered is forgotten for an item whose rows are removed, so it cannot bring them back.
+   */
+  removeRows(expired: (item: FavoriteV1) => boolean, at: string, options: (item: FavoriteV1) => number): Promise<FavoriteRowsRemoval> {
+    return this.#serial(async (): Promise<FavoriteRowsRemoval> => {
+      if (this.#readOnly) return { ok: false, reason: "read_only" };
+      let removed = 0;
+      const next = this.#items.map((item) => {
+        if (item.rowsRemoved || item.rows.length === 0 || !expired(item)) return item;
+        removed += 1;
+        return { ...item, rows: [], coverage: restoreCoverage(null, scopeKey(item.query)), rowsRemoved: { at, options: Math.max(0, Math.trunc(options(item))) } };
+      });
+      for (const [token, entry] of this.#removed) if (expired(entry.item)) this.#removed.delete(token);
+      if (removed === 0) return { ok: true, removed };
+      const written = await this.#write(next);
+      return written.ok ? { ok: true, removed } : written;
+    });
+  }
+
+  /**
+   * Short-term caching: fresh rows for one item from `snapshot`, a search of the item's own query (anything else is
+   * refused as "mismatch"). Its rows and coverage become the snapshot's, `rowsRemoved` is cleared, and its id, saved
+   * time, query and origin stay. A saved option keeps only the row for the same program, route, day and cabin, if the
+   * search still has one.
+   */
+  replaceRows(id: string, snapshot: ResultSnapshot): Promise<FavoriteRowsReplacement> {
+    return this.#serial(async (): Promise<FavoriteRowsReplacement> => {
+      if (this.#readOnly) return { ok: false, reason: "read_only" };
+      const index = this.#items.findIndex((f) => f.id === id);
+      if (index < 0) return { ok: false, reason: "unknown" };
+      const item = this.#items[index]!;
+      if (snapshot.scopeKey !== scopeKey(item.query)) return { ok: false, reason: "mismatch" };
+      const option = savedOptionIdentity(item);
+      const rows = option
+        ? snapshot.rows.filter((r) => r.value.program === option.program && r.value.origin === option.origin && r.value.dest === option.dest && r.value.date === option.date && r.value.cabin === option.cabin).slice(0, 1)
+        : snapshot.rows;
+      const { rowsRemoved: _removed, ...kept } = item;
+      const fresh: FavoriteV1 = structuredClone({ ...kept, rows, coverage: snapshot.coverage });
+      const next = this.#items.map((f, i) => (i === index ? fresh : f));
+      if (!this.#fits(next)) return { ok: false, reason: "capacity" };
+      const written = await this.#write(next);
+      return written.ok ? { ok: true, item: fresh } : written;
+    });
   }
 
   /** Which limit a list would pass, if any. The unreadable items count as well: they are written too. */

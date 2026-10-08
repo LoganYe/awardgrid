@@ -11,12 +11,19 @@
  *   - **transports**: the sample transport for seats.aero (./sample-fetch.ts), and one that refuses every Anthropic
  *     request. The native HTTP adapter is never built, let alone called.
  *   - **files**: the live file store under `sample/` (SampleFiles): the cache, the quota counter, watches, the
- *     workspace, Saved, settings. The real ones are never read or written, nor is today's real call count.
+ *     workspace, Saved, settings. These services never read or write the real ones, nor today's real call count.
+ *   - **no account**: in the OAuth flavour too, sample mode boots with `oauth: null`, so the token store is never built
+ *     and no token is read, renewed or removed; there is nothing to Disconnect, and Settings › seats.aero account says
+ *     to exit sample data to connect. Sample data is made on this device, so no short-term limit applies to it.
+ *
+ * The account's own files are another matter in the OAuth flavour: they hold seats.aero's results under its 24-hour
+ * limit, and the account's services, which sweep them, are not running. `accountSweeper` sweeps them while sample mode
+ * runs (DataSourceControl.sweepAccount), reading no token either.
  *
  * Entering copies the language and appearance chosen in Settings into sample/'s settings, so the app looks the same;
  * leaving copies them back (a choice made in sample mode is still the person's choice) and deletes sample/.
  */
-import type { BootstrapOptions } from "../app/bootstrap";
+import { type BootstrapOptions, bootstrap, shortTermLimitOf } from "../app/bootstrap";
 import { type DataSourceControl, type SampleCoverage, writeDataSource } from "../app/data-source";
 import { SETTINGS_NAMESPACE, SettingsStore } from "../app/settings-store";
 import { MemoryKeyStore } from "../native/keychain";
@@ -161,12 +168,79 @@ const noAnthropic: typeof fetch = async () => {
   throw new Error("Not available with sample data.");
 };
 
+/** The account sweeper's transports: it only removes what passed the limit, and sends nothing. */
+const sendNothing: typeof fetch = async () => {
+  throw new Error("The sweep sends nothing.");
+};
+
+export interface AccountSweeper {
+  /** One sweep of the account's files; joins the one under way. Never throws. */
+  sweep(): Promise<void>;
+  /** Run no more sweeps, once the one under way has finished (leaving sample mode). */
+  stop(): Promise<void>;
+  /** Sweep again: the exit that stopped it failed, and sample mode goes on. */
+  resume(): void;
+}
+
+/**
+ * The sweep of the account's own files while sample mode runs, for an account under a short-term limit of `limitMs`
+ * (the OAuth flavour's 24 hours). Each sweep boots the account's services afresh over `live`'s files — so it never
+ * keeps an old reading of them — with no account at all: `oauth: null`, so the token store is never built and no token
+ * is read; an empty in-memory key; transports that send nothing. Their launch and their own `sweepShortTerm` remove
+ * what passed the limit (cache rows, workspace snapshots, Saved rows, watch baselines, an Ask conversation) and save.
+ * Nothing under sample/ is read or written.
+ */
+export function accountSweeper(live: BootstrapOptions, files: FileStore, limitMs: number): AccountSweeper {
+  let running: Promise<void> | null = null;
+  let stopped = false;
+  const sweep = (): Promise<void> => {
+    if (stopped) return Promise.resolve();
+    running ??= (async () => {
+      try {
+        const account = await bootstrap({
+          snapshots: new SnapshotStore(files),
+          now: live.now,
+          locale: live.locale,
+          visibility: live.visibility,
+          keys: new MemoryKeyStore(),
+          anthropicKeys: new MemoryKeyStore(),
+          fetchImpl: sendNothing,
+          anthropicFetch: sendNothing,
+          // Both transports are injected and neither is native (the rule bootstrap.ts gives); nothing is sent anyway.
+          assertNative: () => {},
+          oauth: null,
+          shortTermMs: limitMs,
+        });
+        await account.sweepShortTerm();
+      } catch {
+        // The next sweep tries again, and the account's own launch prunes the same way.
+      } finally {
+        running = null;
+      }
+    })();
+    return running;
+  };
+  return {
+    sweep,
+    async stop() {
+      stopped = true;
+      await running;
+    },
+    resume() {
+      stopped = false;
+    },
+  };
+}
+
 /** The options sample mode boots with, over the live ones it was chosen from (their clock, language and visibility). */
 export async function sampleBootstrapOptions(live: BootstrapOptions, files: FileStore, control: DataSourceControl): Promise<BootstrapOptions> {
   const keys = new MemoryKeyStore();
   await keys.set(SAMPLE_KEY);
   const now = live.now ?? (() => new Date());
   const sampleFiles = new SampleFiles(files);
+  // The account's files keep their limit while sample mode runs (the OAuth flavour); none to keep in the key flavour.
+  const accountLimit = shortTermLimitOf(live);
+  const sweeper = accountLimit != null ? accountSweeper(live, files, accountLimit) : null;
   return {
     keys,
     anthropicKeys: new MemoryKeyStore(),
@@ -179,17 +253,24 @@ export async function sampleBootstrapOptions(live: BootstrapOptions, files: File
     // rule bootstrap.ts gives for a host that injects both). Ask stays off in sample mode either way.
     assertNative: () => {},
     locale: live.locale,
+    // No account in sample mode, whatever the flavour: no token store, no Disconnect, and no limit on sample data.
+    oauth: null,
+    shortTermMs: null,
     dataSource: {
       ...control,
       kind: "sample",
       coverage: SAMPLE_COVERAGE,
+      ...(sweeper ? { sweepAccount: sweeper.sweep } : {}),
       // These services stop writing under sample/ before it is deleted (SampleFiles.seal), and go on if the exit fails.
+      // The account sweeper finishes before the account's own services boot over its files, and goes on likewise.
       async exitSample() {
         await sampleFiles.seal();
+        await sweeper?.stop();
         try {
           await control.exitSample();
         } catch (err) {
           sampleFiles.unseal();
+          sweeper?.resume();
           throw err;
         }
       },

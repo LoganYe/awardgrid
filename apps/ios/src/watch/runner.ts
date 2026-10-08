@@ -30,6 +30,10 @@
  *     conditions (its next check sets the baseline the edit asked for), and changes marked seen meanwhile stay seen.
  *   - **Conditions that cannot be run are not replaced by the old text.** A structured watch whose draft no longer
  *     resolves (a damaged file) is not checked, costs nothing, and says its conditions need editing.
+ *   - **The OAuth flavour** (release plan step 18b): a token seats.aero refuses is renewed once per run and that
+ *     watch checked once more (`renewKey`); and a baseline older than `baselineMaxAgeMs` (24 hours: seats.aero's
+ *     results are kept on the device for no longer, ../retention/short-term.ts) is not compared against: the check
+ *     sets a new one, as a first check does, and reports nothing. The key flavour passes neither, and runs as before.
  */
 import {
   DEFAULT_MIN_QUOTA,
@@ -47,6 +51,7 @@ import {
 import { resolveDraft } from "@awardgrid/core/workspace/query-editor";
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import { DEFAULT_CACHE_TTL_MINUTES } from "@awardgrid/core/seatsaero/cache";
+import { refusedByProvider } from "../oauth/refresh-retry";
 import { localDate } from "../app/local-date";
 import type { ApiFailureCode, SearchEngine } from "../search/search";
 import type { WatchStore } from "../store/watch-store";
@@ -66,6 +71,17 @@ export interface CheckWatchesOptions {
   now: () => Date;
   ttlMinutes?: number;
   minQuota?: number;
+  /** The OAuth flavour: a renewed token after seats.aero refused `rejected`, or null (../oauth/refresh-retry.ts). */
+  renewKey?: (rejected: string | null) => Promise<string | null>;
+  /** The OAuth flavour: a baseline taken longer ago than this (ms) has been purged, and is not compared against. */
+  baselineMaxAgeMs?: number | null;
+}
+
+/** Whether a watch's baseline is older than the short-term limit (its time is the last successful check's). */
+export function baselineExpired(watch: Pick<Watch, "lastCheckedAt">, now: Date, maxAgeMs: number | null | undefined): boolean {
+  if (maxAgeMs == null || watch.lastCheckedAt === null) return false;
+  const at = Date.parse(watch.lastCheckedAt);
+  return !Number.isFinite(at) || now.getTime() - at > maxAgeMs;
 }
 
 /**
@@ -79,20 +95,23 @@ const COSTLY_FAILURES: ReadonlySet<ApiFailureCode> = new Set(["network", "seatsa
 export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchCheckResult[]> {
   const ttlMinutes = opts.ttlMinutes ?? DEFAULT_CACHE_TTL_MINUTES;
   const results: WatchCheckResult[] = [];
+  let apiKey = opts.apiKey;
+  // A refused token is renewed once per run, not once per watch: a second refusal is the answer.
+  let renewed = false;
 
   // Ids, not records: each watch is read when its turn comes, so an edit made during an earlier watch's check is run.
   for (const id of opts.store.all().map((w) => w.id)) {
     const watch = opts.store.get(id);
     if (!watch) continue;
     const now = opts.now();
-    const firstCheck = watch.lastCheckedAt === null;
+    const firstCheck = watch.lastCheckedAt === null || baselineExpired(watch, now, opts.baselineMaxAgeMs);
     const quota = await opts.engine.quotaView();
 
     const skip: SkipReason | null = dueForCheck(watch, {
       now,
       ttlMinutes,
       quotaRemaining: quota.remaining,
-      hasKey: Boolean(opts.apiKey),
+      hasKey: Boolean(apiKey),
       minQuota: opts.minQuota ?? DEFAULT_MIN_QUOTA,
     });
     if (skip) {
@@ -117,7 +136,16 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
       }
     }
 
-    const res = structured ? await opts.engine.searchQuery(structured, opts.apiKey) : await opts.engine.search(watch.text, opts.apiKey);
+    const send = (key: string | null) => (structured ? opts.engine.searchQuery(structured, key) : opts.engine.search(watch.text, key));
+    let res = await send(apiKey);
+    if (refusedByProvider(res) && opts.renewKey && !renewed) {
+      renewed = true;
+      const fresh = await opts.renewKey(apiKey);
+      if (fresh && fresh !== apiKey) {
+        apiKey = fresh;
+        res = await send(apiKey);
+      }
+    }
     const iso = now.toISOString();
     // Read again: the request may have been out while the watch was edited, restarted from the editor, or removed.
     const current = opts.store.get(watch.id);

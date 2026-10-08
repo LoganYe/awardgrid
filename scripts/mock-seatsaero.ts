@@ -24,8 +24,22 @@
  * Rows flagged `_demo_dynamic` are served only when include_filtered=true. `UpdatedAt` is
  * rebuilt at serve time from `_demo_updated_minutes_ago` so freshness is always relative to now.
  *
+ * Login with Seats.aero (the app's OAuth flavour, release plan step 18b) is mocked too, after
+ * developers.seats.aero's "Consent" and "Token" pages:
+ *   GET  /oauth2/consent?response_type=code&client_id=…&redirect_uri=…&state=…&scope=openid
+ *        302 to redirect_uri?code=…&state=… (the person allowed it), or ?error=access_denied&state=…
+ *        when the mock is set to decline (MockOptions.oauth.decline). A request that breaks the rules is 400.
+ *   POST /oauth2/token  JSON {client_id, client_secret, grant_type: "authorization_code", code, redirect_uri,
+ *        state, scope: "openid"} or {client_id, client_secret, grant_type: "refresh_token", refresh_token}
+ *        → {access_token: "seats:ota:…", token_type: "Bearer", expires_in, refresh_token: "seats:otr:…",
+ *        scope: "openid"}; a wrong client is 401 invalid_client, an unknown, used or revoked code or refresh
+ *        token is 400 invalid_grant. Codes are single-use; `revokeOAuth()` revokes every grant.
+ * A Partner-Authorization of "Bearer seats:ota:…" must be an access token this mock issued and that has
+ * not expired (401 otherwise), so a client's refresh path can be exercised; any other non-empty value is
+ * a key, as before.
+ *
  * Never use this in production; it is not reachable from the image. Logs one line per request
- * and never prints header values.
+ * and never prints header values or request bodies.
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
@@ -58,7 +72,29 @@ export interface MockOptions {
   now?: () => Date;
   /** One line per request; defaults to console.log. Pass () => {} to silence. */
   log?: (line: string) => void;
+  /** The OAuth mock's client and behaviour (defaults: MOCK_OAUTH_CLIENT). */
+  oauth?: Partial<MockOAuthConfig>;
 }
+
+export interface MockOAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  /** The redirect URI registered for the client; the consent and token requests must name it exactly. */
+  redirectUri: string;
+  /** Seconds an access token lives (seats.aero: 3599). */
+  accessTtlSeconds: number;
+  /** Answer the consent page as if the person declined. */
+  decline: boolean;
+}
+
+/** The mock client: test values only, never a real seats.aero client. */
+export const MOCK_OAUTH_CLIENT: MockOAuthConfig = {
+  clientId: "mock-client-id",
+  clientSecret: "mock-client-secret",
+  redirectUri: "https://awardgrid.dowhiz.com/oauth/seats/callback",
+  accessTtlSeconds: 3599,
+  decline: false,
+};
 export interface MockHandle {
   server: Server;
   port: number;
@@ -67,6 +103,8 @@ export interface MockHandle {
   demo: boolean;
   shiftDays: number;
   rowCount: number;
+  /** Revoke every OAuth grant: refresh tokens and access tokens stop working, as when a person removes the app. */
+  revokeOAuth(): void;
   close(): Promise<void>;
 }
 
@@ -205,8 +243,63 @@ function scenarioOf(auth: string, demo: boolean): DemoScenario {
   return found ?? "normal";
 }
 
+/** The OAuth mock's grants, in memory only. */
+function createOAuthMock(config: MockOAuthConfig, now: () => Date) {
+  let counter = 0;
+  const next = () => `${(counter += 1).toString(36)}${Math.floor(now().getTime() / 1000).toString(36)}`;
+  const codes = new Map<string, { redirectUri: string; state: string; used: boolean }>();
+  const refreshTokens = new Set<string>();
+  const accessTokens = new Map<string, { refresh: string; expiresAt: number }>();
+  const issue = (refresh: string) => {
+    const access = `seats:ota:mock${next()}`;
+    accessTokens.set(access, { refresh, expiresAt: now().getTime() + config.accessTtlSeconds * 1000 });
+    return { access_token: access, token_type: "Bearer", expires_in: config.accessTtlSeconds, refresh_token: refresh, scope: "openid" };
+  };
+  return {
+    /** GET /oauth2/consent: where to send the browser, or why not (400). */
+    consent(params: URLSearchParams): { status: 302; location: string } | { status: 400; body: Json } {
+      const redirectUri = params.get("redirect_uri") ?? "";
+      const state = params.get("state") ?? "";
+      if (params.get("response_type") !== "code" || params.get("scope") !== "openid" || !state || params.get("client_id") !== config.clientId || redirectUri !== config.redirectUri) {
+        return { status: 400, body: { error: "invalid_request" } };
+      }
+      if (config.decline) return { status: 302, location: `${redirectUri}?${new URLSearchParams({ error: "access_denied", state })}` };
+      const code = `mockcode${next()}`;
+      codes.set(code, { redirectUri, state, used: false });
+      return { status: 302, location: `${redirectUri}?${new URLSearchParams({ code, state })}` };
+    },
+    /** POST /oauth2/token. */
+    token(body: unknown): { status: number; body: Json } {
+      const b = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
+      if (b.client_id !== config.clientId || b.client_secret !== config.clientSecret) return { status: 401, body: { error: "invalid_client" } };
+      if (b.grant_type === "authorization_code") {
+        const grant = typeof b.code === "string" ? codes.get(b.code) : undefined;
+        if (!grant || grant.used || b.redirect_uri !== grant.redirectUri || b.state !== grant.state || b.scope !== "openid") return { status: 400, body: { error: "invalid_grant" } };
+        grant.used = true;
+        const refresh = `seats:otr:mock${next()}`;
+        refreshTokens.add(refresh);
+        return { status: 200, body: issue(refresh) };
+      }
+      if (b.grant_type === "refresh_token") {
+        if (typeof b.refresh_token !== "string" || !refreshTokens.has(b.refresh_token)) return { status: 400, body: { error: "invalid_grant" } };
+        return { status: 200, body: issue(b.refresh_token) };
+      }
+      return { status: 400, body: { error: "unsupported_grant_type" } };
+    },
+    /** Whether a Bearer access token is one this mock issued, unexpired and unrevoked. */
+    accepts(access: string): boolean {
+      const held = accessTokens.get(access);
+      return held !== undefined && refreshTokens.has(held.refresh) && held.expiresAt > now().getTime();
+    },
+    revoke() {
+      refreshTokens.clear();
+      accessTokens.clear();
+    },
+  };
+}
+
 /** Build the request handler without binding a socket (createMockServer wraps it). */
-export function createMockHandler(opts: MockOptions = {}): { handle: (req: IncomingMessage, res: ServerResponse) => void; dataset: Dataset; demo: boolean } {
+export function createMockHandler(opts: MockOptions = {}): { handle: (req: IncomingMessage, res: ServerResponse) => void; dataset: Dataset; demo: boolean; revokeOAuth: () => void } {
   const demo = opts.demo ?? false;
   const now = opts.now ?? (() => new Date());
   const log = opts.log ?? ((line: string) => console.log(line));
@@ -217,6 +310,7 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
   // breaks by a few milliseconds.
   const startedAt = now();
   const { rows } = dataset;
+  const oauth = createOAuthMock({ ...MOCK_OAUTH_CLIENT, ...opts.oauth }, now);
 
   const handle = (req: IncomingMessage, res: ServerResponse) => {
     const started = Date.now();
@@ -228,7 +322,8 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
       const finish = () => {
         res.writeHead(status, { "content-type": "application/json" });
         res.end(JSON.stringify(body));
-        log(`${req.method} ${p}${url.search} ${status} ${Date.now() - started}ms`);
+        // An OAuth request's query carries a state and a client: the path alone is logged.
+        log(`${req.method} ${p}${p.startsWith("/oauth2/") ? "" : url.search} ${status} ${Date.now() - started}ms`);
       };
       if (scenario === "slow") setTimeout(finish, slowMs);
       else finish();
@@ -237,7 +332,36 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
     if (p === "/healthz" && (req.method === "GET" || req.method === "HEAD")) {
       return send(200, { ok: true, demo, rows: rows.length, shiftDays: dataset.shiftDays });
     }
+    // Login with Seats.aero: the consent page answers with a redirect, the token endpoint with JSON (no key needed).
+    if (p === "/oauth2/consent" && req.method === "GET") {
+      const answer = oauth.consent(url.searchParams);
+      if (answer.status === 400) return send(400, answer.body);
+      res.writeHead(302, { location: answer.location });
+      res.end();
+      log(`GET ${p} 302 ${Date.now() - started}ms`);
+      return;
+    }
+    if (p === "/oauth2/token" && req.method === "POST") {
+      let raw = "";
+      req.setEncoding("utf8");
+      req.on("data", (chunk: string) => {
+        raw += chunk;
+      });
+      req.on("end", () => {
+        let body: unknown = null;
+        try {
+          body = JSON.parse(raw);
+        } catch {
+          body = null;
+        }
+        const answer = String(req.headers["content-type"] ?? "").startsWith("application/json") ? oauth.token(body) : { status: 400, body: { error: "invalid_request" } };
+        send(answer.status, answer.body);
+      });
+      return;
+    }
     if (!auth) return send(401, {});
+    // An OAuth access token must be one this mock issued, still valid; anything else is a key, as before.
+    if (auth.startsWith("Bearer ") && !oauth.accepts(auth.slice("Bearer ".length).trim())) return send(401, {});
     // A key seats.aero rejects: 401 on every endpoint, which is what /api/keys reports as
     // "seats.aero rejected this key" when someone pastes a bad one (e2e/settings.spec.ts).
     if (scenario === "invalid") return send(401, {});
@@ -291,12 +415,12 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
     }
     send(404, {});
   };
-  return { handle, dataset, demo };
+  return { handle, dataset, demo, revokeOAuth: () => oauth.revoke() };
 }
 
 /** Start the mock on `opts.port` (0 = ephemeral) and resolve once it is listening. */
 export function createMockServer(opts: MockOptions = {}): Promise<MockHandle> {
-  const { handle, dataset, demo } = createMockHandler(opts);
+  const { handle, dataset, demo, revokeOAuth } = createMockHandler(opts);
   const host = opts.host ?? "127.0.0.1";
   const server = createServer(handle);
   return new Promise((resolve, reject) => {
@@ -311,6 +435,7 @@ export function createMockServer(opts: MockOptions = {}): Promise<MockHandle> {
         demo,
         shiftDays: dataset.shiftDays,
         rowCount: dataset.rows.length,
+        revokeOAuth,
         close: () => new Promise<void>((done, fail) => server.close((err) => (err ? fail(err) : done()))),
       });
     });

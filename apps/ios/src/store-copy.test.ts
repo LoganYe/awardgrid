@@ -112,6 +112,9 @@ describe("the App Store build's wording", () => {
     expect(scanned).toEqual(
       expect.arrayContaining(["main.tsx", "app/App.tsx", "screens/SearchScreen.tsx", "screens/SettingsScreen.tsx", "screens/settings-copy.ts", "components/results/copy.ts", "screens/OnboardingScreen.tsx", "screens/watches-copy.ts", "screens/favorites-copy.ts", "search/search.ts"]),
     );
+    // The OAuth flavour's connect page and its words are held to the same lists: the reading leaves App.tsx's
+    // OAUTH_BUILT unknown, so both connect pages are read, whichever a store build ships.
+    expect(scanned).toEqual(expect.arrayContaining(["screens/SeatsConnectScreen.tsx", "screens/oauth-copy.ts", "oauth/kit.ts", "oauth/token-store.ts"]));
     for (const askOnly of ["screens/AskScreen.tsx", "screens/AnthropicKeyScreen.tsx", "screens/anthropic-copy.ts", "ask/ask-surface-copy.ts", "ask/ask-copy.ts", "ask/consent-copy.ts", "components/AskEntry.tsx"]) {
       expect(scanned, askOnly).not.toContain(askOnly);
     }

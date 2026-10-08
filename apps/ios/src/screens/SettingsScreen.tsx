@@ -33,7 +33,7 @@ import { copy } from "@awardgrid/core/workspace/present";
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
 import { isSample } from "../app/data-source";
-import { CAN_CONNECT, STORE } from "../app/flags";
+import { CAN_CONNECT, OAUTH, STORE } from "../app/flags";
 import { useFocusOnArrival } from "../app/focus";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import { PRIVACY_POLICY_URL, SUPPORT_URL } from "../app/links";
@@ -148,13 +148,33 @@ export function BackToSettings({ label, from }: { label: string; from: "seats" |
 // The screens
 // ---------------------------------------------------------------------------
 
+/** Whether the OAuth flavour's account is connected, read from the Keychain alone; undefined until it answers. */
+function useConnected(account: AppServices["seatsAccount"]): boolean | undefined {
+  const [connected, setConnected] = useState<boolean | undefined>(undefined);
+  useEffect(() => {
+    if (!account) return;
+    let live = true;
+    void account
+      .connected()
+      .then((on) => live && setConnected(on))
+      .catch(() => live && setConnected(false));
+    return () => {
+      live = false;
+    };
+  }, [account]);
+  return connected;
+}
+
 export function SettingsScreen() {
   const services = useOutletContext<AppServices>();
   const locale = useLocale(services);
   const t = SETTINGS[locale];
   const sample = isSample(services);
-  // Sample mode's key store holds a placeholder, never read here: the row says "Sample data" instead.
-  const [seats] = useLast4(CAN_CONNECT && !sample ? services.keys : null);
+  // The key flavour shows a key's last four characters; the OAuth flavour has none, and says "Connected". Sample
+  // mode's key store holds a placeholder, never read here, and it has no account (no tokens are read): the row says
+  // "Sample data" instead.
+  const [seats] = useLast4(CAN_CONNECT && !OAUTH && !sample ? services.keys : null);
+  const connected = useConnected(OAUTH && !sample ? services.seatsAccount : null);
   // The App Store build has no Ask, so it never reads the Anthropic Keychain item.
   const [anthropic] = useLast4(STORE ? null : services.anthropicKeys);
   const theme = useSyncExternalStore(services.settings.subscribe, services.settings.theme, services.settings.theme);
@@ -164,7 +184,19 @@ export function SettingsScreen() {
   useEffect(() => {
     if (returnTo) document.getElementById(returnTo)?.focus();
   }, [returnTo]);
-  const row = (id: string, to: string, label: string, value: string | null | undefined, note?: string, said?: string) => (
+  function keyValue(value: string | null | undefined): string {
+    return value === undefined ? "" : value === null ? t.notConnected : t.onFile(value);
+  }
+  const seatsValue = sample
+    ? SAMPLE[locale].settingsValue
+    : OAUTH
+      ? connected === undefined
+        ? ""
+        : connected
+          ? t.connected
+          : t.notConnected
+      : keyValue(seats);
+  const row = (id: string, to: string, label: string, value: string, note?: string) => (
     <Link id={id} to={to} className="ag-settings-row">
       {/* Label and value share a line while they fit; with larger text the value goes under the label. */}
       <span className="ag-settings-row-main">
@@ -172,7 +204,7 @@ export function SettingsScreen() {
           <span className="ag-settings-row-label">{label}</span>
           {note ? <span className="ag-settings-row-note">{note}</span> : null}
         </span>
-        <span className="ag-settings-value tabular">{said ?? (value === undefined ? "" : value === null ? t.notConnected : t.onFile(value))}</span>
+        <span className="ag-settings-value tabular">{value}</span>
       </span>
       <Icon name="chevron-right" />
     </Link>
@@ -181,12 +213,10 @@ export function SettingsScreen() {
   return (
     <div className="ag-settings" lang={langTag(locale)}>
       <h1 className="ag-settings-title">{t.title}</h1>
-      {CAN_CONNECT ? (
-        <Group title={t.groups.data}>{row("settings-row-seats", "/settings/seats", t.seatsRow, seats, undefined, sample ? SAMPLE[locale].settingsValue : undefined)}</Group>
-      ) : null}
+      {CAN_CONNECT ? <Group title={t.groups.data}>{row("settings-row-seats", "/settings/seats", t.seatsRow, seatsValue)}</Group> : null}
       {STORE ? null : (
         <Group title={ASK_SURFACES[locale].settings.group}>
-          {row("settings-row-anthropic", "/settings/anthropic", ASK_SURFACES[locale].settings.row, anthropic, ASK_SURFACES[locale].settings.rowNote)}
+          {row("settings-row-anthropic", "/settings/anthropic", ASK_SURFACES[locale].settings.row, keyValue(anthropic), ASK_SURFACES[locale].settings.rowNote)}
         </Group>
       )}
       <Group title={t.groups.appearance}>
@@ -269,9 +299,10 @@ export function SeatsKeyScreen() {
 
 /**
  * Settings › seats.aero account in sample mode: no key field (sample mode's key store is in memory and holds a
- * placeholder, never shown), only that the account is connected after leaving sample data, and the way to leave.
+ * placeholder, never shown), only that the account is connected after leaving sample data, and the way to leave. The
+ * OAuth flavour's connect page (./SeatsConnectScreen.tsx) shows this one in sample mode too.
  */
-function SampleSeatsPage({ services }: { services: AppServices }) {
+export function SampleSeatsPage({ services }: { services: AppServices }) {
   const locale = useLocale(services);
   const t = SETTINGS[locale];
   const s = SAMPLE[locale];

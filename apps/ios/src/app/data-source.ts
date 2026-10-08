@@ -51,6 +51,13 @@ export interface DataSourceControl {
   enterSample(start?: SampleStart): Promise<void>;
   /** Switch back to the account, delete sample/ and boot again. Sample mode only. */
   exitSample(): Promise<void>;
+  /**
+   * Sample mode entered from an account under a short-term limit (the OAuth flavour's 24 hours): remove from the
+   * account's own files, which sample mode never reads and whose services are not running, whatever passed the limit.
+   * Reads no token and no key, and sends nothing. App runs it when sample mode starts, on each return to the
+   * foreground and hourly, as the account's services run their own sweep. Absent otherwise. Never throws.
+   */
+  sweepAccount?: () => Promise<void>;
 }
 
 /** A run with no way to switch (tests, the probe builds): live, and switching does nothing. */

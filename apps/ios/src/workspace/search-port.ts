@@ -6,7 +6,9 @@
  * workspace itself decides which answer may be shown. A queued run that a newer run has already superseded (its
  * signal is aborted) is skipped before anything is sent: nothing can show its answer. A run already sent cannot be
  * recalled (docs/PHASE0.md §3). The key is read from the Keychain when a run starts and goes to the engine only; a
- * snapshot holds rows, query, times and coverage, never the key or a header.
+ * snapshot holds rows, query, times and coverage, never the key or a header. In the OAuth flavour a token seats.aero
+ * refuses is renewed and the run sent once more, unless a newer run has replaced it meanwhile (../oauth/refresh-retry.ts);
+ * a pasted key has nothing to renew, so the key flavour sends each run once, as before.
  *
  * The engine's full answer (grid, notices, quota) is handed to `onAnswer` BEFORE the snapshot is returned — so
  * before the workspace can publish it — and is also kept for the run that asked, until that caller takes it: the
@@ -15,7 +17,7 @@
 import { snapshotFromFind } from "@awardgrid/core/workspace/snapshot-from-find";
 import type { ResultSnapshot, SearchPort, SearchRun } from "@awardgrid/core/workspace/types";
 import type { QueryObject } from "@awardgrid/core/query/schema";
-import type { KeyStore } from "../native/keychain";
+import { type RenewableKeys, withRenewal } from "../oauth/refresh-retry";
 import type { ApiResult, FindValue, SearchEngine } from "../search/search";
 import { SearchRunError } from "./workspace-store";
 
@@ -26,7 +28,7 @@ export interface EngineSearchPort extends SearchPort {
 
 export interface SearchPortOptions {
   engine: Pick<SearchEngine, "searchQuery">;
-  keys: Pick<KeyStore, "get">;
+  keys: RenewableKeys;
   now: () => Date;
   /** Called with each snapshot and the engine's answer, before the snapshot goes back to the workspace. */
   onAnswer?: (snapshot: ResultSnapshot, value: FindValue, run: SearchRun) => void;
@@ -52,13 +54,7 @@ export function createSearchPort(opts: SearchPortOptions): EngineSearchPort {
 
   const executeNow = async (query: QueryObject, run: SearchRun): Promise<ResultSnapshot> => {
     if (run.signal?.aborted) throw new SearchRunError("superseded", "A newer search started before this one was sent.");
-    let key: string | null;
-    try {
-      key = await opts.keys.get();
-    } catch {
-      key = null;
-    }
-    const result = await opts.engine.searchQuery(query, key);
+    const result = await withRenewal(opts.keys, (key) => opts.engine.searchQuery(query, key), () => !run.signal?.aborted);
     keep(run.id, result);
     if (!result.ok) throw new SearchRunError(result.error, result.message);
     const snapshot = snapshotFromFind(result.value, run, opts.now().toISOString());

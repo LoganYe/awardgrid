@@ -63,6 +63,8 @@ function isSnapshot(value: Pick<ResultSnapshot, "id"> | ResultSnapshot): value i
 export interface WorkspaceLastSearch extends LastSearchStore {
   /** Remember what was typed for one published snapshot. Entries for snapshots the workspace dropped are forgotten. */
   record(snapshotId: SnapshotId, entry: LastSearchEntry): void;
+  /** Forget every remembered answer (the OAuth flavour's Disconnect: nothing from seats.aero stays, even in memory). */
+  clear(): void;
 }
 
 /** Rebuilds the screen's view of a snapshot this session did not produce. */
@@ -107,5 +109,8 @@ export function createWorkspaceLastSearch(workspace: ShownSnapshots, view?: Snap
       if (shown) record(shown.id, entry);
     },
     record,
+    clear() {
+      entries.clear();
+    },
   };
 }

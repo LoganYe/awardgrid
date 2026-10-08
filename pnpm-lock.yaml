@@ -295,6 +295,8 @@ importers:
 
   packages/tokens: {}
 
+  sites/auth: {}
+
   sites/landing:
     dependencies:
       '@awardgrid/tokens':

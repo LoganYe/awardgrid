@@ -223,7 +223,29 @@ then the licenses check. `src/store-copy.test.ts` holds the wording of the sourc
 
 `VITE_AG_CONNECT` picks how a seats.aero account is connected: `key` (the default, its API key pasted on the connect
 page), `0` (no connection: the connect page and every link to it are compiled out; prepared, not shipped), or
-`oauth` (reserved for seats.aero's own sign-in; `vite.config.ts` refuses to build it until it exists).
+`oauth` (seats.aero's own sign-in, "Login with Seats.aero"; below).
+
+### The OAuth flavour (`VITE_AG_CONNECT=oauth`)
+
+The connect page (`src/screens/SeatsConnectScreen.tsx`) has a **Connect seats.aero** button and no paste field. It
+opens seats.aero's consent page in the system sign-in sheet (`ios/App/App/SeatsAuthPlugin.swift`,
+ASWebAuthenticationSession, callback scheme `com.dowhiz.awardgrid`); seats.aero redirects to the token service
+(`sites/auth`, the Worker `awardgrid-auth`, **not deployed**), which hands the code to the app and exchanges and
+refreshes tokens with the client secret it alone holds. The tokens are kept in their own Keychain item
+(`src/oauth/token-vault.ts`); `src/oauth/token-store.ts` hands out `Bearer seats:ota:…` as the seats.aero "key",
+renewed early and once at a time, and search, watches and details renew and retry once when seats.aero refuses a
+token (`src/oauth/refresh-retry.ts`). seats.aero's results are kept on the device for 24 hours at most
+(`src/retention/short-term.ts`: cache, workspace snapshots, Saved rows, watch baselines, details), and Disconnect, or a
+grant revoked in seats.aero, purges them all.
+
+The client ID (not a secret) is a build-time value, `VITE_AG_SEATS_CLIENT_ID`, empty by default; `vite.config.ts`
+refuses an App Store build of this flavour without it:
+
+```bash
+cd apps/ios && VITE_AG_CONNECT=oauth VITE_AG_SEATS_CLIENT_ID=<client id> npm run build:store && npx cap copy ios
+```
+
+`scripts/mock-seatsaero.ts` mocks seats.aero's `/oauth2/consent` and `/oauth2/token` for development and tests.
 
 ### Sample mode
 
@@ -237,10 +259,14 @@ in-memory transport (`src/sample/sample-fetch.ts`), so the app's own planner, ca
 unchanged.
 
 - **Isolated.** The choice is read before `bootstrap()` (`resolveBoot`). Sample mode boots on its own ports: an
-  in-memory key store holding a placeholder (never shown: Settings says "Sample data"), the sample transport, a
-  refusing Anthropic transport, and files under `sample/`. The Keychain item, the real snapshots and today's real
-  call count are never read or written, and the native HTTP adapter is never built. Its code is its own chunk, loaded
-  only in sample mode.
+  in-memory key store holding a placeholder (never shown: Settings says "Sample data"), the sample transport, a refusing
+  Anthropic transport, and files under `sample/`. Sample mode's services never read or write the Keychain item, the real
+  snapshots or today's real call count, and the native HTTP adapter is never built. Its code is its own chunk, loaded
+  only in sample mode. In the OAuth flavour sample mode boots with no account (`oauth: null`): the token store is never
+  built, no token is read, renewed or removed, Settings › seats.aero account offers only "Exit sample data", and sample
+  data has no 24-hour limit. The account's own files keep theirs: while sample mode runs, `sweepAccount` (not sample
+  mode's services) removes what passed 24 hours from them (at start, on each return to the foreground, and hourly),
+  reading no token and sending nothing. Disconnect never touches `sample/`.
 - **Labelled.** A banner on every screen (the approved "Illustrative data — not live availability" under "Sample
   data", with "Exit sample data"), "Sample data" where a source time would be, "Sample data · on this device" where
   "Data: seats.aero" would be, no call counts or quota line, and no booking or program links. Settings › About says

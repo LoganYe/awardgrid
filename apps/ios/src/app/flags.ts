@@ -9,11 +9,15 @@
  *     scripts/check-store-bundle.mjs checks the result. The default `build` (dev, probes, the UI/UX e2e) keeps Ask.
  *   - **CONNECT** (`VITE_AG_CONNECT`): how a seats.aero account is connected. "key" (the default): its API key is
  *     pasted on the connect page. "0": no connection at all — the connect page and every link to it are compiled out
- *     (the fallback in plan D12; not shipped). "oauth": reserved for seats.aero's own sign-in, which the OAuth branch
- *     (PR-O) implements; until it lands this build behaves as "key", and vite.config.ts refuses to build a bundle
- *     with it, so no bundle can claim a connection it does not have.
+ *     (the fallback in plan D12; not shipped). "oauth": seats.aero's own sign-in ("Login with Seats.aero", release
+ *     plan step 18b): the connect page has a "Connect seats.aero" button and no paste field, the tokens are kept by
+ *     ../oauth/token-store.ts and refreshed through the token service (sites/auth), and seats.aero's results are kept
+ *     on the device for 24 hours at most (../retention/short-term.ts), as the OAuth Addendum's Short-Term Caching
+ *     allows. OAUTH below is its literal test, so the OAuth-only code is dropped from the other flavours.
+ *   - **SEATS_CLIENT_ID** (`VITE_AG_SEATS_CLIENT_ID`): the OAuth client's ID, which is not a secret (the secret is the
+ *     token service's). Empty by default; vite.config.ts refuses an App Store build of the OAuth flavour without it.
  *
- * vite.config.ts refuses any other value of either variable, so a typo cannot quietly build the wrong flavour.
+ * vite.config.ts refuses any other value of either flavour variable, so a typo cannot quietly build the wrong flavour.
  */
 export type ConnectMode = "key" | "oauth" | "0";
 
@@ -25,3 +29,9 @@ export const CONNECT: ConnectMode = (import.meta.env.VITE_AG_CONNECT || "key") a
 
 /** Whether this build has a way to connect a seats.aero account at all (CONNECT is not "0"). */
 export const CAN_CONNECT: boolean = import.meta.env.VITE_AG_CONNECT !== "0";
+
+/** Whether the account is connected through seats.aero's own sign-in (CONNECT is "oauth"). */
+export const OAUTH: boolean = import.meta.env.VITE_AG_CONNECT === "oauth";
+
+/** The OAuth client's ID (not a secret). Empty unless the build sets VITE_AG_SEATS_CLIENT_ID. */
+export const SEATS_CLIENT_ID: string = (import.meta.env.VITE_AG_SEATS_CLIENT_ID ?? "").trim();

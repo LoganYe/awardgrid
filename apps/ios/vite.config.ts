@@ -41,8 +41,9 @@ function sourceMapsBesideBundle(): Plugin {
 /**
  * The build's flavour flags (src/app/flags.ts), checked before anything is built: a value the app does not know would
  * otherwise build the default flavour without a word. VITE_AG_STORE is "1" (the App Store build, `npm run build:store`)
- * or unset. VITE_AG_CONNECT is "key" (the default), "0" or "oauth"; "oauth" is refused for a bundle until the OAuth
- * connection exists (PR-O), because the app would still show the key field under that name.
+ * or unset. VITE_AG_CONNECT is "key" (the default), "0" or "oauth". VITE_AG_SEATS_CLIENT_ID is the seats.aero OAuth
+ * client's ID: an App Store build of the OAuth flavour needs one (its Connect button would otherwise open a consent
+ * page seats.aero refuses), and a value that is not a plausible client ID is refused in any build.
  */
 export function checkFlavour(env: Record<string, string>, command: "build" | "serve"): void {
   const store = env.VITE_AG_STORE;
@@ -51,7 +52,11 @@ export function checkFlavour(env: Record<string, string>, command: "build" | "se
   if (connect !== undefined && connect !== "" && !["key", "0", "oauth"].includes(connect)) {
     throw new Error(`VITE_AG_CONNECT must be "key", "0" or "oauth", not ${JSON.stringify(connect)}`);
   }
-  if (connect === "oauth" && command === "build") throw new Error("VITE_AG_CONNECT=oauth is not built yet (the OAuth connection, PR-O): build with key or 0");
+  const clientId = (env.VITE_AG_SEATS_CLIENT_ID ?? "").trim();
+  if (clientId !== "" && !/^[\x21-\x7e]{1,200}$/.test(clientId)) throw new Error("VITE_AG_SEATS_CLIENT_ID must be printable ASCII with no spaces, at most 200 characters");
+  if (connect === "oauth" && store === "1" && command === "build" && clientId === "") {
+    throw new Error("VITE_AG_CONNECT=oauth needs VITE_AG_SEATS_CLIENT_ID for an App Store build (the seats.aero OAuth client's ID)");
+  }
 }
 
 export default defineConfig(({ command, mode }) => {

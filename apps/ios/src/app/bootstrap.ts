@@ -14,6 +14,12 @@
  *
  * The workspace (UI/UX v1 T05) is restored here too, and runs nothing: what was on screen comes back as it was saved,
  * with its own time, and a new search only starts when the person asks for one.
+ *
+ * The OAuth flavour (./flags.ts OAUTH, release plan step 18b) is wired here as well: the seats.aero "key" is the
+ * token store (../oauth/token-store.ts), the account is connected and disconnected through `seatsAccount`, and every
+ * seats.aero result the device keeps follows the 24-hour Short-Term Caching limit (../retention/short-term.ts): pruned
+ * at launch, before each save, and on each `sweepShortTerm`; purged whole by Disconnect or a revoked grant. The key
+ * flavour has no `seatsAccount` and no limit, and launches exactly as it did.
  */
 import { ANTHROPIC_IDLE_TIMEOUT_MS } from "@awardgrid/core/ask/limits";
 import { InMemoryAvailabilityCache } from "@awardgrid/core/seatsaero/cache";
@@ -32,7 +38,7 @@ import { type FileStore, SnapshotStore, WATCHES_FILE } from "../store/persistenc
 import { migrateLegacyWatch } from "@awardgrid/core/workspace/watch-migration";
 import { DeviceQuotaStore } from "../store/quota-store";
 import { WatchStore } from "../store/watch-store";
-import { type ApiResult, type FindValue, type ParsedText, SearchEngine } from "../search/search";
+import { type ApiFailure, type ApiResult, type FindValue, type ParsedText, SearchEngine } from "../search/search";
 import { createSearchPort } from "../workspace/search-port";
 import { searchViewFromSnapshot } from "../workspace/snapshot-view";
 import { createDetailService, type DetailService } from "../workspace/detail-service";
@@ -44,6 +50,19 @@ import type { KeyCheckOutcome } from "@awardgrid/core/seatsaero/key-check";
 import { SlotFileStorage } from "../workspace/slot-storage";
 import { type PersistResult, WorkspaceStore } from "../workspace/workspace-store";
 import { type WatchCheckResult, checkWatches } from "../watch/runner";
+import { snapshotFromFind } from "@awardgrid/core/workspace/snapshot-from-find";
+import { projectResults } from "@awardgrid/core/workspace/projection";
+import type { FavoriteV1 } from "@awardgrid/core/workspace/types";
+import { WORKSPACE_NAMESPACE } from "@awardgrid/core/workspace/workspace-store";
+import { favoriteSnapshot, type FavoriteRowsReplacement } from "../store/favorites-store";
+import { OAUTH, SEATS_CLIENT_ID } from "./flags";
+import type { TokenBroker } from "../oauth/broker";
+import type { ConnectOutcome } from "../oauth/connect";
+import { type RenewableKeys, readKey as readKeySafely, renewedKey, withRenewal } from "../oauth/refresh-retry";
+import type { AuthorizeResult } from "../oauth/seats-auth-plugin";
+import type { TokenKeyStore } from "../oauth/token-store";
+import type { TokenVault } from "../oauth/token-vault";
+import { SHORT_TERM_MAX_AGE_MS, favoriteExpired, pruneCacheSnapshot, shortTermStorage, snapshotFetchedAt, watchExpiry, watchReset } from "../retention/short-term";
 
 export interface AppServices {
   engine: SearchEngine;
@@ -147,7 +166,55 @@ export interface AppServices {
   onWatchesChanged(listener: () => void): () => void;
   /** Tell subscribers the watches changed, after a screen edits the store itself. */
   notifyWatchesChanged(): void;
+  /**
+   * The OAuth flavour's seats.aero account (seats.aero's own sign-in): connect, disconnect, whether connected. Null in
+   * the key flavour, whose key is pasted on the connect page and kept in `keys`.
+   */
+  seatsAccount: SeatsAccount | null;
+  /**
+   * How long seats.aero's results may be kept on this device, in ms: 24 hours in the OAuth flavour (its Addendum's
+   * Short-Term Caching), null in the key flavour (no limit beyond the cache's own).
+   */
+  shortTermMs: number | null;
+  /**
+   * Remove whatever has passed the short-term limit: cache rows, workspace snapshots, Saved rows, watch baselines and
+   * change details, and an Ask conversation. The app calls it on returning to the foreground and hourly while open;
+   * launch does the same. Does nothing without a limit. Never throws.
+   */
+  sweepShortTerm(): Promise<void>;
+  /**
+   * Search a saved item's own query again and put the fresh rows into it (the OAuth flavour: Saved keeps the query and
+   * a summary once its rows pass 24 hours, and opening it fetches them again). Spends seats.aero calls, through the
+   * same queue, quota and cache as any search.
+   */
+  refreshSaved(id: string): Promise<RefreshSavedOutcome>;
 }
+
+/** The OAuth flavour's account connection (Settings › seats.aero account). */
+export interface SeatsAccount {
+  /** Whether this build has an OAuth client ID; without one, Connect cannot start (a development build). */
+  configured: boolean;
+  /** Whether tokens are on file. Reads the Keychain only: nothing is sent. */
+  connected(): Promise<boolean>;
+  /** seats.aero's sign-in and consent, the code exchange, and the tokens saved (../oauth/connect.ts). */
+  connect(): Promise<ConnectOutcome>;
+  /**
+   * Remove the tokens, then everything kept from seats.aero (the OAuth Addendum's purge): cached results, the
+   * workspace's snapshots, Saved rows (each item's query and summary stay), watch baselines and change details (the
+   * watches stay, and start again), loaded details and an Ask conversation. Requests already out finish first, so
+   * nothing they bring back survives it.
+   */
+  disconnect(): Promise<DisconnectOutcome>;
+}
+
+/** "keychain": the tokens are still on file. "saved": they are gone, but a file could not be written (said, retried). */
+export type DisconnectOutcome = { ok: true } | { ok: false; reason: "keychain" | "saved"; message?: string };
+
+export type RefreshSavedOutcome =
+  | { ok: true; item: FavoriteV1 }
+  | { ok: false; reason: "unknown" }
+  | { ok: false; reason: "search"; error: ApiFailure }
+  | { ok: false; reason: "write"; detail: Exclude<FavoriteRowsReplacement, { ok: true }> };
 
 /**
  * Watches from before T14 become structured ones (core workspace/watch-migration.ts): a date rule only on the parser's
@@ -253,10 +320,29 @@ export interface BootstrapOptions {
   /** The language the translated screens speak. Default: the device's (navigator.language). */
   locale?: Locale;
   /**
+   * The OAuth flavour's connection. Default: on when the build is the OAuth flavour (./flags.ts OAUTH), with the
+   * Keychain vault, the token service over native HTTP, the native sign-in sheet and the build's client ID. Tests pass
+   * their own parts, or null for the key flavour whatever the build.
+   */
+  oauth?: OAuthOptions | null;
+  /** The short-term caching limit in ms. Default: 24 hours with OAuth, none without. */
+  shortTermMs?: number | null;
+  /**
    * Live or sample data, and the way to switch (./data-source.ts resolveBoot, which App boots through). Default: live,
    * with no way to switch.
    */
   dataSource?: DataSourceControl;
+}
+
+export interface OAuthOptions {
+  vault?: TokenVault;
+  broker?: TokenBroker;
+  /** The transport the default broker uses. Default: a native adapter of its own (no rate-limit observer). */
+  tokenFetch?: typeof fetch;
+  authorize?: (url: string) => Promise<AuthorizeResult>;
+  clientId?: string;
+  /** A key pasted in an earlier key-flavour build, removed by Disconnect. Default: the Keychain item in production. */
+  legacyKeys?: KeyStore | null;
 }
 
 /** A run that came from the Search screen's text: what was typed, and what the parser said about it. */
@@ -266,12 +352,33 @@ interface TypedSearch {
 }
 
 /** The seats.aero key, or null when there is none or the Keychain cannot be read. */
-async function readKey(keys: KeyStore): Promise<string | null> {
-  try {
-    return await keys.get();
-  } catch {
-    return null;
-  }
+const readKey = readKeySafely;
+
+/** Resolves once the workspace has no run under way (or after `timeoutMs`, so a stuck run cannot hold a purge). */
+function whenWorkspaceSettled(workspace: WorkspaceStore, timeoutMs = 30_000): Promise<void> {
+  if (workspace.getState().run.kind !== "running") return Promise.resolve();
+  return new Promise((resolve) => {
+    const finish = () => {
+      clearTimeout(timer);
+      unsubscribe();
+      resolve();
+    };
+    const timer = setTimeout(finish, timeoutMs);
+    const unsubscribe = workspace.subscribe(() => {
+      if (workspace.getState().run.kind !== "running") finish();
+    });
+  });
+}
+
+/**
+ * Whether this build may load the OAuth parts (../oauth/kit.ts): the OAuth flavour, or a test (which passes `oauth` in
+ * any flavour). Written out as App.tsx's OAUTH_BUILT is, so the other flavours' bundles carry no OAuth chunk.
+ */
+const OAUTH_KIT = import.meta.env.VITE_AG_CONNECT === "oauth" || import.meta.env.MODE === "test";
+
+/** How many options a saved item shows: what Saved and the Search screen show of it (core projectResults). */
+function optionsShown(item: FavoriteV1): number {
+  return projectResults(favoriteSnapshot(item), { kind: "list", calendarCabin: "J", sort: item.query.sort_by, localFilter: {} }).rows.length;
 }
 
 /** Only seats.aero's own responses are authoritative about seats.aero's quota. */
@@ -309,22 +416,83 @@ export function seatsTransport(inner: typeof fetch, quotaStore: DeviceQuotaStore
   return withRateLimitObserver(inner, (headers) => quotaStore.observeRateLimitRemaining(headers.get("x-ratelimit-remaining"), now()));
 }
 
+/** The OAuth flavour's parts these options boot with, or null for the key flavour (tests may pass either, in any build). */
+function oauthOf(opts: Pick<BootstrapOptions, "oauth">): OAuthOptions | null {
+  return opts.oauth !== undefined ? opts.oauth : OAUTH ? {} : null;
+}
+
+/**
+ * The short-term caching limit (ms) services booted with `opts` keep seats.aero's results under: 24 hours with OAuth,
+ * none without, unless `opts` says. Sample mode (../sample/boot.ts) reads it for the account it was entered from.
+ */
+export function shortTermLimitOf(opts: Pick<BootstrapOptions, "oauth" | "shortTermMs">): number | null {
+  return opts.shortTermMs !== undefined ? opts.shortTermMs : oauthOf(opts) ? SHORT_TERM_MAX_AGE_MS : null;
+}
+
 export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppServices> {
   const now = opts.now ?? (() => new Date());
-  const keys = opts.keys ?? keychain;
+  // The OAuth flavour, unless a test says otherwise (null: the key flavour; an object: OAuth with those parts).
+  const oauth = oauthOf(opts);
+  const shortTermMs = shortTermLimitOf(opts);
+  /** True while Disconnect or a revoked grant purges: then everything fetched so far counts as past the limit. */
+  let purging = false;
+  /**
+   * When Disconnect or a revoked grant last purged (ms). Nothing fetched before it may stay, whatever its age, so a
+   * part the purge could not finish (a file that could not be written) is finished by the next sweep.
+   */
+  let purgedAt = Number.NEGATIVE_INFINITY;
+  /** Anything from seats.aero fetched before this instant (ms) has passed the short-term limit (all of it while purging). */
+  const cutoff = () => (purging ? Number.POSITIVE_INFINITY : Math.max(now().getTime() - (shortTermMs ?? 0), purgedAt));
+  // Declared before the token store, which calls it when seats.aero revokes the grant; assigned once the stores exist.
+  // Started, never awaited there: a revocation is found inside a request, and the purge waits for requests to finish.
+  let purgeSeatsData: () => Promise<PersistReport> = async () => ({ ok: true });
+  // The OAuth parts are their own chunk, loaded only here and only for that flavour (../oauth/kit.ts). OAUTH_KIT is a
+  // build-time constant, so a build of another flavour drops the import and carries no such chunk at all.
+  const kit = oauth && OAUTH_KIT ? await import("../oauth/kit") : null;
+  const tokenBroker = oauth && kit ? (oauth.broker ?? kit.createTokenBroker({ fetchImpl: oauth.tokenFetch ?? createNativeFetch({ timeoutMs: kit.TOKEN_SERVICE_TIMEOUT_MS }) })) : null;
+  const tokenStore: TokenKeyStore | null =
+    oauth && kit && tokenBroker
+      ? opts.keys instanceof kit.TokenKeyStore
+        ? opts.keys
+        : new kit.TokenKeyStore({ vault: oauth.vault ?? kit.keychainTokenVault, broker: tokenBroker, now: () => now().getTime(), onRevoked: () => void purgeSeatsData() })
+      : null;
+  const keys: KeyStore & RenewableKeys = opts.keys ?? tokenStore ?? keychain;
   const anthropicKeys = opts.anthropicKeys ?? anthropicKeychain;
   const snapshots = opts.snapshots ?? new SnapshotStore();
+  /** The two-slot storage for the namespaces that can hold seats.aero's rows, under the short-term limit when there is one. */
+  const seatsStorage = () => (shortTermMs != null ? shortTermStorage(new SlotFileStorage(snapshots.files), cutoff) : new SlotFileStorage(snapshots.files));
 
   const cache = new InMemoryAvailabilityCache();
   const quotaStore = new DeviceQuotaStore();
   const watches = new WatchStore();
 
+  /** Drop cache rows and coverage past the short-term limit, in memory. Returns how many went. */
+  const pruneCache = (): number => {
+    if (shortTermMs == null) return 0;
+    const pruned = pruneCacheSnapshot(cache.snapshot(), cutoff());
+    if (pruned.dropped > 0) cache.restore(pruned.snapshot);
+    return pruned.dropped;
+  };
+  /** Purge what watches keep from seats.aero past the short-term limit (watch/runner.ts then sets a new baseline). */
+  const expireWatches = (): number => {
+    if (shortTermMs == null || watches.hold) return 0;
+    let changed = 0;
+    for (const watch of watches.all()) {
+      const patch = watchExpiry(watch, cutoff());
+      if (patch && watches.update(watch.id, patch)) changed += 1;
+    }
+    return changed;
+  };
+
   // Warm start. All best-effort: a missing or corrupt snapshot costs one cold search, and must never stop the app
   // from launching. Watches are the person's own: one that cannot be read is kept, never written over (T14).
   cache.restore(await snapshots.loadCache());
+  // Under the short-term limit, what passed it while the app was closed leaves the disk now, not at the next save.
+  if (pruneCache() > 0) await snapshots.saveCache(cache.snapshot()).catch(() => undefined);
   quotaStore.restore(await snapshots.loadQuota());
   await restoreWatches(watches, snapshots, now());
   await migrateWatches(watches, snapshots.files, now());
+  expireWatches();
 
   // The observer wraps whatever transport we end up with, rather than living inside the native
   // adapter. Putting it in the adapter looked tidier and was wrong: any other transport — a test
@@ -367,21 +535,32 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       });
     },
   });
-  const workspace = new WorkspaceStore({ search: searchPort, now: () => now().toISOString(), storage: new SlotFileStorage(snapshots.files) });
+  const workspaceStorage = seatsStorage();
+  const workspace = new WorkspaceStore({ search: searchPort, now: () => now().toISOString(), storage: workspaceStorage });
+  // The OAuth flavour renews a refused token once (../oauth/refresh-retry.ts); a pasted key has nothing to renew.
+  const renewKey = tokenStore ? (rejected: string | null) => renewedKey(keys, rejected) : undefined;
   const details = createDetailService({
     workspace,
     // T17: a lookup starts after any search, watch run or Ask tool call before it.
     getTrips: (option, apiKey) => requests.run("detail", () => engine.getTrips(option, apiKey)),
     readKey: () => readKey(keys),
+    renewKey,
     now,
+    maxAgeMs: shortTermMs,
   });
   await workspace.restore();
   const deviceLocale = opts.locale ?? detectLocale(typeof navigator === "undefined" ? undefined : navigator.language);
   const settings = new SettingsStore({ storage: new SlotFileStorage(snapshots.files), deviceLocale });
   await settings.restore();
-  // Saved snapshots (T13): read at launch; nothing is fetched and nothing is written.
-  const favorites = new FavoritesStore(new SlotFileStorage(snapshots.files), () => now().toISOString());
+  // Saved snapshots (T13): read at launch; nothing is fetched, and nothing is written unless rows passed the short-term
+  // limit (the OAuth flavour), which are removed now, each item keeping its query and summary.
+  const favorites = new FavoritesStore(seatsStorage(), () => now().toISOString());
   await favorites.load();
+  const expireFavorites = async () => {
+    if (shortTermMs == null) return;
+    await favorites.removeRows((item) => favoriteExpired(item, cutoff()), now().toISOString(), optionsShown);
+  };
+  await expireFavorites();
   // Saved trip plans (release plan step 18): read at launch, the same way. Over sample mode's files in sample mode.
   const plans = new PlansStore(new SlotFileStorage(snapshots.files));
   await plans.load();
@@ -458,6 +637,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
         message ||= err instanceof Error ? err.message || err.name : String(err);
       }
     };
+    // Under the short-term limit nothing older than it is written (or kept in memory).
+    pruneCache();
     await attempt("cache", () => snapshots.saveCache(cache.snapshot()));
     if (quotaStore.dirty) {
       // Marked clean only once written, so a failed write is tried again next time.
@@ -527,6 +708,111 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   // was closed during becomes an unfinished entry. No key is read and nothing is sent.
   await ask.restore();
 
+  /** Under the short-term limit, an Ask conversation holding a question older than it is cleared (it carries results). */
+  const expireAsk = async () => {
+    if (shortTermMs == null) return;
+    const oldest = ask.state().entries[0];
+    const at = oldest ? Date.parse(oldest.askedAt) : NaN;
+    if (oldest && !(at >= cutoff()) && ask.state().running === null) await ask.newConversation();
+  };
+  await expireAsk();
+
+  const sweepShortTerm = async (): Promise<void> => {
+    if (shortTermMs == null) return;
+    try {
+      pruneCache();
+      // Snapshots past the limit leave memory and both slots: save (pruned on the way), then read back (pruned again).
+      const stale = workspace.history().some((snapshot) => !((snapshotFetchedAt(snapshot) ?? -Infinity) >= cutoff()));
+      if (stale && workspace.getState().run.kind !== "running") {
+        await workspace.persist();
+        // A search started during the save would be set aside by reading back now (restore resets the run), so the
+        // read-back waits for the next sweep; every save meanwhile writes the workspace without the old rows.
+        if (workspace.getState().run.kind !== "running") {
+          await workspace.restore();
+          workspace.clearSelection();
+        }
+      }
+      // A chosen option is kept as a copy once its search leaves the history (core selection.ts): that copy, too.
+      if (workspace.selectionEntries().some((entry) => entry.row !== null && !(Date.parse(entry.row.value.fetched_at) >= cutoff()))) {
+        workspace.clearSelection();
+      }
+      await expireFavorites();
+      const watchesChanged = expireWatches() > 0;
+      await expireAsk();
+      await persist();
+      if (watchesChanged) notify();
+    } catch {
+      // A sweep that could not finish runs again on the next foreground, and saves are pruned meanwhile.
+    }
+  };
+
+  purgeSeatsData = async (): Promise<PersistReport> => {
+    // What is already out finishes first, so nothing it brings back outlives the purge.
+    await requests.idle();
+    await whenWorkspaceSettled(workspace);
+    await whenWatchesIdle();
+    // Every part that could not be purged is said: Disconnect must not claim results were removed when they were not.
+    const failed: string[] = [];
+    let message = "";
+    const fail = (part: string, text: string) => {
+      failed.push(part);
+      message ||= text;
+    };
+    purgedAt = now().getTime();
+    purging = true;
+    try {
+      details.clear();
+      lastSearch.clear();
+      cache.restore(null);
+      await snapshots.clearCache().catch(() => undefined);
+      const state = workspace.getState();
+      let workspaceWritten = true;
+      try {
+        await workspaceStorage.writeAtomically(WORKSPACE_NAMESPACE, { schemaVersion: 1, revision: state.revision, displayedId: null, previousId: null, preferences: state.preferences, snapshots: [] });
+      } catch {
+        workspaceWritten = false;
+      }
+      // Read back. While purging, the short-term storage drops every snapshot it reads, so the screen is emptied even
+      // when the write above failed and the old file is still there.
+      await workspace.restore();
+      workspace.clearSelection();
+      // That old file is then written over by the save below, and by every later save until one succeeds; the save
+      // below reports it if it fails again.
+      if (!workspaceWritten) workspace.setPreferences({});
+      const saved = await favorites.removeRows(() => true, now().toISOString(), optionsShown);
+      if (!saved.ok) fail("saved", saved.reason === "write_failed" ? saved.message : "Saved could not be changed on this device, so its seats.aero results were not removed.");
+      if (!watches.hold) for (const watch of watches.all()) watches.update(watch.id, watchReset());
+      if (ask.state().entries.length > 0 && ask.state().running === null) await ask.newConversation();
+      const report = await persist();
+      if (!report.ok) for (const part of report.failed) fail(part, report.message);
+    } catch (err) {
+      // Nothing above should throw; if something does, the purge is reported as unfinished, never as done.
+      fail("purge", err instanceof Error ? err.message || err.name : String(err));
+    } finally {
+      purging = false;
+    }
+    notify();
+    return failed.length > 0 ? { ok: false, failed, message } : { ok: true };
+  };
+
+  const legacyKeys = oauth ? (oauth.legacyKeys !== undefined ? oauth.legacyKeys : opts.oauth === undefined ? keychain : null) : null;
+  const clientId = oauth ? (oauth.clientId ?? SEATS_CLIENT_ID) : "";
+  const seatsAccount: SeatsAccount | null =
+    oauth && kit && tokenStore && tokenBroker
+      ? {
+          configured: clientId !== "",
+          connected: () => tokenStore.connected(),
+          connect: () => kit.connectSeats({ clientId, authorize: oauth.authorize ?? ((url) => kit.authorizeWithSeats(url)), broker: tokenBroker, store: tokenStore }),
+          async disconnect(): Promise<DisconnectOutcome> {
+            await tokenStore.clear().catch(() => undefined);
+            await legacyKeys?.clear().catch(() => undefined);
+            const report = await purgeSeatsData();
+            if (await tokenStore.connected()) return { ok: false, reason: "keychain" };
+            return report.ok ? { ok: true } : { ok: false, reason: "saved", message: report.message };
+          },
+        }
+      : null;
+
   return {
     engine,
     cache,
@@ -539,6 +825,23 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     workspace,
     details,
     checkSeatsKey: (draft) => engine.checkKey(draft),
+    seatsAccount,
+    shortTermMs,
+    sweepShortTerm,
+    async refreshSaved(id): Promise<RefreshSavedOutcome> {
+      const item = favorites.get(id);
+      if (!item) return { ok: false, reason: "unknown" };
+      // T17: queued like any search; a token seats.aero refuses is renewed once (the OAuth flavour).
+      const answer = await withRenewal(keys, (key) => requests.run("search", () => engine.searchQuery(item.query, key)));
+      if (!answer.ok) {
+        await persist();
+        return { ok: false, reason: "search", error: answer };
+      }
+      const snapshot = snapshotFromFind(answer.value, { id: `saved-${id}`, revision: 0 }, now().toISOString());
+      const written = await favorites.replaceRows(id, snapshot);
+      await persist();
+      return written.ok ? { ok: true, item: written.item } : { ok: false, reason: "write", detail: written };
+    },
     searchText,
     prepareText: async (text) => engine.parseText(text, await readKey(keys)),
     parsePlan: (text) => engine.parsePlan(text),
@@ -564,7 +867,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       inFlight = (async () => {
         try {
           // T17: one watch run is one job in the queue: it starts after a search or lookup under way, and they after it.
-          const results = await requests.run("watch", async () => checkWatches({ engine, store: watches, apiKey: await keys.get(), now }));
+          const results = await requests.run("watch", async () =>
+            checkWatches({ engine, store: watches, apiKey: await keys.get(), now, renewKey, baselineMaxAgeMs: shortTermMs }),
+          );
           await persist();
           lastRun = results;
           notify();
