@@ -601,27 +601,33 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-09-28",
+      "checked_at": "2026-10-08",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "packages/core/src/lib/seatsaero/types.ts:15-74 \"Mileage-program source codes from the Concepts page (updated 2026-08-28)\"",
-        "packages/core/src/lib/workspace/present.ts:28 \"\"result.unmonitored\": { en: \"These routes are not monitored by the data source.\"\"",
-        "apps/ios/src/components/results/copy.ts:194 \"unmonitored: \"not monitored by the data source\",\"",
-        "apps/ios/src/components/results/AvailabilityCalendar.tsx:91 \"const MARK: Record<EmptyDayKind, string>\""
+        "apps/ios/src/search/search.ts:209-211 \"check. It passes runFind no route catalog\"",
+        "apps/ios/src/search/search.test.ts:174 \"it(\"asks for no route list when a pair comes back empty\"",
+        "packages/core/src/lib/workspace/present.ts:405 \"complete: { en: \"no matches\", zh: \"无匹配\" },\"",
+        "packages/core/src/lib/workspace/present.ts:25 \"\"result.none\": { en: \"No matches in the checked range.\"\""
       ],
-      "allowed_copy": "It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\".",
-      "allowed_copy_zh": "seats.aero 列出的 26 个里程计划，前提是 seats.aero 监测这条航线；它没有监测的航线会标为“未监测”。",
+      "allowed_copy": "It covers the 26 programs seats.aero lists, where seats.aero monitors the route. An empty result means seats.aero has no cached availability for that route and day, which can also mean seats.aero does not monitor the route.",
+      "allowed_copy_zh": "seats.aero 列出的 26 个里程计划，前提是 seats.aero 监测这条航线。结果为空，表示 seats.aero 没有这条航线在那一天的缓存数据，也可能是 seats.aero 没有监测这条航线。",
       "allowed_copy_extra": [
-        "The 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\"."
+        "The 26 programs seats.aero lists, where seats.aero monitors the route. An empty result means seats.aero has no cached availability for that route and day, which can also mean seats.aero does not monitor the route."
       ],
       "limitations": [
         "Coverage is whatever seats.aero monitors; the program list is seats.aero's as of 2026-08-28 (types.ts:15).",
-        "In the app the words are \"not monitored by the data source\" and \"These routes are not monitored by the data source.\"",
-        "The extra sentence is the same fact as the answer to a question (growth/geo/accuracy-answer.md).",
-        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. 未监测 is the app's own Chinese for an unmonitored route (packages/core/src/lib/workspace/present.ts emptyDayLabel).",
+        "Since 2026-10-08 (build 6) a search asks seats.aero for no route lists (search.ts #execute: typed searches, the query editor, Saved refresh, run again and watch checks), so the app does not tell a route seats.aero does not monitor from one with nothing cached for the day: both read as checked and empty, \"No matches\" in the Matrix and \"no matches\" in the Calendar (present.ts emptyDayLabel), and \"No matches in the checked range.\" when nothing in the search matched (present.ts result.none). Until then this claim said such a route is marked \"not monitored\", true of the earlier builds, which fetched every program's route list on the first search that left a pair empty; that wording is retired_copy. Ask still reads route lists, and Ask is not part of the App Store version (the ask claim).",
+        "The extra sentence is the answer to \"Which programs does it cover?\" on /ios/ and in growth/geo/accuracy-answer.md. On /support/, \"What does an empty result mean?\" (结果为空是什么意思？) is answered with this claim's second sentence and the data_cached claim; until 2026-10-08 it asked what \"not monitored\" means.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. Its second sentence was rewritten on 2026-10-08 with the English and is pending that review too.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "approved"
+      "public_use": "approved",
+      "retired_copy": [
+        "It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\".",
+        "The 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\".",
+        "seats.aero 列出的 26 个里程计划，前提是 seats.aero 监测这条航线；它没有监测的航线会标为“未监测”。"
+      ]
     },
     {
       "claim_id": "data_cached",

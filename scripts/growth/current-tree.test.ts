@@ -146,10 +146,13 @@ describe("the facts registry", () => {
     // key allows", Ask as a feature of the app, and the privacy sentence that sent searches to Anthropic for Ask. Since
     // the same day (the OAuth build, release plan 47F): the prerequisite's four sentences that told the reader to paste
     // the API key from the API tab, privacy's "no server of its own" (twice), and the keys claim's three key sentences.
+    // Since 2026-10-08 (build 6, whose search loads no route lists): the programs claim's "marked "not monitored"", in
+    // its sentence, its extra sentence and its Chinese.
     expect(Object.fromEntries(CLAIMS.filter((c) => c.retired_copy).map((c) => [c.claim_id, c.retired_copy!.length]))).toEqual({
       prerequisite: 7,
       grid: 8,
       filters: 1,
+      programs: 3,
       quota: 1,
       ask: 4,
       privacy: 3,

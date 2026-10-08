@@ -10,7 +10,7 @@
 - Input: Type the routes and dates in English or Chinese, or set them in the editor.
 - Table: Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
 - Views: List, Calendar and Matrix views; compare up to four options; save results on the device.
-- Data: Results are seats.aero's cached availability, not a live search, and each shows how old it is. It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked "not monitored".
+- Data: Results are seats.aero's cached availability, not a live search, and each shows how old it is. It covers the 26 programs seats.aero lists, where seats.aero monitors the route. An empty result means seats.aero has no cached availability for that route and day, which can also mean seats.aero does not monitor the route.
 - Watches: Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.
 - Trip planner: Plan a trip shows how AwardGrid reads a trip you type, as airports, dates and cabins, without an account and without sending anything. A plan can be saved on the device, in Saved › Trip plans, and tried on sample data.
 - Ask: Ask, which answers questions about your results with Claude on your own Anthropic API key, is in testing; it is not part of the App Store version 1.0. Search needs no AI key.
