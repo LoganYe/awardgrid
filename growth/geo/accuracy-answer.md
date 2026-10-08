@@ -25,7 +25,7 @@ No. Results are seats.aero's cached availability, not a live search, and each sh
 
 ## Which programs does it cover?
 
-The 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked "not monitored".
+The 26 programs seats.aero lists, where seats.aero monitors the route. An empty result means seats.aero has no cached availability for that route and day, which can also mean seats.aero does not monitor the route.
 
 ## Do I need an AI key?
 
