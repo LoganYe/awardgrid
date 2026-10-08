@@ -13,6 +13,7 @@ import { fakeFetch, jsonResponse } from "@awardgrid/core/test-fixtures/seatsaero
 import { favoriteFromSnapshot } from "@awardgrid/core/workspace/favorites-store";
 import type { Watch } from "@awardgrid/core/watch";
 import { MemoryKeyStore } from "../native/keychain";
+import { LOCAL_USER } from "../search/search";
 import type { BrokerResult, TokenBroker } from "../oauth/broker";
 import { CALLBACK_SCHEME } from "../oauth/connect";
 import { MemoryTokenVault, type TokenVault } from "../oauth/token-vault";
@@ -246,6 +247,30 @@ describe("the OAuth flavour", () => {
     expect(await later.refreshSaved("missing")).toEqual({ ok: false, reason: "unknown" });
   });
 
+  it("a search that leaves a pair empty asks seats.aero for no route list, on a cold launch or after", async () => {
+    const s = session();
+    const svc = await boot(s);
+    for (const text of ["HKG, PVG to SEA next 30 days business", "HKG, PVG to SEA next 30 days first"]) {
+      const res = await svc.searchText(text);
+      expect(res.ok).toBe(true);
+      if (res.ok) expect(res.value.notices.map((n) => n.code)).not.toContain("find.routes_skipped");
+    }
+    expect(s.seats.fetchImpl.calls.map((c) => c.url.pathname)).toEqual(["/partnerapi/search", "/partnerapi/search"]);
+  });
+
+  it("route lists (Ask's) last 24 hours at most, and the sweep removes them", async () => {
+    const s = session();
+    const svc = await boot(s);
+    await svc.engine.routes.prime(LOCAL_USER, "united", []);
+    s.now.t += 23 * HOUR;
+    await svc.sweepShortTerm();
+    expect(svc.engine.routes.loadedSources(LOCAL_USER)).toEqual(["united"]);
+    s.now.t += 2 * HOUR;
+    expect(svc.engine.routes.isLoaded(LOCAL_USER, "united")).toBe(false);
+    await svc.sweepShortTerm();
+    expect(svc.engine.routes.loadedSources(LOCAL_USER)).toEqual([]);
+  });
+
   it("Disconnect removes the tokens and every seats.aero result: cache, workspace, Saved rows, watches' baselines, details", async () => {
     const s = session();
     const svc = await boot(s);
@@ -255,10 +280,13 @@ describe("the OAuth flavour", () => {
     svc.watches.add(watch());
     await svc.checkWatches();
     svc.workspace.setSelected({ snapshotId: shown.id, rowKey: shown.rows[0]!.key }, true);
+    await svc.engine.routes.prime(LOCAL_USER, "alaska", []);
     await svc.persist();
     expect(disk(s.files)).toContain("81234");
 
     expect(await svc.seatsAccount!.disconnect()).toEqual({ ok: true });
+    expect(svc.engine.routes.loadedSources(LOCAL_USER)).toEqual([]);
+    expect(await svc.engine.routes.hydrate(LOCAL_USER, ["alaska"])).toEqual([]);
     expect(await s.vault.read()).toBeNull();
     expect(await svc.seatsAccount!.connected()).toBe(false);
     expect(svc.cache.snapshot().users.every((u) => u.rows.length === 0)).toBe(true);

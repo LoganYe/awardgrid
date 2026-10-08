@@ -178,8 +178,8 @@ export interface AppServices {
   shortTermMs: number | null;
   /**
    * Remove whatever has passed the short-term limit: cache rows, workspace snapshots, Saved rows, watch baselines and
-   * change details, and an Ask conversation. The app calls it on returning to the foreground and hourly while open;
-   * launch does the same. Does nothing without a limit. Never throws.
+   * change details, Ask's route lists and an Ask conversation. The app calls it on returning to the foreground and
+   * hourly while open; launch does the same. Does nothing without a limit. Never throws.
    */
   sweepShortTerm(): Promise<void>;
   /**
@@ -201,8 +201,8 @@ export interface SeatsAccount {
   /**
    * Remove the tokens, then everything kept from seats.aero (the OAuth Addendum's purge): cached results, the
    * workspace's snapshots, Saved rows (each item's query and summary stay), watch baselines and change details (the
-   * watches stay, and start again), loaded details and an Ask conversation. Requests already out finish first, so
-   * nothing they bring back survives it.
+   * watches stay, and start again), loaded details, route lists and an Ask conversation. Requests already out finish
+   * first, so nothing they bring back survives it.
    */
   disconnect(): Promise<DisconnectOutcome>;
 }
@@ -508,9 +508,10 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   const engine = new SearchEngine({
     fetchImpl,
     cache,
-    // One program's route list failing costs its "not monitored" claim, never the paid rows (#89); Ask and watches
-    // search through this same engine, so they get the same rule.
-    routes: new ResilientRoutesCatalog(),
+    // Ask's route lists (a grid search loads none: search.ts #execute). One program's list failing costs its "not
+    // monitored" claim, never the paid rows (#89). They are seats.aero's data too: under the short-term limit they last
+    // as long as results do, and the sweep and the purge clear them.
+    routes: new ResilientRoutesCatalog({ now, ...(shortTermMs != null ? { ttlMs: shortTermMs } : {}) }),
     quota: new Quota({ store: quotaStore, now }),
     now,
   });
@@ -736,6 +737,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       if (workspace.selectionEntries().some((entry) => entry.row !== null && !(Date.parse(entry.row.value.fetched_at) >= cutoff()))) {
         workspace.clearSelection();
       }
+      await engine.routes.clear(cutoff());
       await expireFavorites();
       const watchesChanged = expireWatches() > 0;
       await expireAsk();
@@ -763,6 +765,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     try {
       details.clear();
       lastSearch.clear();
+      await engine.routes.clear();
       cache.restore(null);
       await snapshots.clearCache().catch(() => undefined);
       const state = workspace.getState();
