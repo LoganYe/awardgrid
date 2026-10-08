@@ -4,7 +4,7 @@
  * and the sheet all faked.
  */
 import { describe, expect, it, vi } from "vitest";
-import { fakeFetch, jsonResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
+import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 import { type BrokerResult, TOKEN_SERVICE_URL, createTokenBroker, meansRevoked } from "./broker";
 import { CALLBACK_SCHEME, OAUTH_REDIRECT_URI, SEATS_CONSENT_URL, connectSeats, consentUrl, randomState, readCallback } from "./connect";
 import { authorizeWithSeats } from "./seats-auth-plugin";
@@ -65,6 +65,13 @@ describe("the token service client", () => {
     expect(await answer(502, { error: "upstream_unavailable" }).refresh("seats:otr:r")).toEqual({ ok: false, reason: "unavailable", status: 502, error: "upstream_unavailable" });
     expect(await answer(429, { error: "rate_limited" }).refresh("seats:otr:r")).toMatchObject({ ok: false, reason: "unavailable" });
     expect(await answer(400, { error: "invalid_request" }).refresh("seats:otr:r")).toMatchObject({ ok: false, reason: "unavailable" });
+    // A refusal with no OAuth error code is not seats.aero's: a firewall's 403 page as an earlier service passed it on
+    // ("rejected"), or a page that is not JSON at all.
+    expect(await answer(403, { error: "rejected" }).refresh("seats:otr:r")).toEqual({ ok: false, reason: "unavailable", status: 403, error: "rejected" });
+    const html = createTokenBroker({ fetchImpl: fakeFetch(() => textResponse("<!doctype html><title>Just a moment...</title>", 403)) });
+    expect(await html.refresh("seats:otr:r")).toEqual({ ok: false, reason: "unavailable", status: 403, error: null });
+    expect(await answer(502, { error: "upstream_blocked" }).refresh("seats:otr:r")).toMatchObject({ ok: false, reason: "unavailable" });
+    expect(await answer(401, { error: "invalid_client" }).refresh("seats:otr:r")).toMatchObject({ ok: false, reason: "rejected", error: "invalid_client" });
     // A 200 that is not tokens, or an exchange without a refresh token, is not a grant.
     expect(await answer(200, { access_token: "sk-x", expires_in: 3599 }).refresh("seats:otr:r")).toMatchObject({ ok: false, reason: "unavailable" });
     expect(await answer(200, { access_token: "seats:ota:a", token_type: "Bearer", expires_in: 3599 }).exchange("c", STATE)).toMatchObject({ ok: false, reason: "unavailable" });
@@ -80,8 +87,13 @@ describe("the token service client", () => {
   it("only seats.aero's own refusal of the refresh token counts as a revocation", () => {
     const r = (status: number, error: string | null): BrokerResult => ({ ok: false, reason: "rejected", status, error });
     expect(meansRevoked(r(400, "invalid_grant"))).toBe(true);
-    expect(meansRevoked(r(401, null))).toBe(true);
+    expect(meansRevoked(r(401, "invalid_grant"))).toBe(true);
+    expect(meansRevoked(r(400, "access_denied"))).toBe(true);
+    // A 401 or 403 alone is not: a firewall answers with one too.
+    expect(meansRevoked(r(401, null))).toBe(false);
+    expect(meansRevoked(r(403, "rejected"))).toBe(false);
     expect(meansRevoked(r(401, "invalid_client"))).toBe(false);
+    expect(meansRevoked(r(403, "unauthorized_client"))).toBe(false);
     expect(meansRevoked({ ok: false, reason: "unavailable", status: 502, error: null })).toBe(false);
     expect(meansRevoked({ ok: false, reason: "network", status: 0, error: null })).toBe(false);
   });

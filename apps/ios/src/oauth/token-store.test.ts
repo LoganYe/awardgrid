@@ -109,6 +109,24 @@ describe("TokenKeyStore", () => {
     expect(await vault.read()).not.toBeNull();
   });
 
+  it("a firewall's 401/403 on the refresh (no OAuth error code) is a passing failure: tokens kept, nothing purged", async () => {
+    // A 403 "rejected" (an earlier token service's word for it), a 403 page that is not JSON, a bare 401.
+    for (const result of [
+      { ok: false, reason: "unavailable", status: 403, error: "rejected" },
+      { ok: false, reason: "unavailable", status: 403, error: null },
+      { ok: false, reason: "rejected", status: 401, error: null },
+      { ok: false, reason: "rejected", status: 403, error: "rejected" },
+    ] satisfies BrokerResult[]) {
+      const onRevoked = vi.fn();
+      const vault = new MemoryTokenVault({ ...TOKENS, expiresAt: T0 });
+      const store = new TokenKeyStore({ vault, broker: broker([result]).broker, now: () => T0, onRevoked });
+      expect(await store.get(), JSON.stringify(result)).toBe("Bearer seats:ota:first");
+      expect(await vault.read()).toEqual({ ...TOKENS, expiresAt: T0 });
+      expect(await store.connected()).toBe(true);
+      expect(onRevoked).not.toHaveBeenCalled();
+    }
+  });
+
   it("Disconnect wins: a renewal still out when clear() runs never writes its tokens back", async () => {
     let release: (r: BrokerResult) => void = () => {};
     const vault = new MemoryTokenVault({ ...TOKENS, expiresAt: T0 });

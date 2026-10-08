@@ -9,7 +9,7 @@
  * never touches sample/.
  */
 import { describe, expect, it, vi } from "vitest";
-import { fakeFetch, jsonResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
+import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 import { favoriteFromSnapshot } from "@awardgrid/core/workspace/favorites-store";
 import type { Watch } from "@awardgrid/core/watch";
 import { MemoryKeyStore } from "../native/keychain";
@@ -366,6 +366,27 @@ describe("the OAuth flavour", () => {
       expect(disk(s.files)).not.toContain("81234");
     });
     expect(await svc.seatsAccount!.connected()).toBe(false);
+  });
+
+  it("a firewall's 403 on the renewal is not a revocation: the tokens, Saved and the cache stay", async () => {
+    const s = session();
+    // The real broker over the token service's answers: a 403 "rejected" (as the service before upstream_blocked passed
+    // a firewall's page on), then the firewall's own HTML page.
+    const answers = [jsonResponse({ error: "rejected" }, 403), textResponse("<!doctype html><title>Just a moment...</title>", 403)];
+    const tokenFetch = fakeFetch(() => answers.shift() ?? jsonResponse({ error: "upstream_blocked" }, 502));
+    const svc = await boot(s, { oauth: { vault: s.vault, tokenFetch, clientId: "test-client", legacyKeys: null } });
+    await svc.searchText(QUERY);
+    await svc.favorites.save(favoriteFromSnapshot(svc.workspace.getState().displayedSnapshot!, new Date(s.now.t).toISOString(), "f1"));
+    await svc.persist();
+    s.seats.state.valid.clear();
+    await svc.clearCache();
+    expect(await svc.searchText(QUERY)).toMatchObject({ ok: false });
+    expect(await svc.searchText(QUERY)).toMatchObject({ ok: false });
+    expect(tokenFetch.calls.map((c) => c.url.pathname)).toEqual(["/oauth/seats/refresh", "/oauth/seats/refresh"]);
+    expect(await s.vault.read()).toMatchObject({ access: "seats:ota:first", refresh: "seats:otr:one" });
+    expect(await svc.seatsAccount!.connected()).toBe(true);
+    expect(svc.favorites.get("f1")!.rows.length).toBeGreaterThan(0);
+    expect(disk(s.files)).toContain("81234");
   });
 });
 

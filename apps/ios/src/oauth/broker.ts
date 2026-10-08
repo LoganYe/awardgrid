@@ -21,9 +21,11 @@ export interface TokenGrant {
 
 /**
  * How a call to the token service ended.
- *   - "rejected": seats.aero refused the code or the refresh token (`error` is its OAuth error code). For a refresh,
+ *   - "rejected": seats.aero refused the code or the refresh token with an OAuth error code (`error`). For a refresh,
  *     "invalid_grant" means the person revoked AwardGrid in seats.aero, or the account ended.
- *   - "unavailable": the service or seats.aero could not answer (5xx, a rate limit, an answer that is not tokens).
+ *   - "unavailable": the service or seats.aero could not answer (5xx, a rate limit, an answer that is not tokens), or
+ *     something in between refused the call without an OAuth error code (a firewall's 403 page, which an earlier
+ *     version of the service passed on as 401/403 "rejected").
  *   - "network": no answer arrived (offline, timed out).
  */
 export type BrokerResult = { ok: true; grant: TokenGrant } | { ok: false; reason: "rejected" | "unavailable" | "network"; status: number; error: string | null };
@@ -35,6 +37,12 @@ export interface TokenBroker {
 
 /** The service waits up to 10 s for seats.aero; this leaves room for that and the trip there. */
 export const TOKEN_SERVICE_TIMEOUT_MS = 15_000;
+
+/**
+ * The service's own error codes on a 400/401/403 that are not seats.aero refusing anything: a request it would not
+ * send, a missing secret, and "rejected", an earlier version's word for a refusal that carried no OAuth error code.
+ */
+const NOT_A_REFUSAL = new Set(["invalid_request", "not_configured", "rejected"]);
 
 function grantFrom(body: unknown): TokenGrant | null {
   if (typeof body !== "object" || body === null) return null;
@@ -74,7 +82,7 @@ export function createTokenBroker(opts: { fetchImpl: typeof fetch; baseUrl?: str
     }
     const code = typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>).error : undefined;
     const error = typeof code === "string" && /^[a-z_]{1,64}$/.test(code) ? code : null;
-    const rejected = (res.status === 400 || res.status === 401 || res.status === 403) && error !== "invalid_request" && error !== "not_configured";
+    const rejected = (res.status === 400 || res.status === 401 || res.status === 403) && error !== null && !NOT_A_REFUSAL.has(error);
     return { ok: false, reason: rejected ? "rejected" : "unavailable", status: res.status, error };
   };
   return {
@@ -85,11 +93,11 @@ export function createTokenBroker(opts: { fetchImpl: typeof fetch; baseUrl?: str
 
 /**
  * Whether a failed refresh means the connection is gone (the person revoked AwardGrid, or the account ended), rather
- * than a passing failure. Only seats.aero's own answer says so: "invalid_grant", or a 401/403 that is not about
- * AwardGrid's own client. A misconfigured service ("invalid_client") is AwardGrid's fault, not a revocation.
+ * than a passing failure. Only seats.aero's own OAuth answer about the grant says so: "invalid_grant" (or
+ * "access_denied"). A 401 or 403 is not enough on its own: a firewall in front of seats.aero answers with one too,
+ * and taking that for a revocation would remove the tokens and purge every result. A misconfigured service
+ * ("invalid_client") is AwardGrid's fault, not a revocation either.
  */
 export function meansRevoked(result: BrokerResult): boolean {
-  if (result.ok || result.reason !== "rejected") return false;
-  if (result.error === "invalid_grant" || result.error === "access_denied") return true;
-  return (result.status === 401 || result.status === 403) && result.error !== "invalid_client" && result.error !== "unauthorized_client";
+  return !result.ok && result.reason === "rejected" && (result.error === "invalid_grant" || result.error === "access_denied");
 }

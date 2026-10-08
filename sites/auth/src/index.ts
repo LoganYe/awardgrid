@@ -70,8 +70,25 @@ export const CODE_RE = /^[A-Za-z0-9._~+/=:-]{1,512}$/;
 export const STATE_RE = /^[A-Za-z0-9_-]{16,128}$/;
 export const REFRESH_RE = /^seats:otr:[A-Za-z0-9._~+/=-]{1,500}$/;
 export const ACCESS_RE = /^seats:ota:[A-Za-z0-9._~+/=-]{1,500}$/;
-/** An OAuth error code (RFC 6749 §5.2 style). Anything else from upstream is reported as "rejected". */
+/** An OAuth error code's shape (RFC 6749 §5.2 style), as the consent page's callback may carry one. */
 const ERROR_CODE_RE = /^[a-z_]{1,64}$/;
+/**
+ * The OAuth error codes a token endpoint answers with (RFC 6749 §5.2, and the authorization codes some servers reuse
+ * there). An upstream 4xx carrying anything else, or no JSON at all, is not seats.aero's OAuth answer: most likely a
+ * firewall in front of seats.aero refused the call (an HTML 403). It is answered 502 "upstream_blocked", never as a
+ * refusal, which the app would read as the person revoking AwardGrid.
+ */
+const OAUTH_ERRORS = new Set([
+  "invalid_request",
+  "invalid_client",
+  "invalid_grant",
+  "unauthorized_client",
+  "unsupported_grant_type",
+  "invalid_scope",
+  "access_denied",
+  "server_error",
+  "temporarily_unavailable",
+]);
 
 const SECURITY_HEADERS: Record<string, string> = {
   "cache-control": "no-store",
@@ -211,9 +228,9 @@ async function exchange(payload: Record<string, string>, needsRefreshToken: bool
   }
   if (upstream.status >= 400 && upstream.status < 500) {
     const code = typeof body === "object" && body !== null ? (body as Record<string, unknown>).error : undefined;
-    const error = typeof code === "string" && ERROR_CODE_RE.test(code) ? code : "rejected";
+    if (typeof code !== "string" || !OAUTH_ERRORS.has(code)) return json(502, { error: "upstream_blocked" });
     const status = [400, 401, 403, 429].includes(upstream.status) ? upstream.status : 400;
-    return json(status, { error });
+    return json(status, { error: code });
   }
   return json(502, { error: "upstream_unavailable" });
 }
