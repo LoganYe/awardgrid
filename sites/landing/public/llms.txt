@@ -2,7 +2,7 @@
 
 > AwardGrid is an iPhone app by Curastone CORP. It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.
 
-## Facts (checked 2026-10-07)
+## Facts (checked 2026-10-08)
 
 - Price and status: AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data. AwardGrid for iPhone is submitted to the App Store and not available there yet.
 - Sample data: Without a seats.aero account, AwardGrid shows sample data only: search, the List, Calendar and Matrix views, option details, compare, Saved and Watches all work on sample data made on the iPhone, for any route between the 84 airports it recognises, over the next 12 months. Sample data is labelled on every screen that shows it, its options have no booking links, and nothing is sent.
