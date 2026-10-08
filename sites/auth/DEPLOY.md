@@ -5,9 +5,9 @@
 App Store 版 AwardGrid 只通过 seats.aero 自己的登录（Login with Seats.aero）连接账户，这个 Worker 替 App 交换和续期登录令牌。以下步骤只能由 owner 完成：
 
 1. 在 seats.aero › Settings › Developer Tools › Apps › New App 创建 OAuth 应用。回调地址填 `https://awardgrid.dowhiz.com/oauth/seats/callback`，scope 填 `openid`。创建即接受 seats.aero 的 OAuth Addendum。记下 Client ID（不是秘密）；Client Secret 只粘贴进 Cloudflare，绝不放进 git、聊天或任何文件。
-2. 部署 Worker `awardgrid-auth`（`wrangler deploy` 或 Cloudflare 后台），把 `SEATS_CLIENT_ID` 和 `SEATS_CLIENT_SECRET` 设为 Worker secret。
-3. 添加路由 `awardgrid.dowhiz.com/oauth/*`。现有的 Worker `awardgrid-vercel-public` 只占用网站的 11 个路由，不含 `/oauth/*`，不会冲突。
-4. 做 WAF 检查：用无效的 code 调用 `/oauth/seats/token`，必须得到 seats.aero 的 JSON 错误，而不是 Cloudflare 的验证页面。
+2. 部署 Worker `awardgrid-auth`（推荐 `wrangler deploy`：`wrangler.jsonc` 已写好路由、限流绑定和关闭日志；用 Cloudflare 后台时必须手动添加 `RATE_LIMITER` 限流绑定，否则 Worker 一律返回 503，并关闭 Workers Logs 和 traces），把 `SEATS_CLIENT_ID` 和 `SEATS_CLIENT_SECRET` 设为 Worker secret。
+3. 添加路由 `awardgrid.dowhiz.com/oauth/*`。现有的 Worker `awardgrid-vercel-public` 只占用网站的 11 个路由，不含 `/oauth/*`，不会冲突（添加前再看一眼）。
+4. 做 WAF 检查：用无效的 code 调用 `/oauth/seats/token`，必须得到 seats.aero 的 JSON 错误（如 `{"error":"invalid_grant"}`），而不是 Cloudflare 的验证页面。如果得到 403 或 429 的 `{"error":"rejected"}`，多半是 seats.aero 自己的 Cloudflare 拦下了 Worker 的请求：这要请 seats.aero 放行，dowhiz.com 这边改不了（见第 4 节）。
 5. 用 `VITE_AG_SEATS_CLIENT_ID=<Client ID> npm run build:store` 构建 App；build 号由 owner 决定。
 6. 问 seats.aero 想怎么测试（TestFlight 公开链接，需先通过 Beta App Review；或者屏幕录像）。他们测试过之后才会取消 10 个用户的限制。
 
@@ -149,10 +149,23 @@ curl -s -i -X POST https://awardgrid.dowhiz.com/oauth/seats/refresh \
   -H 'content-type: application/json' --data '{"refresh_token":"seats:otr:invalid-refresh-token"}'
 ```
 
-- **A challenge** (HTML such as "Just a moment…", a `cf-mitigated: challenge` header, or a 403 page from Cloudflare):
-  the app's native requests would get the same and could never connect. In dowhiz.com › Security › Events, find what
-  challenged it, and exempt the path: a WAF custom rule with the action **Skip** for `URI Path starts with
-  /oauth/seats/`, or, for a feature a rule cannot skip (Bot Fight Mode), turn it off. Repeat the check.
+There are two Cloudflare zones on the way, and either can challenge: dowhiz.com's, in front of the Worker, and
+seats.aero's own, in front of `https://seats.aero/oauth2/token`, which the Worker calls. They answer differently:
+
+- **A challenge from dowhiz.com** (HTML such as "Just a moment…", a `cf-mitigated: challenge` header, a 403 page from
+  Cloudflare, or a redirect to a `cloudflareaccess.com` sign-in): the request never reached the Worker, whose every
+  answer is JSON. The app's native requests would get the same and could never connect. In dowhiz.com › Security ›
+  Events, find what challenged it, and exempt the path: a WAF custom rule with the action **Skip** for `URI Path
+  starts with /oauth/seats/`, or, for a feature a rule cannot skip (Bot Fight Mode), turn it off; an Access
+  application covering the host needs a bypass policy for `/oauth/seats/`. Repeat the check.
+- **403 (or 429) `{"error":"rejected"}`:** the Worker reached seats.aero, and seats.aero's side refused the call
+  without an OAuth error. The Worker passes on no HTML, so this is what a challenge from seats.aero's own Cloudflare
+  looks like (a plain request to seats.aero has been seen blocked before). Nothing in dowhiz.com changes it: ask
+  seats.aero to let POSTs to `https://seats.aero/oauth2/token` from the Worker `awardgrid-auth` (Cloudflare Workers)
+  through, and repeat the check. A 400 `rejected` is an OAuth answer whose error code was not a plain one; it is fine.
+- **502 `upstream_unreachable`, `upstream_unavailable` or `upstream_invalid`:** seats.aero did not answer in 10
+  seconds, answered with a server error, or answered 2xx with something other than tokens. Repeat later; if it stays,
+  ask seats.aero.
 - **500 `not_configured`:** a secret is missing or misnamed. **503 `rate_limiter_missing`:** the binding is missing.
 - **`invalid_client`:** the Client ID or secret in Cloudflare is not the app's. Set them again.
 - More than 20 requests a minute from one address answer 429 `rate_limited`: the limit working.
@@ -197,9 +210,10 @@ revocation, and where the code is (this repository).
 
 ## Turning it off
 
-Remove the route or delete the Worker (`npx wrangler delete` from `sites/auth`): connecting then fails with the
-token service's message, and a connected device keeps its access token until it expires (about an hour), after which
-its searches are refused. Rotating the Client Secret in seats.aero and setting the new one in Cloudflare keeps the app
+Remove the route or delete the Worker (`npx wrangler delete` from `sites/auth`): connecting can then no longer finish
+(the paths fall through to whatever else serves the host, so the sign-in sheet stops on a page that is not the app's
+and has to be closed, or the app says the token service could not finish connecting), and a connected device keeps
+its access token until it expires (about an hour), after which its searches are refused and say to connect again. Rotating the Client Secret in seats.aero and setting the new one in Cloudflare keeps the app
 working. Deleting the OAuth app in seats.aero ends every connection: searches then say to connect again.
 
 ## Local development

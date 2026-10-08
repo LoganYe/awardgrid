@@ -7,8 +7,10 @@
   (`npm run build:store`), which has no Ask: nothing is sent to Anthropic, so Other User Content is not collected
   (release decision D8).
 
-  - No tracking, no tracking domains: no analytics, ads, crash reporting or accounts of ours; the only host is
-    seats.aero, reached with the user's own seats.aero API key.
+  - No tracking, no tracking domains: no analytics, ads, crash reporting or accounts of ours. The App Store build is
+    the OAuth flavour (`build:store` sets VITE_AG_CONNECT=oauth): searches go to seats.aero with the access token from
+    seats.aero's own sign-in, and the one other host is the token service at awardgrid.dowhiz.com (sites/auth), which
+    exchanges and refreshes the sign-in tokens and keeps nothing it receives, so it collects nothing (plan 47F step 6).
   - Collected, linked to the user, for app functionality only: Search History (the search parameters sent to
     seats.aero).
   - Required-reason APIs: file timestamps (C617.1, files inside the app container), from IONFilesystemLib under

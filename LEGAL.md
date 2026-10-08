@@ -72,8 +72,8 @@ awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no c
   app recognises, labelled "Sample data" on every screen that shows it, with no booking or program
   links and no "Data: seats.aero" attribution, because it is not seats.aero data. While it is on,
   the app sends nothing to seats.aero or anyone else; it keeps its own files apart from the
-  account's, and never reads or writes the user's seats.aero key or the day's count of seats.aero
-  calls.
+  account's, and never reads or writes the user's seats.aero key or sign-in tokens or the day's
+  count of seats.aero calls.
 
 ## Trademarks and logos
 
