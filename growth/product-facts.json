@@ -543,7 +543,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-09-28",
+      "checked_at": "2026-10-08",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:5-8 \"Rows are the search's dates, columns its routes; each cell holds one slot per cabin asked\"",
@@ -557,7 +557,8 @@
         "packages/core/src/lib/workspace/present.ts:32-33 \"\"seats.unknown\": { en: \"Seat count not provided\", zh: \"席位未提供\" },\"",
         "packages/core/src/lib/workspace/present.ts:139-142 \"/** \"2 seats\" / \"2 席\"; 0 or nothing is \"not provided\". */\"",
         "packages/core/src/lib/workspace/present.ts:189-199 \"export function timeLabel(\"",
-        "packages/core/src/lib/workspace/present.ts:405-406 \"complete: { en: \"no matches\", zh: \"无匹配\" },\"",
+        "packages/core/src/lib/workspace/present.ts:405 \"complete: { en: \"no matches\", zh: \"无匹配\" },\"",
+        "packages/core/src/lib/workspace/present.ts:407 \"partial: { en: \"not checked to the end\", zh: \"未查完\" },\"",
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:135 \"<span className=\"ag-mx-reason\">{capitalise(emptyDayLabel(kind, locale))}</span>\"",
         "packages/core/src/lib/seatsaero/normalize.ts:60-62 \"fees_cents: typeof taxes === \"number\" ? taxes : null,\""
       ],
@@ -566,16 +567,19 @@
         "Miles in different programs are not equivalent.",
         "Each option's card shows the route, the date, the cabin, the miles, the fees, the program, the seats left and how old the data is.",
         "Where seats.aero does not give the fees, the card says \"Fees not yet confirmed\"; where it does not give a seat count, \"Seat count not provided\"; where it does not give an update time, \"Source update time unknown\".",
-        "An empty line in a cell says why, such as \"No matches\" or \"Not monitored\"."
+        "An empty line in a cell says why, such as \"No matches\" or \"Not checked to the end\"."
       ],
       "limitations": [
         "The table in the iPhone app is the Matrix (AvailabilityMatrix.tsx). A cell's line per cabin holds the lowest miles in full, the cabin, the program's short name and the seats; fees and data age are not in the cell but on each option's card (AvailabilityCard.tsx:94, :102), as grid.allowed_copy says. Where coverage is not complete, the caption says the number is the lowest retrieved (AvailabilityMatrix.tsx:103).",
-        "The words in quotes are the app's English (present.ts COPY and emptyDayLabel), as the Matrix shows them: it capitalises an empty line's reason (\"No matches\", \"Not monitored\"; AvailabilityMatrix.tsx:135), while the Calendar shows it in lower case (AvailabilityCalendar.tsx). In Chinese they are 税费待确认, 席位未提供, 来源更新时间未知, 无匹配 and 未监测. \"Seat count not provided\" also stands for a count of 0, which is how seats.aero leaves it out (normalize.ts:62; semantics.ts knownSeats).",
+        "The words in quotes are the app's English (present.ts COPY and emptyDayLabel), as the Matrix shows them: it capitalises an empty line's reason (\"No matches\", \"Not checked to the end\"; AvailabilityMatrix.tsx:135), while the Calendar shows it in lower case (AvailabilityCalendar.tsx). In Chinese they are 税费待确认, 席位未提供, 来源更新时间未知, 无匹配 and 未查完. \"Seat count not provided\" also stands for a count of 0, which is how seats.aero leaves it out (normalize.ts:62; semantics.ts knownSeats).",
         "\"How old the data is\" is the source's update time where seats.aero gives one (\"Source updated 38 min ago\"); otherwise the card says the source update time is unknown and shows when this device fetched it (present.ts:175-185), as data_cached says.",
-        "An empty line's other reasons are \"not checked to the end\", \"coverage unknown\" and \"hidden by your view filter\" (present.ts:386-393).",
+        "An empty line's other reasons are \"coverage unknown\" and \"hidden by your view filter\" (present.ts:402-411). \"Not checked to the end\" is a route a search did not read to the end (a page cap, today's quota, an error from seats.aero). Since 2026-10-08 (build 6) a search loads no route lists (the programs claim), so no empty line reads \"not monitored\"; until then the extra sentence gave it as the example, and that wording is retired_copy.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "approved"
+      "public_use": "approved",
+      "retired_copy": [
+        "An empty line in a cell says why, such as \"No matches\" or \"Not monitored\"."
+      ]
     },
     {
       "claim_id": "scope",
