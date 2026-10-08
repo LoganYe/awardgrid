@@ -2,7 +2,7 @@
 
 > AwardGrid is an iPhone app by Curastone CORP. It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.
 
-## Facts (checked 2026-10-07)
+## Facts (checked 2026-10-08)
 
 - Price and status: AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data. AwardGrid for iPhone is submitted to the App Store and not available there yet.
 - Sample data: Without a seats.aero account, AwardGrid shows sample data only: search, the List, Calendar and Matrix views, option details, compare, Saved and Watches all work on sample data made on the iPhone, for any route between the 84 airports it recognises, over the next 12 months. Sample data is labelled on every screen that shows it, its options have no booking links, and nothing is sent.
@@ -18,7 +18,7 @@
 - Privacy: The AwardGrid iPhone app has no accounts of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go from the iPhone directly to seats.aero, and a small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens and stores nothing; sample data sends nothing.
 - Short-term caching: Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term Caching rule); a saved search keeps the search and a summary, and opening it searches again.
 - Availability: AwardGrid for iPhone will be offered in 174 countries or regions; not in mainland China.
-- Dependency: AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.
+- Dependency: AwardGrid depends on seats.aero's Partner API and connects to your seats.aero account through seats.aero's own sign-in (Login with Seats.aero); seats.aero's terms apply to that account.
 
 ## What the app does not do
 

@@ -31,6 +31,8 @@
       own sign-in (Login with Seats.aero): "no server of its own" gave way to the token service at awardgrid.dowhiz.com
       (sites/auth), which exchanges and refreshes the sign-in tokens and stores nothing, and results from seats.aero
       are kept on the device for at most 24 hours (registry claims oauth_connection, short_term_caching and privacy).
+      Since 2026-10-08 the page names the token service's host, Cloudflare Workers (sites/auth/wrangler.jsonc), and
+      "This website" says that the app's requests to it reach Cloudflare, where it said the app sends Cloudflare nothing.
       No script in this file and no webfont request (honesty.test.ts scans it). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the section "This website" says so.
     -->
     <link rel="stylesheet" href="../styles.css" />
@@ -46,7 +48,7 @@
       <header>
         <p class="eyebrow">Privacy policy</p>
         <h1>AwardGrid for iPhone</h1>
-        <p class="doc-meta">Last updated 7 October 2026.</p>
+        <p class="doc-meta">Last updated 8 October 2026.</p>
       </header>
 
       <section aria-labelledby="short-h">
@@ -110,12 +112,13 @@
 
         <h3>AwardGrid's token service, to exchange and refresh the sign-in tokens</h3>
         <p>
-          AwardGrid's client secret may not be in the app, so a small token service at awardgrid.dowhiz.com does two
-          things for it. When you connect, it exchanges the one-time code for the sign-in tokens (an access token, valid
-          about an hour, and a refresh token). Later, it gets a new access token with the refresh token. The app sends it
-          only the code and the random value, or the refresh token; the service adds AwardGrid's client ID and secret,
-          passes the request to seats.aero, and hands back only the tokens. It stores nothing and keeps no logs of
-          tokens. It never sees your searches or their results, and, like any server, it sees your device's IP address.
+          AwardGrid's client secret may not be in the app, so a small token service at awardgrid.dowhiz.com, which runs
+          on Cloudflare Workers, does two things for it. When you connect, it exchanges the one-time code for the sign-in
+          tokens (an access token, valid about an hour, and a refresh token). Later, it gets a new access token with the
+          refresh token. The app sends it only the code and the random value, or the refresh token; the service adds
+          AwardGrid's client ID and secret, passes the request to seats.aero, and hands back only the tokens. It stores
+          nothing and keeps no logs of tokens. It never sees your searches or their results, and, like any server, it sees
+          your device's IP address.
         </p>
 
         <h3>seats.aero, for every search on your account</h3>
@@ -265,9 +268,11 @@
           your IP address when it serves a page.
         </p>
         <p>
-          The app does not include this script and sends nothing to Cloudflare. Opening one of these pages from the app
-          (Settings › Privacy policy or Support) opens it in Safari, as a visit like any other; as you tap the link,
-          iOS may already open a connection to awardgrid.dowhiz.com, which shows Cloudflare your IP address.
+          The app does not include this script. Its requests to AwardGrid's token service go to Cloudflare, which hosts
+          the service on Cloudflare Workers: the one-time code and the random value when you connect, and the refresh
+          token when the app renews the connection. Opening one of these pages from the app (Settings › Privacy policy
+          or Support) opens it in Safari, as a visit like any other; as you tap the link, iOS may already open a
+          connection to awardgrid.dowhiz.com, which shows Cloudflare your IP address.
         </p>
       </section>
 
@@ -296,7 +301,7 @@
       <section id="zh" lang="zh-CN" aria-labelledby="zh-h">
         <p class="eyebrow">隐私政策</p>
         <h2 id="zh-h">AwardGrid iPhone 版</h2>
-        <p class="doc-meta">最后更新：2026 年 10 月 7 日。</p>
+        <p class="doc-meta">最后更新：2026 年 10 月 8 日。</p>
 
         <h3>概要</h3>
         <ul>
@@ -327,7 +332,7 @@
 
         <h4>AwardGrid 的令牌服务：交换和续期登录令牌</h4>
         <p>
-          AwardGrid 的客户端密钥不能放在应用里，所以 awardgrid.dowhiz.com 上的一个小型令牌服务替应用做两件事：连接时，用一次性代码换取登录令牌（一个约一小时有效的访问令牌和一个刷新令牌）；之后，用刷新令牌换取新的访问令牌。应用只向它发送代码和随机值，或刷新令牌；它加上
+          AwardGrid 的客户端密钥不能放在应用里，所以 awardgrid.dowhiz.com 上的一个小型令牌服务（运行在 Cloudflare Workers 上）替应用做两件事：连接时，用一次性代码换取登录令牌（一个约一小时有效的访问令牌和一个刷新令牌）；之后，用刷新令牌换取新的访问令牌。应用只向它发送代码和随机值，或刷新令牌；它加上
           AwardGrid 的客户端 ID 和密钥，把请求转给 seats.aero，只把令牌交回。它不保存任何内容，也不记录令牌。它看不到你的查询和查询结果；与任何服务器一样，它会看到你设备的
           IP 地址。
         </p>
@@ -413,7 +418,7 @@
           的一小段脚本会记录访问的页面、你从哪个网站过来、你的浏览器、操作系统和设备类型、所在国家或地区，以及页面加载速度。它不使用
           cookie，也不做指纹识别，开发者只能看到汇总数字。与任何网站一样，Cloudflare 在提供页面时会看到你的 IP 地址。
         </p>
-        <p>应用本身不包含这段脚本，也不向 Cloudflare 发送任何内容。从应用里打开这些页面（设置 › 隐私政策或支持）会在 Safari 中打开，与其他访问一样；你点按链接时，iOS 可能已经开始连接 awardgrid.dowhiz.com，这会让 Cloudflare 看到你的 IP 地址。</p>
+        <p>应用本身不包含这段脚本。应用发往 AwardGrid 令牌服务的请求会到达 Cloudflare，因为该服务托管在 Cloudflare Workers 上：连接时发送一次性代码和随机值，续期连接时发送刷新令牌。从应用里打开这些页面（设置 › 隐私政策或支持）会在 Safari 中打开，与其他访问一样；你点按链接时，iOS 可能已经开始连接 awardgrid.dowhiz.com，这会让 Cloudflare 看到你的 IP 地址。</p>
 
         <h3>变更</h3>
         <p>如果应用发送的内容有变，本页会先更新，并注明新的日期。在有 AI 辅助的测试版本中，如果 AI 辅助要向 Anthropic 发送新的内容，应用会重新征求你的许可。</p>

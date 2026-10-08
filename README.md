@@ -6,7 +6,7 @@
 AwardGrid is an iPhone app by Curastone CORP.
 AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.
 AwardGrid for iPhone is submitted to the App Store and not available there yet.
-AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.
+AwardGrid depends on seats.aero's Partner API and connects to your seats.aero account through seats.aero's own sign-in (Login with Seats.aero); seats.aero's terms apply to that account.
 
 It puts seats.aero's cached award availability for several origins, several destinations and up to 92 days into one table. Each cell shows the lowest miles for each cabin you asked for, with the program and the seats left; each option also shows its fees and how old the data is.
 
@@ -60,7 +60,7 @@ No scraping, no shared keys, no Live Search, no logos, no money. See `LEGAL.md`.
 - Node ≥ 22 (`.nvmrc`; `better-sqlite3@13` needs 22). On this project's dev Mac the arm64 build lives at
   `~/.local/node-arm64` — put its `bin` first on `PATH`.
 - pnpm 12 via corepack: `corepack enable pnpm && corepack prepare pnpm@12.3.4 --activate` (pinned in `package.json#packageManager`).
-- One **seats.aero Pro** API key **per user** (seats.aero → Settings → API; Pro = 1,000 calls/day, non-commercial). It is
+- One **seats.aero Pro** API key **per user** (seats.aero → Settings → API; Pro = 1,000 calls/day). It is
   pasted by each user in Settings, never configured on the server.
 - One **Anthropic API key** for the operator (`ANTHROPIC_API_KEY`) — used only by the parser fallback and the Ask lane.
 - Optional: a Telegram bot token (standing-query alerts), Docker + Compose (deployment).

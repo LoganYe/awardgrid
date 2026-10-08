@@ -188,12 +188,12 @@
       "limitations": [
         "The web app was running on 2026-09-28, so the kept variants are in use; the retired variant is used only once the web app is shut down.",
         "kept_named_host is for files that are also served on the Worker's own workers.dev address (the home page, llms.txt, robots.txt), where \"at this address\" would not be true; kept_host stays in LEGAL.md, which only the web app serves (/legal).",
-        "allowed_copy_extra is the home page's one link into the web app (to https://awardgrid.dowhiz.com/grid, which sends a signed-out visitor to /login): with the Worker serving \"/\", the web app's own home no longer redirects its signed-in users to /grid.",
+        "Since 2026-10-08 (build 6) no page of the static site links into the web app. The home page's sentence \"Web app users: open the grid.\", which linked to https://awardgrid.dowhiz.com/grid, is retired_copy: the web app is invite-only, and the site the App Store links to describes the iPhone app. The kept_named_host sentence stays on the home page, as plain text, so a reader who meets the web app's sign-in page on this host knows it is not the iPhone app's.",
         "Apart from history, only these sentences may call anything on this host or in this repo private or invite-only (PRIVATE_WEBAPP).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
-      "allowed_copy_extra": [
+      "retired_copy": [
         "Web app users: open the grid."
       ]
     },
@@ -202,24 +202,31 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-06",
+      "checked_at": "2026-10-08",
       "evidence_level": "external",
       "evidence_ref": [
-        "docs/reference/seatsaero/getting-started-p.md:25-27 \"Seats.aero Pro users may be able to access the partner API\"",
-        "[external] https://seats.aero/terms (read 2026-10-06; the version dated 2026-08-12)",
-        "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
+        "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\"",
+        "apps/ios/src/oauth/connect.ts:18 \"export const SEATS_CONSENT_URL = \"https://seats.aero/oauth2/consent\";\"",
+        "apps/ios/src/screens/oauth-copy.ts:41 \"how: \"Connect seats.aero opens seats.aero's own page, where seats.aero asks you to sign in and approve AwardGrid;\"",
+        "[external] https://seats.aero/terms (read 2026-10-06; the version dated 2026-08-12)"
       ],
-      "allowed_copy": "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.",
-      "allowed_copy_zh": "AwardGrid 依赖 seats.aero 的 Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。",
+      "allowed_copy": "AwardGrid depends on seats.aero's Partner API and connects to your seats.aero account through seats.aero's own sign-in (Login with Seats.aero); seats.aero's terms apply to that account.",
+      "allowed_copy_zh": "AwardGrid 依赖 seats.aero 的 Partner API，并通过 seats.aero 自己的登录（Login with Seats.aero）连接你的 seats.aero 账户；该账户适用 seats.aero 的条款。",
       "limitations": [
-        "Approved for public use on 2026-09-28.",
-        "Shortened on 2026-10-06 (decision D6, docs/release/IOS_1.0_RELEASE.md §0.1): the second sentence, which asked readers to check their seats.aero settings for an API tab before buying a subscription, and its Chinese are gone. It was a call to action for a purchase outside the app, which App Review Guideline 3.1.3 does not allow on the storefronts outside the United States. What remains is AwardGrid's own paraphrase of seats.aero's policy, never quoted as seats.aero's words.",
-        "The same Chinese sentence is on /ios/zh-hans/ and /support/#zh. Since 2026-10-06 it no longer names the API tab; where the prerequisite's Chinese does, it is API 页, the app's word (apps/ios/src/screens/settings-copy.ts). 只许可 states seats.aero's restriction; 授权 would read as an endorsement (the gate's AFFILIATION rule refuses \"seats.aero 授权\").",
+        "Approved for public use on 2026-09-28. Reworded on 2026-10-08 for build 6 (below); the owner reviews the new wording in the pull request that makes the change.",
+        "Reworded on 2026-10-08 (build 6): the sentence no longer paraphrases seats.aero's terms. It says what AwardGrid does, which is to connect to the person's seats.aero account through seats.aero's own sign-in, Login with Seats.aero (the oauth_connection claim; connect.ts opens seats.aero's consent page), and that seats.aero's terms (https://seats.aero/terms, linked from /privacy/) apply to that account. The earlier sentence and its Chinese are retired_copy, so the gate fails if either comes back. It still answers \"Could AwardGrid stop working?\" on /ios/, /ios/zh-hans/ and in the short answers (growth/geo/accuracy-answer.md): the app depends on seats.aero.",
+        "\"Partner API\": every seats.aero request the app makes goes to https://seats.aero/partnerapi/, with the access token from the sign-in (types.ts; the privacy claim). The gate's AFFILIATION rule lets \"Partner API\" pass as the API's name.",
+        "Shortened on 2026-10-06 (decision D6, docs/release/IOS_1.0_RELEASE.md §0.1): the second sentence, which asked readers to check their seats.aero settings for an API tab before buying a subscription, and its Chinese are gone. It was a call to action for a purchase outside the app, which App Review Guideline 3.1.3 does not allow on the storefronts outside the United States.",
+        "The same Chinese sentence is on /ios/zh-hans/ and /support/#zh. Since 2026-10-08 it takes the oauth_connection claim's words for the sign-in (seats.aero 自己的登录（Login with Seats.aero）, 连接 seats.aero 账户).",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
-        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
+        "The Chinese (allowed_copy_zh) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), rewritten on 2026-10-08 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "approved"
+      "public_use": "approved",
+      "retired_copy": [
+        "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.",
+        "AwardGrid 依赖 seats.aero 的 Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。"
+      ]
     },
     {
       "claim_id": "prerequisite",
@@ -826,7 +833,8 @@
         "LEGAL.md:48-51 \"The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of\"",
         "apps/ios/src/oauth/broker.ts:12 \"export const TOKEN_SERVICE_URL = \"https://awardgrid.dowhiz.com/oauth/seats\";\"",
         "sites/auth/src/index.ts:16-19 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
-        "sites/auth/wrangler.jsonc:15-17 \"\"observability\": { \"enabled\": false, \"logs\": { \"enabled\": false } },\""
+        "sites/auth/wrangler.jsonc:15-17 \"\"observability\": { \"enabled\": false, \"logs\": { \"enabled\": false } },\"",
+        "sites/auth/wrangler.jsonc:10 \"\"routes\": [{ \"pattern\": \"awardgrid.dowhiz.com/oauth/*\", \"zone_name\": \"dowhiz.com\" }],\""
       ],
       "allowed_copy": "The AwardGrid iPhone app has no accounts of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go from the iPhone directly to seats.aero, and a small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens and stores nothing; sample data sends nothing.",
       "allowed_copy_extra": [
@@ -837,7 +845,8 @@
         "The subject is always the iPhone app (NO_SERVER_SUBJECT): the private web app on the same host has accounts and a server. Since 2026-10-07 \"AwardGrid for iPhone\" counts as that subject too (the privacy policy and the store description); \"AwardGrid\" alone does not.",
         "Since 2026-10-07 (build 4): the App Store build has no Ask (the ask claim), so it sends nothing to Anthropic, and over sample data it sends nothing at all (the sample_mode claim). Until then the sentence ended \"Searches go to seats.aero and, only for Ask, to Anthropic.\", which is retired_copy.",
         "Since 2026-10-07 the App Store build connects through seats.aero's own sign-in (the oauth_connection claim), so the iPhone app talks to one server of the developer's: the token service at awardgrid.dowhiz.com (sites/auth, the Worker awardgrid-auth), which holds AwardGrid's OAuth client secret and exchanges and refreshes the sign-in tokens. It is stateless: no storage binding, no console call, observability and Logpush off (sites/auth/src/index.ts:16-19, wrangler.jsonc). Searches never pass through it: they go from the iPhone to seats.aero with the access token (apps/ios/src/native/http.ts). \"No server of its own\" was true of the key flavour and is retired_copy. \"No accounts of its own\": the person's seats.aero account is seats.aero's; AwardGrid has no sign-up and no account of its own.",
-        "The token service is not deployed yet: it is deployed, with its client secret, by the owner before the build that uses it is submitted (sites/auth/DEPLOY.md). The copy describes that build.",
+        "The token service was deployed by the owner on 2026-10-07, with its client secret as a Worker secret (sites/auth/DEPLOY.md). The copy describes the build that uses it.",
+        "The token service is a Cloudflare Worker on the awardgrid.dowhiz.com/oauth/* route (wrangler.jsonc). Since 2026-10-08 /privacy/ names that host, Cloudflare Workers, in its token-service section, and its \"This website\" section says that the app's requests to the token service (the one-time code and the random value, or the refresh token) reach Cloudflare. Until then that section said the app sends nothing to Cloudflare, which was true of the key flavour only.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
@@ -856,7 +865,7 @@
       "evidence_level": "observed",
       "evidence_ref": [
         "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
-        "sites/landing/privacy/index.html:259-265 \"<h2 id=\"site-h\">This website</h2>\"",
+        "sites/landing/privacy/index.html:262-268 \"<h2 id=\"site-h\">This website</h2>\"",
         "sites/landing/DEPLOY.md:39-40 \"- Cloudflare Web Analytics can add its disclosed beacon to browser HTML responses.\"",
         "apps/ios/package.json:17-27 \"\"dependencies\": {\""
       ],
@@ -942,7 +951,7 @@
         "Registered on 2026-10-07 (release plan step 47F, step 5): the App Store build connects a seats.aero account only through seats.aero's own sign-in, Login with Seats.aero (OAuth 2.0). `npm run build:store` builds that flavour (apps/ios/package.json:10), App.tsx routes its connect page and drops the key page, and scripts/check-store-bundle.mjs fails the build if any word of the paste field reaches the bundle. seats.aero confirmed in writing on 7 October 2026 that AwardGrid may use Login with Seats.aero; the owner's approval of the plan (2026-10-06) covers this wording.",
         "\"seats.aero asks you to sign in and approve AwardGrid\": Connect seats.aero opens https://seats.aero/oauth2/consent in the system's sign-in sheet (ASWebAuthenticationSession, SeatsAuthPlugin.swift), which shares Safari's sign-in, so a person already signed in to seats.aero there may only be asked to approve. \"AwardGrid never sees your password\": the password is typed on seats.aero's page, inside the system sheet; the app receives only an authorization code, which the token service exchanges for tokens (apps/ios/src/oauth/connect.ts).",
         "\"Disconnect at any time\": Settings › seats.aero account › Disconnect removes the tokens and runs the purge (bootstrap.ts disconnect); removing AwardGrid's access in the seats.aero settings ends the refresh token, and the app purges on the next refresh it is refused (token-store.ts, the invalid_grant case).",
-        "The token service (sites/auth, the Worker awardgrid-auth) holds the client secret, exchanges the code and refreshes the access token; it keeps nothing and logs nothing (sites/auth/src/index.ts:16-19, wrangler.jsonc). It is not deployed yet and no OAuth client exists yet: both are the owner's, before the build that uses them is submitted (sites/auth/DEPLOY.md). Build 1.0 (4), an internal TestFlight build, connects with a pasted key and is not submitted.",
+        "The token service (sites/auth, the Worker awardgrid-auth) holds the client secret, exchanges the code and refreshes the access token; it keeps nothing and logs nothing (sites/auth/src/index.ts:16-19, wrangler.jsonc). The owner registered the OAuth client with seats.aero and deployed the Worker, with its secrets, on 2026-10-07 (sites/auth/DEPLOY.md); since then it runs on Cloudflare Workers, on the awardgrid.dowhiz.com/oauth/* route, and /privacy/ names that host. Build 1.0 (4), an internal TestFlight build, connects with a pasted key and is not submitted.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra) is the wording of /support/#zh, written on 2026-10-07 to say what the English says and nothing more; it is pending a native speaker's review.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],

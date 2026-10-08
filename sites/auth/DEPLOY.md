@@ -18,9 +18,9 @@ account (`npm run build:store` builds the OAuth flavour, `VITE_AG_CONNECT=oauth`
 holds AwardGrid's seats.aero OAuth client secret, so the secret never ships in the app, and it makes the two calls
 seats.aero wants made from a server: the code exchange and the token refresh.
 
-**Status: not deployed, and no OAuth client exists yet.** Nothing in CI deploys it. Everything below is the owner's,
-under the owner's seats.aero and Cloudflare logins. An agent never types a secret, never creates the client and never
-deploys.
+**Status: deployed on 2026-10-07, after the owner registered the OAuth client with seats.aero; the client ID and
+secret are Worker secrets.** Nothing in CI deploys it. Everything below is the owner's, under the owner's seats.aero
+and Cloudflare logins. An agent never types a secret, never creates the client and never deploys.
 
 ```
 iPhone app ── ASWebAuthenticationSession ──► https://seats.aero/oauth2/consent?response_type=code&client_id=…

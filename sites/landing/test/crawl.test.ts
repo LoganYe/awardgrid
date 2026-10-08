@@ -378,13 +378,13 @@ describe("the home page", () => {
   const text = html.replace(/<!--[\s\S]*?-->/g, " ").replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const hrefs = tags(html.replace(/<!--[\s\S]*?-->/g, ""), "a").map((a) => a.get("href"));
 
-  it("links the three pages relatively, so it works on the hostname and on workers.dev; into the web app only /grid, no log-in link", () => {
-    // "/" is the Worker's now, so the web app's home no longer redirects its signed-in users to /grid: the home page
-    // gives them that link (absolute, so it also works from the workers.dev copy). /grid sends a signed-out visitor to /login.
-    expect(hrefs).toEqual(["./ios/", "./privacy/", "./support/", "https://awardgrid.dowhiz.com/grid", "https://seats.aero"]);
-    expect(html).not.toMatch(/\/(?:login|register)\b/);
-    expect(text.replace(/\s+([.,;])/g, "$1")).toContain(`Web app users: open the grid.`);
-    expect(claim("webapp_note").allowed_copy_extra).toEqual(["Web app users: open the grid."]);
+  it("links the three pages relatively, so it works on the hostname and on workers.dev; nothing into the web app", () => {
+    // Since 2026-10-08 (build 6) the home page has no link into the invite-only web app, not even to its grid: the site
+    // the App Store links to describes the iPhone app. The sentence that carried the link is webapp_note's retired_copy.
+    expect(hrefs).toEqual(["./ios/", "./privacy/", "./support/", "https://seats.aero"]);
+    expect(html).not.toMatch(/\/(?:login|register|grid)\b/);
+    expect(text).not.toContain("open the grid");
+    expect(claim("webapp_note").retired_copy).toEqual(["Web app users: open the grid."]);
   });
 
   it("says the registry's words: the status for the current status, the web app note as plain text, the affiliation", () => {
@@ -401,8 +401,6 @@ describe("links between the pages", () => {
   const routes: string[] = JSON.parse(readFileSync(path.join(SITE, "wrangler.jsonc"), "utf8").replace(/^\s*\/\/.*$/gm, "")).routes.map(
     (r: { pattern: string }) => r.pattern.slice("awardgrid.dowhiz.com".length),
   );
-  /** The home page's one link into the web app (its users lost the "/" → /grid redirect when the Worker took "/"). */
-  const WEB_APP_LINKS = new Set(["https://awardgrid.dowhiz.com/grid"]);
   /** Whether a route sends this path to the Worker on the hostname: a prefix route (`/ios*`) or an exact one. */
   const routed = (pathname: string) => routes.some((r) => (r.endsWith("*") ? pathname.startsWith(r.slice(0, -1)) : pathname === r));
   const idsOf = (html: string) => new Set([...html.matchAll(/\sid\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi)].map((m) => m[1] ?? m[2] ?? m[3]));
@@ -412,8 +410,8 @@ describe("links between the pages", () => {
    * stays on the origin the page is served from must name a file of the build (a path ending in "/" serves its
    * index.html) that the Worker answers there (on the hostname a route must claim the path; workers.dev serves every
    * file), and a #fragment must be an id on the page it points to. No <a href> names the hostname itself: on
-   * workers.dev it would leave for the hostname. (canonical and hreflang are absolute on purpose.) The one exception is
-   * WEB_APP_LINKS: the home page's link into the web app, absolute on purpose, to a path no Worker route claims.
+   * workers.dev it would leave for the hostname, and on the hostname a path no route claims is the web app's, which no
+   * page links to since 2026-10-08. (canonical and hreflang are absolute on purpose.)
    */
   function linkProblems(pagePath: string, html: string, files: Set<string>, htmlOf: (file: string) => string): string[] {
     const out: string[] = [];
@@ -421,11 +419,6 @@ describe("links between the pages", () => {
     const refs = [...tags(markup, "a").map((a) => ["a", a.get("href")] as const), ...tags(markup, "link").map((a) => ["link", a.get("href")] as const)];
     for (const [tag, href] of refs) {
       if (href === undefined || /^(?:mailto|tel):/i.test(href)) continue;
-      if (tag === "a" && WEB_APP_LINKS.has(href)) {
-        if (pagePath !== "/") out.push(`${pagePath}: the web app link ${href} belongs on the home page only`);
-        if (routed(new URL(href).pathname)) out.push(`${pagePath}: ${href} is claimed by a Worker route, so it is not the web app's`);
-        continue;
-      }
       if (tag === "a" && /^(?:https?:)?\/\/awardgrid\.dowhiz\.com(?:[/?#]|$)/i.test(href)) out.push(`${pagePath}: <a href="${href}"> names the hostname, so it leaves workers.dev`);
       for (const origin of [ORIGIN, WORKERS_DEV_ORIGIN]) {
         const url = new URL(href, origin + pagePath);
@@ -452,6 +445,7 @@ describe("links between the pages", () => {
     expect(problems('<a href="../support/">x</a>')).toMatch(/\/ios\/support\/, which the build does not have/);
     expect(problems('<a href="../../privacy/#nope">x</a>')).toMatch(/names #nope/);
     expect(problems('<a href="https://awardgrid.dowhiz.com/support/">x</a>')).toMatch(/names the hostname/);
+    expect(problems('<a href="https://awardgrid.dowhiz.com/grid">x</a>')).toMatch(/names the hostname/);
     expect(problems('<a href="../../sitemap.xml">x</a>')).toBe("");
     expect(problems('<a href="../../support/">x</a> <a href="../../privacy/#zh">x</a> <a href="https://seats.aero">x</a>')).toBe("");
   });
