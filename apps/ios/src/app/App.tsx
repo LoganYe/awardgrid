@@ -119,7 +119,7 @@ const BARE_PAGE = {
 } as const;
 
 /**
- * The chrome's pages that show results, and so carry their source at their end: "Data: seats.aero", or in sample mode
+ * The chrome's pages that show results, and so carry their source at their top: "Data: seats.aero", or in sample mode
  * "Sample data · on this device".
  */
 export function showsSeatsData(place: string): boolean {
@@ -133,7 +133,7 @@ export function showsSeatsData(place: string): boolean {
  * shell's html/body overflow rule would stop sticky headers), the area above the bar does.
  *
  * LEGAL.md: "Every screen that shows award data carries the attribution 'Data: seats.aero'", with "seats.aero" linking to
- * its site. The Search screen says it in its status line; Watches and Saved carry it at the end of their content.
+ * its site. The Search screen says it in its status line; Watches and Saved carry it at the top of their content.
  * Sample mode (release plan step 17) shows its banner at the top of every tab instead (Search under its sticky header),
  * and "Sample data · on this device" where the attribution would be: its rows are not seats.aero's.
  */
@@ -176,9 +176,9 @@ export function Chrome({ services }: { services: AppServices }) {
       <main ref={main} className={onSearch ? "app-main" : "app-main app-page chrome-x"} onScroll={(e) => positions.current.set(place, e.currentTarget.scrollTop)}>
         {/* Sample mode's banner on every tab; the Search screen draws its own under its sticky header. */}
         {onSearch ? null : <SampleBanner services={services} locale={locale} />}
-        <Outlet context={services} />
-        {/* Only over seats.aero's data: Watches and Saved. Search says it in its status line; Settings and its pages show
-            none of it. Over sample data, the sample line instead, with no link: the rows are made up on this device. */}
+        {/* Only over seats.aero's data: Watches and Saved, at the top, so the source is read before the results it
+            names however far they run. Search says it in its status line; Settings and its pages show none of it.
+            Over sample data, the sample line instead, with no link: the rows are made up on this device. */}
         {showsSeatsData(place) ? (
           sample ? (
             <p className="app-attribution ag-sample-source">{SAMPLE[locale].attribution}</p>
@@ -186,6 +186,7 @@ export function Chrome({ services }: { services: AppServices }) {
             <SeatsAttribution className="app-attribution" text={t.attribution} locale={locale} />
           )
         ) : null}
+        <Outlet context={services} />
       </main>
       <SaveProblemBar services={services} problem={saveProblem} locale={locale} />
       {/* The comparison bar (T12) sits here, above the tab bar and outside the scrolling area, so it never covers a

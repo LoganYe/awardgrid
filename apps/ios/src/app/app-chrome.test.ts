@@ -8,7 +8,7 @@
  */
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 import { Chrome } from "./App";
 import { type AppServices, SaveStatus } from "./bootstrap";
@@ -20,6 +20,20 @@ function render({ unseen = 0, locale = "en", path = "/" }: { unseen?: number; lo
   const settings = new SettingsStore({ deviceLocale: locale });
   const services = { watches: { all: () => watches }, onWatchesChanged: () => () => {}, locale, settings, saveStatus: new SaveStatus() } as unknown as AppServices;
   return renderToStaticMarkup(createElement(MemoryRouter, { initialEntries: [path] }, createElement(Chrome, { services })));
+}
+
+/** The chrome with a stand-in screen in its outlet, at `path`. */
+function renderWithScreen(path: string): string {
+  const settings = new SettingsStore({ deviceLocale: "en" });
+  const services = { watches: { all: () => [] }, onWatchesChanged: () => () => {}, locale: "en", settings, saveStatus: new SaveStatus() } as unknown as AppServices;
+  const screen = createElement("p", { id: "screen" }, "A screen of results");
+  return renderToStaticMarkup(
+    createElement(
+      MemoryRouter,
+      { initialEntries: [path] },
+      createElement(Routes, null, createElement(Route, { path: "/", element: createElement(Chrome, { services }) }, createElement(Route, { path: "*", element: screen }))),
+    ),
+  );
 }
 
 const tabs = (html: string) =>
@@ -49,7 +63,14 @@ describe("the chrome", () => {
     expect(search).not.toContain("app-attribution");
     const link =
       'Data: <a class="ag-attribution-link" href="https://seats.aero" target="_blank" rel="noreferrer noopener">seats.aero<span class="sr-only"> Opens in Safari</span></a>';
-    for (const path of ["/watches", "/saved", "/saved/fav-1"]) expect(render({ path }), path).toContain(`<p class="app-attribution">${link}</p>`);
+    for (const path of ["/watches", "/saved", "/saved/fav-1"]) {
+      const html = render({ path });
+      expect(html, path).toContain(`<p class="app-attribution">${link}</p>`);
+      // At the top of the screen's content, before the screen itself (here a stand-in in the outlet).
+      const screen = renderWithScreen(path);
+      expect(screen.indexOf('class="app-attribution"'), path).toBeGreaterThan(-1);
+      expect(screen.indexOf('class="app-attribution"'), path).toBeLessThan(screen.indexOf('id="screen"'));
+    }
     expect(render({ path: "/saved", locale: "zh" })).toContain('数据：<a class="ag-attribution-link" href="https://seats.aero"');
     // Settings and its pages, and the example, show none of seats.aero's data.
     for (const path of ["/settings", "/settings/seats", "/settings/acknowledgements", "/example"]) expect(render({ path }), path).not.toContain("app-attribution");

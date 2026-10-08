@@ -288,6 +288,12 @@ export function DetailScreen() {
           </p>
           <p className="ag-detail-program">{d.via(programLabel(row.program))}</p>
           <p className="ag-detail-seats">{seatsLabel(row.seats_left, locale)}</p>
+          {/* LEGAL.md: the source beside the figures it names, before the itineraries below them. */}
+          {sample ? (
+            <p className="ag-detail-meta ag-sample-source">{SAMPLE[locale].attribution}</p>
+          ) : (
+            <SeatsAttribution className="ag-detail-meta" text={copy("data.source", locale)} locale={locale} />
+          )}
         </section>
 
         <section className="ag-detail-section" aria-labelledby="detail-trips">
@@ -321,11 +327,6 @@ export function DetailScreen() {
               screen's status line drops its cache age in sample mode). */}
           {loaded && !sample ? <p className="ag-detail-meta">{d.loadedOnDevice(ageLabel(Math.max(0, now.getTime() - Date.parse(loaded.loadedAt)), locale))}</p> : null}
           <p className="ag-detail-meta">{copy("help.program", locale)}</p>
-          {sample ? (
-            <p className="ag-detail-meta ag-sample-source">{SAMPLE[locale].attribution}</p>
-          ) : (
-            <SeatsAttribution className="ag-detail-meta" text={copy("data.source", locale)} locale={locale} />
-          )}
         </section>
       </div>
 
@@ -337,7 +338,8 @@ export function DetailScreen() {
           onClick={() => {
             // Cleared first, so a second copy is announced again; cleared after a while so it does not linger.
             setCopied(null);
-            void copyText(detailsCopyText(row, locale)).then((ok) => {
+            // seats.aero's credit goes with its figures; sample figures are not seats.aero's.
+            void copyText(detailsCopyText(row, locale, { attribution: !sample })).then((ok) => {
               window.requestAnimationFrame(() => setCopied(ok ? d.copied : d.copyFailed));
               window.setTimeout(() => setCopied(null), 4000);
             });

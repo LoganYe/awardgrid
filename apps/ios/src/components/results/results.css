@@ -56,7 +56,7 @@
 }
 
 .app-attribution {
-  margin: var(--ag-space-6) 0 0;
+  margin: 0 0 var(--ag-space-4);
   font-size: var(--ag-type-meta);
   line-height: var(--ag-leading-meta);
   color: var(--ag-text-secondary);

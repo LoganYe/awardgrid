@@ -73,9 +73,11 @@ describe("CompareScreen markup", () => {
     expect(removeNames[1]).toMatch(/^Remove from comparison: Option 2, /);
     expect(html.match(/From the search of/g)?.length).toBeGreaterThanOrEqual(2);
     // seats.aero's figures carry "Data: seats.aero", the name linking to seats.aero (Safari), as the details do.
-    expect(html).toContain(
-      '<p class="ag-compare-note">Data: <a class="ag-attribution-link" href="https://seats.aero" target="_blank" rel="noreferrer noopener">seats.aero<span class="sr-only"> Opens in Safari</span></a></p>',
-    );
+    const credit =
+      '<p class="ag-compare-note">Data: <a class="ag-attribution-link" href="https://seats.aero" target="_blank" rel="noreferrer noopener">seats.aero<span class="sr-only"> Opens in Safari</span></a></p>';
+    expect(html).toContain(credit);
+    // Above the figures it names, not after them.
+    expect(html.indexOf(credit)).toBeLessThan(html.indexOf("From the search of"));
   });
 
   it("a chosen option found nowhere is said to be gone, and nothing is invented for it", () => {
