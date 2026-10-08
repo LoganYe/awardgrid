@@ -3,14 +3,18 @@
  * and Chinese. Its own file, imported by that page alone, which only the OAuth flavour loads: the other flavours carry
  * none of these words. Settings' other sentences, and their OAuth versions, are ./settings-copy.ts.
  *
- * What the connection means is said before it is made: seats.aero's own sign-in page, no password seen by AwardGrid,
- * searches from the device to seats.aero, results kept on the device for 24 hours at most, and a token service that
- * renews the connection and keeps nothing.
+ * What the connection means is said before it is made, in one sentence: seats.aero's own page asks the person to sign
+ * in and approve AwardGrid, AwardGrid never sees the password, and Disconnect is there at any time (here, or in the
+ * seats.aero settings). Then: searches from the device to seats.aero, results kept on the device for 24 hours at most,
+ * and a token service that renews the connection and keeps nothing. This page is the App Store build's only way to
+ * connect an account: there is no paste field in that build.
  */
 import type { Locale } from "../app/locale";
 
 export interface OAuthConnectCopy {
   purpose: string;
+  /** The one sentence on what connecting is: seats.aero's own page asks you to sign in and approve, no password seen, Disconnect. */
+  how: string;
   where: string;
   keeps: string;
   connect: string;
@@ -33,8 +37,8 @@ export interface OAuthConnectCopy {
 
 export const OAUTH_CONNECT: Record<Locale, OAuthConnectCopy> = {
   en: {
-    purpose:
-      "Optional. Connect your own seats.aero account to see its results instead of sample data. Connect seats.aero opens seats.aero's own sign-in page, where you choose whether to allow AwardGrid. AwardGrid never sees your seats.aero password.",
+    purpose: "Optional. Connect your own seats.aero account to see its results instead of sample data.",
+    how: "Connect seats.aero opens seats.aero's own page, where seats.aero asks you to sign in and approve AwardGrid; AwardGrid never sees your password, and you can disconnect at any time, here or in your seats.aero settings.",
     where: "seats.aero offers this to accounts with API access. Without it, AwardGrid shows sample data only.",
     keeps:
       "While connected, searches go from this device to seats.aero, and their results are kept on this device for 24 hours at most. A small token service at awardgrid.dowhiz.com renews the connection and stores nothing.",
@@ -70,7 +74,8 @@ export const OAUTH_CONNECT: Record<Locale, OAuthConnectCopy> = {
     confirmKeep: "Stay connected",
   },
   zh: {
-    purpose: "可选。连接你自己的 seats.aero 账户，即可看到该账户的结果，而不是示例数据。“连接 seats.aero”会打开 seats.aero 自己的登录页面，由你决定是否允许 AwardGrid 访问。AwardGrid 不会看到你的 seats.aero 密码。",
+    purpose: "可选。连接你自己的 seats.aero 账户，即可看到该账户的结果，而不是示例数据。",
+    how: "“连接 seats.aero”会打开 seats.aero 自己的页面，由 seats.aero 请你登录并批准 AwardGrid；AwardGrid 不会看到你的密码，你也可以随时在这里或 seats.aero 设置中断开连接。",
     where: "seats.aero 只向有 API 访问权限的账户提供此功能。没有它，AwardGrid 只显示示例数据。",
     keeps: "连接期间，查票请求从本机发往 seats.aero，其结果在本机最多保留 24 小时。awardgrid.dowhiz.com 上的一个小型令牌服务只负责续期连接，不保存任何内容。",
     connect: "连接 seats.aero",

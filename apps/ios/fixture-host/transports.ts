@@ -5,6 +5,9 @@
  * below Ask's budget guard, which still see https://seats.aero/partnerapi/ URLs. So the app's own planner,
  * quota, cache and normalisation run unchanged; only the bytes are synthetic. Nothing here opens a socket.
  */
+import { MOCK_OAUTH_CLIENT, type MockOAuthConfig, createOAuthMock } from "../../../scripts/mock-seatsaero-oauth-core";
+import type { AuthorizeResult } from "../src/oauth/seats-auth-plugin";
+import type { SeatsTokens } from "../src/oauth/token-vault";
 import type { FixtureRequestLog } from "./protocol";
 import type { SyntheticRoute, SyntheticRow } from "./scenarios";
 
@@ -170,13 +173,16 @@ function matchesSearch(row: SyntheticRow, params: URLSearchParams): boolean {
  * A seats.aero Partner API stand-in. Search and Bulk Availability answer from `rows`; Get Routes lists `routes`
  * (a pair it omits is unmonitored); Get Trips answers from `trips` below (T10), and fails with the search in
  * failed-old.
- * A request without the Partner-Authorization header gets 401, as the real API and scripts/mock-seatsaero.ts do.
+ * A request without the Partner-Authorization header gets 401, as the real API and scripts/mock-seatsaero.ts do. In
+ * the App Store flavour (OAuth) only a Bearer token the sign-in stand-in issued is accepted.
  */
 export function syntheticSeatsFetch(
   rows: readonly SyntheticRow[],
   routes: readonly SyntheticRoute[],
   log: FixtureRequestLog,
   searchMode: "answer" | "hold" | "fail" = "answer",
+  /** The App Store flavour: a Bearer access token must be one the OAuth stand-in issued (fixtureOAuth). */
+  acceptsBearer: ((access: string) => boolean) | null = null,
 ): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = urlOf(input);
@@ -191,6 +197,11 @@ export function syntheticSeatsFetch(
     if (!headers.get("partner-authorization")) return json({}, 401);
     // A key the stand-in refuses, as seats.aero refuses a wrong key or one without API access (T11's key check).
     if (headers.get("partner-authorization") === "fixture-invalid-key") return json({ error: "invalid key" }, 401);
+    // The App Store flavour: only an access token the sign-in stand-in issued, unexpired and unrevoked, and nothing else.
+    if (acceptsBearer) {
+      const auth = headers.get("partner-authorization") ?? "";
+      if (!auth.startsWith("Bearer ") || !acceptsBearer(auth.slice("Bearer ".length).trim())) return json({}, 401);
+    }
 
     if (path === "search" || path === "availability") {
       // inflight-old: the request stays open, as a slow network would keep it. failed-old: the provider errors.
@@ -319,4 +330,97 @@ function sseAnswer(text: string): string {
     { type: "message_stop" },
   ];
   return events.map((event) => `event: ${String(event.type)}\ndata: ${JSON.stringify(event)}\n\n`).join("");
+}
+
+/** The fixture host's OAuth client: the HTTP mock's test client (scripts/mock-seatsaero-oauth-core.ts), never a real one. */
+export const FIXTURE_OAUTH_CLIENT_ID = MOCK_OAUTH_CLIENT.clientId;
+/** Where the token service lives in production (apps/ios/src/oauth/broker.ts TOKEN_SERVICE_URL); the stand-in answers there. */
+const TOKEN_SERVICE = "https://awardgrid.dowhiz.com/oauth/seats";
+/** The app's callback scheme, where the token service's callback hands the code (sites/auth APP_CALLBACK). */
+const APP_CALLBACK = "com.dowhiz.awardgrid://oauth/seats";
+
+export interface FixtureOAuth {
+  /** The sign-in sheet: seats.aero's consent page, then the token service's callback, as a URL on the app's scheme. */
+  authorize: (url: string) => Promise<AuthorizeResult>;
+  /** The token service's transport: POST /token and /refresh, answered as sites/auth answers them. */
+  tokenFetch: typeof fetch;
+  /** Whether seats.aero would accept this access token (for the Partner API stand-in). */
+  accepts: (access: string) => boolean;
+  /** Tokens for an account already connected on an earlier launch, issued through the same consent and exchange. */
+  connected: () => SeatsTokens;
+}
+
+/**
+ * The App Store flavour's sign-in, in the page (UIUX_STORE=1): Login with Seats.aero end to end, with nothing sent
+ * anywhere. The consent page and the token endpoint are the HTTP mock's own rules (createOAuthMock, shared with
+ * scripts/mock-seatsaero.ts, so a request seats.aero would refuse is refused here too); between them sit the token
+ * service's two jobs as sites/auth does them: the callback's 302 to the app's scheme, and the exchange and refresh with
+ * the client secret added. `mode`: "allow" (default), "decline" (the person declines on seats.aero's page) or "cancel"
+ * (the person closes the sheet). Counts go to `log.oauth`; no code, state or token is recorded.
+ */
+export function fixtureOAuth(log: FixtureRequestLog, now: () => Date, mode: "allow" | "decline" | "cancel" = "allow"): FixtureOAuth {
+  const config: MockOAuthConfig = { ...MOCK_OAUTH_CLIENT, decline: mode === "decline" };
+  const mock = createOAuthMock(config, now);
+  /** sites/auth's callback: the code and state (or the error) handed on to the app's scheme. */
+  const callback = (location: string): string => {
+    const from = new URL(location);
+    const out = new URLSearchParams();
+    for (const name of ["code", "state", "error"]) {
+      const value = from.searchParams.get(name);
+      if (value !== null) out.set(name, value);
+    }
+    return `${APP_CALLBACK}?${out}`;
+  };
+  /** sites/auth's exchange and refresh: the client's ID and secret added, the answer reduced to the token fields. */
+  const exchange = (grant: Record<string, unknown>): { status: number; body: Record<string, unknown> } => {
+    const answer = mock.token({ client_id: config.clientId, client_secret: config.clientSecret, ...grant });
+    if (answer.status !== 200) return { status: answer.status, body: { error: typeof answer.body.error === "string" ? answer.body.error : "rejected" } };
+    const { access_token, token_type, expires_in, refresh_token } = answer.body;
+    return { status: 200, body: { access_token, token_type, expires_in, refresh_token } };
+  };
+  return {
+    async authorize(url) {
+      if (mode === "cancel") return { ok: false, reason: "canceled" };
+      const parsed = new URL(url);
+      if (`${parsed.origin}${parsed.pathname}` !== "https://seats.aero/oauth2/consent") return { ok: false, reason: "failed" };
+      log.oauth.consent += 1;
+      const answer = mock.consent(parsed.searchParams);
+      return answer.status === 302 ? { ok: true, url: callback(answer.location) } : { ok: false, reason: "failed" };
+    },
+    tokenFetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = urlOf(input);
+      let body: Record<string, unknown> = {};
+      try {
+        body = JSON.parse(typeof init?.body === "string" ? init.body : "{}") as Record<string, unknown>;
+      } catch {
+        return json({ error: "invalid_request" }, 400);
+      }
+      if (init?.method !== "POST") return json({ error: "invalid_request" }, 405);
+      if (url === `${TOKEN_SERVICE}/token`) {
+        log.oauth.token += 1;
+        const { status, body: out } = exchange({ grant_type: "authorization_code", code: body.code, state: body.state, redirect_uri: config.redirectUri, scope: "openid" });
+        return json(out, status);
+      }
+      if (url === `${TOKEN_SERVICE}/refresh`) {
+        log.oauth.refresh += 1;
+        const { status, body: out } = exchange({ grant_type: "refresh_token", refresh_token: body.refresh_token });
+        return json(out, status);
+      }
+      throw new Error(`The token service stand-in only answers ${TOKEN_SERVICE}/token and /refresh`);
+    }) as typeof fetch,
+    accepts: (access) => mock.accepts(access),
+    connected() {
+      // An earlier launch's sign-in, which the person allowed whatever this launch's sheet will do.
+      const decline = config.decline;
+      config.decline = false;
+      const state = "fixture-state-of-an-earlier-launch-0000000";
+      const consent = mock.consent(new URLSearchParams({ response_type: "code", client_id: config.clientId, redirect_uri: config.redirectUri, state, scope: "openid" }));
+      config.decline = decline;
+      if (consent.status !== 302) throw new Error("The OAuth stand-in refused its own consent request.");
+      const code = new URL(consent.location).searchParams.get("code");
+      const { status, body } = exchange({ grant_type: "authorization_code", code, state, redirect_uri: config.redirectUri, scope: "openid" });
+      if (status !== 200) throw new Error("The OAuth stand-in refused its own code.");
+      return { access: String(body.access_token), refresh: String(body.refresh_token), expiresAt: now().getTime() + Number(body.expires_in) * 1000 };
+    },
+  };
 }

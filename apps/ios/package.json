@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/check-fixture-free-bundle.mjs && node scripts/acknowledgements.mjs --check",
-    "build:store": "VITE_AG_STORE=1 vite build && node scripts/check-fixture-free-bundle.mjs && node scripts/check-store-bundle.mjs && node scripts/acknowledgements.mjs --check",
+    "build:store": "VITE_AG_STORE=1 VITE_AG_CONNECT=oauth vite build && node scripts/check-fixture-free-bundle.mjs && node scripts/check-store-bundle.mjs && node scripts/acknowledgements.mjs --check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

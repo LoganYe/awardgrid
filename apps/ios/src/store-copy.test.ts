@@ -4,7 +4,9 @@
  * Nothing the App Store build can show may sell, unlock or upgrade anything, name a paid plan, call cached data live,
  * or name Ask, Claude, Anthropic, the AI entry or the AI it does not use ("No AI"): the store build has no Ask
  * (src/app/flags.ts STORE), so a note that it does not use AI only points at a feature it has not got; and the account
- * a person connects only changes where results come from. Two deny-lists, PAID and ASK below, in English and Chinese.
+ * a person connects only changes where results come from. Nor may it ask for an API key: the store build is the OAuth
+ * flavour, which connects only through seats.aero's own sign-in. Three deny-lists, PAID, ASK and KEY below, in
+ * English and Chinese.
  *
  * What is scanned:
  *   - every string the shell's store-reachable source can show — the files src/main.tsx reaches through the imports
@@ -30,6 +32,11 @@ const MAIN = path.join(SRC, "main.tsx");
 const PAID = /\bPro\b|Pro 密钥|subscri|订阅|upgrade|unlock|purchas|\bbuy\b|购买|解锁|付费|\bpaid\b|premium|trial|\blive (?:results|data)\b|实时结果/i;
 /** Ask, Claude, Anthropic, the AI entry, or a note that no AI is used (simulator QA, plan step 20). */
 const ASK = /\bAsk\b|Anthropic|Claude|AI 对话|AI ?辅助|AI assistance|AI（可选）|AI \(optional\)|\bNo AI\b|不使用 AI/;
+/**
+ * The paste-a-key connection: its field, label, instruction, key check and removal, in English and Chinese. The App
+ * Store build is the OAuth flavour, which connects only through seats.aero's own sign-in, so none of it may be shown.
+ */
+const KEY = /Paste your seats\.aero API key|seats\.aero API key|API tab|Paste the API key|Check and save|Checking the key|did not accept this key|Key on file|Remove the seats\.aero key|Remove key|粘贴|API 密钥|API 页|检查并保存|检查密钥|已保存密钥|移除 seats\.aero 密钥|移除密钥/;
 
 /**
  * Modules the store build reaches only to construct AppServices.ask (app/bootstrap.ts), which it never opens: no
@@ -53,10 +60,14 @@ interface Hit {
   file: string;
   line: number;
   text: string;
-  rule: "PAID" | "ASK";
+  rule: "PAID" | "ASK" | "KEY";
 }
 
-const rules = (text: string): Array<Hit["rule"]> => [...(PAID.test(text) ? (["PAID"] as const) : []), ...(ASK.test(text) ? (["ASK"] as const) : [])];
+const rules = (text: string): Array<Hit["rule"]> => [
+  ...(PAID.test(text) ? (["PAID"] as const) : []),
+  ...(ASK.test(text) ? (["ASK"] as const) : []),
+  ...(KEY.test(text) ? (["KEY"] as const) : []),
+];
 
 /** The strings a file can show in the store build: everything extract() reads, minus what sits in a dead branch. */
 function liveStrings(file: string): Array<{ text: string; line: number }> {
@@ -112,15 +123,16 @@ describe("the App Store build's wording", () => {
     expect(scanned).toEqual(
       expect.arrayContaining(["main.tsx", "app/App.tsx", "screens/SearchScreen.tsx", "screens/SettingsScreen.tsx", "screens/settings-copy.ts", "components/results/copy.ts", "screens/OnboardingScreen.tsx", "screens/watches-copy.ts", "screens/favorites-copy.ts", "search/search.ts"]),
     );
-    // The OAuth flavour's connect page and its words are held to the same lists: the reading leaves App.tsx's
-    // OAUTH_BUILT unknown, so both connect pages are read, whichever a store build ships.
+    // The App Store build is the OAuth flavour: its connect page, its words and its kit are read, and the key page and
+    // its words are not (App.tsx OAUTH_BUILT drops them).
     expect(scanned).toEqual(expect.arrayContaining(["screens/SeatsConnectScreen.tsx", "screens/oauth-copy.ts", "oauth/kit.ts", "oauth/token-store.ts"]));
+    for (const keyOnly of ["screens/SeatsKeyScreen.tsx", "screens/seats-key-copy.ts"]) expect(scanned, keyOnly).not.toContain(keyOnly);
     for (const askOnly of ["screens/AskScreen.tsx", "screens/AnthropicKeyScreen.tsx", "screens/anthropic-copy.ts", "ask/ask-surface-copy.ts", "ask/ask-copy.ts", "ask/consent-copy.ts", "components/AskEntry.tsx"]) {
       expect(scanned, askOnly).not.toContain(askOnly);
     }
   });
 
-  it("no store-reachable string names a paid plan, a purchase, an unlock or live data, or Ask, Claude or Anthropic", () => {
+  it("no store-reachable string names a paid plan, a purchase, an unlock or live data, Ask, Claude or Anthropic, or asks for an API key", () => {
     expect(hits.map((h) => `${h.file}:${h.line} [${h.rule}] ${JSON.stringify(h.text)}`)).toEqual([]);
   });
 
@@ -164,16 +176,30 @@ describe("the deny-lists and the flavour reading are precise", () => {
 
   it.each([
     "Connect your seats.aero account",
-    "seats.aero API key",
-    "Paste your seats.aero API key",
     "No seats.aero account connected. Try sample data, or connect your seats.aero account in Settings.",
-    "seats.aero did not accept the API key. Check it in Settings.",
     "Data: seats.aero",
     "连接你的 seats.aero 账户",
     "Asking seats.aero about 4 mileage programs…",
     "Illustrative data — not live availability",
-    "Search stops until you add a key again.",
+    "Connect seats.aero opens seats.aero's own page, where seats.aero asks you to sign in and approve AwardGrid; AwardGrid never sees your password, and you can disconnect at any time, here or in your seats.aero settings.",
+    "seats.aero did not accept the connection. Connect your seats.aero account again in Settings.",
+    "“连接 seats.aero”会打开 seats.aero 自己的页面，由 seats.aero 请你登录并批准 AwardGrid；AwardGrid 不会看到你的密码，你也可以随时在这里或 seats.aero 设置中断开连接。",
   ])("passes the neutral %j", (text) => expect(rules(text)).toEqual([]));
+
+  it.each([
+    "seats.aero API key",
+    "Paste your seats.aero API key",
+    "Paste the API key from the API tab of your seats.aero settings.",
+    "seats.aero did not accept this key. Check that you copied all of it from the API tab of your seats.aero settings, then try again. Nothing was saved.",
+    "Check and save",
+    "Checking the key with seats.aero",
+    "Key on file ending in WXYZ",
+    "Remove the seats.aero key?",
+    "粘贴你的 seats.aero API 密钥",
+    "请粘贴 seats.aero 设置中 API 页上的 API 密钥。",
+    "检查并保存",
+    "已保存密钥，末四位 WXYZ",
+  ])("KEY catches %j", (text) => expect(rules(text)).toContain("KEY"));
 
   it("reads a store flag the way the build does: STORE ? x : y keeps x; ASK_BUILT ? y : x and !STORE && y drop y", () => {
     const code = [
@@ -192,11 +218,17 @@ describe("the deny-lists and the flavour reading are precise", () => {
     expect(strings.map((s) => s.text)).toEqual(["kept", "kept", "1", "kept", "kept", "kept", "kept"]);
     expect(evaluate(ts.factory.createIdentifier("STORE"))).toBe(true);
     expect(evaluate(ts.factory.createIdentifier("somethingElse"))).toBeUndefined();
-    expect(STORE_CONSTANTS).toMatchObject({ STORE: true, ASK_BUILT: false, PROBES: false, E2E: false, CAN_CONNECT: true });
+    expect(STORE_CONSTANTS).toMatchObject({ STORE: true, ASK_BUILT: false, PROBES: false, E2E: false, CAN_CONNECT: true, OAUTH: true, OAUTH_BUILT: true });
   });
 
   it("the default build reaches the Ask screens through the same reading, so the store result is not an empty walk", () => {
     const full = storeSources(MAIN, { ...STORE_CONSTANTS, STORE: false, ASK_BUILT: true }).map(rel);
     expect(full).toEqual(expect.arrayContaining(["screens/AskScreen.tsx", "screens/AnthropicKeyScreen.tsx", "ask/ask-surface-copy.ts"]));
+  });
+
+  it("the key flavour reaches the key page through the same reading, so leaving it out of the store build is not an empty walk", () => {
+    const key = storeSources(MAIN, { ...STORE_CONSTANTS, OAUTH: false, OAUTH_BUILT: false, OAUTH_KIT: false }).map(rel);
+    expect(key).toEqual(expect.arrayContaining(["screens/SeatsKeyScreen.tsx", "screens/seats-key-copy.ts"]));
+    expect(key).not.toContain("screens/SeatsConnectScreen.tsx");
   });
 });

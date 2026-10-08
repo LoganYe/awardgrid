@@ -1,12 +1,15 @@
 /**
- * The App Store flavour (apps/ios/src/app/flags.ts STORE; release plan steps 14-15), on the fixture host served with
- * UIUX_STORE=1 (project `ios-store`, playwright.uiux.config.ts). Ask is compiled out: no way into it from Search or
- * Settings, no Anthropic key page, `#/ask` and `#/settings/anthropic` open Search, and nothing is ever sent to
- * Anthropic. The wording is neutral: a seats.aero account and its API key, no paid plan, nothing live. "Data:
- * seats.aero" links to seats.aero, beside seats.aero's data only. Everything else works as in the default build.
+ * The App Store flavour (apps/ios/src/app/flags.ts STORE and OAUTH, as `npm run build:store` builds it; release plan
+ * steps 14-15 and 47F), on the fixture host served with UIUX_STORE=1 (project `ios-store`, playwright.uiux.config.ts).
+ * Ask is compiled out: no way into it from Search or Settings, no Anthropic key page, `#/ask` and
+ * `#/settings/anthropic` open Search, and nothing is ever sent to Anthropic. A seats.aero account is connected only
+ * through seats.aero's own sign-in: the connect page has Connect seats.aero and no paste field, and the sign-in is
+ * played in the page (fixture-host/transports.ts fixtureOAuth, the HTTP mock's own consent and token rules). The
+ * wording is neutral: a seats.aero account, no API key to paste, no paid plan, nothing live. "Data: seats.aero" links
+ * to seats.aero, beside seats.aero's data only. Everything else works as in the default build.
  */
 import type { Page } from "@playwright/test";
-import { openScenario, requestLog, searchByText } from "./helpers";
+import { oauthLog, openScenario, requestLog, searchByText } from "./helpers";
 import { expect, test } from "./test";
 
 const SEARCH_TEXT = "Synthetic HKG to SEA October business and first";
@@ -18,6 +21,9 @@ const PAID = /\bPro\b|Pro 密钥|subscri|订阅|upgrade|unlock|purchas|\bbuy\b|�
 
 /** Ask, Claude, Anthropic, the AI entry, or a note that no AI is used, in either language. */
 const ASK_WORDS = /\bAsk\b|Anthropic|Claude|AI assistance|AI ?辅助|AI 对话|AI（可选）|AI \(optional\)|\bNo AI\b|不使用 AI/;
+
+/** The paste-a-key connection, in either language (the store-copy.test.ts KEY list): none of it in this build. */
+const KEY_WORDS = /API key|API tab|\bPaste\b|Check and save|Key on file|Remove key|API 密钥|API 页|粘贴|检查并保存|已保存密钥|移除密钥/;
 
 const tab = (page: Page, name: string) => page.getByRole("navigation").getByRole("link", { name, exact: true });
 
@@ -56,64 +62,98 @@ for (const [lang, settings, groups] of [
   });
 }
 
-test("the seats.aero key's removal sheet says what it affects, and nothing about AI", async ({ page }) => {
+test("Disconnect asks first and says what it removes, and nothing about AI", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "en" });
   await tab(page, "Settings").click();
+  await expect(page.locator("#settings-row-seats")).toContainText("Connected");
   await page.locator("#settings-row-seats").click();
-  await page.getByRole("button", { name: "Remove key", exact: true }).click();
+  await expect(page.getByText("Your seats.aero account is connected.")).toBeVisible();
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   const sheet = page.getByRole("dialog");
-  await expect(sheet).toContainText("Search stops until you add a key again.");
+  await expect(sheet).toContainText("Search stops until you connect again.");
   await expect(sheet).toContainText("Today's call count is kept.");
   await expect(sheet).not.toContainText(ASK_WORDS);
+  await expect(sheet).not.toContainText(KEY_WORDS);
 });
 
-test("clearing the cache says what it keeps without naming Ask", async ({ page }) => {
+test("clearing the cache says what it keeps without naming Ask or a key", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "en" });
   await tab(page, "Settings").click();
-  await expect(page.getByText("This does not touch your seats.aero key.", { exact: false })).toBeVisible();
+  await expect(page.getByText("This does not touch your seats.aero connection.", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "Clear cached results" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Cached results cleared. Your seats.aero key is untouched." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Cached results cleared. Your seats.aero connection is untouched." })).toBeVisible();
 });
 
 for (const l of [
   {
     lang: "en",
     connect: "Connect your seats.aero account",
-    label: "seats.aero API key",
-    placeholder: "Paste your seats.aero API key",
-    where: "No API tab in your seats.aero settings? Then your account has no API access, and AwardGrid shows sample data only.",
+    button: "Connect seats.aero",
+    how: "Connect seats.aero opens seats.aero's own page, where seats.aero asks you to sign in and approve AwardGrid; AwardGrid never sees your password, and you can disconnect at any time, here or in your seats.aero settings.",
   },
   {
     lang: "zh",
     connect: "连接你的 seats.aero 账户",
-    label: "seats.aero API 密钥",
-    placeholder: "粘贴你的 seats.aero API 密钥",
-    where: "seats.aero 设置中没有 API 页？说明你的账户没有 API 访问权限，AwardGrid 只显示示例数据。",
+    button: "连接 seats.aero",
+    how: "“连接 seats.aero”会打开 seats.aero 自己的页面，由 seats.aero 请你登录并批准 AwardGrid；AwardGrid 不会看到你的密码，你也可以随时在这里或 seats.aero 设置中断开连接。",
   },
 ] as const) {
-  test(`${l.lang}: the first run and the connect page speak of an account and its API key, never of a paid plan`, async ({ page }) => {
+  test(`${l.lang}: the first run and the connect page offer seats.aero's own sign-in, with no paste field and no paid plan`, async ({ page }) => {
     await openScenario(page, "no-seats-key", "ios", { lang: l.lang });
     const welcome = page.getByTestId("welcome");
     await expect(welcome).not.toContainText(PAID);
+    await expect(welcome).not.toContainText(KEY_WORDS);
     await welcome.getByRole("link", { name: l.connect }).click();
     await expect(page.getByRole("heading", { level: 1, name: l.connect })).toBeFocused();
-    const field = page.getByLabel(l.label, { exact: true });
-    await expect(field).toHaveAttribute("placeholder", l.placeholder);
-    await expect(page.getByText(l.where)).toBeVisible();
+    await expect(page.getByRole("button", { name: l.button, exact: true })).toBeEnabled();
+    await expect(page.getByTestId("seats-connect-how")).toHaveText(l.how);
+    // No paste field: no text or password input on the page at all, and none of its words.
+    await expect(page.locator("main input")).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText(KEY_WORDS);
     await expect(page.locator("main")).not.toContainText(PAID);
     await expect(page.locator("main")).not.toContainText(ASK_WORDS);
+    // Nothing is sent to draw the page.
+    expect(await oauthLog(page)).toEqual({ consent: 0, token: 0, refresh: 0 });
+    expect((await requestLog(page)).seats).toBe(0);
   });
 }
 
-test("a key seats.aero does not accept: says to check it was copied whole, and nothing was saved", async ({ page }) => {
+test("Connect seats.aero: seats.aero's sign-in, the token service's exchange, then Search runs on the account", async ({ page }) => {
   await openScenario(page, "no-seats-key", "ios", { lang: "en" });
   await page.getByTestId("welcome").getByRole("link", { name: "Connect your seats.aero account" }).click();
-  await page.getByLabel("seats.aero API key", { exact: true }).fill("fixture-invalid-key");
-  await page.getByRole("button", { name: "Check and save", exact: true }).click();
-  await expect(page.getByRole("alert")).toHaveText(
-    "seats.aero did not accept this key. Check that you copied all of it from the API tab of your seats.aero settings, then try again. Nothing was saved.",
-  );
+  await page.getByRole("button", { name: "Connect seats.aero", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Connected. You can search now." })).toBeVisible();
+  await expect(page.getByText("Your seats.aero account is connected.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect seats.aero", exact: true })).toHaveCount(0);
+  expect(await oauthLog(page)).toEqual({ consent: 1, token: 1, refresh: 0 });
+  await page.getByRole("link", { name: "Start searching" }).click();
+  // The account is the scenario's first-run one, with no availability: seats.aero accepted the token and answered
+  // with nothing (a refused token would say so instead).
+  await searchByText(page, SEARCH_TEXT);
+  await expect(page.getByText("No matches in the checked range.")).toBeVisible();
+  await expect(page.getByTestId("results-status")).toContainText("Data: seats.aero");
+  await expect(page.getByRole("alert").filter({ hasText: /did not accept|Connect your seats\.aero account again/ })).toHaveCount(0);
+  expect((await requestLog(page)).seats).toBeGreaterThan(0);
+  await tab(page, "Settings").click();
+  await expect(page.locator("#settings-row-seats")).toContainText("Connected");
+  await expect(page.locator("#settings-row-seats")).not.toContainText(KEY_WORDS);
 });
+
+for (const [mode, said] of [
+  ["decline", "AwardGrid was not allowed to connect. Nothing was saved."],
+  ["cancel", "Connecting was cancelled. Nothing was saved."],
+] as const) {
+  test(`a sign-in that ends in "${mode}" saves nothing, says so, and offers Connect again`, async ({ page }) => {
+    await openScenario(page, "no-seats-key", "ios", { lang: "en", oauth: mode });
+    await page.getByTestId("welcome").getByRole("link", { name: "Connect your seats.aero account" }).click();
+    await page.getByRole("button", { name: "Connect seats.aero", exact: true }).click();
+    await expect(page.getByRole("alert")).toHaveText(said);
+    await expect(page.getByRole("button", { name: "Connect seats.aero", exact: true })).toBeEnabled();
+    expect((await oauthLog(page)).token).toBe(0);
+    await tab(page, "Settings").click();
+    await expect(page.locator("#settings-row-seats")).toContainText("Not connected");
+  });
+}
 
 test("Data: seats.aero links to seats.aero beside seats.aero's data, and nowhere else", async ({ page }) => {
   const seatsLink = (scope: ReturnType<Page["locator"]>) => scope.getByRole("link", { name: "seats.aero Opens in Safari", exact: true });
@@ -159,23 +199,28 @@ test("sample data, made up, carries no seats.aero attribution and names no paid 
   await expect(page.locator("main")).not.toContainText(ASK_WORDS);
 });
 
-test("an account removed after a search: try sample data, or connect it again in Settings", async ({ page }) => {
+test("an account disconnected after a search: its results are removed; the welcome offers sample data or the account again", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "en" });
   await searchByText(page, SEARCH_TEXT);
   await tab(page, "Settings").click();
   await page.locator("#settings-row-seats").click();
-  await page.getByRole("button", { name: "Remove key", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Remove", exact: true }).click();
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Disconnect", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Disconnected. Results from seats.aero were removed from this device." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect seats.aero", exact: true })).toBeVisible();
+  // Search is where the app starts again: the results went with the connection, so the welcome offers sample data
+  // first, or the account.
   await tab(page, "Search").click();
-  const callout = page.getByRole("alert").filter({ hasText: "No seats.aero account connected." });
-  await expect(callout).toHaveText("No seats.aero account connected. Try sample data, or connect your seats.aero account in Settings.");
-  await callout.getByRole("link", { name: "Try sample data" }).click();
+  await expect(page.getByTestId("availability-list")).toHaveCount(0);
+  const welcome = page.getByTestId("welcome");
+  await expect(welcome.getByRole("link", { name: "Connect your seats.aero account" })).toBeVisible();
+  await welcome.getByRole("button", { name: "Try with sample data" }).click();
   await expect(page.getByTestId("sample-banner")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Search" })).toBeVisible();
 });
 
 for (const lang of ["en", "zh"] as const) {
-  test(`${lang}: no screen of the store build names a paid plan, live data, Ask or Anthropic`, async ({ page }) => {
+  test(`${lang}: no screen of the store build names a paid plan, live data, Ask or Anthropic, or asks for an API key`, async ({ page }) => {
     const settings = lang === "en" ? "Settings" : "设置";
     const watches = lang === "en" ? "Watches" : "关注";
     const saved = lang === "en" ? "Saved" : "收藏";
@@ -187,6 +232,7 @@ for (const lang of ["en", "zh"] as const) {
       const text = ignore ? shown.replace(ignore, "") : shown;
       expect(text.match(PAID)?.[0] ?? null, `${where}: ${text.slice(0, 200)}`).toBeNull();
       expect(text.match(ASK_WORDS)?.[0] ?? null, `${where}: ${text.slice(0, 200)}`).toBeNull();
+      expect(text.match(KEY_WORDS)?.[0] ?? null, `${where}: ${text.slice(0, 200)}`).toBeNull();
     };
     await checkScreen("search");
     for (const [name, path] of [

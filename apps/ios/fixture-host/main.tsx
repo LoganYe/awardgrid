@@ -25,6 +25,7 @@ import { ANTHROPIC_CONSENT_VERSION } from "../src/ask/consent-copy";
 import type { FileStore } from "../src/store/persistence";
 import { SlotFileStorage } from "../src/workspace/slot-storage";
 import { MemoryKeyStore } from "../src/native/keychain";
+import { MemoryTokenVault } from "../src/oauth/token-vault";
 import { installWebViewFetchGuard } from "../src/native/webview-fetch-guard";
 import { SnapshotStore } from "../src/store/persistence";
 import "../src/styles.css";
@@ -33,7 +34,15 @@ import type { FixtureHostHandle, FixtureHostState } from "./protocol";
 import { FoundationsGallery } from "./foundations";
 import "./foundations.css";
 import { FIXTURE_ANTHROPIC_KEY, environmentFor } from "./scenarios";
-import { refusingAnthropicFetch, scriptedAnthropicFetch, syntheticSeatsFetch } from "./transports";
+import { FIXTURE_OAUTH_CLIENT_ID, fixtureOAuth, refusingAnthropicFetch, scriptedAnthropicFetch, syntheticSeatsFetch } from "./transports";
+
+/**
+ * The App Store flavour (UIUX_STORE=1, vite.fixture.config.ts): the OAuth flavour, as `npm run build:store` builds it.
+ * The account is connected through seats.aero's own sign-in, played in the page by transports.ts fixtureOAuth: a
+ * scenario with a seats.aero account starts connected (tokens from an earlier launch, in an in-memory vault), one
+ * without starts with Connect seats.aero. `oauth=decline` or `oauth=cancel` make this launch's sign-in end that way.
+ */
+const OAUTH = import.meta.env.VITE_AG_CONNECT === "oauth";
 
 const status = document.getElementById("fixture-status") as HTMLOutputElement;
 const handle: FixtureHostHandle = {
@@ -41,7 +50,7 @@ const handle: FixtureHostHandle = {
   requestedLang: null,
   state: "booting",
   error: null,
-  log: { seats: 0, trips: 0, anthropic: 0, writes: 0, seatsPaths: [], directSeats: 0, directAnthropic: 0, anthropicContext: [] },
+  log: { seats: 0, trips: 0, anthropic: 0, writes: 0, seatsPaths: [], directSeats: 0, directAnthropic: 0, anthropicContext: [], oauth: { consent: 0, token: 0, refresh: 0 } },
 };
 window.__uiuxFixture = handle;
 
@@ -105,6 +114,8 @@ async function start(): Promise<void> {
 
   const keys = new MemoryKeyStore();
   if (env.seatsKey) await keys.set(env.seatsKey);
+  const signInMode = params.get("oauth");
+  const oauth = OAUTH ? fixtureOAuth(handle.log, () => env.now, signInMode === "decline" || signInMode === "cancel" ? signInMode : "allow") : null;
   const anthropicKeys = new MemoryKeyStore();
   // `ai=1` (T15): an Anthropic key, and a scripted Anthropic that answers instead of refusing, for any scenario. The
   // AI scenarios (T16) have both of their own.
@@ -135,11 +146,22 @@ async function start(): Promise<void> {
   createRoot(root).render(
     <App
       bootstrapOptions={{
-        keys,
+        // The OAuth flavour's key is its token store, which bootstrap builds over the vault below.
+        ...(oauth
+          ? {
+              oauth: {
+                vault: new MemoryTokenVault(env.seatsKey ? oauth.connected() : null),
+                tokenFetch: oauth.tokenFetch,
+                authorize: oauth.authorize,
+                clientId: FIXTURE_OAUTH_CLIENT_ID,
+                legacyKeys: null,
+              },
+            }
+          : { keys }),
         anthropicKeys,
         snapshots: new SnapshotStore(files),
         now: () => env.now,
-        fetchImpl: syntheticSeatsFetch(env.rows, env.routes, handle.log, env.searchMode),
+        fetchImpl: syntheticSeatsFetch(env.rows, env.routes, handle.log, env.searchMode, oauth ? oauth.accepts : null),
         // The requested language reaches the translated screens; the host's own page stays English (U-007).
         locale: handle.requestedLang === "zh" ? "zh" : handle.requestedLang === "en" ? "en" : undefined,
         anthropicFetch: scriptedAi ? scriptedAnthropicFetch(handle.log, env.aiProposal) : refusingAnthropicFetch(handle.log),

@@ -42,11 +42,17 @@ jobs:
       - name: Test (fixtures only, no network)
         run: pnpm test
 
-      # The iPhone app's App Store flavour (apps/ios, VITE_AG_STORE=1: Ask compiled out). The build fails if its bundle
-      # carries Ask or a paid-plan phrase (scripts/check-store-bundle.mjs), a test fixture, or a licenses list that is
-      # not what ships. CI has no ios/App/Pods, so the licenses check skips the two pods it reads from there, by design.
-      - name: iOS App Store bundle (Ask compiled out)
+      # The iPhone app's App Store flavour (apps/ios, VITE_AG_STORE=1: Ask compiled out; VITE_AG_CONNECT=oauth: the
+      # account is connected only through seats.aero's own sign-in, with no paste field). The build fails if its bundle
+      # carries Ask, a paid-plan phrase or the paste field's words, or lacks the OAuth connect page
+      # (scripts/check-store-bundle.mjs), a test fixture, or a licenses list that is not what ships. CI has no
+      # ios/App/Pods, so the licenses check skips the two pods it reads from there, by design. The OAuth flavour's App
+      # Store build refuses an empty client ID; CI builds with a placeholder (the client ID is not a secret, and this
+      # bundle is never shipped).
+      - name: iOS App Store bundle (Ask compiled out, Login with Seats.aero only)
         run: pnpm --filter @awardgrid/ios build:store
+        env:
+          VITE_AG_SEATS_CLIENT_ID: ci-placeholder-client-id
 
       # One owner per capture (#34): every PNG under docs/screenshots/v0.2/** outside the frozen
       # before/ is declared in e2e/matrix.ts and written by e2e/screenshots.spec.ts. This reads

@@ -23,16 +23,17 @@ async function load(connect: "key" | "oauth", store = true) {
   vi.resetModules();
   vi.stubEnv("VITE_AG_STORE", store ? "1" : "");
   vi.stubEnv("VITE_AG_CONNECT", connect);
-  const [app, settings, connectScreen, copy, favorites, watches, search] = await Promise.all([
+  const [app, settings, connectScreen, keyScreen, copy, favorites, watches, search] = await Promise.all([
     import("../app/App"),
     import("../screens/SettingsScreen"),
     import("../screens/SeatsConnectScreen"),
+    import("../screens/SeatsKeyScreen"),
     import("../screens/settings-copy"),
     import("../screens/FavoritesScreen"),
     import("../screens/watches-copy"),
     import("../search/search"),
   ]);
-  return { app, settings, connectScreen, copy, favorites, watches, search };
+  return { app, settings, connectScreen, keyScreen, copy, favorites, watches, search };
 }
 
 afterEach(() => {
@@ -70,14 +71,20 @@ describe("the connect page", () => {
     const oauth = await load("oauth");
     const routes = oauth.app.appRoutes({} as AppServices);
     const seats = routes.find((r) => r.path === "/")!.children!.find((c) => c.path === "settings/seats")!;
-    // The page loads on first open (its own chunk): the route holds the lazy page, not the key page.
-    const child = (seats.element as { props: { children: { type: { $$typeof?: symbol } } } }).props.children;
-    expect(child.type.$$typeof).toBe(Symbol.for("react.lazy"));
+    // The route holds the OAuth page, never the key page.
+    expect((seats.element as { type: unknown }).type).toBe(oauth.connectScreen.SeatsConnectScreen);
     const html = at("/settings/seats", createElement(oauth.connectScreen.SeatsConnectScreen), services());
     expect(html).toContain("Connect seats.aero");
     expect(html).toContain("24 hours");
-    expect(html).toContain("never sees your seats.aero password");
-    expect(html).not.toMatch(/type="password"|Paste|API key|Check and save/);
+    // One sentence: seats.aero's own page asks to sign in and approve, no password seen, and Disconnect.
+    const how = /<p[^>]*data-testid="seats-connect-how"[^>]*>([^<]*)<\/p>/.exec(html)?.[1];
+    expect(how).toBe(
+      "Connect seats.aero opens seats.aero&#x27;s own page, where seats.aero asks you to sign in and approve AwardGrid; AwardGrid never sees your password, and you can disconnect at any time, here or in your seats.aero settings.",
+    );
+    expect(html).not.toMatch(/type="password"|Paste|API key|API tab|Check and save|Key on file/);
+    const zh = at("/settings/seats", createElement(oauth.connectScreen.SeatsConnectScreen), services({ locale: "zh", settings: new SettingsStore({ deviceLocale: "zh" }) } as Partial<AppServices>));
+    expect(zh).toContain("由 seats.aero 请你登录并批准 AwardGrid；AwardGrid 不会看到你的密码");
+    expect(zh).not.toMatch(/粘贴|API 密钥|API 页/);
   });
 
   it("OAuth without a client ID: the button is off, and says why", async () => {
@@ -104,8 +111,8 @@ describe("the connect page", () => {
     const key = await load("key");
     const routes = key.app.appRoutes({} as AppServices);
     const seats = routes.find((r) => r.path === "/")!.children!.find((c) => c.path === "settings/seats")!;
-    expect((seats.element as { type: unknown }).type).toBe(key.settings.SeatsKeyScreen);
-    const html = at("/settings/seats", createElement(key.settings.SeatsKeyScreen), services({ seatsAccount: null, shortTermMs: null }));
+    expect((seats.element as { type: unknown }).type).toBe(key.keyScreen.SeatsKeyScreen);
+    const html = at("/settings/seats", createElement(key.keyScreen.SeatsKeyScreen), services({ seatsAccount: null, shortTermMs: null }));
     expect(html).toContain('type="password"');
     expect(html).not.toContain("Connect seats.aero");
   });

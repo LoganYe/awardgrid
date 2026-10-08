@@ -36,7 +36,9 @@ import { DetailScreen } from "../screens/DetailScreen";
 import { EnterSample } from "../screens/OnboardingScreen";
 import { FavoritesScreen, SavedScreen } from "../screens/FavoritesScreen";
 import { SearchScreen } from "../screens/SearchScreen";
-import { SeatsKeyScreen, SettingsScreen } from "../screens/SettingsScreen";
+import { SeatsConnectScreen } from "../screens/SeatsConnectScreen";
+import { SeatsKeyScreen } from "../screens/SeatsKeyScreen";
+import { SettingsScreen } from "../screens/SettingsScreen";
 import { WatchesScreen } from "../screens/WatchesScreen";
 
 /**
@@ -68,11 +70,16 @@ const ASK_BUILT = import.meta.env.VITE_AG_STORE !== "1";
 const AskScreen = ASK_BUILT ? lazy(() => import("../screens/AskScreen").then((m) => ({ default: m.AskScreen }))) : null;
 const AnthropicKeyScreen = ASK_BUILT ? lazy(() => import("../screens/AnthropicKeyScreen").then((m) => ({ default: m.AnthropicKeyScreen }))) : null;
 /**
- * The OAuth flavour's connect page (VITE_AG_CONNECT=oauth, ./flags.ts OAUTH): seats.aero's own sign-in instead of the
- * key field. Written out the same way, so the other flavours carry neither the page nor its words (oauth-copy.ts).
+ * Which connect page this build routes (VITE_AG_CONNECT, ./flags.ts OAUTH), written out as ASK_BUILT is: "oauth", the
+ * App Store build's flavour (`npm run build:store` sets it), routes SeatsConnectScreen, seats.aero's own sign-in with no
+ * paste field; any other value routes SeatsKeyScreen, the paste field. Both pages are imported statically above and
+ * used only in the two branches of the route below, so a build keeps the one it routes and drops the other with its
+ * words (oauth-copy.ts, seats-key-copy.ts). Neither is a lazy chunk: a lazy connect page sharing Settings' modules with
+ * the entry made the bundler split them into chunks of their own, and constants such as STORE are not folded across
+ * chunks, so Ask's sentences would have stayed in the store bundle. scripts/check-store-bundle.mjs fails the store
+ * build if any of the paste field's words remain, or if the OAuth page's do not.
  */
 const OAUTH_BUILT = import.meta.env.VITE_AG_CONNECT === "oauth";
-const SeatsConnectScreen = OAUTH_BUILT ? lazy(() => import("../screens/SeatsConnectScreen").then((m) => ({ default: m.SeatsConnectScreen }))) : null;
 
 /**
  * How many watches have changes the user has not looked at yet.
@@ -336,18 +343,13 @@ export function appRoutes(services: AppServices): RouteObject[] {
         { path: "saved/:id", element: <SavedScreen /> },
         { path: "settings", element: <SettingsScreen /> },
         // The seats.aero connection page, unless this build has no connection (VITE_AG_CONNECT=0): seats.aero's own
-        // sign-in in the OAuth flavour (VITE_AG_CONNECT=oauth), the key field otherwise.
+        // sign-in in the OAuth flavour (VITE_AG_CONNECT=oauth, the App Store build), the key field otherwise. The
+        // condition is OAUTH_BUILT itself, a build-time constant, so the page a build does not route is dropped.
         ...(CAN_CONNECT
           ? [
               {
                 path: "settings/seats",
-                element: SeatsConnectScreen ? (
-                  <Suspense fallback={null}>
-                    <SeatsConnectScreen />
-                  </Suspense>
-                ) : (
-                  <SeatsKeyScreen />
-                ),
+                element: OAUTH_BUILT ? <SeatsConnectScreen /> : <SeatsKeyScreen />,
               },
             ]
           : []),
