@@ -41,4 +41,4 @@ No. For an option it opens seats.aero's booking link when there is one; otherwis
 
 ## Could AwardGrid stop working?
 
-AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.
+AwardGrid depends on seats.aero's Partner API and connects to your seats.aero account through seats.aero's own sign-in (Login with Seats.aero); seats.aero's terms apply to that account.

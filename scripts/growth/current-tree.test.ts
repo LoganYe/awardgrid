@@ -148,7 +148,10 @@ describe("the facts registry", () => {
     // the API key from the API tab, privacy's "no server of its own" (twice), and the keys claim's three key sentences.
     // Since 2026-10-08 (build 6, whose search loads no route lists): the programs claim's "marked "not monitored"", in
     // its sentence, its extra sentence and its Chinese, and cell_fields' "Not monitored" as an empty line's example.
+    // The same day: the dependency sentence that paraphrased seats.aero's terms, in English and Chinese (it now says
+    // how AwardGrid connects and that seats.aero's terms apply to the person's account).
     expect(Object.fromEntries(CLAIMS.filter((c) => c.retired_copy).map((c) => [c.claim_id, c.retired_copy!.length]))).toEqual({
+      dependency: 2,
       prerequisite: 7,
       grid: 8,
       filters: 1,

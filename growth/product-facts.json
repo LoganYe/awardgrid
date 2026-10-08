@@ -202,24 +202,31 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-06",
+      "checked_at": "2026-10-08",
       "evidence_level": "external",
       "evidence_ref": [
-        "docs/reference/seatsaero/getting-started-p.md:25-27 \"Seats.aero Pro users may be able to access the partner API\"",
-        "[external] https://seats.aero/terms (read 2026-10-06; the version dated 2026-08-12)",
-        "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
+        "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\"",
+        "apps/ios/src/oauth/connect.ts:18 \"export const SEATS_CONSENT_URL = \"https://seats.aero/oauth2/consent\";\"",
+        "apps/ios/src/screens/oauth-copy.ts:41 \"how: \"Connect seats.aero opens seats.aero's own page, where seats.aero asks you to sign in and approve AwardGrid;\"",
+        "[external] https://seats.aero/terms (read 2026-10-06; the version dated 2026-08-12)"
       ],
-      "allowed_copy": "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.",
-      "allowed_copy_zh": "AwardGrid 依赖 seats.aero 的 Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。",
+      "allowed_copy": "AwardGrid depends on seats.aero's Partner API and connects to your seats.aero account through seats.aero's own sign-in (Login with Seats.aero); seats.aero's terms apply to that account.",
+      "allowed_copy_zh": "AwardGrid 依赖 seats.aero 的 Partner API，并通过 seats.aero 自己的登录（Login with Seats.aero）连接你的 seats.aero 账户；该账户适用 seats.aero 的条款。",
       "limitations": [
-        "Approved for public use on 2026-09-28.",
-        "Shortened on 2026-10-06 (decision D6, docs/release/IOS_1.0_RELEASE.md §0.1): the second sentence, which asked readers to check their seats.aero settings for an API tab before buying a subscription, and its Chinese are gone. It was a call to action for a purchase outside the app, which App Review Guideline 3.1.3 does not allow on the storefronts outside the United States. What remains is AwardGrid's own paraphrase of seats.aero's policy, never quoted as seats.aero's words.",
-        "The same Chinese sentence is on /ios/zh-hans/ and /support/#zh. Since 2026-10-06 it no longer names the API tab; where the prerequisite's Chinese does, it is API 页, the app's word (apps/ios/src/screens/settings-copy.ts). 只许可 states seats.aero's restriction; 授权 would read as an endorsement (the gate's AFFILIATION rule refuses \"seats.aero 授权\").",
+        "Approved for public use on 2026-09-28. Reworded on 2026-10-08 for build 6 (below); the owner reviews the new wording in the pull request that makes the change.",
+        "Reworded on 2026-10-08 (build 6): the sentence no longer paraphrases seats.aero's terms. It says what AwardGrid does, which is to connect to the person's seats.aero account through seats.aero's own sign-in, Login with Seats.aero (the oauth_connection claim; connect.ts opens seats.aero's consent page), and that seats.aero's terms (https://seats.aero/terms, linked from /privacy/) apply to that account. The earlier sentence and its Chinese are retired_copy, so the gate fails if either comes back. It still answers \"Could AwardGrid stop working?\" on /ios/, /ios/zh-hans/ and in the short answers (growth/geo/accuracy-answer.md): the app depends on seats.aero.",
+        "\"Partner API\": every seats.aero request the app makes goes to https://seats.aero/partnerapi/, with the access token from the sign-in (types.ts; the privacy claim). The gate's AFFILIATION rule lets \"Partner API\" pass as the API's name.",
+        "Shortened on 2026-10-06 (decision D6, docs/release/IOS_1.0_RELEASE.md §0.1): the second sentence, which asked readers to check their seats.aero settings for an API tab before buying a subscription, and its Chinese are gone. It was a call to action for a purchase outside the app, which App Review Guideline 3.1.3 does not allow on the storefronts outside the United States.",
+        "The same Chinese sentence is on /ios/zh-hans/ and /support/#zh. Since 2026-10-08 it takes the oauth_connection claim's words for the sign-in (seats.aero 自己的登录（Login with Seats.aero）, 连接 seats.aero 账户).",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
-        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
+        "The Chinese (allowed_copy_zh) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), rewritten on 2026-10-08 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "approved"
+      "public_use": "approved",
+      "retired_copy": [
+        "AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.",
+        "AwardGrid 依赖 seats.aero 的 Partner API，seats.aero 只许可非商业用途，并且可以限制或收回。"
+      ]
     },
     {
       "claim_id": "prerequisite",

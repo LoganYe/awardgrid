@@ -12,7 +12,7 @@ awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no c
   Partner API (Cached Search, Bulk Availability, Get Trips, Get Routes). Every user supplies
   their **own seats.aero Pro API key**, stored encrypted (AES-256-GCM) and used only for that
   user's requests. awardgrid has **no server key and never routes one user's requests through
-  another user's key**. Pro keys are limited to 1,000 calls per day and to non-commercial use;
+  another user's key**. Pro keys are limited to 1,000 calls per day;
   awardgrid enforces a per-user soft limit of 950 calls per day and caches results per user
   for 45 minutes to stay well inside that budget. **Live Search is never used** (it requires
   a commercial agreement). Every screen that shows award data carries the attribution

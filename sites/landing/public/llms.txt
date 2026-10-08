@@ -18,7 +18,7 @@
 - Privacy: The AwardGrid iPhone app has no accounts of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go from the iPhone directly to seats.aero, and a small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens and stores nothing; sample data sends nothing.
 - Short-term caching: Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term Caching rule); a saved search keeps the search and a summary, and opening it searches again.
 - Availability: AwardGrid for iPhone will be offered in 174 countries or regions; not in mainland China.
-- Dependency: AwardGrid depends on seats.aero's Partner API, which seats.aero licenses for non-commercial use and can limit or withdraw.
+- Dependency: AwardGrid depends on seats.aero's Partner API and connects to your seats.aero account through seats.aero's own sign-in (Login with Seats.aero); seats.aero's terms apply to that account.
 
 ## What the app does not do
 
