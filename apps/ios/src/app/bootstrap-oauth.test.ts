@@ -227,6 +227,28 @@ describe("the OAuth flavour", () => {
     expect(disk(s.files)).not.toContain("81234");
   });
 
+  it("a save between sweeps leaves out what passed 24 hours: Saved rows, watch baselines and cache rows go first", async () => {
+    const s = session();
+    const svc = await boot(s);
+    expect((await svc.searchText(QUERY)).ok).toBe(true);
+    await svc.favorites.save(favoriteFromSnapshot(svc.workspace.getState().displayedSnapshot!, new Date(s.now.t).toISOString(), "f1"));
+    svc.watches.add(watch());
+    await svc.checkWatches();
+    await svc.persist();
+    expect(disk(s.files)).toContain("81234");
+    const heard = vi.fn();
+    svc.onWatchesChanged(heard);
+
+    // 25 hours on, with no sweep in between (the app stayed open, the hourly timer did not fire): a save alone.
+    s.now.t += 25 * HOUR;
+    expect(await svc.persist()).toEqual({ ok: true });
+    expect(svc.favorites.get("f1")!.rowsRemoved).toBeDefined();
+    expect(svc.watches.get("w1")).toMatchObject({ baseline: [], baselineWindow: null });
+    expect(heard).toHaveBeenCalled();
+    // The workspace's two slots wait for the sweep, which reads them back (its snapshot is still on screen until then).
+    expect([...s.files.files].filter(([, text]) => text.includes("81234")).map(([path]) => path)).toEqual(["workspace-v1.a.json", "workspace-v1.b.json"]);
+  });
+
   it("opening a Saved item past 24 hours searches its query again and puts fresh rows back", async () => {
     const s = session();
     const svc = await boot(s);

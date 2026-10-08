@@ -121,7 +121,9 @@ export interface AppServices {
   /** The language and appearance chosen in Settings (T11); screens read the language with `useLocale`. */
   settings: SettingsStore;
   /**
-   * Persist the snapshots and Ask's conversation. The quota and watch writes are skipped when nothing moved.
+   * Persist the snapshots and Ask's conversation. Under the short-term limit, what passed it leaves first (cache rows,
+   * Saved rows, watch baselines, an Ask conversation), as on a sweep. The quota and watch writes are skipped when
+   * nothing moved.
    * cache.json is written on every call, and so is ask.json whenever there is a conversation, whole, so a long
    * conversation (core limits.ts MAX_CONVERSATION_FILE_BYTES) makes each call a large write.
    *
@@ -625,6 +627,14 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     assertNative: opts.assertNative,
   });
 
+  /** Under the short-term limit, an Ask conversation holding a question older than it is cleared (it carries results). */
+  const expireAsk = async () => {
+    if (shortTermMs == null) return;
+    const oldest = ask.state().entries[0];
+    const at = oldest ? Date.parse(oldest.askedAt) : NaN;
+    if (oldest && !(at >= cutoff()) && ask.state().running === null) await ask.newConversation();
+  };
+
   const saveStatus = new SaveStatus();
   const persist = async (): Promise<PersistReport> => {
     const failed: string[] = [];
@@ -638,8 +648,17 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
         message ||= err instanceof Error ? err.message || err.name : String(err);
       }
     };
-    // Under the short-term limit nothing older than it is written (or kept in memory).
+    // Under the short-term limit nothing older than it is written (or kept in memory): the cache, Saved's rows, the
+    // watches' baselines and an Ask conversation lose what passed it first, as on a sweep, so a save between two
+    // sweeps does not write it back.
     pruneCache();
+    try {
+      await expireFavorites();
+    } catch {
+      // Saved writes its own file and keeps its rows until a later save or sweep can remove them.
+    }
+    const watchesExpired = expireWatches() > 0;
+    await expireAsk().catch(() => undefined);
     await attempt("cache", () => snapshots.saveCache(cache.snapshot()));
     if (quotaStore.dirty) {
       // Marked clean only once written, so a failed write is tried again next time.
@@ -666,6 +685,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       if (ask.saveFailed?.()) throw new Error("ask.json could not be saved");
     });
     saveStatus.set(failed.length > 0 ? { failed, message, at: now().toISOString() } : null);
+    if (watchesExpired) notify();
     return failed.length > 0 ? { ok: false, failed, message } : { ok: true };
   };
 
@@ -709,13 +729,6 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   // was closed during becomes an unfinished entry. No key is read and nothing is sent.
   await ask.restore();
 
-  /** Under the short-term limit, an Ask conversation holding a question older than it is cleared (it carries results). */
-  const expireAsk = async () => {
-    if (shortTermMs == null) return;
-    const oldest = ask.state().entries[0];
-    const at = oldest ? Date.parse(oldest.askedAt) : NaN;
-    if (oldest && !(at >= cutoff()) && ask.state().running === null) await ask.newConversation();
-  };
   await expireAsk();
 
   const sweepShortTerm = async (): Promise<void> => {
@@ -738,11 +751,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
         workspace.clearSelection();
       }
       await engine.routes.clear(cutoff());
-      await expireFavorites();
-      const watchesChanged = expireWatches() > 0;
-      await expireAsk();
+      // Saved, the watches and Ask lose what passed the limit in the save (`persist`), which tells the watches' screen.
       await persist();
-      if (watchesChanged) notify();
     } catch {
       // A sweep that could not finish runs again on the next foreground, and saves are pruned meanwhile.
     }
