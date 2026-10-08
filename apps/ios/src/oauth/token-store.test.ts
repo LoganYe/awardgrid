@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { BrokerResult, TokenBroker } from "./broker";
 import { EARLY_REFRESH_MS, TokenKeyStore, bearer } from "./token-store";
-import { MemoryTokenVault, type SeatsTokens } from "./token-vault";
+import { MemoryTokenVault, type SeatsTokens, type TokenVault } from "./token-vault";
 
 const T0 = Date.parse("2026-10-06T12:00:00Z");
 const TOKENS: SeatsTokens = { access: "seats:ota:first", refresh: "seats:otr:keep", expiresAt: T0 + 3599_000 };
@@ -153,6 +153,35 @@ describe("TokenKeyStore", () => {
     now += 3599_000;
     expect(await store.get()).toBe("Bearer seats:ota:third");
     expect(calls).toEqual(["seats:otr:keep", "seats:otr:rotated"]);
+    // Disconnect still wins over tokens only memory holds.
+    await store.clear();
+    expect(await store.get()).toBeNull();
+    expect(await store.connected()).toBe(false);
+  });
+
+  it("a write that removed the old item and failed to add the new one (KeychainSwift's set) loses nothing; the next read keeps it", async () => {
+    const inner = new MemoryTokenVault({ ...TOKENS, expiresAt: T0 });
+    let failures = 1;
+    const vault: TokenVault = {
+      read: () => inner.read(),
+      clear: () => inner.clear(),
+      // Delete, then add: the add fails once, after the delete.
+      write: async (tokens) => {
+        await inner.clear();
+        if (failures-- > 0) throw new Error("errSecInteractionNotAllowed");
+        await inner.write(tokens);
+      },
+    };
+    const { broker: b, calls } = broker([fresh("seats:ota:second", "seats:otr:rotated")]);
+    const store = new TokenKeyStore({ vault, broker: b, now: () => T0 });
+    expect(await store.get()).toBe("Bearer seats:ota:second");
+    expect(await inner.read()).toBeNull();
+    // Still connected in this run of the app, with the rotated refresh token.
+    expect(await store.connected()).toBe(true);
+    expect(await store.get()).toBe("Bearer seats:ota:second");
+    expect(await inner.read()).toEqual({ access: "seats:ota:second", refresh: "seats:otr:rotated", expiresAt: T0 + 3599_000 });
+    expect(await store.get()).toBe("Bearer seats:ota:second");
+    expect(calls).toEqual(["seats:otr:keep"]);
   });
 
   it("saves the code exchange's tokens with their expiry, refuses set(), and says whether it is connected without sending", async () => {
