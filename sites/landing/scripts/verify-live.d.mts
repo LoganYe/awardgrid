@@ -12,7 +12,7 @@ export declare const USAGE: string;
 export type Level = "info" | "pass" | "warn" | "fail";
 export type Mode = "after" | "before";
 export type ProbeKind = "home" | "page" | "workers-dev" | "web-app" | "root-file" | "https-redirect";
-/** "unknown" for a 5xx: Cloudflare's own error page. */
+/** "unknown" for a 5xx: the status alone does not establish which service failed. */
 export type ServedBy = "worker" | "web-app" | "unknown";
 
 export interface Site extends SiteConfig {

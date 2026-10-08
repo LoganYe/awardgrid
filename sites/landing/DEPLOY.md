@@ -86,6 +86,7 @@ pnpm --filter @awardgrid/landing typecheck
 AWARDGRID_SUPPORT_EMAIL=knowhiz.us@gmail.com pnpm build:landing
 node scripts/growth/validate-public-claims.mjs --dist sites/landing/dist
 cp sites/landing/vercel.json sites/landing/dist/vercel.json
+rm -f sites/landing/awardgrid-website.zip
 (cd sites/landing/dist && zip -qr -X ../awardgrid-website.zip .)
 ```
 
