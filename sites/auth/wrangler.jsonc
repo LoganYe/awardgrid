@@ -1,5 +1,5 @@
-// awardgrid-auth: NOT DEPLOYED. This file states the deployment the owner would make (release plan 47F step 2), so
-// what would run is written down next to the code. Nothing in CI deploys it, and no secret value is in this file or
+// awardgrid-auth: deployed on 2026-10-07 (DEPLOY.md). This file states that deployment (release plan 47F step 2), so
+// what runs is written down next to the code. Nothing in CI deploys it, and no secret value is in this file or
 // anywhere in the repository: the client ID and secret are Worker secrets the owner types (DEPLOY.md).
 {
   "name": "awardgrid-auth",
