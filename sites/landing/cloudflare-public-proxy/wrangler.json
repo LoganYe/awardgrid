@@ -1,0 +1,55 @@
+{
+  "name": "awardgrid-vercel-public",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-07",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "awardgrid.dowhiz.com/ios*",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/privacy*",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/support*",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/_site/*",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/robots.txt",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/sitemap.xml",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/llms.txt",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/665e809ddf84f9e36cd81d6f8842eaf6.txt",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/favicon.ico",
+      "zone_name": "dowhiz.com"
+    },
+    {
+      "pattern": "awardgrid.dowhiz.com/favicon.svg",
+      "zone_name": "dowhiz.com"
+    }
+  ],
+  "vars": {
+    "PUBLIC_ORIGIN": "https://awardgrid-website.vercel.app"
+  }
+}

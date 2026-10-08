@@ -124,6 +124,10 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm --filter @awardgrid/landing exec vitest run --reporter=verbose
 
+      - name: Public Vercel proxy tests (routing, privacy, redirects, streaming)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm --filter @awardgrid/landing test:public-proxy
+
       - name: Public-claims gate tests (every rule, each release status, today's pages)
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm exec vitest run scripts/growth --reporter=verbose

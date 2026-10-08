@@ -49,7 +49,7 @@ import { fileURLToPath } from "node:url";
 import { HOST, SITE_DIR, readSiteConfig } from "./indexnow.mjs";
 
 export { HOST };
-export const WORKERS_DEV = "awardgrid-site.logan-yegaoyang.workers.dev";
+export const WORKERS_DEV = "awardgrid-vercel-public.logan-yegaoyang.workers.dev";
 /** Pages checked on the workers.dev address: the same build as on the host, so two are enough to see its headers. */
 export const WORKERS_DEV_PATHS = ["/", "/ios/"];
 /** Web app paths: the web app keeps every path the Worker's routes do not claim. */

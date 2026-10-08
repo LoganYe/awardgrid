@@ -39,7 +39,8 @@ const FIXTURES = path.join(import.meta.dirname, "fixtures", "verify-live");
 const SITE_DIR = path.join(FIXTURES, "site");
 const SCRIPT = path.join(import.meta.dirname, "..", "scripts", "verify-live.mjs");
 const H = "https://awardgrid.dowhiz.com";
-const W = "https://awardgrid-site.logan-yegaoyang.workers.dev";
+const W = "https://awardgrid-vercel-public.logan-yegaoyang.workers.dev";
+const RECORDED_WORKER = "https://awardgrid-site.logan-yegaoyang.workers.dev";
 const HTTP_LOGIN = "http://awardgrid.dowhiz.com/login";
 const KEY = "0123456789abcdef0123456789abcdef";
 const BEACON = readFileSync(path.join(FIXTURES, "beacon.html"), "utf8");
@@ -82,7 +83,8 @@ function fixtureFetch(state: "before" | "after", changes: Record<string, Change>
   const fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = String(input);
     calls.push({ url, init });
-    const entry = responses[url];
+    // Keep the historical recordings unchanged while replaying them on the active proxy address.
+    const entry = responses[url.replace(W, RECORDED_WORKER)];
     if (!entry) throw new TypeError(`fetch failed (no fixture for ${url})`);
     let body: string | Buffer = entry.body_file
       ? readFileSync(path.join(dir, entry.body_file))
@@ -589,6 +591,14 @@ describe("the CLI", () => {
 });
 
 describe("the site's own configuration", () => {
+  it("checks the active Vercel proxy rather than the retained rollback Worker", () => {
+    const own = loadSite();
+    expect(planProbes(own).filter((p) => p.kind === "workers-dev").map((p) => p.url)).toEqual([
+      "https://awardgrid-vercel-public.logan-yegaoyang.workers.dev/",
+      "https://awardgrid-vercel-public.logan-yegaoyang.workers.dev/ios/",
+    ]);
+  });
+
   it("loads sites/landing/pages.json and public/robots.txt: the host, its pages and the IndexNow key", () => {
     const own = loadSite();
     expect(own.host).toBe("awardgrid.dowhiz.com");
