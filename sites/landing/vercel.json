@@ -1,0 +1,145 @@
+{
+  "routes": [
+    {
+      "src": "/(.*)",
+      "headers": {
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "continue": true
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": ".*\\.vercel\\.app"
+        }
+      ],
+      "headers": {
+        "X-Robots-Tag": "noindex"
+      },
+      "continue": true
+    },
+    {
+      "src": "/_site/(.*)",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      },
+      "continue": true
+    },
+    {
+      "src": "/(login|register|grid|workspace|settings|queries|legal|api)(/.*)?",
+      "headers": {
+        "Cache-Control": "no-store",
+        "X-Robots-Tag": "noindex, nofollow"
+      },
+      "continue": true
+    },
+    {
+      "src": "/ios$",
+      "headers": {
+        "Location": "/ios/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/ios/index\\.html$",
+      "headers": {
+        "Location": "/ios/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/ios/$",
+      "dest": "/ios/index.html"
+    },
+    {
+      "src": "/ios/award\\-grid$",
+      "headers": {
+        "Location": "/ios/award-grid/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/ios/award\\-grid/index\\.html$",
+      "headers": {
+        "Location": "/ios/award-grid/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/ios/award\\-grid/$",
+      "dest": "/ios/award-grid/index.html"
+    },
+    {
+      "src": "/ios/zh\\-hans$",
+      "headers": {
+        "Location": "/ios/zh-hans/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/ios/zh\\-hans/index\\.html$",
+      "headers": {
+        "Location": "/ios/zh-hans/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/ios/zh\\-hans/$",
+      "dest": "/ios/zh-hans/index.html"
+    },
+    {
+      "src": "/privacy$",
+      "headers": {
+        "Location": "/privacy/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/privacy/index\\.html$",
+      "headers": {
+        "Location": "/privacy/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/privacy/$",
+      "dest": "/privacy/index.html"
+    },
+    {
+      "src": "/support$",
+      "headers": {
+        "Location": "/support/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/support/index\\.html$",
+      "headers": {
+        "Location": "/support/"
+      },
+      "status": 308
+    },
+    {
+      "src": "/support/$",
+      "dest": "/support/index.html"
+    },
+    {
+      "src": "/$",
+      "dest": "/index.html"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(ios|privacy|support|_site)/(.*)",
+      "status": 404
+    },
+    {
+      "src": "/(.*)",
+      "status": 404
+    }
+  ]
+}

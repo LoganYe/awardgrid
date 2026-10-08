@@ -170,7 +170,7 @@
       "evidence_ref": [
         "src/app/api/auth/register/route.ts:2-4 \"POST /api/auth/register { inviteCode, username, password }\"",
         "docs/DEPLOYMENT.md:49-56 \"## Not done\"",
-        "sites/landing/DEPLOY.md:10-21 \"## Shape\"",
+        "sites/landing/DEPLOY.md:17-29 \"## Shape and boundaries\"",
         "src/app/page.tsx:25 \"if (user) redirect(\"/grid\");\"",
         "src/lib/auth/next.ts:40 \"if (!user) redirect(\"/login\");\""
       ],
@@ -847,7 +847,7 @@
       "evidence_ref": [
         "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
         "sites/landing/privacy/index.html:259-265 \"<h2 id=\"site-h\">This website</h2>\"",
-        "sites/landing/DEPLOY.md:30-32 \"**Cloudflare Web Analytics** is on for the hostname.\"",
+        "sites/landing/DEPLOY.md:39-40 \"- Cloudflare Web Analytics can add its disclosed beacon to browser HTML responses.\"",
         "apps/ios/package.json:17-27 \"\"dependencies\": {\""
       ],
       "allowed_copy": "Neither app has telemetry or analytics of its own; the pages on awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no cookies.",

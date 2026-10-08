@@ -1,5 +1,5 @@
 /**
- * verify-live.mjs against this branch's own build, served the way the deploy will serve it: so the checks the owner
+ * verify-live.mjs against this branch's own build, served by the retained rollback assets Worker: so the checks the owner
  * runs after the deploy pass on a correct deploy of exactly these files, and a mismatch between the script and the
  * pages, the manifest, public/, _headers or the routes shows up here instead of on the day.
  *
@@ -24,6 +24,8 @@ import { loadSite, verifyLive, type Report } from "../scripts/verify-live.mjs";
 const SITE = path.join(import.meta.dirname, "..");
 const FIXTURES = path.join(import.meta.dirname, "fixtures", "verify-live");
 const HOST = "awardgrid.dowhiz.com";
+// This fake zone models the retained assets Worker and its legacy _headers, not the active proxy.
+const loadRollbackSite = () => ({ ...loadSite(), workersDev: "awardgrid-site.logan-yegaoyang.workers.dev" });
 const BEACON = readFileSync(path.join(FIXTURES, "beacon.html"), "utf8");
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html",
@@ -125,14 +127,14 @@ const at = (report: Report, level: string) => report.results.flatMap((r) => r.ch
 
 describe("verify-live on this build, deployed as wrangler.jsonc and _headers say", () => {
   it("passes after the deploy with no failure and no warning, the https redirect required", async () => {
-    const report = await verifyLive({ site: loadSite(), mode: "after", expectHttpsRedirect: true, fetch: deployedFetch(outDir) });
+    const report = await verifyLive({ site: loadRollbackSite(), mode: "after", expectHttpsRedirect: true, fetch: deployedFetch(outDir) });
     expect(at(report, "fail")).toEqual([]);
     expect(at(report, "warn")).toEqual([]);
     expect(report.ok).toBe(true);
   });
 
   it("finds each page of the manifest served by the Worker with one beacon, and /?x=1 still the web app's", async () => {
-    const site = loadSite();
+    const site = loadRollbackSite();
     const report = await verifyLive({ site, mode: "after", fetch: deployedFetch(outDir) });
     const pages = report.results.filter((r) => r.kind === "home" || r.kind === "page");
     expect(pages.map((r) => r.path)).toEqual(site.paths);
@@ -141,7 +143,7 @@ describe("verify-live on this build, deployed as wrangler.jsonc and _headers say
   });
 
   it("in --before-deploy mode, fails nothing and warns only that the deploy's changes are already live", async () => {
-    const report = await verifyLive({ site: loadSite(), mode: "before", fetch: deployedFetch(outDir) });
+    const report = await verifyLive({ site: loadRollbackSite(), mode: "before", fetch: deployedFetch(outDir) });
     expect(at(report, "fail")).toEqual([]);
     for (const line of at(report, "warn")) expect(line).toMatch(/already/);
   });

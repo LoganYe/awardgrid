@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The static landing site (docs/PIVOT.md §2: 'static, on Cloudflare Pages, makes no API calls at all').",
+  "description": "Static public landing site on Vercel behind a Cloudflare proxy; no application API calls.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run && node --test cloudflare-public-proxy/worker.check.mjs",
+    "test:public-proxy": "node --test cloudflare-public-proxy/worker.check.mjs",
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {

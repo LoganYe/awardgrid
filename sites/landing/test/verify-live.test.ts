@@ -39,7 +39,8 @@ const FIXTURES = path.join(import.meta.dirname, "fixtures", "verify-live");
 const SITE_DIR = path.join(FIXTURES, "site");
 const SCRIPT = path.join(import.meta.dirname, "..", "scripts", "verify-live.mjs");
 const H = "https://awardgrid.dowhiz.com";
-const W = "https://awardgrid-site.logan-yegaoyang.workers.dev";
+const W = "https://awardgrid-vercel-public.logan-yegaoyang.workers.dev";
+const RECORDED_WORKER = "https://awardgrid-site.logan-yegaoyang.workers.dev";
 const HTTP_LOGIN = "http://awardgrid.dowhiz.com/login";
 const KEY = "0123456789abcdef0123456789abcdef";
 const BEACON = readFileSync(path.join(FIXTURES, "beacon.html"), "utf8");
@@ -82,7 +83,8 @@ function fixtureFetch(state: "before" | "after", changes: Record<string, Change>
   const fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = String(input);
     calls.push({ url, init });
-    const entry = responses[url];
+    // Keep the historical recordings unchanged while replaying them on the active proxy address.
+    const entry = responses[url.replace(W, RECORDED_WORKER)];
     if (!entry) throw new TypeError(`fetch failed (no fixture for ${url})`);
     let body: string | Buffer = entry.body_file
       ? readFileSync(path.join(dir, entry.body_file))
@@ -325,7 +327,18 @@ describe("warnings, not failures", () => {
   });
 });
 
-describe("Cloudflare's own error page (a 5xx): who would serve the path is unknown", () => {
+describe("server errors (a 5xx): which service failed is unknown", () => {
+  it.each([502, 503])("reports public proxy HTTP %s without blaming the private tunnel", async (status) => {
+    const { report } = await run("after", { changes: {
+      [`${H}/ios/`]: () => ({ status, headers: { "x-robots-tag": "noindex" }, body: "Public site temporarily unavailable" }),
+    } });
+    const details = detailsAt(report, `${H}/ios/`).join("\n");
+    expect(details).toContain(`HTTP ${status}`);
+    expect(details).not.toContain("the Worker does not answer 5xx");
+    expect(details).not.toContain("Cloudflare's own error page");
+    expect(report.results.find((r) => r.url === `${H}/ios/`)?.level).toBe("fail");
+  });
+
   /** What Cloudflare answers while the tunnel to the web app is down: a 530 page, error 1033, no Vary, its own script. */
   const TUNNEL_DOWN: Change = () => ({
     status: 530,
@@ -342,7 +355,7 @@ describe("Cloudflare's own error page (a 5xx): who would serve the path is unkno
     expect(home.served_by).toBe("unknown");
     expect(home.beacons).toBeNull();
     expect(detailsAt(report, `${H}/`).join("\n")).not.toMatch(/served by the Worker/);
-    expect(detailsAt(report, `${H}/`).find((d) => d.startsWith("info served-by"))).toBe("info served-by: unknown (HTTP 530: Cloudflare's own error page, which does not say who would serve this path)");
+    expect(detailsAt(report, `${H}/`).find((d) => d.startsWith("info served-by"))).toBe("info served-by: unknown (HTTP 530: error response does not establish which service failed)");
   });
 
   it.each([`${H}/robots.txt`, `${H}/${KEY}.txt`, `${H}/ios/`, `${W}/ios/`])("after the deploy, %s answering 530 fails on the status alone", async (url) => {
@@ -589,6 +602,14 @@ describe("the CLI", () => {
 });
 
 describe("the site's own configuration", () => {
+  it("checks the active Vercel proxy rather than the retained rollback Worker", () => {
+    const own = loadSite();
+    expect(planProbes(own).filter((p) => p.kind === "workers-dev").map((p) => p.url)).toEqual([
+      "https://awardgrid-vercel-public.logan-yegaoyang.workers.dev/",
+      "https://awardgrid-vercel-public.logan-yegaoyang.workers.dev/ios/",
+    ]);
+  });
+
   it("loads sites/landing/pages.json and public/robots.txt: the host, its pages and the IndexNow key", () => {
     const own = loadSite();
     expect(own.host).toBe("awardgrid.dowhiz.com");

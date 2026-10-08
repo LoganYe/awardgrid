@@ -30,8 +30,8 @@
  *     lists exactly the pages in pages.json; the key file serves the key.
  *   - http://awardgrid.dowhiz.com/login answers with a permanent redirect (301 or 308) to https: a warning until the
  *     redirect rule exists, a failure with --expect-https-redirect.
- *   - A 5xx anywhere is Cloudflare's own error page (a 530 while the tunnel to the web app is down): who would serve
- *     the path is reported as unknown, and the page checks do not run on it. Where the Worker should answer, it is a
+ *   - A 5xx may come from the public proxy, its upstream or Cloudflare: attribution is reported as unknown,
+ *     and page checks do not run on it. Where the Worker should answer, it is a
  *     failure; on a web app path (and "/" before the deploy), a warning.
  *
  * In --before-deploy mode the checks that the deploy changes (the "/" route, the root files, canonical links, HSTS,
@@ -49,7 +49,7 @@ import { fileURLToPath } from "node:url";
 import { HOST, SITE_DIR, readSiteConfig } from "./indexnow.mjs";
 
 export { HOST };
-export const WORKERS_DEV = "awardgrid-site.logan-yegaoyang.workers.dev";
+export const WORKERS_DEV = "awardgrid-vercel-public.logan-yegaoyang.workers.dev";
 /** Pages checked on the workers.dev address: the same build as on the host, so two are enough to see its headers. */
 export const WORKERS_DEV_PATHS = ["/", "/ios/"];
 /** Web app paths: the web app keeps every path the Worker's routes do not claim. */
@@ -210,9 +210,8 @@ export function analyzeHtml(html) {
 
 /**
  * "web-app" when the response varies on `rsc` (the Next.js web app's responses do), else "worker". With a status of
- * 500 or more, "unknown": that is Cloudflare's own error page (a 530 while the tunnel to the web app is down, say),
- * which varies on nothing and says nothing about who would have served the path. The static-assets Worker does not
- * answer 5xx.
+ * 500 or more, "unknown": the public proxy can return 502/503, and upstream or Cloudflare errors are possible.
+ * The status alone does not establish which service failed.
  */
 export function servedBy(headers, status = 200) {
   if (status >= 500) return "unknown";
@@ -223,7 +222,7 @@ export function servedBy(headers, status = 200) {
 function servedByDetail(served, status) {
   if (served === "worker") return "served by the Worker";
   if (served === "web-app") return "served by the web app (Vary: rsc)";
-  return `unknown (HTTP ${status}: Cloudflare's own error page, which does not say who would serve this path)`;
+  return `unknown (HTTP ${status}: error response does not establish which service failed)`;
 }
 
 /** `<loc>` values of a sitemap. */
@@ -375,12 +374,11 @@ function workerPageChecks(ctx, probe, res, a, { onHost }) {
 }
 
 /**
- * A 5xx is Cloudflare's own error page (servedBy): the Worker serves static files and does not answer one, so most
- * likely no Worker route matched and the web app did not answer (the Mac asleep, the tunnel down). Its markup is not
- * the site's, so no page check runs on it.
+ * A 5xx can come from the public proxy, Vercel upstream or Cloudflare. Do not infer a private tunnel failure
+ * from its status or inspect error markup as a public page.
  */
 const errorPage = (status) =>
-  `HTTP ${status}, Cloudflare's own error page (the Worker does not answer 5xx: most likely no Worker route matched and the web app did not answer)`;
+  `HTTP ${status}, server error (public proxy, upstream or Cloudflare failure; cause not established)`;
 
 /** A 5xx where the Worker should answer 200: a failure, and who would have served it is unknown. */
 function errorPageChecks(res, expected) {

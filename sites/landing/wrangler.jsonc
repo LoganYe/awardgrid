@@ -1,3 +1,6 @@
+// LEGACY ROLLBACK ONLY: production public routes now belong to awardgrid-vercel-public.
+// Current configuration: cloudflare-public-proxy/wrangler.json. Do not deploy this file
+// for a normal release: it would reassign those routes to the old assets Worker.
 // The Cloudflare Worker that serves this site: static assets only, no script (DEPLOY.md). It was created in the
 // dashboard ("Upload your static files") on 2026-09-25; this file states the same deployment so `wrangler deploy`
 // would reproduce it, and so what is deployed is written down next to what is built.
