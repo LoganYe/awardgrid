@@ -411,7 +411,9 @@ describe("content rules: each fails on a claim and passes on the honest sentence
     expect(hits(html("<h2>The iPhone app</h2><p>AwardGrid has no accounts and no server of its own.</p>"), { logical: PAGE })).toEqual([]);
     expect(hits("App 没有账号，也没有自己的服务器。")).toEqual([]);
     // "AwardGrid for iPhone" / "AwardGrid iPhone 版" name the iPhone app; "AwardGrid" alone, or "AwardGrid for the web", does not.
-    expect(hits(html("<p>AwardGrid for iPhone has no accounts and no server of its own.</p>"), { logical: PAGE })).toEqual([]);
+    // (Not the registry's retired "… no server of its own." sentence, which the gate refuses as retired wording since
+    // the token service, 2026-10-07: the rule is what is tested here.)
+    expect(hits(html("<p>AwardGrid for iPhone has no accounts and no server.</p>"), { logical: PAGE })).toEqual([]);
     expect(hits("AwardGrid iPhone 版没有账号，也没有自己的服务器。")).toEqual([]);
     expect(rules(html("<p>AwardGrid for the web has no accounts.</p>"), { logical: PAGE })).toEqual(["NO_SERVER_SUBJECT"]);
     expect(rules("AwardGrid 网页版没有账号。")).toEqual(["NO_SERVER_SUBJECT"]);

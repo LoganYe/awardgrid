@@ -6,10 +6,10 @@ AwardGrid puts award seats for several origins, several destinations and up to 9
 • Watches check your saved searches when you open the app. There is no background checking and there are no notifications.
 • Plan a trip: type a trip to see how AwardGrid reads it, save the plan on your iPhone, and try it on sample data.
 
-Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, by pasting the API key from your seats.aero settings. AwardGrid has no in-app purchases.
+Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with seats.aero's own sign-in. AwardGrid has no in-app purchases.
 
 Results from seats.aero are its cached data: confirm on the program's own site before you transfer points.
 
-Your seats.aero API key stays in your iPhone's Keychain and is sent only to seats.aero. AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.
+AwardGrid never sees your seats.aero password, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off. Searches go from the iPhone directly to seats.aero. A small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens for AwardGrid; it stores nothing and keeps no logs of tokens. AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.
 
 AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program.

@@ -64,7 +64,8 @@ those strings; `src/lib/i18n/copy-rules.test.ts` enforces the mechanical half of
 | Chips (parsed query editors) | chips | 筛选条件 | |
 | Cell | cell | 单元格 | |
 | Daily limit (seats.aero quota) | daily limit | 每日上限 | "quota" as a budget is 额度 |
-| API key | key | 密钥 | |
+| API key | key | 密钥 | The web app and the iPhone app's development builds. The iPhone app's App Store build asks for no key: see the next row |
+| Connecting a seats.aero account (iPhone app, App Store build) | Connect seats.aero / connect your seats.aero account with seats.aero's own sign-in (Login with Seats.aero) | 连接 seats.aero / 用 seats.aero 自己的登录连接 seats.aero 账户 | seats.aero asks you to sign in and approve AwardGrid; AwardGrid never sees your password; disconnect at any time, in AwardGrid or in your seats.aero settings. Never "paste the API key", "API tab" or "Pro key" in the iPhone app's public copy. The tokens are "the sign-in tokens" / 登录令牌, never shown; the Worker is "a small token service at awardgrid.dowhiz.com" / awardgrid.dowhiz.com 上的一个小型令牌服务 |
 | Link / Unlink Telegram | Link Telegram / Unlink | 绑定 Telegram / 解绑 | |
 | Alert (Telegram message) | alert | 提醒 | The verb "notify" is 通知 |
 | Quiet hours | Quiet hours | 免打扰时段 | |
@@ -102,6 +103,14 @@ claim of `growth/product-facts.json`, with the prerequisite and the platform):
 
 Until 2026-10-07 it ended "on your own seats.aero Pro key". Build 4 works without a key, on sample data, and the
 public pages no longer call the key a Pro key (release plan step 22; `IOS_1.0_RELEASE.md` §0.1 D6).
+
+Since the same day the App Store build connects a seats.aero account only through seats.aero's own sign-in, Login
+with Seats.aero (release plan 47F; `npm run build:store` builds that flavour). The public copy says so in the words
+of the registry's `oauth_connection` claim: "You connect your seats.aero account with seats.aero's own sign-in (Login
+with Seats.aero): seats.aero asks you to sign in and approve AwardGrid, and AwardGrid never sees your password. You
+can disconnect at any time, in AwardGrid or in your seats.aero settings." It never tells a reader to find, copy or
+paste an API key. Where the iPhone app's privacy is described, "no server of its own" gave way to the token service
+(the `privacy` claim), and results from the account are kept on the iPhone for at most 24 hours (`short_term_caching`).
 
 Every other public sentence about the iPhone app comes from `growth/product-facts.json` (`allowed_copy` and its kin,
 and `allowed_copy_zh` in Chinese), which `scripts/growth/validate-public-claims.mjs` checks in CI;

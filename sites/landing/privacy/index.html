@@ -26,8 +26,11 @@
       must match this page. Change them together, and change this page first.
       Since 2026-10-07 (build 4, release plan step 22) the page describes the App Store version: sample data sends
       nothing; Ask, and so Anthropic, is in test builds and the web app only; the label lists Search History alone
-      (decision D8); and "no accounts / no server of its own" is said of AwardGrid for iPhone, never of AwardGrid alone,
-      which is also the web app's name.
+      (decision D8); and "no accounts" is said of AwardGrid for iPhone, never of AwardGrid alone, which is also the web
+      app's name. Since the same day (release plan 47F) the App Store version connects an account only with seats.aero's
+      own sign-in (Login with Seats.aero): "no server of its own" gave way to the token service at awardgrid.dowhiz.com
+      (sites/auth), which exchanges and refreshes the sign-in tokens and stores nothing, and results from seats.aero
+      are kept on the device for at most 24 hours (registry claims oauth_connection, short_term_caching and privacy).
       No script in this file and no webfont request (honesty.test.ts scans it). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the section "This website" says so.
     -->
     <link rel="stylesheet" href="../styles.css" />
@@ -50,21 +53,34 @@
         <h2 id="short-h">In short</h2>
         <ul>
           <li>
-            AwardGrid for iPhone has no accounts and no server of its own. Its developer receives none of your data:
-            there is no analytics, advertising, tracking or crash reporting in the app.
+            AwardGrid for iPhone has no accounts of its own and no analytics, advertising, tracking or crash reporting.
+            Its developer keeps none of your data.
           </li>
           <li>With sample data, the app sends nothing: sample data is made on your device.</li>
           <li>
-            With your own seats.aero account connected, the app sends your search to seats.aero, with your own
-            seats.aero API key.
+            You connect your seats.aero account with seats.aero's own sign-in (Login with Seats.aero): seats.aero asks
+            you to sign in and approve AwardGrid, and AwardGrid never sees your password. You can disconnect at any
+            time, in AwardGrid or in your seats.aero settings.
+          </li>
+          <li>
+            With your account connected, the app sends your search from your device directly to seats.aero, with the
+            access token from that sign-in.
+          </li>
+          <li>
+            A small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens for AwardGrid; it
+            stores nothing and keeps no logs of tokens.
+          </li>
+          <li>
+            Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term
+            Caching rule); a saved search keeps the search and a summary, and opening it searches again.
           </li>
           <li>
             The App Store version sends nothing to Anthropic: Ask, which does, is only in the app's test builds and in
             the separate web app.
           </li>
           <li>
-            Your seats.aero key, if you add one, stays in your device's Keychain. Everything else the app keeps stays in
-            its own storage on your device.
+            The sign-in tokens, if you connect your account, stay in your device's Keychain. Everything else the app
+            keeps stays in its own storage on your device.
           </li>
           <li>
             This website, not the app, counts visits with Cloudflare Web Analytics, without cookies (see
@@ -84,20 +100,38 @@
           else.
         </p>
 
+        <h3>seats.aero's sign-in, when you connect</h3>
+        <p>
+          Connect seats.aero (Settings › seats.aero account) opens seats.aero's own sign-in page, Login with Seats.aero,
+          in the system's sign-in sheet. You sign in to seats.aero there and approve AwardGrid; AwardGrid never sees
+          your password. The page receives AwardGrid's client ID and a random value that ties seats.aero's answer to
+          this sign-in. seats.aero then hands a one-time code back to the app, through AwardGrid's token service.
+        </p>
+
+        <h3>AwardGrid's token service, to exchange and refresh the sign-in tokens</h3>
+        <p>
+          AwardGrid's client secret may not be in the app, so a small token service at awardgrid.dowhiz.com does two
+          things for it. When you connect, it exchanges the one-time code for the sign-in tokens (an access token, valid
+          about an hour, and a refresh token). Later, it gets a new access token with the refresh token. The app sends it
+          only the code and the random value, or the refresh token; the service adds AwardGrid's client ID and secret,
+          passes the request to seats.aero, and hands back only the tokens. It stores nothing and keeps no logs of
+          tokens. It never sees your searches or their results, and, like any server, it sees your device's IP address.
+        </p>
+
         <h3>seats.aero, for every search on your account</h3>
         <p>
           With your own seats.aero account connected, AwardGrid gets award availability only from the seats.aero
-          Partner API, with the API key you add. It sends seats.aero:
+          Partner API, directly from your device. It sends seats.aero:
         </p>
         <ul>
-          <li>your seats.aero API key, in the header that authorizes each request;</li>
+          <li>the access token from your sign-in, in the header that authorizes each request;</li>
           <li>your search: airports, dates, cabins, programs and similar filters;</li>
           <li>when you open a result's flight details, that result's availability ID.</li>
         </ul>
         <p>
-          These requests are made when you search, when you check a key before saving it, when you open flight
-          details, and when you open or return to the app while you have watches (in a test build with Ask, also when
-          Ask searches for a question). seats.aero handles them under its own terms (<a href="https://seats.aero/terms">seats.aero/terms</a>) and
+          These requests are made when you search, when you open flight details, when you open a saved search again
+          after its results were removed, and when you open or return to the app while you have watches (in a test
+          build with Ask, also when Ask searches for a question). seats.aero handles them under its own terms (<a href="https://seats.aero/terms">seats.aero/terms</a>) and
           privacy practices.
         </p>
 
@@ -123,7 +157,7 @@
         <p>
           Each request also carries your Anthropic API key, headers that name Anthropic's software library and its
           version, and the Accept-Language header, which gives the app's language and region. Checking your Anthropic
-          key sends a request with no question in it. Your seats.aero key is never sent to Anthropic. Anthropic handles
+          key sends a request with no question in it. Your seats.aero credentials are never sent to Anthropic. Anthropic handles
           this data under its own terms and privacy policy
           (<a href="https://www.anthropic.com/legal/privacy">anthropic.com/legal/privacy</a>), and bills your account
           for each question.
@@ -135,8 +169,9 @@
 
         <h3>Nothing else</h3>
         <p>
-          Like any internet request, a request to seats.aero (or, in a test build with Ask, to Anthropic) shows that
-          service your device's IP address. The app sends nothing to any other server, and none to its developer. If you choose, in iOS, to share
+          Like any internet request, a request to seats.aero or to the token service (or, in a test build with Ask, to
+          Anthropic) shows that service your device's IP address. The app sends nothing to any other server, and the
+          token service, which the developer runs, keeps nothing it receives. If you choose, in iOS, to share
           analytics with app developers, or you test the app through TestFlight, Apple may pass crash reports or the
           feedback you send to the developer; those are Apple's features, under your device's settings and Apple's
           policies.
@@ -147,9 +182,9 @@
         <h2 id="kept-h">What stays on your device</h2>
         <ul>
           <li>
-            <strong>Keychain:</strong> your seats.aero key, if you connect your account (and, in a test build with Ask,
-            your Anthropic key, if you add one). Keys are kept for this device only and not synced through iCloud
-            Keychain. The app shows only their last four characters.
+            <strong>Keychain:</strong> the sign-in tokens for your seats.aero account, if you connect it (and, in a
+            test build with Ask, your Anthropic key, if you add one). They are kept for this device only and not synced
+            through iCloud Keychain. The app never shows the tokens, and shows only the last four characters of a key.
           </li>
           <li>
             <strong>The app's own files:</strong> whether you use sample data or your seats.aero account; search
@@ -159,10 +194,17 @@
             data to Anthropic, and your Ask conversation, until you start a new one.
           </li>
           <li>
+            <strong>At most 24 hours:</strong> results from seats.aero are kept on the device for at most 24 hours
+            (seats.aero's Short-Term Caching rule). After that the app removes them: cached results, the results on
+            screen, the results in saved searches, and what your watches last saw. A saved search keeps the search and
+            a summary (when it was saved and how many options it showed), and opening it searches again; your watches
+            keep their conditions.
+          </li>
+          <li>
             <strong>Sample data:</strong> while it is on, the app keeps its own copies of these files (its cached
             results, watches, saved results and plans, the search on screen and settings) in a separate folder, and
-            exiting sample data deletes them. Sample data never reads or changes your seats.aero key or today's count
-            of seats.aero calls.
+            exiting sample data deletes them. Sample data never reads or changes your sign-in tokens or today's count of
+            seats.aero calls.
           </li>
         </ul>
         <p>
@@ -174,7 +216,11 @@
       <section aria-labelledby="choices-h">
         <h2 id="choices-h">Your choices</h2>
         <ul>
-          <li>Remove your seats.aero key in Settings.</li>
+          <li>
+            Disconnect in Settings › seats.aero account: it removes the sign-in tokens and all results from seats.aero
+            from your device. You can also remove AwardGrid's access in your seats.aero settings; the app then removes
+            them the next time it renews the connection.
+          </li>
           <li>Clear cached results in Settings.</li>
           <li>Exit sample data to delete everything sample data kept.</li>
           <li>
@@ -182,8 +228,8 @@
             the conversation from the device, and withdraw Ask's permission on the Anthropic key page in Settings.
           </li>
           <li>
-            Delete the app to delete its files. iOS may keep keys in the Keychain after the app is deleted, so remove
-            them in Settings first if you want them gone.
+            Delete the app to delete its files. iOS may keep Keychain items after the app is deleted, so disconnect in
+            Settings first if you want the sign-in tokens gone.
           </li>
         </ul>
         <p>
@@ -254,11 +300,14 @@
 
         <h3>概要</h3>
         <ul>
-          <li>AwardGrid iPhone 版没有账号，也没有自己的服务器。开发者不会收到你的任何数据：应用中没有统计分析、广告、跟踪或崩溃报告。</li>
+          <li>AwardGrid iPhone 版没有自己的账号，应用中也没有统计分析、广告、跟踪或崩溃报告。开发者不保存你的任何数据。</li>
           <li>使用示例数据时，应用不发送任何内容：示例数据在本机生成。</li>
-          <li>连接你自己的 seats.aero 账户后，查票时应用使用你自己的 seats.aero API 密钥，把你的查询发送给 seats.aero。</li>
+          <li>你用 seats.aero 自己的登录（Login with Seats.aero）连接 seats.aero 账户：seats.aero 会请你登录并批准 AwardGrid，AwardGrid 不会看到你的密码。你可以随时在 AwardGrid 或 seats.aero 设置中断开连接。</li>
+          <li>连接账户后，查票时应用用这次登录得到的访问令牌，把你的查询从本机直接发送给 seats.aero。</li>
+          <li>awardgrid.dowhiz.com 上的一个小型令牌服务为 AwardGrid 交换和续期登录令牌；它不保存任何内容，也不记录令牌。</li>
+          <li>来自你的 seats.aero 账户的结果在 iPhone 上最多保留 24 小时（seats.aero 的短期缓存规则）；收藏的查询会保留查询条件和摘要，打开时会重新查询。</li>
           <li>App Store 版本不向 Anthropic 发送任何内容：会发送的 AI 辅助（Ask）只在应用的测试版本和独立的网页应用里。</li>
-          <li>你添加的 seats.aero 密钥保存在本机钥匙串中。应用保存的其他内容都留在本机上它自己的存储中。</li>
+          <li>连接账户后，登录令牌保存在本机钥匙串中。应用保存的其他内容都留在本机上它自己的存储中。</li>
           <li>本网站（不是应用）用 Cloudflare Web Analytics 统计访问，不使用 cookie（见<a href="#zh-site">本网站</a>）。</li>
         </ul>
 
@@ -269,15 +318,29 @@
           seats.aero 或任何其他方发送内容。
         </p>
 
+        <h4>seats.aero 登录：连接账户时</h4>
+        <p>
+          “连接 seats.aero”（设置 › seats.aero 账户）会在系统的登录窗口中打开 seats.aero 自己的登录页面 Login with Seats.aero。你在那里登录 seats.aero 并批准
+          AwardGrid；AwardGrid 不会看到你的密码。这个页面会收到 AwardGrid 的客户端 ID，以及一个把 seats.aero 的回应与这次登录对应起来的随机值。之后 seats.aero
+          通过 AwardGrid 的令牌服务，把一个一次性代码交回应用。
+        </p>
+
+        <h4>AwardGrid 的令牌服务：交换和续期登录令牌</h4>
+        <p>
+          AwardGrid 的客户端密钥不能放在应用里，所以 awardgrid.dowhiz.com 上的一个小型令牌服务替应用做两件事：连接时，用一次性代码换取登录令牌（一个约一小时有效的访问令牌和一个刷新令牌）；之后，用刷新令牌换取新的访问令牌。应用只向它发送代码和随机值，或刷新令牌；它加上
+          AwardGrid 的客户端 ID 和密钥，把请求转给 seats.aero，只把令牌交回。它不保存任何内容，也不记录令牌。它看不到你的查询和查询结果；与任何服务器一样，它会看到你设备的
+          IP 地址。
+        </p>
+
         <h4>seats.aero：用你的账户每次查票</h4>
-        <p>连接你自己的 seats.aero 账户后，AwardGrid 只通过 seats.aero Partner API、使用你添加的 API 密钥获取里程票数据。它会向 seats.aero 发送：</p>
+        <p>连接你自己的 seats.aero 账户后，AwardGrid 只通过 seats.aero Partner API、从本机直接获取里程票数据。它会向 seats.aero 发送：</p>
         <ul>
-          <li>你的 seats.aero API 密钥，放在为每个请求授权的请求头中；</li>
+          <li>这次登录得到的访问令牌，放在为每个请求授权的请求头中；</li>
           <li>你的查询：机场、日期、舱位、里程计划及类似筛选条件；</li>
           <li>打开某个结果的航班详情时，该结果的 availability ID。</li>
         </ul>
         <p>
-          这些请求发生在：你查票时、保存前检查密钥时、打开航班详情时，以及你有关注并打开或回到应用时（在有 AI 辅助的测试版本中，还包括 AI 辅助为问题查票时）。seats.aero
+          这些请求发生在：你查票时、打开航班详情时、在收藏的结果被移除后再次打开该查询时，以及你有关注并打开或回到应用时（在有 AI 辅助的测试版本中，还包括 AI 辅助为问题查票时）。seats.aero
           按其自身的条款（<a href="https://seats.aero/terms">seats.aero/terms</a>）和隐私做法处理这些请求。
         </p>
 
@@ -295,40 +358,43 @@
         </ul>
         <p>
           每个请求还会带上你的 Anthropic API 密钥、标明 Anthropic 软件库及其版本的请求头，以及表示应用语言和地区的
-          Accept-Language 请求头。检查 Anthropic 密钥时发送的请求不含任何问题。你的 seats.aero 密钥不会发给 Anthropic。Anthropic
+          Accept-Language 请求头。检查 Anthropic 密钥时发送的请求不含任何问题。你的 seats.aero 凭据不会发给 Anthropic。Anthropic
           按其自身的条款和隐私政策（<a href="https://www.anthropic.com/legal/privacy">anthropic.com/legal/privacy</a>）处理这些数据，并按每次提问向你的账户计费。
         </p>
         <p>你可以在设置的 Anthropic 密钥页撤回许可。撤回后不再发送之后的问题；已发送的内容无法撤回。</p>
 
         <h4>其他</h4>
         <p>
-          与任何网络请求一样，发往 seats.aero（或在有 AI 辅助的测试版本中发往 Anthropic）的请求会让对方看到你设备的 IP 地址。应用不会向任何其他服务器发送数据，也不会发给开发者。如果你在
+          与任何网络请求一样，发往 seats.aero 或令牌服务（或在有 AI 辅助的测试版本中发往 Anthropic）的请求会让对方看到你设备的 IP 地址。应用不会向任何其他服务器发送数据；由开发者运行的令牌服务不保存它收到的任何内容。如果你在
           iOS 中选择与应用开发者共享分析数据，或通过 TestFlight 测试本应用，Apple 可能会把崩溃报告或你提交的反馈转交给开发者；这些是 Apple
           的功能，受你的设备设置和 Apple 的政策约束。
         </p>
 
         <h3>留在你设备上的内容</h3>
         <ul>
-          <li><strong>钥匙串：</strong>你连接账户时添加的 seats.aero 密钥（在有 AI 辅助的测试版本中，还有你添加的 Anthropic 密钥）。密钥只保存在本机，不通过 iCloud 钥匙串同步。应用只显示末四位。</li>
+          <li><strong>钥匙串：</strong>你连接账户后的 seats.aero 登录令牌（在有 AI 辅助的测试版本中，还有你添加的 Anthropic 密钥）。它们只保存在本机，不通过 iCloud 钥匙串同步。应用从不显示令牌，密钥只显示末四位。</li>
           <li>
             <strong>应用自己的文件：</strong>你使用示例数据还是 seats.aero 账户；缓存的查票结果（保留 45 分钟，重复查询不消耗调用）；今天的 seats.aero
             调用次数；你的关注；屏幕上的查询和结果及其显示方式；你保存的结果；你保存的行程规划；以及你的设置（语言和外观）。在有 AI 辅助的测试版本中，还有是否允许 AI 辅助向 Anthropic
             发送数据，以及你的 AI 辅助对话，直到你开始新对话。
           </li>
           <li>
-            <strong>示例数据：</strong>开启期间，应用把自己的一套文件（缓存结果、关注、保存的结果和行程规划、屏幕上的查询和设置）放在单独的文件夹里，退出示例数据时会删除它们。示例数据从不读取或更改你的
-            seats.aero 密钥，也不读取或更改今天的 seats.aero 调用次数。
+            <strong>最多 24 小时：</strong>来自 seats.aero 的结果在本机最多保留 24 小时（seats.aero 的短期缓存规则）。之后应用会移除它们：缓存结果、屏幕上的结果、收藏中的结果，以及关注上次看到的内容。收藏的查询会保留查询条件和摘要（保存时间和显示过的选项数），打开时会重新查询；关注会保留其条件。
+          </li>
+          <li>
+            <strong>示例数据：</strong>开启期间，应用把自己的一套文件（缓存结果、关注、保存的结果和行程规划、屏幕上的查询和设置）放在单独的文件夹里，退出示例数据时会删除它们。示例数据从不读取或更改你的登录令牌，也不读取或更改今天的
+            seats.aero 调用次数。
           </li>
         </ul>
         <p>你备份设备时（到 iCloud 或电脑），应用的文件会包含在备份中。</p>
 
         <h3>你的选择</h3>
         <ul>
-          <li>在设置中移除 seats.aero 密钥。</li>
+          <li>在“设置 › seats.aero 账户”中断开连接：这会从本机移除登录令牌和所有来自 seats.aero 的结果。你也可以在 seats.aero 设置中移除 AwardGrid 的访问权限；应用下次续期连接时会移除它们。</li>
           <li>在设置中清除缓存结果。</li>
           <li>退出示例数据，即删除示例数据保存的全部内容。</li>
           <li>在有 AI 辅助的测试版本中：在设置中移除 Anthropic 密钥；在 AI 辅助中开始新对话，即从本机删除该对话；在设置的 Anthropic 密钥页撤回 AI 辅助的许可。</li>
-          <li>删除应用即删除其文件。应用删除后，iOS 可能仍在钥匙串中保留密钥；如需删除，请先在设置中移除。</li>
+          <li>删除应用即删除其文件。应用删除后，iOS 可能仍在钥匙串中保留内容；如需删除登录令牌，请先在设置中断开连接。</li>
         </ul>
         <p>seats.aero（或在测试版本中为 AI 辅助接收内容的 Anthropic）收到的内容由它们按各自的政策保存，请直接向它们询问。AwardGrid 没有副本，因此无法替你删除。</p>
 

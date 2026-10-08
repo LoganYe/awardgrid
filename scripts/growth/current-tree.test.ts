@@ -47,8 +47,8 @@ describe("the facts registry", () => {
     expect(CLAIMS.map((c) => c.claim_id)).toEqual([
       "identity", "domain_collision", "release_status", "history", "webapp_note", "dependency", "prerequisite", "sample_mode",
       "price", "grid", "query_input", "query_zh_hant", "filters", "views", "cell_fields", "scope", "programs", "data_cached",
-      "watches", "planner", "quota", "ask", "privacy", "developer_data", "keys", "program_link", "not_offered", "affiliation",
-      "availability",
+      "watches", "planner", "quota", "ask", "privacy", "developer_data", "keys", "oauth_connection", "short_term_caching",
+      "program_link", "not_offered", "affiliation", "availability",
     ]);
   });
 
@@ -58,7 +58,9 @@ describe("the facts registry", () => {
     // filters and cell_fields were registered on 2026-09-28 for /ios/award-grid/, from the app's source and its copy;
     // filters was reworded the same day (cabins are always asked, business and first by default), for the owner to see.
     // query_zh_hant: 1.0 does not read 飛 on its own, 下禮拜 or 桃園 (its limitations), so its sentence waits.
-    // sample_mode and planner were registered on 2026-10-07 for build 4 (release plan step 22), from the app's source.
+    // sample_mode and planner were registered on 2026-10-07 for build 4 (release plan step 22), from the app's source;
+    // oauth_connection and short_term_caching the same day for the build that connects only through seats.aero's own
+    // sign-in (release plan 47F step 5).
     expect(CLAIMS.filter((c) => c.public_use === "pending_owner").map((c) => c.claim_id)).toEqual(["query_zh_hant"]);
     expect(CLAIMS.filter((c) => c.public_use !== "pending_owner").every((c) => c.public_use === "approved")).toBe(true);
   });
@@ -141,15 +143,18 @@ describe("the facts registry", () => {
     }
     const retired = CLAIMS.flatMap((c) => (c.retired_copy ?? []).map((text) => [c.claim_id, text] as const));
     // Since 2026-10-07 (build 4): the prerequisite's "searches nothing", the grid's "Pro key" headlines, the quota's "a Pro
-    // key allows", Ask as a feature of the app, and the privacy sentence that sent searches to Anthropic for Ask.
+    // key allows", Ask as a feature of the app, and the privacy sentence that sent searches to Anthropic for Ask. Since
+    // the same day (the OAuth build, release plan 47F): the prerequisite's four sentences that told the reader to paste
+    // the API key from the API tab, privacy's "no server of its own" (twice), and the keys claim's three key sentences.
     expect(Object.fromEntries(CLAIMS.filter((c) => c.retired_copy).map((c) => [c.claim_id, c.retired_copy!.length]))).toEqual({
-      prerequisite: 3,
+      prerequisite: 7,
       grid: 8,
       filters: 1,
       quota: 1,
       ask: 4,
-      privacy: 1,
+      privacy: 3,
       developer_data: 1,
+      keys: 3,
     });
     for (const [id, text] of retired) {
       expect(scanContent(text, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), id).toContain("PENDING_CLAIM_TEXT");

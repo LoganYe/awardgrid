@@ -721,14 +721,17 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertNotEqual(description, blockquote(listing, "- **Description:**", "- **Description, Chinese:**"))
         for needed in (
             "• Sample data: search any route between the 84 airports AwardGrid recognises",
-            "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, by pasting the API key from your seats.aero settings. AwardGrid has no in-app purchases.",
+            "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with seats.aero's own sign-in. AwardGrid has no in-app purchases.",
             "Results from seats.aero are its cached data: confirm on the program's own site before you transfer points.",
-            "Your seats.aero API key stays in your iPhone's Keychain and is sent only to seats.aero. AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.",
+            "AwardGrid never sees your seats.aero password, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off.",
+            "A small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens for AwardGrid; it stores nothing and keeps no logs of tokens. AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.",
             "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program.",
         ):
             self.assertIn(needed, description)
-        # No Ask, no Anthropic, no purchase wording (the plan's decisions D3 and D6).
+        # No Ask, no Anthropic, no purchase wording (the plan's decisions D3 and D6), and since the OAuth build (plan
+        # step 47F.5) no pasted key: the App Store build connects only through seats.aero's own sign-in.
         self.assertIsNone(re.search(r"\bAsk\b|Anthropic|Claude|subscri|\bpaid\b|What it needs|searches nothing", description))
+        self.assertIsNone(re.search(r"API key|API tab|past(?:e|ing)|no server of its own", description))
         self.assertFalse((self.V1 / "release_notes.txt").exists())
 
     def test_next_repeats_build_4s_prose(self):
@@ -748,8 +751,10 @@ class TestShippedMetadata(unittest.TestCase):
             "84 个机场",
             "AwardGrid iPhone 版没有账号、统计分析、广告或跟踪。",
             "AwardGrid 与 seats.aero、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
+            "连接时使用 seats.aero 自己的登录",
         ):
             self.assertIn(needed, zh)
+        self.assertIsNone(re.search(r"API 密钥|API 页|粘贴", zh))
         for text in (zh, v.read_field(self.NEXT / "zh-Hans", "promotional_text")):
             self.assertIsNone(re.search(r"AI 辅助|Anthropic|Claude|订阅|无法查票|使用前提", text))
 

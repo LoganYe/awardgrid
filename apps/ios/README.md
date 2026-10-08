@@ -4,12 +4,15 @@ Phase 2 of `docs/PIVOT.md`: *"Vite SPA, react-router, the native-HTTP adapter wi
 assertion, Keychain key storage, in-memory cache with a JSON snapshot. Device SQLite can wait for
 watches."* Phase 3 put it on the shared design tokens; Phase 4 added watches; Phase 5 added Ask.
 
-**There is no server.** No accounts, no sessions, no database, no key of ours. One device, and your
-own keys in its Keychain: the API key of your own seats.aero account if you connect one (without it
-the app shows sample data made on the device, release plan steps 16-17), and an Anthropic key if you
-use Ask in a build that has it (the App Store build, `build:store`, compiles Ask out). That deletes the
-~5,500 lines PIVOT §1 counted — `auth`, `server`, `keys`, `crypto`, `db` — because every one of them
-existed to protect a shared host.
+**No server of ours in the data path.** No accounts, no sessions, no database, no key of ours. One device, and
+your own credentials in its Keychain: in the App Store build (`build:store`, the OAuth flavour below), the sign-in
+tokens of your own seats.aero account if you connect it with seats.aero's own sign-in; in development builds, its
+pasted API key (without an account the app shows sample data made on the device, release plan steps 16-17); and an
+Anthropic key if you use Ask in a build that has it (the App Store build compiles Ask out). The one service of ours
+the App Store build talks to is the stateless token service in `sites/auth`, which exchanges and refreshes the
+sign-in tokens and stores nothing; searches go from the device straight to seats.aero. That deletes the ~5,500 lines
+PIVOT §1 counted — `auth`, `server`, `keys`, `crypto`, `db` — because every one of them existed to protect a shared
+host.
 
 ## What Phase 0 measured, and where it shows up here
 
@@ -208,7 +211,9 @@ normal `npm run build`, no chunk in `dist/assets/` may be named `*[Pp]robe*` or 
 
 ### The App Store flavour
 
-`npm run build:store` (`VITE_AG_STORE=1`, `src/app/flags.ts`) builds the app the App Store gets: Ask is compiled
+`npm run build:store` (`VITE_AG_STORE=1 VITE_AG_CONNECT=oauth`, `src/app/flags.ts`) builds the app the App Store
+gets. It is the OAuth flavour (below): a seats.aero account is connected only through seats.aero's own sign-in, the key
+page is not in the bundle, and the build refuses to run without `VITE_AG_SEATS_CLIENT_ID`. Ask is compiled
 out — no `#/ask` or `#/settings/anthropic` route (an old link lands on Search), no AI link in the Search header or
 under the results, no AI group in Settings, and none of the copy that names Ask or Anthropic (nor the query editor's
 "No AI" notes, which only point at what this build has not got). AppServices.ask is
@@ -218,12 +223,17 @@ development, the probes and the UI/UX e2e, whose `ios-store` project runs `e2e/u
 fixture host served with `UIUX_STORE=1` on 127.0.0.1:4311.
 
 `build:store` runs the fixture-marker check, then `scripts/check-store-bundle.mjs` (Ask's strings and routes,
-paid-plan phrases; each known hit is documented in the script with the reason it is there and what must surround it),
-then the licenses check. `src/store-copy.test.ts` holds the wording of the source the store build is made from.
+paid-plan phrases, the paste field's words and the key page's chunk, and the OAuth connect page's words, which must be
+there; each known hit is documented in the script with the reason it is there and what must surround it), then the
+licenses check. `src/store-copy.test.ts` holds the wording of the source the store build is made from, the OAuth
+flavour, to the same lists. The `ios-store` fixture host is the OAuth flavour too: the sign-in is played in the page
+with the HTTP mock's consent and token rules (`fixture-host/transports.ts` `fixtureOAuth`).
 
-`VITE_AG_CONNECT` picks how a seats.aero account is connected: `key` (the default, its API key pasted on the connect
-page), `0` (no connection: the connect page and every link to it are compiled out; prepared, not shipped), or
-`oauth` (seats.aero's own sign-in, "Login with Seats.aero"; below).
+`VITE_AG_CONNECT` picks how a seats.aero account is connected: `key` (the default, for development, the probes, the
+UI/UX e2e and internal test builds: its API key pasted on the connect page, `src/screens/SeatsKeyScreen.tsx`), `0` (no
+connection: the connect page and every link to it are compiled out; prepared, not shipped), or `oauth` (seats.aero's
+own sign-in, "Login with Seats.aero"; the App Store build; below). `App.tsx` routes one connect page or the other on
+the build-time constant, so each build carries only its own.
 
 ### The OAuth flavour (`VITE_AG_CONNECT=oauth`)
 
@@ -239,10 +249,10 @@ token (`src/oauth/refresh-retry.ts`). seats.aero's results are kept on the devic
 grant revoked in seats.aero, purges them all.
 
 The client ID (not a secret) is a build-time value, `VITE_AG_SEATS_CLIENT_ID`, empty by default; `vite.config.ts`
-refuses an App Store build of this flavour without it:
+refuses an App Store build of this flavour without it (how the owner gets it: `sites/auth/DEPLOY.md`):
 
 ```bash
-cd apps/ios && VITE_AG_CONNECT=oauth VITE_AG_SEATS_CLIENT_ID=<client id> npm run build:store && npx cap copy ios
+cd apps/ios && VITE_AG_SEATS_CLIENT_ID=<client id> npm run build:store && npx cap copy ios
 ```
 
 `scripts/mock-seatsaero.ts` mocks seats.aero's `/oauth2/consent` and `/oauth2/token` for development and tests.
@@ -280,7 +290,7 @@ unchanged.
 pnpm install                       # from the repo root; this is a workspace member
 pnpm --filter @awardgrid/ios test  # no device, no network
 cd apps/ios && npm run build && npx cap copy ios        # Ask on: development and the probes
-cd apps/ios && npm run build:store && npx cap copy ios  # the App Store flavour: Ask compiled out
+cd apps/ios && VITE_AG_SEATS_CLIENT_ID=<client id> npm run build:store && npx cap copy ios  # the App Store flavour: OAuth, no Ask
 ```
 
 `cap copy`, not `cap sync`: sync also runs `pod install` against the network, and the Pods are already
@@ -361,10 +371,12 @@ everything from a worktree, never from the checkout production serves.
 
 1. **Gates:** `pnpm typecheck && pnpm lint && pnpm test`, then
    `UIUX_WEB=0 pnpm exec playwright test --config=playwright.uiux.config.ts` (the iOS browser mock).
-2. **Bundle:** `env -u VITE_AG_PROBES -u VITE_AG_STORE pnpm --filter @awardgrid/ios build:store` (the App Store
-   flavour, above; never the plain `build`, which keeps Ask). It fails on any fixture marker, on a source map inside
-   `dist/` (they are moved to `dist-sourcemaps/`), on Ask or a paid-plan phrase in the bundle, and on a licenses list
-   that is not what ships. Then R1 (above) over `dist/assets/*.js` and the maps beside them.
+2. **Bundle:** `env -u VITE_AG_PROBES -u VITE_AG_STORE -u VITE_AG_CONNECT VITE_AG_SEATS_CLIENT_ID=<client id> pnpm
+   --filter @awardgrid/ios build:store` (the App Store flavour, above: OAuth, no Ask; never the plain `build`, which
+   keeps Ask and the paste field). It fails without the client ID, on any fixture marker, on a source map inside
+   `dist/` (they are moved to `dist-sourcemaps/`), on Ask, a paid-plan phrase or a word of the paste field in the
+   bundle, without the OAuth connect page, and on a licenses list that is not what ships. Then R1 (above) over
+   `dist/assets/*.js` and the maps beside them.
 3. **Copy:** `npx cap copy ios`, then `node scripts/check-store-bundle.mjs ios/App/App/public`: the folder Xcode
    archives is gitignored and keeps whatever was copied last, so this checks that it holds the store flavour, not
    an earlier `build`. `cap sync` only after a dependency bump: it runs `pod install` against the network (the

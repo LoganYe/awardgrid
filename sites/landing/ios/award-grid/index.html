@@ -41,9 +41,10 @@
     <!--
       /ios/award-grid/: how the table works, for someone asking whether an app puts several origins, destinations and
       dates into one table. English only, so no hreflang. Every sentence is registry copy (growth/product-facts.json):
-      identity, grid, prerequisite, keys, query_input, filters, views, program_link, data_cached, cell_fields,
-      programs, scope, quota, watches, dependency, not_offered and release_status. Since 2026-10-07 (build 4) its
-      first step offers sample data first, and no sentence calls the key a Pro key. The table in the iPhone app is the
+      identity, grid, prerequisite, oauth_connection, query_input, filters, views, program_link, data_cached,
+      cell_fields, programs, scope, quota, watches, dependency, not_offered and release_status. Since 2026-10-07 (build
+      4) its first step offers sample data first, and no sentence calls the key a Pro key; since the same day (the
+      OAuth build, release plan 47F) it connects the account with seats.aero's own sign-in, not a pasted key. The table in the iPhone app is the
       Matrix: each cell holds, for each cabin asked, the lowest miles, the program and the seats; fees and data age are
       on each option's card (apps/ios/src/components/results/AvailabilityMatrix.tsx, AvailabilityCard.tsx), so this
       page never says a cell holds fees or data age. No other tool is named (the registry holds no claim about any
@@ -75,8 +76,9 @@
         <h2 id="how-h">How it works</h2>
         <ol>
           <li>
-            Start with sample data, or connect your own seats.aero account in Settings with the API key from the API
-            tab of your seats.aero settings. Keys stay in your iPhone's Keychain, with iCloud Keychain sync off.
+            Start with sample data, or connect your own seats.aero account in Settings with seats.aero's own sign-in
+            (Login with Seats.aero). AwardGrid never sees your seats.aero password, and the sign-in tokens stay in your
+            iPhone's Keychain, with iCloud Keychain sync off.
           </li>
           <li>
             Type the routes and dates in English or Chinese, or set them in the editor. Programs, nonstop only and a

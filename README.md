@@ -20,7 +20,9 @@ Results are seats.aero's cached availability, not a live search, and each shows 
 Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.
 Ask, which answers questions about your results with Claude on your own Anthropic API key, is in testing; it is not part of the App Store version 1.0.
 
-The AwardGrid iPhone app has no accounts and no server of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go to seats.aero; sample data sends nothing.
+The AwardGrid iPhone app has no accounts of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go from the iPhone directly to seats.aero, and a small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens and stores nothing; sample data sends nothing.
+You connect your seats.aero account with seats.aero's own sign-in (Login with Seats.aero): seats.aero asks you to sign in and approve AwardGrid, and AwardGrid never sees your password. You can disconnect at any time, in AwardGrid or in your seats.aero settings.
+Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term Caching rule); a saved search keeps the search and a summary, and opening it searches again.
 
 For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.
 No live search, no booking, no round trips, no alerts or notifications, no scraping of airline or bank sites, no airline or bank passwords, no logos.
@@ -304,7 +306,12 @@ packages/tokens/    @awardgrid/tokens — ONE palette, read by the web app, the 
                     tokens.css (colour/type/motion/spacing, values frozen by tests + visual baselines)
                     surfaces.css (the two surface modes of PIVOT §4: radius/blur/elevation fork)
 apps/ios/           @awardgrid/ios — the Capacitor client shell (PIVOT §6 Phase 2). Runs on the
-                    user's own seats.aero key, in their device's Keychain. No server of ours.
+                    user's own seats.aero account: in the App Store build (`build:store`) through
+                    seats.aero's own sign-in, with the tokens in the Keychain; in development builds
+                    with a pasted key. Searches go from the device straight to seats.aero.
+sites/auth/         awardgrid-auth, the stateless Worker that exchanges and refreshes the iPhone app's
+                    seats.aero sign-in tokens (holds the OAuth client secret; stores nothing). Owner
+                    deploys it: sites/auth/DEPLOY.md.
 sites/landing/      the static landing page (PIVOT §2). Zero JavaScript, zero network requests.
 packages/core/      @awardgrid/core — the runtime-independent core every shell consumes (docs/PIVOT.md §2).
                     Ships raw TypeScript, no build step, no server dependencies. Imported as
