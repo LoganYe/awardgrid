@@ -188,12 +188,12 @@
       "limitations": [
         "The web app was running on 2026-09-28, so the kept variants are in use; the retired variant is used only once the web app is shut down.",
         "kept_named_host is for files that are also served on the Worker's own workers.dev address (the home page, llms.txt, robots.txt), where \"at this address\" would not be true; kept_host stays in LEGAL.md, which only the web app serves (/legal).",
-        "allowed_copy_extra is the home page's one link into the web app (to https://awardgrid.dowhiz.com/grid, which sends a signed-out visitor to /login): with the Worker serving \"/\", the web app's own home no longer redirects its signed-in users to /grid.",
+        "Since 2026-10-08 (build 6) no page of the static site links into the web app. The home page's sentence \"Web app users: open the grid.\", which linked to https://awardgrid.dowhiz.com/grid, is retired_copy: the web app is invite-only, and the site the App Store links to describes the iPhone app. The kept_named_host sentence stays on the home page, as plain text, so a reader who meets the web app's sign-in page on this host knows it is not the iPhone app's.",
         "Apart from history, only these sentences may call anything on this host or in this repo private or invite-only (PRIVATE_WEBAPP).",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
-      "allowed_copy_extra": [
+      "retired_copy": [
         "Web app users: open the grid."
       ]
     },
