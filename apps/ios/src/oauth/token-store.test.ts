@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { BrokerResult, TokenBroker } from "./broker";
 import { EARLY_REFRESH_MS, TokenKeyStore, bearer } from "./token-store";
-import { MemoryTokenVault, type SeatsTokens } from "./token-vault";
+import { MemoryTokenVault, type SeatsTokens, type TokenVault } from "./token-vault";
 
 const T0 = Date.parse("2026-10-06T12:00:00Z");
 const TOKENS: SeatsTokens = { access: "seats:ota:first", refresh: "seats:otr:keep", expiresAt: T0 + 3599_000 };
@@ -61,19 +61,19 @@ describe("TokenKeyStore", () => {
     let release: (r: BrokerResult) => void = () => {};
     const { broker: b, calls } = broker(() => new Promise<BrokerResult>((resolve) => (release = resolve)));
     const store = new TokenKeyStore({ vault: new MemoryTokenVault({ ...TOKENS, expiresAt: T0 }), broker: b, now: () => T0 });
-    const all = Promise.all([store.get(), store.get(), store.get(), store.refresh("Bearer seats:ota:first")]);
+    const all = Promise.all([store.get(), store.get(), store.get(), store.renew("Bearer seats:ota:first").then((r) => r.key)]);
     await vi.waitFor(() => expect(calls).toHaveLength(1));
     release(fresh("seats:ota:second"));
     expect(await all).toEqual(["Bearer seats:ota:second", "Bearer seats:ota:second", "Bearer seats:ota:second", "Bearer seats:ota:second"]);
     expect(calls).toHaveLength(1);
   });
 
-  it("refresh(rejected) renews on demand, but not again when another caller already replaced the refused token", async () => {
+  it("renew(rejected) renews on demand, but not again when another caller already replaced the refused token", async () => {
     const vault = new MemoryTokenVault(TOKENS);
     const { broker: b, calls } = broker([fresh("seats:ota:second")]);
     const store = new TokenKeyStore({ vault, broker: b, now: () => T0 });
-    expect(await store.refresh("Bearer seats:ota:first")).toBe("Bearer seats:ota:second");
-    expect(await store.refresh("Bearer seats:ota:first")).toBe("Bearer seats:ota:second");
+    expect(await store.renew("Bearer seats:ota:first")).toEqual({ key: "Bearer seats:ota:second" });
+    expect(await store.renew("Bearer seats:ota:first")).toEqual({ key: "Bearer seats:ota:second" });
     expect(calls).toHaveLength(1);
   });
 
@@ -84,9 +84,9 @@ describe("TokenKeyStore", () => {
     expect(await store.get()).toBe("Bearer seats:ota:first");
     expect(await vault.read()).not.toBeNull();
     expect(onRevoked).not.toHaveBeenCalled();
-    // A forced renewal that fails gives nothing new to retry with.
+    // A forced renewal that fails gives nothing new to retry with, and says the service could not renew it.
     const again = new TokenKeyStore({ vault, broker: broker([{ ok: false, reason: "unavailable", status: 502, error: "upstream_unavailable" }]).broker, now: () => T0 });
-    expect(await again.refresh("Bearer seats:ota:first")).toBeNull();
+    expect(await again.renew("Bearer seats:ota:first")).toEqual({ key: null, reason: "unavailable" });
     expect(await vault.read()).not.toBeNull();
   });
 
@@ -98,6 +98,8 @@ describe("TokenKeyStore", () => {
     expect(await vault.read()).toBeNull();
     expect(onRevoked).toHaveBeenCalledTimes(1);
     expect(await store.connected()).toBe(false);
+    // Nothing left to renew: "none", which is said as connecting again.
+    expect(await store.renew("Bearer seats:ota:first")).toEqual({ key: null, reason: "none" });
   });
 
   it("AwardGrid's own client being refused (invalid_client) is not the person's revocation", async () => {
@@ -107,6 +109,24 @@ describe("TokenKeyStore", () => {
     expect(await store.get()).toBe("Bearer seats:ota:first");
     expect(onRevoked).not.toHaveBeenCalled();
     expect(await vault.read()).not.toBeNull();
+  });
+
+  it("a firewall's 401/403 on the refresh (no OAuth error code) is a passing failure: tokens kept, nothing purged", async () => {
+    // A 403 "rejected" (an earlier token service's word for it), a 403 page that is not JSON, a bare 401.
+    for (const result of [
+      { ok: false, reason: "unavailable", status: 403, error: "rejected" },
+      { ok: false, reason: "unavailable", status: 403, error: null },
+      { ok: false, reason: "rejected", status: 401, error: null },
+      { ok: false, reason: "rejected", status: 403, error: "rejected" },
+    ] satisfies BrokerResult[]) {
+      const onRevoked = vi.fn();
+      const vault = new MemoryTokenVault({ ...TOKENS, expiresAt: T0 });
+      const store = new TokenKeyStore({ vault, broker: broker([result]).broker, now: () => T0, onRevoked });
+      expect(await store.get(), JSON.stringify(result)).toBe("Bearer seats:ota:first");
+      expect(await vault.read()).toEqual({ ...TOKENS, expiresAt: T0 });
+      expect(await store.connected()).toBe(true);
+      expect(onRevoked).not.toHaveBeenCalled();
+    }
   });
 
   it("Disconnect wins: a renewal still out when clear() runs never writes its tokens back", async () => {
@@ -135,6 +155,35 @@ describe("TokenKeyStore", () => {
     now += 3599_000;
     expect(await store.get()).toBe("Bearer seats:ota:third");
     expect(calls).toEqual(["seats:otr:keep", "seats:otr:rotated"]);
+    // Disconnect still wins over tokens only memory holds.
+    await store.clear();
+    expect(await store.get()).toBeNull();
+    expect(await store.connected()).toBe(false);
+  });
+
+  it("a write that removed the old item and failed to add the new one (KeychainSwift's set) loses nothing; the next read keeps it", async () => {
+    const inner = new MemoryTokenVault({ ...TOKENS, expiresAt: T0 });
+    let failures = 1;
+    const vault: TokenVault = {
+      read: () => inner.read(),
+      clear: () => inner.clear(),
+      // Delete, then add: the add fails once, after the delete.
+      write: async (tokens) => {
+        await inner.clear();
+        if (failures-- > 0) throw new Error("errSecInteractionNotAllowed");
+        await inner.write(tokens);
+      },
+    };
+    const { broker: b, calls } = broker([fresh("seats:ota:second", "seats:otr:rotated")]);
+    const store = new TokenKeyStore({ vault, broker: b, now: () => T0 });
+    expect(await store.get()).toBe("Bearer seats:ota:second");
+    expect(await inner.read()).toBeNull();
+    // Still connected in this run of the app, with the rotated refresh token.
+    expect(await store.connected()).toBe(true);
+    expect(await store.get()).toBe("Bearer seats:ota:second");
+    expect(await inner.read()).toEqual({ access: "seats:ota:second", refresh: "seats:otr:rotated", expiresAt: T0 + 3599_000 });
+    expect(await store.get()).toBe("Bearer seats:ota:second");
+    expect(calls).toEqual(["seats:otr:keep"]);
   });
 
   it("saves the code exchange's tokens with their expiry, refuses set(), and says whether it is connected without sending", async () => {

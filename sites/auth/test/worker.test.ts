@@ -191,10 +191,33 @@ describe("POST /oauth/seats/refresh", () => {
     const text = await res.text();
     expect(JSON.parse(text)).toEqual({ error: "invalid_grant" });
     expect(text).not.toContain(SECRET);
-    const odd = await handle(post(PATHS.refresh, { refresh_token: REFRESH }), env(), upstream(401, { error: "Weird Thing" }).deps);
-    expect([odd.status, await odd.json()]).toEqual([401, { error: "rejected" }]);
-    const teapot = await handle(post(PATHS.refresh, { refresh_token: REFRESH }), env(), upstream(418, "").deps);
-    expect([teapot.status, await teapot.json()]).toEqual([400, { error: "rejected" }]);
+    const client = await handle(post(PATHS.refresh, { refresh_token: REFRESH }), env(), upstream(401, { error: "invalid_client" }).deps);
+    expect([client.status, await client.json()]).toEqual([401, { error: "invalid_client" }]);
+    const teapot = await handle(post(PATHS.refresh, { refresh_token: REFRESH }), env(), upstream(418, { error: "invalid_grant" }).deps);
+    expect([teapot.status, await teapot.json()]).toEqual([400, { error: "invalid_grant" }]);
+  });
+
+  it("answers 502 upstream_blocked, never a refusal, for a 4xx that is not an OAuth answer (a firewall in front of seats.aero)", async () => {
+    // A refusal here would read to the app as a revoked grant: it would remove the tokens and purge every result.
+    const page = "<!doctype html><html><head><title>Just a moment...</title></head><body>Attention Required</body></html>";
+    for (const [status, body] of [
+      [403, page],
+      [401, page],
+      [429, page],
+      [403, ""],
+      [403, { error: "rejected" }],
+      [401, { error: "Weird Thing" }],
+      [403, { message: "Forbidden" }],
+      [418, ""],
+    ] as const) {
+      for (const path of [PATHS.refresh, PATHS.token]) {
+        const sent = path === PATHS.refresh ? { refresh_token: REFRESH } : { code: CODE, state: STATE };
+        const res = await handle(post(path, sent), env(), upstream(status, body).deps);
+        const text = await res.text();
+        expect([res.status, JSON.parse(text)], `${path} ${status} ${JSON.stringify(body)}`).toEqual([502, { error: "upstream_blocked" }]);
+        expect(text).not.toContain("Just a moment");
+      }
+    }
   });
 
   it("says seats.aero is unavailable on a 5xx or a failed request, without detail", async () => {

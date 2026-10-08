@@ -121,7 +121,9 @@ export interface AppServices {
   /** The language and appearance chosen in Settings (T11); screens read the language with `useLocale`. */
   settings: SettingsStore;
   /**
-   * Persist the snapshots and Ask's conversation. The quota and watch writes are skipped when nothing moved.
+   * Persist the snapshots and Ask's conversation. Under the short-term limit, what passed it leaves first (cache rows,
+   * Saved rows, watch baselines, an Ask conversation), as on a sweep. The quota and watch writes are skipped when
+   * nothing moved.
    * cache.json is written on every call, and so is ask.json whenever there is a conversation, whole, so a long
    * conversation (core limits.ts MAX_CONVERSATION_FILE_BYTES) makes each call a large write.
    *
@@ -178,8 +180,8 @@ export interface AppServices {
   shortTermMs: number | null;
   /**
    * Remove whatever has passed the short-term limit: cache rows, workspace snapshots, Saved rows, watch baselines and
-   * change details, and an Ask conversation. The app calls it on returning to the foreground and hourly while open;
-   * launch does the same. Does nothing without a limit. Never throws.
+   * change details, Ask's route lists and an Ask conversation. The app calls it on returning to the foreground and
+   * hourly while open; launch does the same. Does nothing without a limit. Never throws.
    */
   sweepShortTerm(): Promise<void>;
   /**
@@ -201,8 +203,8 @@ export interface SeatsAccount {
   /**
    * Remove the tokens, then everything kept from seats.aero (the OAuth Addendum's purge): cached results, the
    * workspace's snapshots, Saved rows (each item's query and summary stay), watch baselines and change details (the
-   * watches stay, and start again), loaded details and an Ask conversation. Requests already out finish first, so
-   * nothing they bring back survives it.
+   * watches stay, and start again), loaded details, route lists and an Ask conversation. Requests already out finish
+   * first, so nothing they bring back survives it.
    */
   disconnect(): Promise<DisconnectOutcome>;
 }
@@ -508,9 +510,10 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   const engine = new SearchEngine({
     fetchImpl,
     cache,
-    // One program's route list failing costs its "not monitored" claim, never the paid rows (#89); Ask and watches
-    // search through this same engine, so they get the same rule.
-    routes: new ResilientRoutesCatalog(),
+    // Ask's route lists (a grid search loads none: search.ts #execute). One program's list failing costs its "not
+    // monitored" claim, never the paid rows (#89). They are seats.aero's data too: under the short-term limit they last
+    // as long as results do, and the sweep and the purge clear them.
+    routes: new ResilientRoutesCatalog({ now, ...(shortTermMs != null ? { ttlMs: shortTermMs } : {}) }),
     quota: new Quota({ store: quotaStore, now }),
     now,
   });
@@ -624,6 +627,14 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     assertNative: opts.assertNative,
   });
 
+  /** Under the short-term limit, an Ask conversation holding a question older than it is cleared (it carries results). */
+  const expireAsk = async () => {
+    if (shortTermMs == null) return;
+    const oldest = ask.state().entries[0];
+    const at = oldest ? Date.parse(oldest.askedAt) : NaN;
+    if (oldest && !(at >= cutoff()) && ask.state().running === null) await ask.newConversation();
+  };
+
   const saveStatus = new SaveStatus();
   const persist = async (): Promise<PersistReport> => {
     const failed: string[] = [];
@@ -637,8 +648,17 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
         message ||= err instanceof Error ? err.message || err.name : String(err);
       }
     };
-    // Under the short-term limit nothing older than it is written (or kept in memory).
+    // Under the short-term limit nothing older than it is written (or kept in memory): the cache, Saved's rows, the
+    // watches' baselines and an Ask conversation lose what passed it first, as on a sweep, so a save between two
+    // sweeps does not write it back.
     pruneCache();
+    try {
+      await expireFavorites();
+    } catch {
+      // Saved writes its own file and keeps its rows until a later save or sweep can remove them.
+    }
+    const watchesExpired = expireWatches() > 0;
+    await expireAsk().catch(() => undefined);
     await attempt("cache", () => snapshots.saveCache(cache.snapshot()));
     if (quotaStore.dirty) {
       // Marked clean only once written, so a failed write is tried again next time.
@@ -665,6 +685,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       if (ask.saveFailed?.()) throw new Error("ask.json could not be saved");
     });
     saveStatus.set(failed.length > 0 ? { failed, message, at: now().toISOString() } : null);
+    if (watchesExpired) notify();
     return failed.length > 0 ? { ok: false, failed, message } : { ok: true };
   };
 
@@ -708,13 +729,6 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   // was closed during becomes an unfinished entry. No key is read and nothing is sent.
   await ask.restore();
 
-  /** Under the short-term limit, an Ask conversation holding a question older than it is cleared (it carries results). */
-  const expireAsk = async () => {
-    if (shortTermMs == null) return;
-    const oldest = ask.state().entries[0];
-    const at = oldest ? Date.parse(oldest.askedAt) : NaN;
-    if (oldest && !(at >= cutoff()) && ask.state().running === null) await ask.newConversation();
-  };
   await expireAsk();
 
   const sweepShortTerm = async (): Promise<void> => {
@@ -736,11 +750,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       if (workspace.selectionEntries().some((entry) => entry.row !== null && !(Date.parse(entry.row.value.fetched_at) >= cutoff()))) {
         workspace.clearSelection();
       }
-      await expireFavorites();
-      const watchesChanged = expireWatches() > 0;
-      await expireAsk();
+      await engine.routes.clear(cutoff());
+      // Saved, the watches and Ask lose what passed the limit in the save (`persist`), which tells the watches' screen.
       await persist();
-      if (watchesChanged) notify();
     } catch {
       // A sweep that could not finish runs again on the next foreground, and saves are pruned meanwhile.
     }
@@ -763,6 +775,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     try {
       details.clear();
       lastSearch.clear();
+      await engine.routes.clear();
       cache.restore(null);
       await snapshots.clearCache().catch(() => undefined);
       const state = workspace.getState();

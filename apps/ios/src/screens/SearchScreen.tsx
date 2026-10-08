@@ -52,6 +52,7 @@ import { CAN_CONNECT, STORE } from "../app/flags";
 import { langTag, useLocale } from "../app/locale";
 import { ASK_SURFACES } from "../ask/ask-surface-copy";
 import type { ApiFailure, ApiResult, FindValue, QuotaSnapshotView } from "../search/search";
+import { refusalKind } from "../oauth/refresh-retry";
 import type { LastSearchEntry } from "../search/last-search";
 import { TextSearch } from "../components/query/TextSearch";
 import { PlanSearch } from "../components/plan/PlanSearch";
@@ -430,7 +431,11 @@ export function SearchScreen() {
         )}
       </Callout>
     ) : null;
-  const failureCallout = failure ? (
+  const refusal = failure ? refusalKind(failure) : null;
+  const failureCallout = refusal ? (
+    // A refusal after a renewal has its own sentence in the screen's language.
+    <Callout tone="danger">{t.runFailed[refusal]}</Callout>
+  ) : failure ? (
     <Callout tone="danger" lang={english}>
       {failure.message ?? failure.error}
     </Callout>

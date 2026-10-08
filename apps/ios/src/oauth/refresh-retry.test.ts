@@ -1,7 +1,8 @@
 /**
  * One retry after a renewal (./refresh-retry.ts) on each path that spends a seats.aero call: the workspace's search
  * port, an option's details, and the watch runner. A refused token is renewed and the request sent once more; a second
- * refusal is the answer; a pasted key, with nothing to renew, is sent exactly once, as before.
+ * refusal is the answer, said as the account's; a token the service could not renew is said as a passing failure; a
+ * pasted key, with nothing to renew, is sent exactly once and said as before.
  */
 import { describe, expect, it, vi } from "vitest";
 import { fixtureSnapshot } from "@awardgrid/core/test-fixtures/uiux/factory";
@@ -13,21 +14,24 @@ import { WatchStore } from "../store/watch-store";
 import { baselineExpired, checkWatches } from "../watch/runner";
 import { createDetailService } from "../workspace/detail-service";
 import { createSearchPort } from "../workspace/search-port";
-import { type RenewableKeys, refusedByProvider, renewedKey, withRenewal } from "./refresh-retry";
+import { RESULTS } from "../components/results/copy";
+import { type RenewableKeys, type Renewal, refusalKind, refusedByProvider, renewedKey, withRenewal } from "./refresh-retry";
 
 const refused = (status = 401): ApiResult<never> => ({ ok: false, status, error: "no_key", kind: `http_${status}`, message: "refused" });
+const NONE: Renewal = { key: null, reason: "none" };
+const UNAVAILABLE: Renewal = { key: null, reason: "unavailable" };
 
-/** Keys that hand out `first` and renew to `next` (or null), counting renewals. */
-function renewable(first: string, next: string | null): RenewableKeys & { renewals: Array<string | null | undefined> } {
+/** Keys that hand out `first` and renew to `next` (or, without one, say why), counting renewals. */
+function renewable(first: string, next: string | null, why: "none" | "unavailable" = "none"): RenewableKeys & { renewals: Array<string | null | undefined> } {
   let current = first;
   const renewals: Array<string | null | undefined> = [];
   return {
     renewals,
     get: async () => current,
-    refresh: async (rejected) => {
+    renew: async (rejected) => {
       renewals.push(rejected);
       if (next) current = next;
-      return next;
+      return next ? { key: next } : { key: null, reason: why };
     },
   };
 }
@@ -47,8 +51,31 @@ describe("withRenewal", () => {
     }
     const stubborn = renewable("Bearer seats:ota:old", "Bearer seats:ota:new");
     const attempt = vi.fn(async () => refused());
-    expect(await withRenewal(stubborn, attempt)).toEqual(refused());
+    expect(await withRenewal(stubborn, attempt)).toEqual({ ...refused(), kind: "refused_renewed", message: RESULTS.en.runFailed.refused_renewed });
     expect(attempt).toHaveBeenCalledTimes(2);
+  });
+
+  it("says what the renewal found: the account refused even with a new token; a token that could not be renewed now; a revoked grant as before", async () => {
+    // Refused again with a token renewed just now: not the token, the account (one without API access).
+    const account = await withRenewal(renewable("a", "b"), async () => refused(403));
+    expect(account).toMatchObject({ ok: false, status: 403, error: "no_key", kind: "refused_renewed" });
+    expect(refusalKind(account)).toBe("refused_renewed");
+    if (!account.ok) expect(account.message).toMatch(/even with a renewed connection.*API access/);
+    // The token service could not renew it: try again, not connect again.
+    const outage = vi.fn(async () => refused());
+    const later = await withRenewal(renewable("a", null, "unavailable"), outage);
+    expect(later).toMatchObject({ ok: false, status: 401, error: "no_key", kind: "renewal_unavailable" });
+    if (!later.ok) expect(later.message).toMatch(/token service could not renew it just now\. Try again in a moment\./);
+    expect(later.ok || later.message).not.toMatch(/Connect your seats\.aero account again/);
+    expect(outage).toHaveBeenCalledTimes(1);
+    // Nothing to renew (the grant was revoked and purged): the refusal as it always was.
+    expect(await withRenewal(renewable("a", null, "none"), async () => refused())).toEqual(refused());
+    expect(refusalKind(refused())).toBeNull();
+    // Both in the screens' two languages.
+    for (const kind of ["refused_renewed", "renewal_unavailable"] as const) {
+      expect(RESULTS.zh.runFailed[kind]).toMatch(/[\u4e00-\u9fff]/);
+      expect(RESULTS.zh.runFailed[kind]).not.toBe(RESULTS.en.runFailed[kind]);
+    }
   });
 
   it("does not resend for another failure, a pasted key, a renewal that gave nothing new, or a request no longer wanted", async () => {
@@ -74,9 +101,11 @@ describe("withRenewal", () => {
     expect(refusedByProvider(refused(401))).toBe(true);
     expect(refusedByProvider({ ok: false, status: 400, error: "no_key" })).toBe(false);
     expect(refusedByProvider({ ok: false, status: 401, error: "seatsaero" })).toBe(false);
-    expect(await renewedKey({ get: async () => "k" }, "k")).toBeNull();
-    expect(await renewedKey(renewable("a", "a"), "a")).toBeNull();
-    expect(await renewedKey({ get: async () => "a", refresh: async () => Promise.reject(new Error("x")) }, "a")).toBeNull();
+    expect(await renewedKey({ get: async () => "k" }, "k")).toEqual(NONE);
+    expect(await renewedKey(renewable("a", "a"), "a")).toEqual(NONE);
+    expect(await renewedKey(renewable("a", "b"), null)).toEqual(NONE);
+    expect(await renewedKey(renewable("a", "b"), "a")).toEqual({ key: "b" });
+    expect(await renewedKey({ get: async () => "a", renew: async () => Promise.reject(new Error("x")) }, "a")).toEqual(UNAVAILABLE);
   });
 });
 
@@ -121,9 +150,14 @@ describe("an option's details", () => {
       keys.push(String(key));
       return key === "new" ? { ok: true as const, value: { trips: [], booking_links: [], api_calls_used: 1 } as never } : refused();
     });
-    const details = createDetailService({ workspace, getTrips, readKey: async () => "old", renewKey: async () => "new", now: () => new Date() });
+    const details = createDetailService({ workspace, getTrips, readKey: async () => "old", renewKey: async () => ({ key: "new" }), now: () => new Date() });
     expect((await details.load({ snapshotId: snapshot.id, rowKey: row.key })).kind).toBe("loaded");
     expect(keys).toEqual(["old", "new"]);
+    // A token the service could not renew: one send, said as a passing failure.
+    const outage = vi.fn(async () => refused());
+    const down = createDetailService({ workspace, getTrips: outage, readKey: async () => "old", renewKey: async () => UNAVAILABLE, now: () => new Date() });
+    expect(await down.load({ snapshotId: snapshot.id, rowKey: row.key })).toMatchObject({ kind: "failed", error: { kind: "renewal_unavailable" } });
+    expect(outage).toHaveBeenCalledTimes(1);
     const once = vi.fn(async () => refused());
     const keyed = createDetailService({ workspace, getTrips: once, readKey: async () => "pasted", now: () => new Date() });
     expect((await keyed.load({ snapshotId: snapshot.id, rowKey: row.key })).kind).toBe("failed");
@@ -178,11 +212,31 @@ describe("the watch runner", () => {
     const store = new WatchStore();
     store.restore({ version: 2, watches: [watch(), watch({ id: "w2", text: "LAX to NRT next month" })] });
     const e = engine((key) => (key === "new" ? ok() : refused()));
-    const renewKey = vi.fn(async () => "new");
+    const renewKey = vi.fn(async (): Promise<Renewal> => ({ key: "new" }));
     const results = await checkWatches({ engine: e, store, apiKey: "old", now: () => NOW, renewKey });
     expect(results.map((r) => r.outcome.status)).toEqual(["checked", "checked"]);
     expect(renewKey).toHaveBeenCalledTimes(1);
     expect(e.search.mock.calls.map((c) => c[1])).toEqual(["old", "new", "new"]);
+  });
+
+  it("a token the service could not renew fails each watch of the run as a passing failure, not as a refused connection", async () => {
+    const store = new WatchStore();
+    store.restore({ version: 2, watches: [watch(), watch({ id: "w2", text: "LAX to NRT next month" })] });
+    const e = engine(() => refused());
+    const renewKey = vi.fn(async () => UNAVAILABLE);
+    const results = await checkWatches({ engine: e, store, apiKey: "old", now: () => NOW, renewKey });
+    expect(results.map((r) => r.outcome.status)).toEqual(["failed", "failed"]);
+    expect(renewKey).toHaveBeenCalledTimes(1);
+    for (const id of ["w1", "w2"]) {
+      expect(store.get(id)!.lastResult).toMatchObject({ status: "failed", refused: false, message: RESULTS.en.runFailed.renewal_unavailable });
+      // Still a call seats.aero answered: the attempt clock starts, as for any refusal.
+      expect(store.get(id)!.lastAttemptAt).toBe(NOW.toISOString());
+    }
+    // Refused again with a renewed token: the account, said with its own message, not "connect again".
+    const account = new WatchStore();
+    account.restore({ version: 2, watches: [watch()] });
+    await checkWatches({ engine: engine(() => refused()), store: account, apiKey: "old", now: () => NOW, renewKey: async () => ({ key: "new" }) });
+    expect(account.get("w1")!.lastResult).toMatchObject({ status: "failed", refused: false, message: RESULTS.en.runFailed.refused_renewed });
   });
 
   it("without renewKey (a pasted key) a refusal is recorded after one send, as before", async () => {

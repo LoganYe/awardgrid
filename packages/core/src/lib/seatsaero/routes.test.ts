@@ -130,6 +130,33 @@ describe("RoutesCatalog", () => {
     expect(fetch.calls).toHaveLength(2);
     expect(catalog.isMonitored("alice", "american", "HKG", "SEA")).toBe(true);
   });
+
+  it("clear() forgets every list, in memory and in the store; clear(before) only the older ones", async () => {
+    const store = new InMemoryRoutesStore();
+    let clock = new Date("2026-10-01T00:00:00Z");
+    const fetch = fakeFetch((req) => jsonResponse(ROUTES[req.url.searchParams.get("source")!] ?? []));
+    const client = new SeatsAeroClient({ apiKey: "k", fetch });
+    const catalog = new RoutesCatalog({ store, now: () => clock });
+    await catalog.ensureLoaded("alice", ["american"], client);
+    clock = new Date(clock.getTime() + 60_000);
+    await catalog.ensureLoaded("alice", ["alaska"], client);
+    await catalog.ensureLoaded("bob", ["alaska"], client);
+
+    // Only what was fetched before the minute passed: american, not either alaska list.
+    await catalog.clear(clock.getTime());
+    expect(catalog.loadedSources("alice")).toEqual(["alaska"]);
+    expect(await store.get("alice", "american")).toBeNull();
+    expect(await store.get("alice", "alaska")).not.toBeNull();
+
+    await catalog.clear();
+    expect(catalog.loadedSources("alice")).toEqual([]);
+    expect(catalog.loadedSources("bob")).toEqual([]);
+    expect(await store.get("alice", "alaska")).toBeNull();
+    expect(await store.get("bob", "alaska")).toBeNull();
+    // Nothing left to answer from: the next ask fetches again.
+    expect((await catalog.ensureLoaded("alice", ["alaska"], client)).fetched).toEqual(["alaska"]);
+    expect(fetch.calls).toHaveLength(4);
+  });
 });
 
 describe("ResilientRoutesCatalog (#89): one failed list costs its own claim, not the run", () => {

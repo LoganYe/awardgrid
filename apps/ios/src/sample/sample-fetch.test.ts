@@ -173,14 +173,17 @@ describe("the app's engine on sample data", () => {
     expect(trips.value.booking_links).toEqual([]);
   });
 
-  it("an empty day on a seed route is checked and empty, never 'not monitored'; a code outside the seed is not monitored", async () => {
+  it("an empty day on a seed route, or a code outside the seed, is checked and empty: no route list is asked for", async () => {
+    // As on seats.aero, a grid search loads no route lists (search.ts #execute), so nothing is called "not monitored";
+    // the Search screen says itself when a sample search reaches past what sample data covers.
     const e = engine();
     const empty = await e.searchQuery(QueryObject.parse({ origins: ["SFO"], destinations: ["OAK"], date_from: "2026-10-20", date_to: "2026-10-20", cabins: ["F"], raw_text: "x", language: "en" }), "sample");
     expect(empty.ok && empty.value.rows).toEqual([]);
     expect(empty.ok && empty.value.coverage?.state).toBe("complete");
     expect(empty.ok && empty.value.coverage?.slices.every((s) => s.state === "complete")).toBe(true);
     const outside = await e.searchQuery(QueryObject.parse({ origins: ["LIS"], destinations: ["SEA"], date_from: TODAY, date_to: addDays(TODAY, 29), cabins: ["J"], raw_text: "x", language: "en" }), "sample");
-    expect(outside.ok && outside.value.coverage?.slices[0]?.state).toBe("unmonitored");
+    expect(outside.ok && outside.value.coverage?.slices[0]?.state).toBe("complete");
+    expect(outside.ok && outside.value.api_calls_used).toBe(1);
   });
 
   // The 100 ms budget is the Simulator's (measured there and recorded in the PR: 22 ms cold, 1–4 ms warm). Here the

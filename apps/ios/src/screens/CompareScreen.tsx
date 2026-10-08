@@ -268,6 +268,15 @@ export function CompareScreen() {
           {status}
         </p>
         <SampleBanner services={services} locale={locale} />
+        {/* LEGAL.md: seats.aero's figures carry "Data: seats.aero", linked to seats.aero, above them, as the details
+            do. Not when no option is left to show any. */}
+        {entries.some((entry) => entry.row !== null) ? (
+          sample ? (
+            <p className="ag-compare-note ag-sample-source">{SAMPLE[locale].attribution}</p>
+          ) : (
+            <SeatsAttribution className="ag-compare-note" text={copy("data.source", locale)} locale={locale} />
+          )
+        ) : null}
         <p className="ag-compare-note">{c.nothingSent}</p>
         {notes.programs.length > 1 ? <p className="ag-compare-note">{c.noRanking}</p> : null}
         {notes.currencies.length > 1 ? <p className="ag-compare-note">{c.currencies(notes.currencies.join(locale === "zh" ? "、" : ", "))}</p> : null}
@@ -382,15 +391,6 @@ export function CompareScreen() {
           </>
         )}
         {anyLink && entries.length >= 2 ? <p className="ag-compare-note">{copy("details.external", locale)}</p> : null}
-        {/* LEGAL.md: seats.aero's figures carry "Data: seats.aero", linked to seats.aero, beside them, as the details
-            do. Not when no option is left to show any. */}
-        {entries.some((entry) => entry.row !== null) ? (
-          sample ? (
-            <p className="ag-compare-note ag-sample-source">{SAMPLE[locale].attribution}</p>
-          ) : (
-            <SeatsAttribution className="ag-compare-note" text={copy("data.source", locale)} locale={locale} />
-          )
-        ) : null}
       </div>
     </div>
   );

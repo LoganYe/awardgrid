@@ -482,8 +482,16 @@ export function stopsLabel(stops: number, locale: Locale): string {
   return locale === "zh" ? `${stops} 次经停` : `${stops} ${stops === 1 ? "stop" : "stops"}`;
 }
 
-/** What "Copy search details" puts on the clipboard: enough to find this option on the program's own site. */
-export function detailsCopyText(row: WorkspaceRow["value"], locale: Locale): string {
+/** The site "Data: seats.aero" names: the app's link (apps/ios src/app/links.ts), written out where there is no link. */
+const SEATS_AERO_URL = "https://seats.aero";
+
+/**
+ * What "Copy search details" puts on the clipboard: enough to find this option on the program's own site, and the
+ * figures' source with its address, since a pasted line carries no link ("Data: seats.aero (https://seats.aero)").
+ * `attribution: false` leaves the source out, for figures that are not seats.aero's (sample data).
+ */
+export function detailsCopyText(row: WorkspaceRow["value"], locale: Locale, { attribution = true }: { attribution?: boolean } = {}): string {
   const miles = locale === "zh" ? `${formatMiles(row.miles)} 里程` : `${formatMiles(row.miles)} miles`;
-  return [`${row.origin} → ${row.dest}`, dayLabel(row.date, locale), cabinName(row.cabin, locale), programLabel(row.program), miles].join(" · ");
+  const parts = [`${row.origin} → ${row.dest}`, dayLabel(row.date, locale), cabinName(row.cabin, locale), programLabel(row.program), miles];
+  return (attribution ? [...parts, `${copy("data.source", locale)} (${SEATS_AERO_URL})`] : parts).join(" · ");
 }

@@ -11,9 +11,8 @@ import { describe, expect, it } from "vitest";
 import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 import { Quota } from "@awardgrid/core/seatsaero/quota";
 import { RoutesCatalog } from "@awardgrid/core/seatsaero/routes";
-import { SEATS_SOURCES } from "@awardgrid/core/seatsaero/types";
 import { DeviceQuotaStore } from "../store/quota-store";
-import { LOCAL_USER, SearchEngine, routesFailedWarning } from "./search";
+import { LOCAL_USER, SearchEngine } from "./search";
 
 const NOW = new Date("2026-10-01T00:00:00.000Z");
 const KEY = "pro_test_key_ABC123xyz_DO_NOT_LEAK";
@@ -172,31 +171,31 @@ describe("SearchEngine", () => {
     expect(fetchImpl.calls.length).toBe(callsAfterFirst);
   });
 
-  it("tells the grid which pairs seats.aero does not monitor, so their cells do not read as empty", async () => {
-    // Rows for HKG only, and Get Routes answers an empty list for every program: runFind reports
-    // the pair with no rows as not monitored (packages/core/src/lib/seatsaero/find.ts:360-377).
+  it("asks for no route list when a pair comes back empty: one Cached Search, and the empty pair reads as checked", async () => {
+    // Rows for HKG only. The grid search used to fetch every program's route list here, one call each, before the
+    // rows were shown, to label PVG to SEA "not monitored" (26 calls for a search of all programs).
     const fetchImpl = fakeSeatsAero({ data: [availability("2026-10-05")], hasMore: false });
-    const res = await engine(fetchImpl).search("HKG, PVG to SEA next 30 days business", KEY);
+    const store = new DeviceQuotaStore();
+    const res = await engine(fetchImpl, store).search("HKG, PVG to SEA next 30 days business", KEY);
 
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    const { grid } = res.value;
+    const { grid, notices } = res.value;
+    expect(fetchImpl.calls.map((c) => c.url.pathname)).toEqual(["/partnerapi/search"]);
+    expect(res.value.api_calls_used).toBe(1);
+    expect(res.value.quota.used).toBe(1);
+    // No "skipped to preserve today's quota" notice either: nothing was skipped, nothing was asked.
+    expect(notices.map((n) => n.code)).toEqual([]);
     const statuses = (origin: string) => new Set(grid.cells.flat().filter((c) => c.origin === origin).map((c) => c.status));
-    expect(grid.meta.unmonitored_pairs.map((p) => p.key)).toEqual(["PVG-SEA"]);
-    expect(statuses("PVG")).toEqual(new Set(["unmonitored"]));
-    // A pair with rows is never "not monitored": its other dates were checked and had nothing.
+    expect(grid.meta.unmonitored_pairs).toEqual([]);
+    expect(statuses("PVG")).toEqual(new Set(["none"]));
     expect(statuses("HKG")).toEqual(new Set(["ok", "none"]));
   });
 
   it("marks the pairs a truncated pull may never have reached as not fetched, not as empty", async () => {
     // Every Cached Search page claims there is more, so runFind stops at its page cap and warns
-    // (find.ts:418-424). Get Routes says every pair IS monitored, so the gap cannot be explained as
-    // "not monitored": for the pairs with no rows the only honest state is not fetched.
-    const fetchImpl = fakeFetch((req) =>
-      req.url.pathname.endsWith("/routes")
-        ? jsonResponse(monitoredRoutes(req.url.searchParams.get("source")!, ["HKG", "PVG", "SHA"]))
-        : jsonResponse({ data: [availability("2026-10-05")], hasMore: true, cursor: 1 }),
-    );
+    // (find.ts:418-424): for the pairs with no rows the only honest state is not fetched.
+    const fetchImpl = fakeSeatsAero({ data: [availability("2026-10-05")], hasMore: true, cursor: 1 });
     // SHA is also the Shanghai metro code, so the parser asks for PVG and SHA as well as HKG.
     const res = await engine(fetchImpl).search("HKG, SHA to SEA next 30 days business", KEY);
 
@@ -212,63 +211,27 @@ describe("SearchEngine", () => {
     expect(cells.find((c) => c.origin === "SHA")?.reason).toBe("grid.cell.not_fetched");
     expect(statuses("HKG")).toEqual(new Set(["ok", "none"]));
     expect(grid.meta.unmonitored_pairs).toEqual([]);
+    expect(fetchImpl.calls.some((c) => c.url.pathname.endsWith("/routes"))).toBe(false);
   });
 });
 
-describe("SearchEngine: one program's route list failing (#89)", () => {
-  /** Rows for HKG only; every program's list monitors HKG to SEA, and aeroplan's answers 500 (E2's demo-key-partial). */
-  function partial() {
-    return fakeFetch((req) => {
-      if (!req.url.pathname.endsWith("/routes")) return jsonResponse({ data: [availability("2026-10-05")], hasMore: false });
-      const source = req.url.searchParams.get("source")!;
-      return source === "aeroplan" ? textResponse("{}", 500) : jsonResponse(monitoredRoutes(source, ["HKG"]));
-    });
-  }
-
-  it("keeps the grid it paid for, names the failed list, and claims nothing about the pair it may cover", async () => {
-    const fetchImpl = partial();
-    const store = new DeviceQuotaStore();
-    const res = await engine(fetchImpl, store).search("HKG, PVG to SEA next 30 days business", KEY);
-
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    const { grid, notices, warnings, rows, coverage } = res.value;
-    expect(rows?.length).toBe(1);
-    expect(notices.map((n) => n.code)).toEqual(["find.routes_failed"]);
-    // Said the way this screen draws it: PVG to SEA was searched to the end; only its monitoring is unknown.
-    expect(warnings).toEqual([
-      "Couldn't load the route list for Air Canada Aeroplan: seats.aero returned an error. PVG → SEA was searched to the end, but whether seats.aero monitors it is unknown.",
-    ]);
-    expect(warnings.join(" ")).not.toMatch(/quota|unchecked/i);
-    expect(grid.meta.unmonitored_pairs).toEqual([]);
-    expect(coverage?.slices.find((s) => s.origin === "PVG")?.state).toBe("complete");
-    // One search page and every program's list, the failed one included: all counted against today's calls.
-    expect(res.value.api_calls_used).toBe(1 + SEATS_SOURCES.length);
-    expect(res.value.quota.used).toBe(1 + SEATS_SOURCES.length);
-    expect(JSON.stringify(res)).not.toContain(KEY);
-  });
-
-  it("was the whole search's failure on the plain catalog, after the calls were spent", async () => {
-    const fetchImpl = partial();
-    const plain = new SearchEngine({ fetchImpl, quota: new Quota({ store: new DeviceQuotaStore(), now: () => NOW }), routes: new RoutesCatalog(), now: () => NOW });
-    const res = await plain.search("HKG, PVG to SEA next 30 days business", KEY);
-    expect(res.ok).toBe(false);
-    if (res.ok) return;
-    expect(res.error).toBe("seatsaero");
-  });
-
-  it("says when the failed list changes nothing, and names every pair it leaves open", () => {
-    expect(routesFailedWarning({ routes_failed: ["aeroplan", "united"], monitoring_unknown: [] })).toBe(
-      "Couldn't load the route lists for Air Canada Aeroplan, United MileagePlus: seats.aero returned an error. It does not change these results.",
+describe("SearchEngine: the route catalog is Ask's alone", () => {
+  it("sends no Get Routes call from any grid entry, even with every pair empty and a catalog that could fill", async () => {
+    const fetchImpl = fakeFetch((req) =>
+      req.url.pathname.endsWith("/routes") ? jsonResponse(monitoredRoutes(req.url.searchParams.get("source")!, ["HKG"])) : jsonResponse({ data: [], hasMore: false }),
     );
-    expect(
-      routesFailedWarning({
-        routes_failed: ["aeroplan"],
-        monitoring_unknown: [
-          { origin: "PVG", dest: "SEA", key: "PVG-SEA" },
-          { origin: "SHA", dest: "SEA", key: "SHA-SEA" },
-        ],
-      }),
-    ).toBe("Couldn't load the route list for Air Canada Aeroplan: seats.aero returned an error. PVG → SEA, SHA → SEA were searched to the end, but whether seats.aero monitors them is unknown.");
+    const routes = new RoutesCatalog();
+    const e = new SearchEngine({ fetchImpl, quota: new Quota({ store: new DeviceQuotaStore(), now: () => NOW }), routes, now: () => NOW });
+    const typed = await e.search("HKG, PVG to SEA next 30 days business", KEY);
+    expect(typed.ok).toBe(true);
+    if (!typed.ok) return;
+    // The structured entry (the query editor, Saved refresh, run again and watches) runs the same executor.
+    const structured = await e.searchQuery({ ...typed.value.query, cabins: ["F"] }, KEY);
+    expect(structured.ok).toBe(true);
+    expect(fetchImpl.calls.filter((c) => c.url.pathname.endsWith("/routes"))).toEqual([]);
+    expect(fetchImpl.calls).toHaveLength(2);
+    expect(routes.loadedSources(LOCAL_USER)).toEqual([]);
+    // Ask still reads the same catalog through the engine (../ask/seats-port.ts).
+    expect(e.routes).toBe(routes);
   });
 });

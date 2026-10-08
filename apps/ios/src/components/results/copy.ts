@@ -109,7 +109,12 @@ export interface ResultsCopy {
    * build has a connection (app/flags.ts CAN_CONNECT), the way to connect one in Settings, in each language's order.
    */
   noKey: { before: string; sample: string; or: string; connect: string; after: string; end: string };
-  runFailed: Record<"no_key" | "quota" | "network" | "seatsaero" | "invalid_query" | "other", string>;
+  /**
+   * Why a run failed, by its code. refused_renewed and renewal_unavailable are the OAuth flavour's refusals after a
+   * renewal (../../oauth/refresh-retry.ts): the account refused even with a new token, or a token that could not be
+   * renewed just now. Neither is fixed by connecting again.
+   */
+  runFailed: Record<"no_key" | "quota" | "network" | "seatsaero" | "invalid_query" | "refused_renewed" | "renewal_unavailable" | "other", string>;
   quota: (used: number, limit: number) => string;
   /** The data line at the end of every screen in the chrome but Search, which says it in its status line. */
   attribution: string;
@@ -214,6 +219,8 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
       network: "seats.aero did not answer in time. The request may still have used a call.",
       seatsaero: "seats.aero returned an error for this search.",
       invalid_query: "This search's conditions are not valid, so it was not sent.",
+      refused_renewed: "seats.aero refused this account's searches, even with a renewed connection. Searching needs a seats.aero account with API access.",
+      renewal_unavailable: "seats.aero did not accept the connection, and AwardGrid's token service could not renew it just now. Try again in a moment.",
       other: "The search could not be completed.",
     },
     quota: (used, limit) => `seats.aero calls today: ${used} of ${limit}`,
@@ -316,6 +323,8 @@ export const RESULTS: Record<Locale, ResultsCopy> = {
       network: "seats.aero 未在时限内响应，该请求可能已计入调用。",
       seatsaero: "seats.aero 对此查询返回了错误。",
       invalid_query: "此查询条件无效，未发送。",
+      refused_renewed: "即使已续期连接，seats.aero 仍拒绝了此账户的查询。查票需要有 API 访问权限的 seats.aero 账户。",
+      renewal_unavailable: "seats.aero 未接受当前连接，AwardGrid 的令牌服务暂时无法续期。请稍后重试。",
       other: "查询未能完成。",
     },
     quota: (used, limit) => `今日 seats.aero 调用：${used} / ${limit}`,

@@ -27,11 +27,10 @@ import {
   SeatsAeroNetworkError,
   SeatsAeroResponseError,
 } from "@awardgrid/core/seatsaero/client";
-import { type FindResult, pairsOf, runFind } from "@awardgrid/core/seatsaero/find";
+import { pairsOf, runFind } from "@awardgrid/core/seatsaero/find";
 import { notFetchedPairsFrom } from "@awardgrid/core/seatsaero/not-fetched";
 import { Quota, QuotaExceededError } from "@awardgrid/core/seatsaero/quota";
 import { ResilientRoutesCatalog, type RoutesCatalog } from "@awardgrid/core/seatsaero/routes";
-import { SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
 import { type GetTripsResult, runGetTrips } from "@awardgrid/core/seatsaero/trips";
 import { type KeyCheckOutcome, checkSeatsKey } from "@awardgrid/core/seatsaero/key-check";
 import { OAUTH } from "../app/flags";
@@ -123,7 +122,8 @@ export class SearchEngine {
 
   constructor(opts: SearchEngineOptions) {
     this.cache = opts.cache ?? new InMemoryAvailabilityCache();
-    // One program's route list failing costs its "not monitored" claim, never the rows the search paid for (#89).
+    // Ask's tools read it (../ask/seats-port.ts); a grid search does not (#execute). One program's route list failing
+    // costs its "not monitored" claim, never the rows the search paid for (#89).
     this.routes = opts.routes ?? new ResilientRoutesCatalog();
     this.quota = opts.quota;
     this.#fetch = opts.fetchImpl;
@@ -204,7 +204,13 @@ export class SearchEngine {
     return this.#execute(valid.data, apiKey, { warnings: [], notices: [] });
   }
 
-  /** The one executor both entries share. */
+  /**
+   * The one executor both entries share, and so every typed search, structured run, Saved refresh, run-again and watch
+   * check. It passes runFind no route catalog: with one, the first search in a process that left a pair empty fetched
+   * every program's route list (26 Get Routes calls, one after another, before the rows were shown) only to label
+   * that pair "not monitored". An empty pair reads as checked and empty instead. Ask keeps the catalog
+   * (../ask/seats-port.ts), under its own call budget.
+   */
   async #execute(query: QueryObject, apiKey: string, parsed: { warnings: string[]; notices: Notice[] }): Promise<ApiResult<FindValue>> {
     try {
       const result = await runFind({
@@ -214,7 +220,6 @@ export class SearchEngine {
         fetch: this.#fetch,
         quota: this.quota,
         cache: this.cache,
-        routes: this.routes,
         now: this.#now,
       });
 
@@ -231,7 +236,7 @@ export class SearchEngine {
             not_fetched_pairs: notFetchedPairsFrom(result, pairsOf(query)),
           }),
           query,
-          warnings: [...parsed.warnings, ...runWarnings(result)],
+          warnings: [...parsed.warnings, ...result.warnings],
           notices: [...parsed.notices, ...result.notices],
           quota: await this.quotaView(),
           served_from_cache: result.served_from_cache,
@@ -326,29 +331,6 @@ export class SearchEngine {
     }
     return { ok: false, status: 500, error: "internal", message: err instanceof Error ? err.message : String(err) };
   }
-}
-
-/** runFind's warnings in its order, one per notice, with the failed route list said the way this screen draws it. */
-function runWarnings(result: Pick<FindResult, "warnings" | "notices" | "routes_failed" | "monitoring_unknown">): string[] {
-  return result.warnings.map((text, i) => (result.notices[i]?.code === "find.routes_failed" ? routesFailedWarning(result) : text));
-}
-
-/**
- * The results screen's sentence for a route list that failed (#89). runFind's own is the web grid's ("Blank cells on
- * those routes may be unchecked rather than empty"), true there, where those cells read "not fetched", and not here:
- * these pairs were searched to the end, so their coverage stays complete, and only whether seats.aero monitors them is
- * open. Whether such a pair gets a label of its own is #78.
- */
-export function routesFailedWarning(result: Pick<FindResult, "routes_failed" | "monitoring_unknown">): string {
-  const programs = (result.routes_failed ?? []).map((s) => (SOURCE_NAMES as Partial<Record<string, string>>)[s] ?? s).join(", ");
-  const unknown = result.monitoring_unknown ?? [];
-  const lists = (result.routes_failed ?? []).length === 1 ? "list" : "lists";
-  const head = `Couldn't load the route ${lists} for ${programs}: seats.aero returned an error.`;
-  if (unknown.length === 0) return `${head} It does not change these results.`;
-  const routes = unknown.map((p) => `${p.origin} → ${p.dest}`).join(", ");
-  return unknown.length === 1
-    ? `${head} ${routes} was searched to the end, but whether seats.aero monitors it is unknown.`
-    : `${head} ${routes} were searched to the end, but whether seats.aero monitors them is unknown.`;
 }
 
 function noKey(): ApiFailure {

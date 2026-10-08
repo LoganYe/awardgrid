@@ -304,10 +304,12 @@ describe("the details' words (T10)", () => {
     expect(stopsLabel(2, "en")).toBe("2 stops");
   });
 
-  it("the search details to copy when there is no trusted link: route, day, cabin, program, miles", () => {
+  it("the search details to copy when there is no trusted link: route, day, cabin, program, miles, and the source", () => {
     const row = fixtureSnapshot().rows[0]!.value;
-    expect(detailsCopyText(row, "en")).toBe("HKG → SEA · Sun, Oct 18 · Business · Air Canada Aeroplan · 75,000 miles");
-    expect(detailsCopyText(row, "zh")).toBe("HKG → SEA · 10月18日 · 周日 · 商务舱 · Air Canada Aeroplan · 75,000 里程");
+    expect(detailsCopyText(row, "en")).toBe("HKG → SEA · Sun, Oct 18 · Business · Air Canada Aeroplan · 75,000 miles · Data: seats.aero (https://seats.aero)");
+    expect(detailsCopyText(row, "zh")).toBe("HKG → SEA · 10月18日 · 周日 · 商务舱 · Air Canada Aeroplan · 75,000 里程 · 数据：seats.aero (https://seats.aero)");
+    // Sample figures are not seats.aero's: no credit.
+    expect(detailsCopyText(row, "en", { attribution: false })).toBe("HKG → SEA · Sun, Oct 18 · Business · Air Canada Aeroplan · 75,000 miles");
   });
 });
 

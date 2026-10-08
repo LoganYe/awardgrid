@@ -7,7 +7,7 @@ App Store 版 AwardGrid 只通过 seats.aero 自己的登录（Login with Seats.
 1. 在 seats.aero › Settings › Developer Tools › Apps › New App 创建 OAuth 应用。回调地址填 `https://awardgrid.dowhiz.com/oauth/seats/callback`，scope 填 `openid`。创建即接受 seats.aero 的 OAuth Addendum。记下 Client ID（不是秘密）；Client Secret 只粘贴进 Cloudflare，绝不放进 git、聊天或任何文件。
 2. 部署 Worker `awardgrid-auth`（推荐 `wrangler deploy`：`wrangler.jsonc` 已写好路由、限流绑定和关闭日志；用 Cloudflare 后台时必须手动添加 `RATE_LIMITER` 限流绑定，否则 Worker 一律返回 503，并关闭 Workers Logs 和 traces），把 `SEATS_CLIENT_ID` 和 `SEATS_CLIENT_SECRET` 设为 Worker secret。
 3. 添加路由 `awardgrid.dowhiz.com/oauth/*`。现有的 Worker `awardgrid-vercel-public` 只占用网站的 11 个路由，不含 `/oauth/*`，不会冲突（添加前再看一眼）。
-4. 做 WAF 检查：用无效的 code 调用 `/oauth/seats/token`，必须得到 seats.aero 的 JSON 错误（如 `{"error":"invalid_grant"}`），而不是 Cloudflare 的验证页面。如果得到 403 或 429 的 `{"error":"rejected"}`，多半是 seats.aero 自己的 Cloudflare 拦下了 Worker 的请求：这要请 seats.aero 放行，dowhiz.com 这边改不了（见第 4 节）。
+4. 做 WAF 检查：用无效的 code 调用 `/oauth/seats/token`，必须得到 seats.aero 的 JSON 错误（如 `{"error":"invalid_grant"}`），而不是 Cloudflare 的验证页面。如果得到 502 的 `{"error":"upstream_blocked"}`（旧版 Worker 是 403 或 429 的 `{"error":"rejected"}`），多半是 seats.aero 自己的 Cloudflare 拦下了 Worker 的请求：这要请 seats.aero 放行，dowhiz.com 这边改不了（见第 4 节）。
 5. 用 `VITE_AG_SEATS_CLIENT_ID=<Client ID> npm run build:store` 构建 App；build 号由 owner 决定。
 6. 问 seats.aero 想怎么测试（TestFlight 公开链接，需先通过 Beta App Review；或者屏幕录像）。他们测试过之后才会取消 10 个用户的限制。
 
@@ -158,11 +158,13 @@ seats.aero's own, in front of `https://seats.aero/oauth2/token`, which the Worke
   Events, find what challenged it, and exempt the path: a WAF custom rule with the action **Skip** for `URI Path
   starts with /oauth/seats/`, or, for a feature a rule cannot skip (Bot Fight Mode), turn it off; an Access
   application covering the host needs a bypass policy for `/oauth/seats/`. Repeat the check.
-- **403 (or 429) `{"error":"rejected"}`:** the Worker reached seats.aero, and seats.aero's side refused the call
-  without an OAuth error. The Worker passes on no HTML, so this is what a challenge from seats.aero's own Cloudflare
-  looks like (a plain request to seats.aero has been seen blocked before). Nothing in dowhiz.com changes it: ask
-  seats.aero to let POSTs to `https://seats.aero/oauth2/token` from the Worker `awardgrid-auth` (Cloudflare Workers)
-  through, and repeat the check. A 400 `rejected` is an OAuth answer whose error code was not a plain one; it is fine.
+- **502 `upstream_blocked`** (an older deployment answers 403 or 429 `{"error":"rejected"}` instead): the Worker
+  reached seats.aero, and seats.aero's side refused the call without an OAuth error. The Worker passes on no HTML, so
+  this is what a challenge from seats.aero's own Cloudflare looks like (a plain request to seats.aero has been seen
+  blocked before). It is a 502 so the app treats it as an outage and keeps the connection; a 401 or 403 could read as
+  the person revoking AwardGrid. Nothing in dowhiz.com changes it: ask seats.aero to let POSTs to
+  `https://seats.aero/oauth2/token` from the Worker `awardgrid-auth` (Cloudflare Workers) through, and repeat the
+  check.
 - **502 `upstream_unreachable`, `upstream_unavailable` or `upstream_invalid`:** seats.aero did not answer in 10
   seconds, answered with a server error, or answered 2xx with something other than tokens. Repeat later; if it stays,
   ask seats.aero.

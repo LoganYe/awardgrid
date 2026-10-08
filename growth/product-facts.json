@@ -237,7 +237,7 @@
         "docs/reference/seatsaero/getting-started-p.md:25-27 \"Seats.aero Pro users may be able to access the partner API\"",
         "[external] https://docs.seats.aero/article/68 (read 2026-09-28)",
         "docs/reference/seatsaero/getting-started-p.md:27 \"Not all Pro users can access the partner API key or retrieve an API key.\"",
-        "apps/ios/src/components/results/copy.ts:212 \"no_key: \"Connect your seats.aero account in Settings.\",\"",
+        "apps/ios/src/components/results/copy.ts:217 \"no_key: \"Connect your seats.aero account in Settings.\",\"",
         "docs/release/APP_STORE_HANDOFF.md:205 \"the keys are credentials for the user's own third-party accounts: nothing is sold\"",
         "apps/ios/src/screens/oauth-copy.ts:40 \"purpose: \"Optional. Connect your own seats.aero account to see its results instead of sample data.\",\"",
         "apps/ios/src/screens/oauth-copy.ts:42 \"where: \"seats.aero offers this to accounts with API access. Without it, AwardGrid shows sample data only.\",\"",
@@ -360,7 +360,7 @@
         "packages/core/src/lib/query/schema.ts:58-64 \"export const QueryObject = z\"",
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:5-7 \"Rows are the search's dates, columns its routes; each cell holds one slot per cabin asked\"",
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:116-122 \"<span className=\"ag-mx-miles\">\"",
-        "apps/ios/src/components/results/copy.ts:140 \"matrixCaption: \"Each cell shows its lowest miles\"",
+        "apps/ios/src/components/results/copy.ts:145 \"matrixCaption: \"Each cell shows its lowest miles\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:98 \"<p className=\"ag-result-fees\">\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:106 \"<p className=\"ag-result-time\">\""
       ],
@@ -520,8 +520,8 @@
       "checked_at": "2026-09-28",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/src/components/results/copy.ts:133-135 \"list: \"List\",\"",
-        "apps/ios/src/components/results/copy.ts:236-238 \"list: \"列表\",\"",
+        "apps/ios/src/components/results/copy.ts:138-140 \"list: \"List\",\"",
+        "apps/ios/src/components/results/copy.ts:243-245 \"list: \"列表\",\"",
         "packages/core/src/lib/workspace/selection.ts:18-19 \"Options a comparison can hold\"",
         "packages/core/src/lib/workspace/favorites-store.ts:4-10 \"A favourite is a copy of what a search showed when it was saved\""
       ],
@@ -549,7 +549,7 @@
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:5-8 \"Rows are the search's dates, columns its routes; each cell holds one slot per cabin asked\"",
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:116-122 \"<span className=\"ag-mx-miles\">{formatMiles(row.miles)}</span>\"",
         "apps/ios/src/components/results/AvailabilityMatrix.tsx:134-135 \"<span className=\"ag-mx-cabin\">{s.cabin}</span>\"",
-        "apps/ios/src/components/results/copy.ts:140 \"matrixCaption: \"Each cell shows its lowest miles; miles in different programs are not equivalent.\",\"",
+        "apps/ios/src/components/results/copy.ts:145 \"matrixCaption: \"Each cell shows its lowest miles; miles in different programs are not equivalent.\",\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:61-64 \"<Heading className=\"ag-result-route\">{route}</Heading>\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:95-102 \"<p className=\"ag-result-miles\" data-testid=\"card-miles\">\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:106 \"<p className=\"ag-result-time\">{timeLabel(row.time, now, locale, { sample })}</p>\"",
@@ -606,7 +606,7 @@
       "evidence_ref": [
         "packages/core/src/lib/seatsaero/types.ts:15-74 \"Mileage-program source codes from the Concepts page (updated 2026-08-28)\"",
         "packages/core/src/lib/workspace/present.ts:28 \"\"result.unmonitored\": { en: \"These routes are not monitored by the data source.\"\"",
-        "apps/ios/src/components/results/copy.ts:189 \"unmonitored: \"not monitored by the data source\",\"",
+        "apps/ios/src/components/results/copy.ts:194 \"unmonitored: \"not monitored by the data source\",\"",
         "apps/ios/src/components/results/AvailabilityCalendar.tsx:91 \"const MARK: Record<EmptyDayKind, string>\""
       ],
       "allowed_copy": "It covers the 26 programs seats.aero lists, where seats.aero monitors the route; a route it does not monitor is marked \"not monitored\".",
@@ -666,10 +666,10 @@
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/watch/capabilities.ts:29-44 \"export const WATCH_CHECKS = {\"",
-        "apps/ios/src/app/App.tsx:457-473 \"Check watches now that the app is open\"",
+        "apps/ios/src/app/App.tsx:458-474 \"Check watches now that the app is open\"",
         "packages/core/src/lib/watch/watch.ts:154 \"export const DEFAULT_MIN_QUOTA = 25;\"",
         "packages/core/src/lib/watch/watch.ts:163-178 \"export function dueForCheck(watch: Watch, opts: DueOptions)\"",
-        "apps/ios/src/watch/runner.ts:113 \"quotaRemaining: quota.remaining,\"",
+        "apps/ios/src/watch/runner.ts:114 \"quotaRemaining: quota.remaining,\"",
         "packages/core/src/lib/seatsaero/quota.ts:106-108 \"/** Calls left before the SOFT limit\""
       ],
       "allowed_copy": "Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.",
@@ -697,7 +697,7 @@
         "apps/ios/src/components/plan/plan-copy.ts:68-69 \"section: \"Plan a trip\",\"",
         "apps/ios/src/components/plan/plan-copy.ts:88 \"save: \"Save plan\",\"",
         "apps/ios/src/components/plan/plan-copy.ts:101-102 \"tryNote: \"Try with sample data opens the sample data on this device and searches the plan there. Nothing is sent.\",\"",
-        "apps/ios/src/screens/SearchScreen.tsx:646-647 \"<Welcome locale={locale} onTrySample={entering.enter} busy={entering.busy} failed={entering.failed} />\"",
+        "apps/ios/src/screens/SearchScreen.tsx:651-652 \"<Welcome locale={locale} onTrySample={entering.enter} busy={entering.busy} failed={entering.failed} />\"",
         "e2e/uiux/store-planner.spec.ts:5-7 \"With no data source, the Search screen's welcome is followed by the planner: a typed trip, in English or Chinese,\""
       ],
       "allowed_copy": "Plan a trip shows how AwardGrid reads a trip you type, as airports, dates and cabins, without an account and without sending anything. A plan can be saved on the device, in Saved › Trip plans, and tried on sample data.",
@@ -728,10 +728,10 @@
         "packages/core/src/lib/seatsaero/quota.ts:90 \"this.softLimit = opts.softLimit ?? DEFAULT_SOFT_LIMIT;\"",
         "apps/ios/src/store/quota-store.ts:10 \"used(day) = max(locally counted calls, DAILY_LIMIT - X-RateLimit-Remaining)\"",
         "apps/ios/src/store/quota-store.ts:20-23 \"**It is keyed by UTC day**\"",
-        "apps/ios/src/app/bootstrap.ts:514 \"quota: new Quota({ store: quotaStore, now }),\"",
+        "apps/ios/src/app/bootstrap.ts:517 \"quota: new Quota({ store: quotaStore, now }),\"",
         "packages/core/src/lib/seatsaero/cache.ts:17 \"export const DEFAULT_CACHE_TTL_MINUTES = 45;\"",
         "packages/core/src/lib/seatsaero/cache.ts:406-410 \"/** Parse CACHE_TTL_MINUTES, falling back to 45 on garbage. */\"",
-        "apps/ios/src/search/search.ts:210-219 \"const result = await runFind({\"",
+        "apps/ios/src/search/search.ts:216-224 \"const result = await runFind({\"",
         "docs/reference/seatsaero/getting-started-p.md:25 \"Seats.aero Pro users may be able to access the partner API for up to 1,000 API calls per day\"",
         "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
       ],
@@ -902,7 +902,7 @@
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/package.json:10 \"\"build:store\": \"VITE_AG_STORE=1 VITE_AG_CONNECT=oauth vite build && node scripts/check-fixture-free-bundle.mjs\"",
-        "apps/ios/src/app/App.tsx:352 \"element: OAUTH_BUILT ? <SeatsConnectScreen /> : <SeatsKeyScreen />,\"",
+        "apps/ios/src/app/App.tsx:353 \"element: OAUTH_BUILT ? <SeatsConnectScreen /> : <SeatsKeyScreen />,\"",
         "apps/ios/src/screens/oauth-copy.ts:41 \"how: \"Connect seats.aero opens seats.aero's own page, where seats.aero asks you to sign in and approve AwardGrid;\"",
         "apps/ios/src/oauth/connect.ts:18 \"export const SEATS_CONSENT_URL = \"https://seats.aero/oauth2/consent\";\"",
         "apps/ios/ios/App/App/SeatsAuthPlugin.swift:58 \"session.prefersEphemeralWebBrowserSession = false\"",
@@ -910,7 +910,7 @@
         "apps/ios/src/oauth/broker.ts:12 \"export const TOKEN_SERVICE_URL = \"https://awardgrid.dowhiz.com/oauth/seats\";\"",
         "sites/auth/src/index.ts:16-19 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
         "sites/auth/wrangler.jsonc:15-17 \"\"observability\": { \"enabled\": false, \"logs\": { \"enabled\": false } },\"",
-        "apps/ios/src/app/bootstrap.ts:806 \"async disconnect(): Promise<DisconnectOutcome> {\"",
+        "apps/ios/src/app/bootstrap.ts:819 \"async disconnect(): Promise<DisconnectOutcome> {\"",
         "apps/ios/scripts/check-store-bundle.mjs:67 \"\"Paste your seats.aero API key\",\""
       ],
       "allowed_copy": "You connect your seats.aero account with seats.aero's own sign-in (Login with Seats.aero): seats.aero asks you to sign in and approve AwardGrid, and AwardGrid never sees your password. You can disconnect at any time, in AwardGrid or in your seats.aero settings.",
@@ -977,8 +977,8 @@
         "packages/core/src/lib/grid/deeplinks/trusted.ts:46-59 \"The details' outbound link: seats.aero's primary booking link for this option\"",
         "packages/core/src/lib/grid/deeplinks/index.ts:26-45 \"Programs whose award-search URL shape is NOT implemented yet\"",
         "apps/ios/src/screens/DetailScreen.tsx:12-13 \"**One way out to the program**, and only on a trusted link\"",
-        "apps/ios/src/screens/DetailScreen.tsx:183 \"const link = sample ? null : (loaded?.link ?? detailLink(row, []));\"",
-        "apps/ios/src/screens/DetailScreen.tsx:332-346 \"<footer className=\"ag-detail-actions\"\""
+        "apps/ios/src/screens/DetailScreen.tsx:186 \"const link = sample ? null : (loaded?.link ?? detailLink(row, []));\"",
+        "apps/ios/src/screens/DetailScreen.tsx:340-355 \"<footer className=\"ag-detail-actions\"\""
       ],
       "allowed_copy": "For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.",
       "allowed_copy_zh": "某个选项有 seats.aero 提供的跳转链接时，App 会打开这个链接；没有时，你可以复制查询条件。App 从不订票。",

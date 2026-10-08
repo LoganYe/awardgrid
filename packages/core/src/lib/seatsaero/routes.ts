@@ -24,6 +24,8 @@ export interface RoutesEntry {
 export interface RoutesStore {
   get(userId: string, source: string): Promise<RoutesEntry | null>;
   put(userId: string, source: string, entry: RoutesEntry): Promise<void>;
+  /** Remove every entry fetched before `before` (ms since the epoch). Optional: see RoutesCatalog.clear. */
+  clear?(before: number): Promise<void>;
 }
 
 export class InMemoryRoutesStore implements RoutesStore {
@@ -33,6 +35,9 @@ export class InMemoryRoutesStore implements RoutesStore {
   }
   async put(userId: string, source: string, entry: RoutesEntry): Promise<void> {
     this.#entries.set(`${userId} ${source}`, { routes: [...entry.routes], fetched_at: entry.fetched_at });
+  }
+  async clear(before: number): Promise<void> {
+    for (const [key, entry] of this.#entries) if (!(Date.parse(entry.fetched_at) >= before)) this.#entries.delete(key);
   }
 }
 
@@ -168,6 +173,18 @@ export class RoutesCatalog {
       result.fetched.push(source);
     }
     return result;
+  }
+
+  /**
+   * Forget the route lists fetched before `before` (ms since the epoch), every user's, in memory and in the store; all
+   * of them when no time is given. The iPhone app calls it when it purges what it kept from seats.aero (Disconnect, a
+   * revoked grant) and on its short-term sweep. A store without `clear` (the web's, the CLI's) keeps its entries.
+   */
+  async clear(before = Number.POSITIVE_INFINITY): Promise<void> {
+    for (const perUser of this.#loaded.values()) {
+      for (const [source, entry] of perUser) if (!(entry.fetchedAt >= before)) perUser.delete(source);
+    }
+    await this.#store.clear?.(before);
   }
 
   /** True when the (loaded) source monitors origin→dest. Unknown sources return false. */

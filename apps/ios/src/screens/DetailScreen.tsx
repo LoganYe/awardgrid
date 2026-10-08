@@ -48,6 +48,7 @@ import { SAMPLE } from "../sample/sample-copy";
 import { Button, Icon, IconButton, Notice } from "../components/ui";
 import type { DetailLoaded } from "../workspace/detail-service";
 import type { ApiFailure } from "../search/search";
+import { refusalKind } from "../oauth/refresh-retry";
 
 /** Put text on the clipboard: the async API where the page may use it, else a selected textarea. */
 async function copyText(text: string): Promise<boolean> {
@@ -82,6 +83,8 @@ export function DetailScreen() {
   // A load of this option may still be running (the page was closed and opened again): join it, never send another.
   const [busy, setBusy] = useState(() => services.details.pending(ref) !== null);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
+  // A refusal after a renewal has its own sentence in the screen's language; other failures are the engine's English.
+  const refusal = failure ? refusalKind(failure) : null;
   const [copied, setCopied] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -288,6 +291,12 @@ export function DetailScreen() {
           </p>
           <p className="ag-detail-program">{d.via(programLabel(row.program))}</p>
           <p className="ag-detail-seats">{seatsLabel(row.seats_left, locale)}</p>
+          {/* LEGAL.md: the source beside the figures it names, before the itineraries below them. */}
+          {sample ? (
+            <p className="ag-detail-meta ag-sample-source">{SAMPLE[locale].attribution}</p>
+          ) : (
+            <SeatsAttribution className="ag-detail-meta" text={copy("data.source", locale)} locale={locale} />
+          )}
         </section>
 
         <section className="ag-detail-section" aria-labelledby="detail-trips">
@@ -307,7 +316,11 @@ export function DetailScreen() {
           )}
           {failure ? (
             <Notice tone="danger" live>
-              <span lang={locale === "en" ? undefined : "en"}>{failure.message ?? failure.error}</span>
+              {refusal ? (
+                <span>{RESULTS[locale].runFailed[refusal]}</span>
+              ) : (
+                <span lang={locale === "en" ? undefined : "en"}>{failure.message ?? failure.error}</span>
+              )}
             </Notice>
           ) : null}
         </section>
@@ -321,11 +334,6 @@ export function DetailScreen() {
               screen's status line drops its cache age in sample mode). */}
           {loaded && !sample ? <p className="ag-detail-meta">{d.loadedOnDevice(ageLabel(Math.max(0, now.getTime() - Date.parse(loaded.loadedAt)), locale))}</p> : null}
           <p className="ag-detail-meta">{copy("help.program", locale)}</p>
-          {sample ? (
-            <p className="ag-detail-meta ag-sample-source">{SAMPLE[locale].attribution}</p>
-          ) : (
-            <SeatsAttribution className="ag-detail-meta" text={copy("data.source", locale)} locale={locale} />
-          )}
         </section>
       </div>
 
@@ -337,7 +345,8 @@ export function DetailScreen() {
           onClick={() => {
             // Cleared first, so a second copy is announced again; cleared after a while so it does not linger.
             setCopied(null);
-            void copyText(detailsCopyText(row, locale)).then((ok) => {
+            // seats.aero's credit goes with its figures; sample figures are not seats.aero's.
+            void copyText(detailsCopyText(row, locale, { attribution: !sample })).then((ok) => {
               window.requestAnimationFrame(() => setCopied(ok ? d.copied : d.copyFailed));
               window.setTimeout(() => setCopied(null), 4000);
             });

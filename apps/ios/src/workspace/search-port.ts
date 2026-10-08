@@ -17,7 +17,7 @@
 import { snapshotFromFind } from "@awardgrid/core/workspace/snapshot-from-find";
 import type { ResultSnapshot, SearchPort, SearchRun } from "@awardgrid/core/workspace/types";
 import type { QueryObject } from "@awardgrid/core/query/schema";
-import { type RenewableKeys, withRenewal } from "../oauth/refresh-retry";
+import { type RenewableKeys, refusalKind, withRenewal } from "../oauth/refresh-retry";
 import type { ApiResult, FindValue, SearchEngine } from "../search/search";
 import { SearchRunError } from "./workspace-store";
 
@@ -56,7 +56,8 @@ export function createSearchPort(opts: SearchPortOptions): EngineSearchPort {
     if (run.signal?.aborted) throw new SearchRunError("superseded", "A newer search started before this one was sent.");
     const result = await withRenewal(opts.keys, (key) => opts.engine.searchQuery(query, key), () => !run.signal?.aborted);
     keep(run.id, result);
-    if (!result.ok) throw new SearchRunError(result.error, result.message);
+    // A refusal said after a renewal keeps its own code, so a screen that only has the run's code says it too.
+    if (!result.ok) throw new SearchRunError(refusalKind(result) ?? result.error, result.message);
     const snapshot = snapshotFromFind(result.value, run, opts.now().toISOString());
     try {
       opts.onAnswer?.(snapshot, result.value, run);

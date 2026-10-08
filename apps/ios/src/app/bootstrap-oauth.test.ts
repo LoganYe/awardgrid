@@ -9,10 +9,11 @@
  * never touches sample/.
  */
 import { describe, expect, it, vi } from "vitest";
-import { fakeFetch, jsonResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
+import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 import { favoriteFromSnapshot } from "@awardgrid/core/workspace/favorites-store";
 import type { Watch } from "@awardgrid/core/watch";
 import { MemoryKeyStore } from "../native/keychain";
+import { LOCAL_USER } from "../search/search";
 import type { BrokerResult, TokenBroker } from "../oauth/broker";
 import { CALLBACK_SCHEME } from "../oauth/connect";
 import { MemoryTokenVault, type TokenVault } from "../oauth/token-vault";
@@ -180,6 +181,29 @@ describe("the OAuth flavour", () => {
     expect((await s.vault.read())?.access).toBe("seats:ota:renewed2");
   });
 
+  it("a token the service cannot renew says to try again, not to connect again; an account refused with a new token says why", async () => {
+    const s = session();
+    s.seats.state.valid.delete("seats:ota:first");
+    s.service = tokenService(s.seats, [
+      { ok: false, reason: "unavailable", status: 502, error: "upstream_unavailable" },
+      // Renewed, but seats.aero refuses that token's searches too (it is never added to the accepted ones).
+      { ok: true, grant: { access: "seats:ota:no-api", refresh: null, expiresIn: 3599 } },
+    ]);
+    const svc = await boot(s);
+    const down = await svc.searchText(QUERY);
+    expect(down).toMatchObject({ ok: false, error: "no_key", kind: "renewal_unavailable" });
+    if (!down.ok) expect(down.message).not.toMatch(/Connect your seats\.aero account/);
+    // The editor's runs, which only keep the run's code, say the same.
+    expect(svc.workspace.getState().run).toMatchObject({ kind: "failed", code: "renewal_unavailable" });
+    expect(await s.vault.read()).toMatchObject({ access: "seats:ota:first" });
+
+    const account = await svc.searchText(QUERY);
+    expect(account).toMatchObject({ ok: false, error: "no_key", kind: "refused_renewed" });
+    if (!account.ok) expect(account.message).toMatch(/API access/);
+    expect(s.seats.state.auth.filter(Boolean).slice(-1)).toEqual(["Bearer seats:ota:no-api"]);
+    expect(await svc.seatsAccount!.connected()).toBe(true);
+  });
+
   it("at launch, everything older than 24 hours is gone: cache, workspace, Saved rows, a watch's baseline", async () => {
     const s = session();
     const first = await boot(s);
@@ -226,6 +250,28 @@ describe("the OAuth flavour", () => {
     expect(disk(s.files)).not.toContain("81234");
   });
 
+  it("a save between sweeps leaves out what passed 24 hours: Saved rows, watch baselines and cache rows go first", async () => {
+    const s = session();
+    const svc = await boot(s);
+    expect((await svc.searchText(QUERY)).ok).toBe(true);
+    await svc.favorites.save(favoriteFromSnapshot(svc.workspace.getState().displayedSnapshot!, new Date(s.now.t).toISOString(), "f1"));
+    svc.watches.add(watch());
+    await svc.checkWatches();
+    await svc.persist();
+    expect(disk(s.files)).toContain("81234");
+    const heard = vi.fn();
+    svc.onWatchesChanged(heard);
+
+    // 25 hours on, with no sweep in between (the app stayed open, the hourly timer did not fire): a save alone.
+    s.now.t += 25 * HOUR;
+    expect(await svc.persist()).toEqual({ ok: true });
+    expect(svc.favorites.get("f1")!.rowsRemoved).toBeDefined();
+    expect(svc.watches.get("w1")).toMatchObject({ baseline: [], baselineWindow: null });
+    expect(heard).toHaveBeenCalled();
+    // The workspace's two slots wait for the sweep, which reads them back (its snapshot is still on screen until then).
+    expect([...s.files.files].filter(([, text]) => text.includes("81234")).map(([path]) => path)).toEqual(["workspace-v1.a.json", "workspace-v1.b.json"]);
+  });
+
   it("opening a Saved item past 24 hours searches its query again and puts fresh rows back", async () => {
     const s = session();
     const svc = await boot(s);
@@ -246,6 +292,30 @@ describe("the OAuth flavour", () => {
     expect(await later.refreshSaved("missing")).toEqual({ ok: false, reason: "unknown" });
   });
 
+  it("a search that leaves a pair empty asks seats.aero for no route list, on a cold launch or after", async () => {
+    const s = session();
+    const svc = await boot(s);
+    for (const text of ["HKG, PVG to SEA next 30 days business", "HKG, PVG to SEA next 30 days first"]) {
+      const res = await svc.searchText(text);
+      expect(res.ok).toBe(true);
+      if (res.ok) expect(res.value.notices.map((n) => n.code)).not.toContain("find.routes_skipped");
+    }
+    expect(s.seats.fetchImpl.calls.map((c) => c.url.pathname)).toEqual(["/partnerapi/search", "/partnerapi/search"]);
+  });
+
+  it("route lists (Ask's) last 24 hours at most, and the sweep removes them", async () => {
+    const s = session();
+    const svc = await boot(s);
+    await svc.engine.routes.prime(LOCAL_USER, "united", []);
+    s.now.t += 23 * HOUR;
+    await svc.sweepShortTerm();
+    expect(svc.engine.routes.loadedSources(LOCAL_USER)).toEqual(["united"]);
+    s.now.t += 2 * HOUR;
+    expect(svc.engine.routes.isLoaded(LOCAL_USER, "united")).toBe(false);
+    await svc.sweepShortTerm();
+    expect(svc.engine.routes.loadedSources(LOCAL_USER)).toEqual([]);
+  });
+
   it("Disconnect removes the tokens and every seats.aero result: cache, workspace, Saved rows, watches' baselines, details", async () => {
     const s = session();
     const svc = await boot(s);
@@ -255,10 +325,13 @@ describe("the OAuth flavour", () => {
     svc.watches.add(watch());
     await svc.checkWatches();
     svc.workspace.setSelected({ snapshotId: shown.id, rowKey: shown.rows[0]!.key }, true);
+    await svc.engine.routes.prime(LOCAL_USER, "alaska", []);
     await svc.persist();
     expect(disk(s.files)).toContain("81234");
 
     expect(await svc.seatsAccount!.disconnect()).toEqual({ ok: true });
+    expect(svc.engine.routes.loadedSources(LOCAL_USER)).toEqual([]);
+    expect(await svc.engine.routes.hydrate(LOCAL_USER, ["alaska"])).toEqual([]);
     expect(await s.vault.read()).toBeNull();
     expect(await svc.seatsAccount!.connected()).toBe(false);
     expect(svc.cache.snapshot().users.every((u) => u.rows.length === 0)).toBe(true);
@@ -338,6 +411,27 @@ describe("the OAuth flavour", () => {
       expect(disk(s.files)).not.toContain("81234");
     });
     expect(await svc.seatsAccount!.connected()).toBe(false);
+  });
+
+  it("a firewall's 403 on the renewal is not a revocation: the tokens, Saved and the cache stay", async () => {
+    const s = session();
+    // The real broker over the token service's answers: a 403 "rejected" (as the service before upstream_blocked passed
+    // a firewall's page on), then the firewall's own HTML page.
+    const answers = [jsonResponse({ error: "rejected" }, 403), textResponse("<!doctype html><title>Just a moment...</title>", 403)];
+    const tokenFetch = fakeFetch(() => answers.shift() ?? jsonResponse({ error: "upstream_blocked" }, 502));
+    const svc = await boot(s, { oauth: { vault: s.vault, tokenFetch, clientId: "test-client", legacyKeys: null } });
+    await svc.searchText(QUERY);
+    await svc.favorites.save(favoriteFromSnapshot(svc.workspace.getState().displayedSnapshot!, new Date(s.now.t).toISOString(), "f1"));
+    await svc.persist();
+    s.seats.state.valid.clear();
+    await svc.clearCache();
+    expect(await svc.searchText(QUERY)).toMatchObject({ ok: false });
+    expect(await svc.searchText(QUERY)).toMatchObject({ ok: false });
+    expect(tokenFetch.calls.map((c) => c.url.pathname)).toEqual(["/oauth/seats/refresh", "/oauth/seats/refresh"]);
+    expect(await s.vault.read()).toMatchObject({ access: "seats:ota:first", refresh: "seats:otr:one" });
+    expect(await svc.seatsAccount!.connected()).toBe(true);
+    expect(svc.favorites.get("f1")!.rows.length).toBeGreaterThan(0);
+    expect(disk(s.files)).toContain("81234");
   });
 });
 

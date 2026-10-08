@@ -122,6 +122,44 @@ describe("sample mode's Search screen", () => {
   });
 });
 
+describe("live details", () => {
+  it("say \"Data: seats.aero\", linked, with the figures at the top, before the itineraries", async () => {
+    const keys = new MemoryKeyStore();
+    await keys.set("live-test-key");
+    const date = addDays(TODAY, 4);
+    const body = {
+      data: [
+        {
+          ID: "id-1",
+          RouteID: "r1",
+          Route: { ID: "r1", OriginAirport: "HKG", DestinationAirport: "SEA", Source: "alaska" },
+          Date: date,
+          ParsedDate: `${date}T00:00:00Z`,
+          Source: "alaska",
+          JAvailable: true,
+          JMileageCost: "81234",
+          JRemainingSeats: 2,
+          JAirlines: "AS",
+          JDirect: true,
+          YAvailable: false,
+          WAvailable: false,
+          FAvailable: false,
+        },
+      ],
+      hasMore: false,
+    };
+    const fetchImpl = async () => new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
+    const services = await bootstrap({ keys, anthropicKeys: new MemoryKeyStore(), snapshots: new SnapshotStore(new MemoryFileStore()), now: () => NOW, fetchImpl, anthropicFetch: async () => new Response("{}"), locale: "en" });
+    expect((await services.searchText("HKG to SEA next 30 days business")).ok).toBe(true);
+    const shown = services.workspace.getState().displayedSnapshot!;
+    const html = at(services, `/detail/${shown.id}/${encodeURIComponent(shown.rows[0]!.key)}`, "detail/:snapshotId/:rowKey", createElement(DetailScreen));
+    const credit = '<p class="ag-detail-meta">Data: <a class="ag-attribution-link" href="https://seats.aero"';
+    expect(html).toContain(credit);
+    expect(html.indexOf(credit)).toBeLessThan(html.indexOf('id="detail-trips"'));
+    expect(html.indexOf(credit)).toBeGreaterThan(html.indexOf("81,234"));
+  });
+});
+
 describe("sample mode's details and comparison", () => {
   it("an option's details: the banner, 'Sample data' for the time, no program link, and says why", async () => {
     const services = await sampleServices();
