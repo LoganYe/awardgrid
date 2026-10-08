@@ -6,9 +6,9 @@ AwardGrid puts award seats for several origins, several destinations and up to 9
 • Watches check your saved searches when you open the app. There is no background checking and there are no notifications.
 • Plan a trip: type a trip to see how AwardGrid reads it, save the plan on your iPhone, and try it on sample data.
 
-Your own award data (optional): if you have an account with API access at the award-data provider AwardGrid supports (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases.
+Your own award data (optional): if you have an account at the third-party award-data provider AwardGrid supports, with API access (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases.
 
-Results are the provider's cached data: confirm on the program's own site before you transfer points.
+Results from the provider are its cached data: confirm on the program's own site before you transfer points.
 
 AwardGrid never sees the password to your provider account, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off. Searches go from the iPhone directly to the provider. A small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens for AwardGrid; it stores nothing and keeps no logs of tokens. AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.
 

@@ -259,7 +259,7 @@ class TestTrademarks(unittest.TestCase):
         zh = check("zh-Hans", subtitle="一张表", keywords="余票,里程", description="你自己的 seats.aero 数据（可选）。")
         self.assertTrue(any("data provider's trademark" in m for m in messages(zh, "error")))
         for text in (
-            "Results are the provider's cached data: confirm on the program's own site before you transfer points.",
+            "Results from the provider are its cached data: confirm on the program's own site before you transfer points.",
             "Award seats in one table, from your own data-provider account.",
             "结果是数据提供方的缓存数据。",
         ):
@@ -748,8 +748,8 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertNotEqual(description, blockquote(listing, "- **Description:**", "- **Description, Chinese:**"))
         for needed in (
             "• Sample data: search any route between the 84 airports AwardGrid recognises",
-            "Your own award data (optional): if you have an account with API access at the award-data provider AwardGrid supports (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases.",
-            "Results are the provider's cached data: confirm on the program's own site before you transfer points.",
+            "Your own award data (optional): if you have an account at the third-party award-data provider AwardGrid supports, with API access (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases.",
+            "Results from the provider are its cached data: confirm on the program's own site before you transfer points.",
             "AwardGrid never sees the password to your provider account, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off.",
             "Searches go from the iPhone directly to the provider.",
             "A small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens for AwardGrid; it stores nothing and keeps no logs of tokens. AwardGrid for iPhone has no accounts, no analytics, no ads and no tracking.",
@@ -778,10 +778,10 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertEqual(zh.count("\n\n"), en.count("\n\n"))
         self.assertEqual(zh.count("• "), en.count("• "))
         for needed in (
-            "你自己的里程票数据（可选）：如果你在 AwardGrid 支持的里程票数据提供方有带 API 权限的账户（属于该提供方的 Pro 方案，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据",
+            "你自己的里程票数据（可选）：如果你在 AwardGrid 支持的第三方里程票数据提供方有带 API 权限的账户（属于该提供方的 Pro 方案，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据",
             "示例数据",
             "84 个机场",
-            "结果是数据提供方的缓存数据，转点前请先在里程计划官网确认。",
+            "来自数据提供方的结果是它的缓存数据，转点前请先在里程计划官网确认。",
             "查票请求从 iPhone 直接发往数据提供方。",
             "AwardGrid iPhone 版没有账号、统计分析、广告或跟踪。",
             "AwardGrid 与其数据提供方、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
