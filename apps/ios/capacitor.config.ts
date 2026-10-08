@@ -4,6 +4,11 @@ const config: CapacitorConfig = {
   appId: "com.dowhiz.awardgrid",
   appName: "AwardGrid",
   webDir: "dist",
+  // The bridge's console log prints every plugin call and its answer: the tokens the Keychain hands back, and every
+  // seats.aero response the native HTTP adapter carries. "debug" keeps that to a Debug build of the native app (Xcode's
+  // Run on the developer's own phone); a Release build, which is every TestFlight and App Store build, prints none of
+  // it. Written out rather than left to Capacitor's default, so a change of default cannot turn it on in Release.
+  loggingBehavior: "debug",
   plugins: {
     CapacitorHttp: {
       // FALSE, deliberately, and this is load-bearing rather than tidy.
