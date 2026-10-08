@@ -5,8 +5,9 @@ Apple indexes the union of the app name, the subtitle and the keyword field, and
 one localization. A word spent twice is a wasted ranking slot and an unused keyword character a lost one. This
 script checks both, the field limits, and the words the listing may not use: third-party names (seats.aero,
 Claude, Anthropic, airlines, loyalty programs, other award-search apps) in the name, subtitle and keywords
-(Guideline 2.3.7), and features the app does not have (alerts, notifications and push, live, real-time or instant
-results, booking).
+(Guideline 2.3.7), the data provider's name (seats.aero) in any listing text, the promotional text, description and
+release notes included, and features the app does not have (alerts, notifications and push, live, real-time or
+instant results, booking).
 
 Usage:
     python3 scripts/aso/validate_metadata.py                     # apps/ios/store-metadata/next
@@ -198,6 +199,12 @@ OTHER_AIRLINES = (
     "東方萬里行", "南航", "南方航空", "长荣", "長榮", "长荣航空", "長榮航空", "华航", "華航", "中华航空", "中華航空",
     "英航", "英国航空", "英國航空", "全日空", "日航", "日本航空", "大韩航空", "大韓航空",
 )
+# Store listing texts must not use the data provider's trademark: not in the name, subtitle or keywords (above), and
+# not in the promotional text, description or release notes either. The listing says "the award-data provider"; the
+# app itself names it, and shows its attribution. These match the way trademark_pattern matches any name (any case,
+# with or without the dot or a space), and "Login with Seats" as SEATS_BRAND does.
+PROVIDER_TRADEMARK = ("seats.aero", "seats aero", "seatsaero")
+PROVIDER_SIGN_IN = re.compile(r"\bLogin\s+with\s+Seats\b", re.IGNORECASE)
 # "Seats" is also seats.aero's short name, but "award seats" is the generic noun: only a brand-like use is flagged
 # (a keyword term or a name segment that is just "Seats", "Seats Pro", "Seats app", "Login with Seats"), in any case:
 # a keyword field is usually lower case.
@@ -428,6 +435,21 @@ def trademark_hits(text: str, terms=None) -> list:
     for m in SEATS_BRAND.finditer(text):
         hits.append((m.start(), "Seats", m.group(0)))
     return [(term, found) for _, term, found in sorted(hits)]
+
+
+_PROVIDER_PATTERNS = [(t, trademark_pattern(t)) for t in PROVIDER_TRADEMARK]
+
+
+def provider_hits(text: str) -> list:
+    """The data provider's name in any listing text (prose included), in order of appearance."""
+    hits = [(m.start(), term, m.group(0)) for term, pattern in _PROVIDER_PATTERNS for m in pattern.finditer(text)]
+    hits += [(m.start(), "Login with Seats", m.group(0)) for m in PROVIDER_SIGN_IN.finditer(text)]
+    seen, out = set(), []
+    for start, term, found in sorted(hits):
+        if start not in seen:
+            seen.add(start)
+            out.append((term, found))
+    return out
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -671,6 +693,17 @@ def check_trademarks(report: LocaleReport, values: dict) -> None:
             report.add(
                 "error", name,
                 f"TRADEMARK: {found!r} ({term}) does not go in the App Store name, subtitle or keywords (Guideline 2.3.7)",
+            )
+    # Store listing texts must not use the data provider's trademark: the prose fields may name what the app works
+    # with in general terms ("the award-data provider"), never the provider itself.
+    for name in ("promotional_text", "description", "release_notes"):
+        raw = values.get(name)
+        if not raw:
+            continue
+        for term, found in provider_hits(raw):
+            report.add(
+                "error", name,
+                f"TRADEMARK: {found!r} ({term}): store listing texts must not use the data provider's trademark",
             )
 
 

@@ -790,9 +790,40 @@ describe("TRADEMARK_ASO", () => {
     expect(rules(text, { logical: field(name) })).toEqual([]);
   });
 
-  it("applies only to the name, subtitle and keywords", () => {
-    expect(rules("Needs your own seats.aero Pro key.", { logical: field("description") })).not.toContain("TRADEMARK_ASO");
-    expect(rules("Needs your own seats.aero Pro key.", { logical: "apps/ios/store-metadata/next/en-US/description.txt" })).not.toContain("TRADEMARK_ASO");
+  it("applies to the name, subtitle and keywords; in the prose only the data provider's name fails", () => {
+    // Guideline 2.3.7 is about the name, subtitle and keywords: in prose an airline or a program is a fact.
+    for (const logical of [field("description"), field("promotional_text"), "apps/ios/store-metadata/next/en-US/description.txt"]) {
+      expect(rules("Programs include United MileagePlus and Qantas.", { logical })).not.toContain("TRADEMARK_ASO");
+    }
+    // The README beside the fields is not a listing text.
+    expect(rules("Needs your own seats.aero account.", { logical: "apps/ios/store-metadata/README.md" })).not.toContain("TRADEMARK_ASO");
+  });
+
+  // Store listing texts must not use the data provider's trademark, in any field, case or spelling.
+  it.each([
+    ["description", "Your own seats.aero data (optional)."],
+    ["description", "Results from Seats.aero are its cached data."],
+    ["promotional_text", "Connect your own SEATS.AERO account."],
+    ["release_notes", "Works with seats aero."],
+    ["description", "Works with seatsaero."],
+    ["description", "Sign in with Login with Seats."],
+    ["description", "Works with Seats . Aero."],
+  ])("fails the data provider's name in the %s: %j", (name, text) => {
+    expect(rules(text, { logical: field(name) })).toContain("TRADEMARK_ASO");
+    expect(rules(text, { logical: `apps/ios/store-metadata/next/zh-Hans/${name}.txt` })).toContain("TRADEMARK_ASO");
+  });
+
+  it.each([
+    "Results are the provider's cached data: confirm on the program's own site before you transfer points.",
+    "Try every screen on built-in sample data, or connect your own data-provider account to see its results.",
+    "AwardGrid is not affiliated with, endorsed by, or sponsored by its data provider, any airline, or any loyalty program.",
+  ])("passes prose that names no provider: %j", (text) => {
+    expect(rules(text, { logical: field("description") })).not.toContain("TRADEMARK_ASO");
+  });
+
+  it("the committed listing texts name no data provider", () => {
+    const result = validate({ root: ROOT });
+    expect(result.findings.filter((f) => f.rule === "TRADEMARK_ASO")).toEqual([]);
   });
 
   it.each([
