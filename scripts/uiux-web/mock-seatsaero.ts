@@ -17,6 +17,8 @@ import type { FixtureRequestLog } from "../../apps/ios/fixture-host/protocol";
 
 const PORT = Number(process.env.UIUX_WEB_MOCK_PORT ?? 4331);
 const KEY_PREFIX = "uiux-";
+/** The seeded connection's Partner-Authorization value before its scenario key (e2e/users.ts SEEDED_ACCESS_PREFIX). */
+const SEEDED_BEARER = "Bearer seats:ota:seeded-";
 const logs = new Map<string, FixtureRequestLog>();
 
 function logFor(scenario: string): FixtureRequestLog {
@@ -40,7 +42,10 @@ const server = createServer(async (req, res) => {
     return void res.writeHead(204).end();
   }
   if (!url.pathname.startsWith("/partnerapi/")) return void res.writeHead(404).end();
-  const key = String(req.headers["partner-authorization"] ?? "");
+  // The web app sends its seeded Login with Seats.aero token ("Bearer seats:ota:seeded-uiux-<scenario>",
+  // scripts/seed-e2e.ts); the scenario key is what follows the prefix.
+  const header = String(req.headers["partner-authorization"] ?? "");
+  const key = header.startsWith(SEEDED_BEARER) ? header.slice(SEEDED_BEARER.length) : header;
   const scenario = key.startsWith(KEY_PREFIX) ? key.slice(KEY_PREFIX.length) : "";
   let env;
   try {

@@ -35,8 +35,16 @@
  *        scope: "openid"}; a wrong client is 401 invalid_client, an unknown, used or revoked code or refresh
  *        token is 400 invalid_grant. Codes are single-use; `revokeOAuth()` revokes every grant.
  * A Partner-Authorization of "Bearer seats:ota:…" must be an access token this mock issued and that has
- * not expired (401 otherwise), so a client's refresh path can be exercised; any other non-empty value is
- * a key, as before.
+ * not expired (401 otherwise), so a client's refresh path can be exercised, or a SEEDED one: an access token a seed
+ * script wrote straight into the web app's database ("seats:ota:seeded-<value>", scripts/seed-e2e.ts and
+ * scripts/seed-dev.ts), accepted without having been issued, whose value selects the DEMO scenario as a key's does.
+ * Any other non-empty value is a key, as before.
+ *
+ * The token service's two POST paths are mocked too, for the web app's e2e (sites/auth stands between the web app and
+ * seats.aero in production, and is tested on its own in sites/auth/test): POST /oauth/seats/token {code, state} and
+ * POST /oauth/seats/refresh {refresh_token} add the mock client and the mock's registered redirect URI, as the Worker
+ * adds AwardGrid's, and answer the token fields only. MOCK_OAUTH_REDIRECT_URI sets the registered redirect URI (the
+ * e2e app's own callback, since no Worker sits in front of it there).
  *
  * Never use this in production; it is not reachable from the image. Logs one line per request
  * and never prints header values or request bodies.
@@ -62,6 +70,14 @@ export type DemoScenario = keyof typeof DEMO_KEYS;
 export const DEMO_PARTIAL_PROGRAM = "aeroplan";
 export const DEMO_SLOW_MS = 1500;
 export const DEFAULT_PORT = 3999;
+/** A seeded access token's prefix (e2e/users.ts SEEDED_ACCESS_PREFIX): test values only, accepted without issuance. */
+export const SEEDED_TOKEN_PREFIX = "seats:ota:seeded-";
+
+/** The scenario value a Partner-Authorization carries: a seeded token's value, or the header itself (a key). */
+function selectorOf(auth: string): string {
+  const bearer = "Bearer ";
+  return auth.startsWith(`${bearer}${SEEDED_TOKEN_PREFIX}`) ? auth.slice(bearer.length + SEEDED_TOKEN_PREFIX.length) : auth;
+}
 
 export interface MockOptions {
   /** Serve fixtures/demo with scenario routing instead of the recorded synthetic fixture. */
@@ -223,7 +239,8 @@ function loadDemo(now: Date): Dataset {
 
 function scenarioOf(auth: string, demo: boolean): DemoScenario {
   if (!demo) return "normal";
-  const found = (Object.keys(DEMO_KEYS) as DemoScenario[]).find((k) => DEMO_KEYS[k] === auth);
+  const selector = selectorOf(auth);
+  const found = (Object.keys(DEMO_KEYS) as DemoScenario[]).find((k) => DEMO_KEYS[k] === selector);
   return found ?? "normal";
 }
 
@@ -239,7 +256,8 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
   // breaks by a few milliseconds.
   const startedAt = now();
   const { rows } = dataset;
-  const oauth = createOAuthMock({ ...MOCK_OAUTH_CLIENT, ...opts.oauth }, now);
+  const oauthConfig: MockOAuthConfig = { ...MOCK_OAUTH_CLIENT, ...opts.oauth };
+  const oauth = createOAuthMock(oauthConfig, now);
 
   const handle = (req: IncomingMessage, res: ServerResponse) => {
     const started = Date.now();
@@ -270,6 +288,31 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
       log(`GET ${p} 302 ${Date.now() - started}ms`);
       return;
     }
+    // The token service's paths (a stand-in for sites/auth): the same grants, with the mock client added here.
+    if ((p === "/oauth/seats/token" || p === "/oauth/seats/refresh") && req.method === "POST") {
+      let raw = "";
+      req.setEncoding("utf8");
+      req.on("data", (chunk: string) => {
+        raw += chunk;
+      });
+      req.on("end", () => {
+        let b: Record<string, unknown> = {};
+        try {
+          const parsed: unknown = JSON.parse(raw);
+          if (typeof parsed === "object" && parsed !== null) b = parsed as Record<string, unknown>;
+        } catch {
+          b = {};
+        }
+        const client = { client_id: oauthConfig.clientId, client_secret: oauthConfig.clientSecret };
+        const answer =
+          p === "/oauth/seats/token"
+            ? oauth.token({ ...client, grant_type: "authorization_code", code: b.code, redirect_uri: oauthConfig.redirectUri, state: b.state, scope: "openid" })
+            : oauth.token({ ...client, grant_type: "refresh_token", refresh_token: b.refresh_token });
+        const { access_token, token_type, expires_in, refresh_token, error } = answer.body as Record<string, unknown>;
+        send(answer.status, answer.status === 200 ? { access_token, token_type, expires_in, ...(refresh_token ? { refresh_token } : {}) } : { error });
+      });
+      return;
+    }
     if (p === "/oauth2/token" && req.method === "POST") {
       let raw = "";
       req.setEncoding("utf8");
@@ -289,8 +332,9 @@ export function createMockHandler(opts: MockOptions = {}): { handle: (req: Incom
       return;
     }
     if (!auth) return send(401, {});
-    // An OAuth access token must be one this mock issued, still valid; anything else is a key, as before.
-    if (auth.startsWith("Bearer ") && !oauth.accepts(auth.slice("Bearer ".length).trim())) return send(401, {});
+    // An OAuth access token must be one this mock issued, still valid, or a seeded one; anything else is a key, as before.
+    const token = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : null;
+    if (token !== null && !token.startsWith(SEEDED_TOKEN_PREFIX) && !oauth.accepts(token)) return send(401, {});
     // A key seats.aero rejects: 401 on every endpoint, which is what /api/keys reports as
     // "seats.aero rejected this key" when someone pastes a bad one (e2e/settings.spec.ts).
     if (scenario === "invalid") return send(401, {});
@@ -375,7 +419,8 @@ const invokedDirectly = process.argv[1] !== undefined && import.meta.url === pat
 if (invokedDirectly) {
   const demo = process.env.DEMO === "1" || process.argv.includes("--demo");
   const port = Number(process.env.MOCK_SEATS_PORT ?? DEFAULT_PORT);
-  createMockServer({ demo, port }).then((h) => {
+  const redirectUri = process.env.MOCK_OAUTH_REDIRECT_URI?.trim();
+  createMockServer({ demo, port, ...(redirectUri ? { oauth: { redirectUri } } : {}) }).then((h) => {
     const source = demo ? "fixtures/demo (DEMO mode, scenario keys demo-key-normal|empty|error|invalid|slow|partial)" : "packages/core/test/fixtures/seatsaero/synthetic-example-query.json";
     console.log(`mock seats.aero on ${h.baseUrl} — ${source}; dates shifted by ${h.shiftDays} days; ${h.rowCount} rows`);
   });

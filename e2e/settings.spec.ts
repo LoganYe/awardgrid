@@ -1,14 +1,15 @@
 /**
- * Phase 6.5 — the Settings page (spec §5, docs/UI_PLAN.md §6.8): four sections separated by a
+ * Phase 6.5 — the Settings page (spec §5, docs/UI_PLAN.md §6.8): five sections separated by a
  * heading and space, with no cards and no borders around them.
  *
- * Everything is seeded demo data on the offline mock: the "demo" user has a seats.aero key and
- * the "linked" user has a fake Telegram chat id and quiet hours (scripts/seed-e2e.ts).
+ * Everything is seeded demo data on the offline mock: the "demo" user has a seeded seats.aero
+ * connection, the "connect" user none, the "rekey" user had a pasted key the move to Login with
+ * Seats.aero removed, and the "linked" user has a fake Telegram chat id and quiet hours
+ * (scripts/seed-e2e.ts).
  *
- * Adding a key is NOT stubbed: PUT /api/keys probes seats.aero through `seatsFetchFromEnv()`,
- * so under SEATS_AERO_BASE_URL the probe lands on the DEMO mock and the scenario keys decide the
- * verdict (`demo-key-invalid` → 401 → 400 invalid_key, `demo-key-error` → 500 → 502
- * seatsaero_unavailable, `demo-key-normal` → 200 → checked). All three states are the real ones.
+ * Connecting is NOT stubbed: Connect opens the mock's consent page (SEATS_OAUTH_CONSENT_URL),
+ * which redirects to the app's callback, whose code is exchanged at the mock's token-service
+ * stand-in (SEATS_OAUTH_TOKEN_SERVICE_URL); the mock then accepts the access token it issued.
  *
  * One request is stubbed: POST /api/telegram/link, because the app process runs with no
  * TELEGRAM_BOT_TOKEN and no TELEGRAM_BOT_USERNAME, so the route truthfully answers
@@ -31,6 +32,26 @@ const FAKE_DEEP_LINK = `https://t.me/awardgrid_demo_bot?start=${"Ab3xY".repeat(8
 
 const sections = (page: Page) => page.locator("[data-settings-section]");
 const keyRow = (page: Page, provider: string) => page.locator(`[data-key-row="${provider}"]`);
+const seatsSection = (page: Page) => page.locator('[data-settings-section="seats"]');
+
+/** One week of HKG → SEA in business from today: a small search the DEMO mock answers. */
+const ONE_WEEK_HKG_SEA = () => {
+  const today = new Date();
+  const day = (offset: number) => new Date(today.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
+  return {
+    origins: ["HKG"],
+    destinations: ["SEA"],
+    date_from: day(0),
+    date_to: day(6),
+    cabins: ["J"],
+    direct_only: false,
+    include_filtered: false,
+    min_cabin_pct: 100,
+    sort_by: "miles_asc",
+    raw_text: "HKG to SEA, next week, business",
+    language: "en",
+  };
+};
 const timezoneSelect = (page: Page) => page.getByRole("combobox", { name: en["settings.timezone"] });
 
 /** The zone select is disclosure, not furniture: open it only when it is not already open. */
@@ -78,19 +99,20 @@ test.describe("settings", () => {
     await applyTheme(page);
   });
 
-  test("four sections, headings and space, no cards", async ({ page, asUser }) => {
+  test("five sections, headings and space, no cards", async ({ page, asUser }) => {
     await asUser("demo");
     await page.goto("/settings");
     await expect(page.getByRole("heading", { level: 1, name: en["settings.title"] })).toBeVisible();
 
-    // §5 order: API keys, Telegram, Account, Language and theme.
+    // Order: seats.aero, optional API keys, Telegram, Account, Language and theme.
     await expect(page.getByRole("heading", { level: 2 })).toHaveText([
+      en["settings.seats.title"],
       en["settings.keys.title"],
       en["settings.telegram.title"],
       en["settings.account.title"],
       en["settings.language_theme.title"],
     ]);
-    await expect(sections(page)).toHaveCount(4);
+    await expect(sections(page)).toHaveCount(5);
 
     // No card look: nothing draws a border or a shadow around a section.
     const count = await sections(page).count();
@@ -107,51 +129,80 @@ test.describe("settings", () => {
     const width = await page.locator("main > div").first().evaluate((el) => el.getBoundingClientRect().width);
     expect(width).toBeLessThanOrEqual(880);
 
-    // One row per provider: seats.aero has a key, the two optional ones do not.
-    await expect(keyRow(page, "seats_aero").locator("[data-key-status]")).toHaveAttribute("data-key-status", "set");
-    await expect(keyRow(page, "seats_aero")).toContainText("••••");
+    // seats.aero is connected (never a token on the page); no key row for it, ever.
+    await expect(seatsSection(page).locator("[data-seats-status]")).toHaveAttribute("data-seats-status", "connected");
+    await expect(seatsSection(page).getByRole("button", { name: en["settings.seats.disconnect"] })).toBeVisible();
+    await expect(page.locator("body")).not.toContainText("seats:ota:");
+    await expect(keyRow(page, "seats_aero")).toHaveCount(0);
+    // The two optional providers, one row each.
     await expect(keyRow(page, "duffel")).toContainText(en["settings.keys.not_set"]);
     await expect(keyRow(page, "ignav")).toContainText(en["settings.keys.not_set"]);
     await expect(page.getByRole("progressbar", { name: en["settings.quota.title"] })).toBeVisible();
 
   });
 
-  test("adding a key: the form, both failures, then the checked line", async ({ page, asUser }) => {
+  test("optional keys: the add form, and no way to paste a seats.aero key", async ({ page, asUser, baseURL }) => {
     await asUser("demo");
     await page.goto("/settings");
 
-    // An optional provider's add form, for the "no key yet" shape.
     await keyRow(page, "duffel").getByRole("button", { name: en["settings.keys.add_action"] }).click();
     const duffelInput = keyRow(page, "duffel").getByLabel(en["settings.keys.input_label"]);
     await expect(duffelInput).toBeVisible();
     await expect(duffelInput).toHaveAttribute("type", "password");
     await keyRow(page, "duffel").getByRole("button", { name: en["common.cancel"] }).click();
 
-    const seats = keyRow(page, "seats_aero");
-    const paste = async (value: string) => {
-      // A failed attempt leaves the form open (with the key still in it), so only open it when
-      // it is closed — clicking Replace again would collapse it.
-      const replace = seats.getByRole("button", { name: en["settings.keys.replace"] });
-      if ((await replace.getAttribute("aria-expanded")) !== "true") await replace.click();
-      const input = seats.getByLabel(en["settings.keys.input_label"]);
-      await expect(input).toBeVisible();
-      await input.fill(value);
-      await seats.getByRole("button", { name: en["settings.keys.add"] }).click();
-    };
+    // The API refuses a seats.aero key outright: nothing is stored, nothing is sent to seats.aero.
+    const res = await page.request.put(`${baseURL}/api/keys`, {
+      headers: { origin: baseURL!, "content-type": "application/json" },
+      data: { provider: "seats_aero", key: "demo-key-normal" },
+    });
+    expect([res.status(), await res.json()]).toEqual([400, { error: "invalid_provider" }]);
+  });
 
-    // 1. A key seats.aero rejects: the mock answers 401 to the probe.
-    await paste("demo-key-invalid");
-    await expect(seats.getByRole("alert")).toHaveText(en["error.invalid_key"]);
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+  test("connect seats.aero: seats.aero's page, back connected, then disconnect", async ({ page, asUser }) => {
+    await asUser("connect");
+    await page.goto("/settings");
+    const seats = seatsSection(page);
+    await expect(seats.locator("[data-seats-status]")).toHaveAttribute("data-seats-status", "not_connected");
 
-    // 2. A key seats.aero cannot be asked about: the mock answers 500 to the probe.
-    await paste("demo-key-error");
-    await expect(seats.getByRole("alert")).toHaveText(en["error.seatsaero_unavailable"]);
+    // Connect: the mock's consent page answers at once with a redirect to the app's callback, which exchanges the
+    // code and lands back here with the outcome, said once and then taken out of the address.
+    await seats.getByRole("button", { name: en["settings.seats.connect"] }).click();
+    await page.waitForURL(/\/settings/);
+    await expect(seats.getByRole("status").filter({ hasText: en["settings.seats.outcome.connected"] })).toBeVisible();
+    await expect(seats.locator("[data-seats-status]")).toHaveAttribute("data-seats-status", "connected");
+    await expect.poll(() => new URL(page.url()).searchParams.has("seats")).toBe(false);
+    await expect(page.locator("body")).not.toContainText("seats:ota:");
 
-    // 3. A key that checks out: one line, no dialog, and the row keeps its masked value.
-    await paste("demo-key-normal");
-    await expect(seats.getByText(en["settings.keys.checked_now"])).toBeVisible();
-    await expect(seats.locator("[data-key-status]")).toHaveAttribute("data-key-status", "set");
+    // The issued token works: a search answers (the mock accepts only access tokens it issued, or seeded ones).
+    const origin = new URL(page.url()).origin;
+    const find = await page.request.post("/api/find", { headers: { origin, "content-type": "application/json" }, data: { query: ONE_WEEK_HKG_SEA() } });
+    expect(find.status()).toBe(200);
+
+    // Disconnect confirms inline, then the account is not connected and searching asks to connect again.
+    await seats.getByRole("button", { name: en["settings.seats.disconnect"] }).click();
+    await seats.getByTestId("seats-disconnect-confirm").getByRole("button", { name: en["settings.seats.disconnect"] }).click();
+    await expect(seats.getByRole("status").filter({ hasText: en["settings.seats.disconnected"] })).toBeVisible();
+    await expect(seats.locator("[data-seats-status]")).toHaveAttribute("data-seats-status", "not_connected");
+    const after = await page.request.post("/api/find", { headers: { origin, "content-type": "application/json" }, data: { query: ONE_WEEK_HKG_SEA() } });
+    expect([after.status(), (await after.json()).error]).toEqual([409, "no_key"]);
+  });
+
+  test("a removed key: the one-time notice on the grid and in Settings, until dismissed", async ({ page, asUser }) => {
+    // The dismissal belongs to the account, not to a project: one project dismisses it.
+    test.skip(test.info().project.name !== "desktop-light", "the notice is dismissed once per account");
+    await asUser("rekey");
+    await page.goto("/grid");
+    await expect(page.getByTestId("grid-no-key")).toContainText(en["seats.reconnect_notice"]);
+    await page.goto("/settings");
+    const notice = seatsSection(page).getByTestId("seats-reconnect-notice");
+    await expect(notice).toContainText(en["seats.reconnect_notice"]);
+    await notice.getByRole("button", { name: en["settings.seats.dismiss"] }).click();
+    await expect(notice).toHaveCount(0);
+    await page.reload();
+    await expect(seatsSection(page).getByTestId("seats-reconnect-notice")).toHaveCount(0);
+    await page.goto("/grid");
+    await expect(page.getByTestId("grid-no-key")).toContainText(en["grid.empty.no_key"]);
   });
 
   test("telegram: the deep link, the QR and the waiting line", async ({ page, asUser }) => {
@@ -231,17 +282,17 @@ test.describe("settings", () => {
     await asUser("demo");
     await page.goto("/settings");
 
-    // Removing a key.
-    const seats = keyRow(page, "seats_aero");
-    const remove = seats.getByTestId("remove-key");
-    await remove.click();
-    const keyConfirm = page.getByTestId("remove-key-confirm");
-    await expect(keyConfirm).toBeVisible();
+    // Disconnecting seats.aero.
+    const disconnect = seatsSection(page).getByTestId("seats-disconnect");
+    await disconnect.click();
+    const seatsConfirm = page.getByTestId("seats-disconnect-confirm");
+    await expect(seatsConfirm).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(keyConfirm.getByRole("button", { name: en["settings.keys.remove"], exact: true })).toBeFocused();
+    await expect(seatsConfirm.getByRole("button", { name: en["settings.seats.disconnect"], exact: true })).toBeFocused();
     await page.keyboard.press("Escape");
-    await expect(keyConfirm).toHaveCount(0);
-    await expect(remove).toBeFocused();
+    await expect(seatsConfirm).toHaveCount(0);
+    await expect(disconnect).toBeFocused();
+    await expect(seatsSection(page).locator("[data-seats-status]")).toHaveAttribute("data-seats-status", "connected");
 
     // Logging out everywhere — the same component, so the same keyboard contract.
     const logoutAll = page.getByTestId("logout-all");
@@ -271,7 +322,8 @@ test.describe("settings", () => {
     // Chinese: the whole page re-renders from the server on the next request.
     await page.getByRole("radio", { name: "中文（简体）" }).check();
     await expect(page.getByRole("heading", { level: 1, name: zh["settings.title"] })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2 }).first()).toHaveText(zh["settings.keys.title"]);
+    await expect(page.getByRole("heading", { level: 2, name: zh["settings.keys.title"] })).toBeVisible();
+    await expect(page.getByRole("button", { name: zh["settings.seats.disconnect"] })).toBeVisible();
 
     // Back to the defaults so the next test starts from English and the system theme.
     await page.getByRole("radio", { name: "English" }).check();

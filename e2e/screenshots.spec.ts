@@ -80,7 +80,8 @@ import {
   showFlights,
   showFlightsError,
   showFlightsLoading,
-  showKeyError,
+  keepSeatsConnected,
+  showSeatsDisconnectConfirm,
   showSettingsSection,
   toggleDynamic,
 } from "./states";
@@ -405,7 +406,7 @@ test.describe("screenshots", () => {
 
   // ---- settings (spec §5) ------------------------------------------------
 
-  test("settings: the page, the key states, the account and the toggles", async ({ page }) => {
+  test("settings: the page, seats.aero, the key form, the account and the toggles", async ({ page }) => {
     await openSettings(page);
     await shot(page, "settings", "default");
 
@@ -413,8 +414,9 @@ test.describe("screenshots", () => {
     await shot(page, "settings", "keys-add");
     await page.locator('[data-key-row="duffel"]').getByRole("button", { name: en["common.cancel"] }).click();
 
-    await showKeyError(page);
-    await shot(page, "settings", "keys-error");
+    await showSeatsDisconnectConfirm(page);
+    await shot(page, "settings", "seats-disconnect");
+    await keepSeatsConnected(page);
 
     await showSettingsSection(page, "account");
     await shot(page, "settings", "change-password");
@@ -426,7 +428,7 @@ test.describe("screenshots", () => {
   test("settings: the page in Chinese", async ({ page }) => {
     // Through the locale cookie, not the radio: setting the radio writes the account's language.
     await openSettings(page, "demo", "zh");
-    await expect(page.getByRole("heading", { level: 2 }).first()).toHaveText(zh["settings.keys.title"]);
+    await expect(page.getByRole("heading", { level: 2, name: zh["settings.keys.title"] })).toBeVisible();
     await shot(page, "settings", "language-theme", { zh: true });
   });
 
