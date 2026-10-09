@@ -2,7 +2,8 @@
 /**
  * The account's saved options on this browser (UI/UX v1 T18; docs/04 S06): each with when it was saved, the search it
  * came from, the option as it was, and the approved "Saved snapshot; availability may change." Opening the page
- * sends nothing. Another account on the same browser has its own list (./storage.ts).
+ * sends nothing. Another account on the same browser has its own list (./storage.ts). An option's seats.aero row is
+ * kept 24 hours (./retention.ts); after that the item keeps its search and saved time, and says its result expired.
  */
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
@@ -12,10 +13,10 @@ import { copy, dayLabel, feesLabel, formatMiles, programLabel, querySubline, rou
 import { cabinName } from "@awardgrid/core/workspace/query-editor";
 import { useWorkspaceServices } from "./services";
 
-export function SavedApp({ userId }: { userId: string }) {
+export function SavedApp({ userId, connected = true }: { userId: string; connected?: boolean }) {
   const t = useT();
   const locale = useLocale();
-  const { services, ready } = useWorkspaceServices(userId);
+  const { services, ready } = useWorkspaceServices(userId, connected);
   const { favorites } = services;
   const items = useSyncExternalStore(favorites.subscribe, favorites.all, favorites.all);
   const when = (iso: string) => new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
@@ -54,6 +55,10 @@ export function SavedApp({ userId }: { userId: string }) {
                       {dayLabel(row.value.date, locale)} · {cabinName(row.value.cabin, locale)} · {programLabel(row.value.program)} ·{" "}
                       {locale === "zh" ? `${formatMiles(row.value.miles)} 里程` : `${formatMiles(row.value.miles)} miles`} · {feesLabel(row.value.fees_cents, row.value.currency, locale)} ·{" "}
                       {seatsLabel(row.value.seats_left, locale)}
+                    </p>
+                  ) : item.rowsRemoved ? (
+                    <p className="ag-web-option-meta" data-testid="favorite-rows-removed">
+                      {t("favorites.rows_removed")}
                     </p>
                   ) : null}
                   <p className="ag-web-option-time">{t("favorites.saved_at", { when: when(item.savedAt) })}</p>

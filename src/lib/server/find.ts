@@ -1,15 +1,17 @@
 /**
  * Server facade for the grid page and its API routes (kickoff §4, §5).
  *
- *   findGridForUser   QueryObject → Grid using the CALLING user's own seats.aero key
+ *   findGridForUser   QueryObject → Grid through the CALLING user's own seats.aero connection
  *   getTripsForUser   Get Trips for one Availability ID (costs exactly one call)
  *   parseForUser      NL text → QueryObject (the LLM only when the request asks and ANTHROPIC_API_KEY is set)
  *   userFromRequest   session cookie on a Route Handler request → User | null
  *
- * Boundaries honoured here (§0.2): there is no default key — a user without a key gets a
- * NoKeyError, never someone else's key; the decrypted key is passed to exactly one place, the
- * SeatsAeroClient constructor inside runFind / getTripsForUser, and is never returned, logged
- * or placed on an error. Cache, quota and routes stores are the per-user SQLite stores.
+ * Boundaries honoured here (§0.2): there is no default key and no pasted key — a user is either connected through
+ * Login with Seats.aero or gets a SeatsNotConnectedError, never someone else's access; the decrypted access token
+ * ("Bearer seats:ota:…", src/lib/seats-oauth/access.ts) is passed to exactly one place, the SeatsAeroClient inside
+ * runFind / getTripsForUser, and is never returned, logged or placed on an error. A token seats.aero refuses is renewed
+ * once and the request sent again (withSeatsAuthorization). Cache, quota and routes stores are the per-user SQLite
+ * stores, and nothing they hold from seats.aero is read once it is 24 hours old (src/lib/seats-oauth/retention.ts).
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse, type NextRequest } from "next/server";
@@ -19,7 +21,7 @@ import { createSqliteStores } from "@/lib/db/stores";
 import { buildGrid, enumeratePairs } from "@awardgrid/core/grid/pivot";
 import type { AvailabilityRow, Grid, NotFetchedPair, Orientation, RoutePair } from "@awardgrid/core/grid/types";
 import type { CoverageEvidence } from "@awardgrid/core/workspace/types";
-import { getDecryptedKey, getMasterKey, hasKey, NoKeyError } from "@/lib/keys";
+import { SeatsNotConnectedError, SeatsRenewalUnavailableError, SHORT_TERM_MAX_AGE_MINUTES, SHORT_TERM_MAX_AGE_MS, withSeatsAuthorization, type TokenBroker } from "@/lib/seats-oauth";
 import { BodyError } from "@/lib/server/http";
 import { PARSER_MODEL_DEFAULT, ParseError, parseQuery, resolveParserModel, type ParseQueryResult, type ParserClient } from "@awardgrid/core/query";
 import type { QueryObject } from "@awardgrid/core/query/schema";
@@ -34,7 +36,7 @@ import { DEFAULT_MIN_CABIN_PCT, type Cabin } from "@awardgrid/core/query/schema"
 import { notice, noticesToText, type Notice } from "@awardgrid/core/notices";
 import { SEATS_SOURCES, SOURCE_NAMES, type Trip } from "@awardgrid/core/seatsaero/types";
 
-export { NoKeyError, ParseError, PARSER_MODEL_DEFAULT, QuotaExceededError };
+export { SeatsNotConnectedError, ParseError, PARSER_MODEL_DEFAULT, QuotaExceededError };
 
 // ---------------------------------------------------------------------------
 // Shared options
@@ -43,11 +45,13 @@ export { NoKeyError, ParseError, PARSER_MODEL_DEFAULT, QuotaExceededError };
 export interface ServerFindOptions {
   /** Clock; inject in tests. */
   now?: () => Date;
-  /** Transport; inject a fake in tests. Never a way to bypass the key. */
+  /** Transport; inject a fake in tests. Never a way to bypass the connection. */
   fetch?: typeof fetch;
   /** MASTER_KEY override for tests; production reads process.env.MASTER_KEY via getMasterKey(). */
   masterKey?: Buffer;
-  /** Cache TTL override (minutes); default from CACHE_TTL_MINUTES. */
+  /** The token service client that renews the access token; inject a fake in tests. */
+  tokenBroker?: TokenBroker;
+  /** Cache TTL override (minutes); default from CACHE_TTL_MINUTES. Never more than 24 hours (cacheTtl). */
   ttlMinutes?: number;
   /**
    * Append cached dynamic-pricing rows (flagged `dynamic: true`) to a query that hides them
@@ -108,16 +112,17 @@ export interface FindGridResult {
 
 type UserRef = Pick<User, "id">;
 
+/** The access options for the calling user's connection, from the facade's own options. */
+function accessOptions(opts: ServerFindOptions, now: () => Date) {
+  return { now, ...(opts.masterKey ? { masterKey: opts.masterKey } : {}), ...(opts.tokenBroker ? { broker: opts.tokenBroker } : {}) };
+}
+
 /**
- * Resolve the calling user's seats.aero key. Order matters: the "has a key" check happens
- * BEFORE the master key is touched, so a user without a key gets a clean NoKeyError even on a
- * host where MASTER_KEY is unset (and the route can answer 409 instead of 500).
+ * The cache TTL in minutes, never more than the 24 hours seats.aero results may be kept: a CACHE_TTL_MINUTES set
+ * higher would otherwise serve rows the retention sweep is about to delete.
  */
-function resolveSeatsKey(db: Db, userId: string, masterKey: Buffer | undefined): string {
-  if (!hasKey(db, userId, "seats_aero")) throw new NoKeyError("seats_aero");
-  const key = getDecryptedKey(db, userId, "seats_aero", masterKey ?? getMasterKey());
-  if (key === null) throw new NoKeyError("seats_aero");
-  return key;
+export function cacheTtl(ttlMinutes: number | undefined): number {
+  return Math.min(ttlMinutes ?? cacheTtlMinutesFromEnv(), SHORT_TERM_MAX_AGE_MINUTES);
 }
 
 /**
@@ -160,7 +165,8 @@ export class ResilientRoutesCatalog extends RoutesCatalog {
 function wiring(db: Db, now: () => Date) {
   const stores = createSqliteStores(db);
   const quota = new Quota({ store: stores.quota, now, softLimit: softLimitFromEnv() });
-  const routes = new ResilientRoutesCatalog({ store: stores.routes, now });
+  // Route lists are seats.aero data too: 24 hours at most here, not the catalog's 7-day default.
+  const routes = new ResilientRoutesCatalog({ store: stores.routes, now, ttlMs: SHORT_TERM_MAX_AGE_MS });
   return { stores, quota, routes };
 }
 
@@ -343,9 +349,9 @@ async function snapshot(quota: Quota, userId: string): Promise<QuotaSnapshot> {
 // ---------------------------------------------------------------------------
 
 /**
- * Run the fast lane for `user` and pivot into a Grid. Throws NoKeyError (→ 409),
- * QuotaExceededError (→ 429) or a SeatsAeroError subclass (→ 502). The key never leaves
- * this function except into the SeatsAeroClient that runFind builds.
+ * Run the fast lane for `user` and pivot into a Grid. Throws SeatsNotConnectedError (→ 409),
+ * SeatsRenewalUnavailableError or a SeatsAeroError subclass (→ 502) or QuotaExceededError (→ 429).
+ * The access token never leaves this function except into the SeatsAeroClient that runFind builds.
  */
 export async function findGridForUser(
   db: Db,
@@ -354,35 +360,30 @@ export async function findGridForUser(
   opts: ServerFindOptions & { orientation?: Orientation } = {},
 ): Promise<FindGridResult> {
   const now = opts.now ?? (() => new Date());
-  const apiKey = resolveSeatsKey(db, user.id, opts.masterKey);
+  const ttlMinutes = cacheTtl(opts.ttlMinutes);
   const { stores, quota, routes } = wiring(db, now);
 
   const fetchImpl = opts.fetch ?? seatsFetchFromEnv();
-  const result = await runFind({
-    query,
-    userId: user.id,
-    apiKey,
-    quota,
-    cache: stores.cache,
-    routes,
-    now,
-    ...(fetchImpl ? { fetch: fetchImpl } : {}),
-    ...(opts.ttlMinutes !== undefined ? { ttlMinutes: opts.ttlMinutes } : {}),
-  });
+  const result = await withSeatsAuthorization(db, user.id, accessOptions(opts, now), (apiKey) =>
+    runFind({
+      query,
+      userId: user.id,
+      apiKey,
+      quota,
+      cache: stores.cache,
+      routes,
+      now,
+      ttlMinutes,
+      ...(fetchImpl ? { fetch: fetchImpl } : {}),
+    }),
+  );
 
   // Phase 6 additive: dynamic rows from the cached include_filtered scope (no network) and the
   // "not fetched" cell state derived from the run's warnings.
   let rows: AvailabilityRow[] = result.rows;
   let dynamicAvailable = false;
   if (!query.include_filtered && (opts.dynamic_rows ?? true)) {
-    const appended = await appendCachedDynamicRows(
-      stores.cache,
-      user.id,
-      query,
-      result.rows,
-      opts.ttlMinutes ?? cacheTtlMinutesFromEnv(),
-      now(),
-    );
+    const appended = await appendCachedDynamicRows(stores.cache, user.id, query, result.rows, ttlMinutes, now());
     rows = appended.rows;
     dynamicAvailable = appended.available;
   }
@@ -577,23 +578,33 @@ export async function getTripsForUser(
   opts: ServerFindOptions & { cabin?: Cabin; include_filtered?: boolean; min_cabin_pct?: number } = {},
 ): Promise<TripsForUserResult> {
   const now = opts.now ?? (() => new Date());
-  const apiKey = resolveSeatsKey(db, user.id, opts.masterKey);
   const { stores, quota } = wiring(db, now);
 
   const day = quota.today();
-  await quota.reserve(user.id, 1, day); // throws QuotaExceededError with the reset time
   const fetchImpl = opts.fetch ?? seatsFetchFromEnv();
-  const client = new SeatsAeroClient({ apiKey, ...(fetchImpl ? { fetch: fetchImpl } : {}) });
   let calls = 0;
-  const unsubscribe = client.subscribe(() => {
-    calls += 1;
-  });
+  let reserved = false;
   try {
     const pct = opts.min_cabin_pct ?? 100;
-    const res = await client.getTrips(availabilityId, {
-      ...(opts.include_filtered ? { include_filtered: true } : {}),
-      // 100 is the API's own default: omitted so the request is unchanged from before #18.
-      ...(pct < 100 ? { min_cabin_pct: pct } : {}),
+    const res = await withSeatsAuthorization(db, user.id, accessOptions(opts, now), async (apiKey) => {
+      // Reserved once, before the first request, as always; a second request after a refused token is charged below.
+      if (!reserved) {
+        await quota.reserve(user.id, 1, day); // throws QuotaExceededError with the reset time
+        reserved = true;
+      }
+      const client = new SeatsAeroClient({ apiKey, ...(fetchImpl ? { fetch: fetchImpl } : {}) });
+      const unsubscribe = client.subscribe(() => {
+        calls += 1;
+      });
+      try {
+        return await client.getTrips(availabilityId, {
+          ...(opts.include_filtered ? { include_filtered: true } : {}),
+          // 100 is the API's own default: omitted so the request is unchanged from before #18.
+          ...(pct < 100 ? { min_cabin_pct: pct } : {}),
+        });
+      } finally {
+        unsubscribe();
+      }
     });
     const fees = tripsToFees(res, opts.cabin);
     // The only place a real fee, currency or booking link is ever learned: write it back to the
@@ -620,10 +631,12 @@ export async function getTripsForUser(
       quota: await snapshot(quota, user.id),
     };
   } finally {
-    unsubscribe();
-    // The reservation covered one call; refund it only if no request reached the server.
-    if (calls === 0) await quota.release(user.id, 1, day);
-    else if (calls > 1) await quota.increment(user.id, calls - 1, day);
+    // The reservation covered one call; refund it only if no request reached the server. A retry after a refused
+    // token is a second request, charged like the first.
+    if (reserved) {
+      if (calls === 0) await quota.release(user.id, 1, day);
+      else if (calls > 1) await quota.increment(user.id, calls - 1, day);
+    }
   }
 }
 
@@ -703,7 +716,8 @@ export function utcToday(now: Date = new Date()): string {
  */
 export function gridErrorResponse(err: unknown): NextResponse {
   if (err instanceof BodyError) return gridError(400, "invalid_body");
-  if (err instanceof NoKeyError) return gridError(409, "no_key", { provider: err.provider });
+  if (err instanceof SeatsNotConnectedError) return gridError(409, "no_key", { provider: err.provider });
+  if (err instanceof SeatsRenewalUnavailableError) return gridError(502, "seatsaero", { kind: err.kind });
   if (err instanceof QuotaExceededError) {
     return gridError(429, "quota", { resetAt: err.resetAt.toISOString(), remaining: err.remaining, requested: err.requested });
   }

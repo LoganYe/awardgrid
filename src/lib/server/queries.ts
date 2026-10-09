@@ -12,13 +12,13 @@
  * `unlinkTelegram`, `createTransportFromEnv`) so the routes depend on one module.
  */
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, isNull, lt, notInArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 import { parse as parseCron, validate as validateCronExpr } from "node-cron";
 import type { Db } from "@/lib/db/client";
 import { NOTIFY_ON, queryRuns, savedQueries, users, type NotifyOn, type QueryRun, type SavedQuery } from "@/lib/db/schema";
 import { createSqliteQuotaStore } from "@/lib/db/stores/quota";
 import type { AvailabilityRow } from "@awardgrid/core/grid/types";
-import { NoKeyError } from "@/lib/keys";
+import { SeatsNotConnectedError, shortTermCutoff } from "@/lib/seats-oauth";
 import { TelegramTransport, createTelegramLinkToken, createTransportFromEnv as notifyTransportFromEnv, unlinkTelegram } from "@/lib/notify";
 import { Cabin, QueryObject } from "@awardgrid/core/query/schema";
 import {
@@ -351,8 +351,10 @@ function rowsFromSnapshot(cells: readonly CellSnapshot[]): RunDiffRow[] {
  * earlier run that is not a fetch failure and not still pending delivery. Both arrays are empty
  * when there is nothing to compare — no runs, a first run, or a run that took no snapshot
  * (quota, no key, upstream error) — never a full list of "dropped" cells that never dropped.
+ * The same holds when either snapshot is no longer kept (older than 24 hours, or purged on
+ * Disconnect: src/lib/seats-oauth/retention.ts): the page then shows the run's counts only.
  */
-export function lastRunDiff(db: Db, userId: string, id: string): RunDiffRows | null {
+export function lastRunDiff(db: Db, userId: string, id: string, now: Date = new Date()): RunDiffRows | null {
   const saved = getSavedQuery(db, userId, id);
   if (!saved) return null;
   const empty: RunDiffRows = { new: [], dropped: [], price_drops: [] };
@@ -360,6 +362,8 @@ export function lastRunDiff(db: Db, userId: string, id: string): RunDiffRows | n
   if (!last) return empty;
   const reason = last.skippedReason as SkippedReason | null;
   if (reason !== null && FETCH_FAILURE_REASONS.has(reason)) return empty;
+  const cutoff = shortTermCutoff(now);
+  if (last.cellsPurgedAt !== null || last.ranAt < cutoff) return empty;
 
   const baseline =
     db
@@ -370,6 +374,8 @@ export function lastRunDiff(db: Db, userId: string, id: string): RunDiffRows | n
           eq(queryRuns.savedQueryId, id),
           lt(queryRuns.ranAt, last.ranAt),
           or(eq(queryRuns.notified, true), isNull(queryRuns.skippedReason), notInArray(queryRuns.skippedReason, NON_BASELINE_REASONS)),
+          isNull(queryRuns.cellsPurgedAt),
+          gte(queryRuns.ranAt, cutoff),
         ),
       )
       .orderBy(desc(queryRuns.ranAt), desc(sql`rowid`))
@@ -506,9 +512,9 @@ export interface RunNowDeps extends ClockOpts {
 }
 
 /**
- * "Run now": the scheduler's runNow with the OWNER's key, transport from env, run recorded.
- * A run the scheduler skipped for a missing key, an exhausted quota or a concurrent run in the
- * worker is surfaced as NoKeyError / RunQuotaError / RunInProgressError so the API can answer
+ * "Run now": the scheduler's runNow with the OWNER's connection, transport from env, run recorded.
+ * A run the scheduler skipped for no seats.aero connection, an exhausted quota or a concurrent run in the
+ * worker is surfaced as SeatsNotConnectedError / RunQuotaError / RunInProgressError so the API can answer
  * 409 / 429 / 409; every other outcome (including upstream errors, quiet hours, first run)
  * comes back as the recorded run's summary.
  */
@@ -529,7 +535,7 @@ export async function runNow(db: Db, savedQueryId: string, deps: RunNowDeps = {}
   });
   if (!result) throw new Error("saved query not found");
   if (result.error?.code === "in_progress" || result.runId === null) throw new RunInProgressError();
-  if (result.error?.code === "no_key") throw new NoKeyError("seats_aero");
+  if (result.error?.code === "no_key") throw new SeatsNotConnectedError();
   if (result.error?.code === "quota") {
     const quota = new Quota({ store: createSqliteQuotaStore(db), now, softLimit: softLimitFromEnv() });
     throw new RunQuotaError(quota.resetAt());

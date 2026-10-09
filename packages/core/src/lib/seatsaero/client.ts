@@ -358,8 +358,13 @@ export class SeatsAeroClient {
     }
   }
 
+  /** The key out of `text`; for an OAuth value ("Bearer seats:ota:…") the bare token too, in case only that is echoed. */
   #redact(text: string): string {
-    return this.#apiKey.length > 0 ? text.split(this.#apiKey).join("[redacted]") : text;
+    if (this.#apiKey.length === 0) return text;
+    let out = text.split(this.#apiKey).join("[redacted]");
+    const bare = this.#apiKey.startsWith("Bearer ") ? this.#apiKey.slice("Bearer ".length).trim() : "";
+    if (bare.length >= 8) out = out.split(bare).join("[redacted]");
+    return out;
   }
 }
 

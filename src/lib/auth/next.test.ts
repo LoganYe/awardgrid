@@ -38,6 +38,7 @@ const ALICE: User = {
   quietHoursEnd: null,
   timezone: "UTC",
   locale: "en",
+  seatsReconnectNotice: false,
   theme: "system",
 };
 

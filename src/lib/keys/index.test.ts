@@ -11,15 +11,11 @@ import {
   getMasterKey,
   hasKey,
   listKeys,
-  recordValidationCall,
   removeKey,
   requireKey,
   resetMasterKeyCache,
   setKey,
-  validateSeatsAeroKey,
 } from "@/lib/keys";
-import { InMemoryQuotaStore } from "@awardgrid/core/seatsaero/quota";
-import { fakeFetch, jsonResponse, loadFixture, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 
 const T0 = new Date("2026-09-06T10:00:00Z");
 const MASTER = Buffer.from("0f".repeat(32), "hex");
@@ -35,11 +31,17 @@ async function seed() {
   return { db, alice, bob };
 }
 
-describe("key store", () => {
+describe("key store (the optional Duffel and Ignav keys; seats.aero is never a key here)", () => {
+  it("knows no seats.aero provider", async () => {
+    const { db, alice } = await seed();
+    expect(() => setKey(db, alice.id, "seats_aero" as never, PLAINTEXT, { masterKey: MASTER, now: T0 })).toThrow(KeyError);
+    expect(db.select().from(userKeys).all()).toHaveLength(0);
+  });
+
   it("round-trips a key: masked listing, decrypted plaintext only via getDecryptedKey", async () => {
     const { db, alice } = await seed();
-    const summary = setKey(db, alice.id, "seats_aero", `  ${PLAINTEXT}\n`, { masterKey: MASTER, now: T0 });
-    expect(summary).toEqual({ provider: "seats_aero", last4: "9876", masked: "••••9876", createdAt: T0.toISOString() });
+    const summary = setKey(db, alice.id, "ignav", `  ${PLAINTEXT}\n`, { masterKey: MASTER, now: T0 });
+    expect(summary).toEqual({ provider: "ignav", last4: "9876", masked: "••••9876", createdAt: T0.toISOString() });
 
     const listed = listKeys(db, alice.id);
     expect(listed).toEqual([summary]);
@@ -54,42 +56,42 @@ describe("key store", () => {
     expect(Buffer.from(row.iv, "base64")).toHaveLength(12);
     expect(Buffer.from(row.tag, "base64")).toHaveLength(16);
 
-    expect(getDecryptedKey(db, alice.id, "seats_aero", MASTER)).toBe(PLAINTEXT);
-    expect(requireKey(db, alice.id, "seats_aero", MASTER)).toBe(PLAINTEXT);
-    expect(hasKey(db, alice.id, "seats_aero")).toBe(true);
+    expect(getDecryptedKey(db, alice.id, "ignav", MASTER)).toBe(PLAINTEXT);
+    expect(requireKey(db, alice.id, "ignav", MASTER)).toBe(PLAINTEXT);
+    expect(hasKey(db, alice.id, "ignav")).toBe(true);
     expect(hasKey(db, alice.id, "duffel")).toBe(false);
     // The wrong master key cannot decrypt (GCM tag check).
-    expect(() => getDecryptedKey(db, alice.id, "seats_aero", OTHER_MASTER)).toThrow();
+    expect(() => getDecryptedKey(db, alice.id, "ignav", OTHER_MASTER)).toThrow();
   });
 
   it("upserts (replace) and keeps providers and users independent", async () => {
     const { db, alice, bob } = await seed();
-    setKey(db, alice.id, "seats_aero", "alice-key-AAAA", { masterKey: MASTER, now: T0 });
-    setKey(db, bob.id, "seats_aero", "bob-key-BBBB", { masterKey: MASTER, now: T0 });
+    setKey(db, alice.id, "ignav", "alice-key-AAAA", { masterKey: MASTER, now: T0 });
+    setKey(db, bob.id, "ignav", "bob-key-BBBB", { masterKey: MASTER, now: T0 });
     setKey(db, alice.id, "duffel", "duffel-key-DDDD", { masterKey: MASTER, now: T0 });
     const later = new Date("2026-09-07T00:00:00Z");
-    setKey(db, alice.id, "seats_aero", "alice-key-CCCC", { masterKey: MASTER, now: later });
+    setKey(db, alice.id, "ignav", "alice-key-CCCC", { masterKey: MASTER, now: later });
 
     expect(listKeys(db, alice.id)).toEqual([
       { provider: "duffel", last4: "DDDD", masked: "••••DDDD", createdAt: T0.toISOString() },
-      { provider: "seats_aero", last4: "CCCC", masked: "••••CCCC", createdAt: later.toISOString() },
+      { provider: "ignav", last4: "CCCC", masked: "••••CCCC", createdAt: later.toISOString() },
     ]);
-    expect(listKeys(db, bob.id)).toEqual([{ provider: "seats_aero", last4: "BBBB", masked: "••••BBBB", createdAt: T0.toISOString() }]);
-    expect(getDecryptedKey(db, alice.id, "seats_aero", MASTER)).toBe("alice-key-CCCC");
-    expect(getDecryptedKey(db, bob.id, "seats_aero", MASTER)).toBe("bob-key-BBBB");
+    expect(listKeys(db, bob.id)).toEqual([{ provider: "ignav", last4: "BBBB", masked: "••••BBBB", createdAt: T0.toISOString() }]);
+    expect(getDecryptedKey(db, alice.id, "ignav", MASTER)).toBe("alice-key-CCCC");
+    expect(getDecryptedKey(db, bob.id, "ignav", MASTER)).toBe("bob-key-BBBB");
     expect(db.select().from(userKeys).all()).toHaveLength(3);
   });
 
   it("rejects empty, whitespace, too-long keys and unknown providers", async () => {
     const { db, alice } = await seed();
     const o = { masterKey: MASTER, now: T0 };
-    expect(() => setKey(db, alice.id, "seats_aero", "", o)).toThrow(KeyError);
-    expect(() => setKey(db, alice.id, "seats_aero", "   \t\n", o)).toThrow(/required/);
-    expect(() => setKey(db, alice.id, "seats_aero", "k".repeat(513), o)).toThrow(/too long/);
-    expect(() => setKey(db, alice.id, "seats_aero", "k".repeat(512), o)).not.toThrow();
+    expect(() => setKey(db, alice.id, "ignav", "", o)).toThrow(KeyError);
+    expect(() => setKey(db, alice.id, "ignav", "   \t\n", o)).toThrow(/required/);
+    expect(() => setKey(db, alice.id, "ignav", "k".repeat(513), o)).toThrow(/too long/);
+    expect(() => setKey(db, alice.id, "ignav", "k".repeat(512), o)).not.toThrow();
     expect(() => setKey(db, alice.id, "stripe" as never, "x", o)).toThrow(KeyError);
     try {
-      setKey(db, alice.id, "seats_aero", "", o);
+      setKey(db, alice.id, "ignav", "", o);
     } catch (err) {
       expect((err as KeyError).code).toBe("empty");
     }
@@ -97,15 +99,15 @@ describe("key store", () => {
 
   it("removeKey deletes and requireKey throws NoKeyError afterwards", async () => {
     const { db, alice } = await seed();
-    setKey(db, alice.id, "seats_aero", PLAINTEXT, { masterKey: MASTER, now: T0 });
-    expect(removeKey(db, alice.id, "seats_aero")).toBe(true);
-    expect(removeKey(db, alice.id, "seats_aero")).toBe(false);
+    setKey(db, alice.id, "ignav", PLAINTEXT, { masterKey: MASTER, now: T0 });
+    expect(removeKey(db, alice.id, "ignav")).toBe(true);
+    expect(removeKey(db, alice.id, "ignav")).toBe(false);
     expect(listKeys(db, alice.id)).toEqual([]);
-    expect(getDecryptedKey(db, alice.id, "seats_aero", MASTER)).toBeNull();
+    expect(getDecryptedKey(db, alice.id, "ignav", MASTER)).toBeNull();
 
     const err = (() => {
       try {
-        requireKey(db, alice.id, "seats_aero", MASTER);
+        requireKey(db, alice.id, "ignav", MASTER);
         return null;
       } catch (e) {
         return e as NoKeyError;
@@ -113,8 +115,8 @@ describe("key store", () => {
     })();
     expect(err).toBeInstanceOf(NoKeyError);
     expect(err?.code).toBe("no_key");
-    expect(err?.provider).toBe("seats_aero");
-    expect(err?.message).toMatch(/seats\.aero/);
+    expect(err?.provider).toBe("ignav");
+    expect(err?.message).toMatch(/Ignav/);
     expect(err?.message).not.toContain(alice.id);
   });
 });
@@ -146,61 +148,5 @@ describe("getMasterKey", () => {
     expect(getMasterKey()).toBe(k1); // memoized
     resetMasterKeyCache();
     expect(getMasterKey().equals(Buffer.from("cd".repeat(32), "hex"))).toBe(true);
-  });
-});
-
-describe("validateSeatsAeroKey", () => {
-  const search = loadFixture("search.json");
-
-  it("makes exactly one minimal cached-search call with the key in Partner-Authorization", async () => {
-    const fetch = fakeFetch(() => jsonResponse(search));
-    const result = await validateSeatsAeroKey(` ${PLAINTEXT} `, { fetch, now: T0 });
-    expect(result).toEqual({ ok: true });
-    expect(fetch.calls).toHaveLength(1);
-    const req = fetch.calls[0]!;
-    expect(req.headers["partner-authorization"]).toBe(PLAINTEXT);
-    expect(req.url.pathname).toBe("/partnerapi/search");
-    expect(req.url.searchParams.get("origin_airport")).toBe("SEA");
-    expect(req.url.searchParams.get("destination_airport")).toBe("NRT");
-    expect(req.url.searchParams.get("start_date")).toBe("2026-09-06");
-    expect(req.url.searchParams.get("end_date")).toBe("2026-09-06");
-    expect(req.url.searchParams.get("take")).toBe("10");
-    expect(req.url.pathname + req.url.search).not.toContain(PLAINTEXT);
-  });
-
-  it("treats 401 and 403 as invalid, other HTTP failures as unknown, a 200 with an odd body as ok", async () => {
-    expect(await validateSeatsAeroKey(PLAINTEXT, { fetch: fakeFetch(() => textResponse("nope", 401)), now: T0 })).toEqual({
-      ok: false,
-      reason: "invalid",
-    });
-    expect(await validateSeatsAeroKey(PLAINTEXT, { fetch: fakeFetch(() => textResponse("forbidden", 403)), now: T0 })).toEqual({
-      ok: false,
-      reason: "invalid",
-    });
-    expect(await validateSeatsAeroKey(PLAINTEXT, { fetch: fakeFetch(() => textResponse("boom", 500)), now: T0 })).toEqual({
-      ok: false,
-      reason: "unknown",
-    });
-    expect(await validateSeatsAeroKey(PLAINTEXT, { fetch: fakeFetch(() => jsonResponse({ weird: true })), now: T0 })).toEqual({
-      ok: true,
-    });
-  });
-
-  it("reports network failures and rejects blank input without calling out", async () => {
-    const fetch = fakeFetch(() => {
-      throw new TypeError("fetch failed");
-    });
-    expect(await validateSeatsAeroKey(PLAINTEXT, { fetch, now: T0 })).toEqual({ ok: false, reason: "network", timed_out: false });
-    const untouched = fakeFetch(() => jsonResponse(search));
-    expect(await validateSeatsAeroKey("   ", { fetch: untouched, now: T0 })).toEqual({ ok: false, reason: "invalid" });
-    expect(untouched.calls).toHaveLength(0);
-  });
-
-  it("recordValidationCall charges exactly one call to the given day", async () => {
-    const store = new InMemoryQuotaStore();
-    expect(await recordValidationCall(store, "u1", "2026-09-06")).toBe(1);
-    expect(await recordValidationCall(store, "u1", "2026-09-06")).toBe(2);
-    expect(await store.get("u1", "2026-09-06")).toBe(2);
-    expect(await store.get("u2", "2026-09-06")).toBe(0);
   });
 });

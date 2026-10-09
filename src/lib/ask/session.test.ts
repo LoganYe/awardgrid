@@ -401,7 +401,7 @@ describe("runAsk", () => {
       {
         type: "error",
         code: "no_key",
-        message: "No seats.aero API key on file. Add one in Settings.",
+        message: "No seats.aero account is connected. Connect seats.aero in Settings.",
       },
     ]);
     expect(await run({ keys: { seats_aero: "" } })).toMatchObject([

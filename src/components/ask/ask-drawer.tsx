@@ -22,6 +22,7 @@ import { atCap, CostMeter, formatReset } from "@/components/ask/cost-meter";
 import { addToolName, buildAskContext, formatUsd } from "@/components/ask/context";
 import { ASK_DEMO_OFF, askDemoStreamUrl, askDemoUsageUrl, probeAskDemo, resolveAskDemo, type AskDemoState } from "@/components/ask/demo";
 import { appendTurn, loadHistory, saveHistory, type AskTurn } from "@/components/ask/history";
+import { SeatsAttribution } from "@/components/shell/seats-attribution";
 import { Suggestions } from "@/components/ask/suggestions";
 import { ToolActivity } from "@/components/ask/tool-activity";
 import { DrawerShell } from "@/components/drawers";
@@ -281,7 +282,7 @@ export function AskDrawer({ open, onOpenChange, query, cell, hasKey, panel }: As
   function commit(): void {
     const a = liveRef.current;
     if (a.text.trim().length === 0) return;
-    const next = appendTurn(stored ?? loadHistory(), { prompt: a.prompt, text: a.text, tools: a.tools, costUsd: a.costUsd });
+    const next = appendTurn(stored ?? loadHistory(), { prompt: a.prompt, text: a.text, tools: a.tools, costUsd: a.costUsd, at: new Date().toISOString() });
     saveHistory(next);
     setStored(next);
     liveRef.current = EMPTY_ANSWER;
@@ -484,6 +485,8 @@ export function AskDrawer({ open, onOpenChange, query, cell, hasKey, panel }: As
           {phase === "done" && answer.text.length === 0 && history.length === 0 && !problem && <p className="t-meta text-fg-muted">{t("ask.empty_answer")}</p>}
           <div ref={transcriptEndRef} aria-hidden />
         </div>
+        {/* Answers are drawn from seats.aero's results: the attribution sits beside them, not only in the page footer. */}
+        {(history.length > 0 || answer.text.length > 0) && <SeatsAttribution />}
 
         {/* The only live region in the drawer: two transitions, not the answer text. */}
         <p className="sr-only" role="status" data-testid="ask-live">

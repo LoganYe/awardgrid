@@ -24,7 +24,7 @@ export const USAGE = [
   "usage: pnpm admin <command>",
   "",
   "  invite --for <name>            mint one invite code (prints the code only)",
-  "  users                          list users: username, created, has seats key",
+  "  users                          list users: username, created, seats.aero connected",
   "  invites                        list unused invite codes",
   "  revoke-sessions --user <name>  sign a user out everywhere",
 ].join("\n");
@@ -89,14 +89,14 @@ export function adminInvite(db: Db, intendedFor: string, opts: ClockOptions = {}
 export interface UsersTableRow {
   username: string;
   created: string; // YYYY-MM-DD
-  hasSeatsKey: "yes" | "no";
+  seatsConnected: "yes" | "no";
 }
 
 export function adminUsers(db: Db): UsersTableRow[] {
   return listUsers(db).map((u) => ({
     username: u.username,
     created: u.createdAt.slice(0, 10),
-    hasSeatsKey: u.hasSeatsKey ? "yes" : "no",
+    seatsConnected: u.seatsConnected ? "yes" : "no",
   }));
 }
 
@@ -137,8 +137,8 @@ export function formatTable(headers: readonly string[], rows: ReadonlyArray<Read
 
 export function renderUsers(rows: readonly UsersTableRow[]): string {
   return formatTable(
-    ["username", "created", "has seats key"],
-    rows.map((r) => [r.username, r.created, r.hasSeatsKey]),
+    ["username", "created", "seats.aero connected"],
+    rows.map((r) => [r.username, r.created, r.seatsConnected]),
   );
 }
 

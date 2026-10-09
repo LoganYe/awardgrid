@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSession, SESSION_COOKIE } from "@/lib/auth";
 import { openTestDb, type Db } from "@/lib/db/client";
 import { seedUsers } from "@/lib/db/stores/testing";
-import { resetMasterKeyCache, setKey } from "@/lib/keys";
+import { resetMasterKeyCache } from "@/lib/keys";
+import { connectForTests } from "@/lib/seats-oauth/testing";
 import { QueryObject } from "@awardgrid/core/query/schema";
 import { fakeFetch, jsonResponse, loadFixture, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "@awardgrid/core/test-fixtures/seatsaero/generate-synthetic";
@@ -23,7 +24,8 @@ const { GET: trips } = await import("./trips/[id]/route");
 const { POST: exportCsv } = await import("./export/route");
 
 const MASTER_HEX = "0f".repeat(32);
-const ALICE_KEY = "alice_pro_key_SECRET_a1b2c3";
+/** Alice's seats.aero access token (a fake; "_SECRET_" is a marker the bundle check greps for). */
+const ALICE_KEY = "seats:ota:alice_pro_key_SECRET_a1b2c3";
 const synthetic = generateSynthetic();
 const tripsFixture = loadFixture<TripsResponse>("trips__id.json");
 
@@ -72,7 +74,7 @@ beforeEach(() => {
   seedUsers(db, ["alice", "carol"]);
   process.env.MASTER_KEY = MASTER_HEX;
   resetMasterKeyCache();
-  setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: Buffer.from(MASTER_HEX, "hex") });
+  connectForTests(db, "alice", { masterKey: Buffer.from(MASTER_HEX, "hex"), access: ALICE_KEY });
   aliceToken = createSession(db, "alice").token;
   carolToken = createSession(db, "carol").token;
   fetchStub = fakeFetch((req) => {
@@ -161,7 +163,7 @@ describe("POST /api/find", () => {
     expect(res.status).toBe(401);
   });
 
-  it("409 no_key for a user without a seats.aero key", async () => {
+  it("409 no_key for a user without a seats.aero connection", async () => {
     const res = await find(post("/api/find", { query: QUERY }, carolToken));
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "no_key", provider: "seats_aero" });
@@ -190,7 +192,7 @@ describe("POST /api/find", () => {
     expect(body.grid.rows).toHaveLength(SYNTHETIC_ORIGINS.length);
     expect(body.grid.meta.api_calls_used).toBe(1 + SYNTHETIC_PROGRAMS.length);
     expect(body.quota.used).toBe(1 + SYNTHETIC_PROGRAMS.length);
-    expect(fetchStub.calls.every((c) => c.headers["partner-authorization"] === ALICE_KEY)).toBe(true);
+    expect(fetchStub.calls.every((c) => c.headers["partner-authorization"] === `Bearer ${ALICE_KEY}`)).toBe(true);
   });
 });
 

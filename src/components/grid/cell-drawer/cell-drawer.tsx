@@ -16,6 +16,7 @@ import { useMemo, useState } from "react";
 import { DrawerShell } from "@/components/drawers/drawer-shell";
 import { CellActions } from "@/components/grid/cell-drawer/actions";
 import { ProgramRow } from "@/components/grid/cell-drawer/program-row";
+import { SeatsAttribution } from "@/components/shell/seats-attribution";
 import { intlLocale, type FormatLocale } from "@awardgrid/core/grid/format";
 import { programDisplayName } from "@awardgrid/core/grid/ranking";
 import type { AvailabilityRow, GridCell } from "@awardgrid/core/grid/types";
@@ -127,6 +128,7 @@ export function CellDrawer({ cell, query, now, onClose, onTripsLoaded, onAsk }: 
           onTripsLoaded={onTripsLoaded}
         />
       ))}
+      {rows.length > 0 && <SeatsAttribution className="agd-attribution" />}
     </DrawerShell>
   );
 }

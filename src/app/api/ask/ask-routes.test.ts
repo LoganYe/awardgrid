@@ -9,6 +9,7 @@ import { createSession, SESSION_COOKIE } from "@/lib/auth";
 import { openTestDb, type Db } from "@/lib/db/client";
 import { seedUsers } from "@/lib/db/stores/testing";
 import { resetMasterKeyCache, setKey } from "@/lib/keys";
+import { connectForTests } from "@/lib/seats-oauth/testing";
 import { parseSse } from "@/components/ask/sse";
 
 let db: Db;
@@ -38,7 +39,9 @@ const { POST } = await import("./route");
 const { GET: usage } = await import("./usage/route");
 
 const MASTER_HEX = "0f".repeat(32);
-const ALICE_KEY = "alice_pro_key_SECRET_a1b2c3";
+/** Alice's seats.aero access token (a fake), and the Partner-Authorization value the Ask session gets for it. */
+const ALICE_TOKEN = "seats:ota:alice_pro_key_SECRET_a1b2c3";
+const ALICE_KEY = `Bearer ${ALICE_TOKEN}`;
 const ALICE_DUFFEL = "duffel_live_SECRET_zz99";
 
 function post(body: unknown, cookie?: string): NextRequest {
@@ -66,7 +69,7 @@ beforeEach(() => {
   process.env.MASTER_KEY = MASTER_HEX;
   resetMasterKeyCache();
   const masterKey = Buffer.from(MASTER_HEX, "hex");
-  setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey });
+  connectForTests(db, "alice", { masterKey, access: ALICE_TOKEN });
   setKey(db, "alice", "duffel", ALICE_DUFFEL, { masterKey });
   aliceToken = createSession(db, "alice").token;
   carolToken = createSession(db, "carol").token;
@@ -142,12 +145,12 @@ describe("POST /api/ask", () => {
 
   it("never streams a key even if an event carries one", async () => {
     script.events = [
-      { type: "text", text: `my key is ${ALICE_KEY} and duffel ${ALICE_DUFFEL}` },
-      { type: "error", code: "internal", message: ALICE_KEY },
+      { type: "text", text: `my key is ${ALICE_KEY}, bare ${ALICE_TOKEN}, and duffel ${ALICE_DUFFEL}` },
+      { type: "error", code: "internal", message: ALICE_TOKEN },
     ];
     const res = await POST(post({ prompt: "leak?" }, aliceToken));
     const raw = await readAll(res);
-    expect(raw).not.toContain(ALICE_KEY);
+    expect(raw).not.toContain(ALICE_TOKEN);
     expect(raw).not.toContain(ALICE_DUFFEL);
     expect(raw).toContain("••••");
   });
@@ -160,7 +163,7 @@ describe("POST /api/ask", () => {
     const msgs = parseSse(raw);
     expect(msgs.map((m) => m.event)).toEqual(["text", "error"]);
     expect(JSON.parse(msgs[1]!.data)).toEqual({ type: "error", code: "sdk" });
-    expect(raw).not.toContain(ALICE_KEY);
+    expect(raw).not.toContain(ALICE_TOKEN);
   });
 
   it("aborts runAsk when the client disconnects", async () => {

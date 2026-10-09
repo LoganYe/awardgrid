@@ -30,6 +30,16 @@ describe("aes-256-gcm secrets", () => {
     expect(() => decryptSecret(tampered, mk)).toThrow();
   });
 
+  it("binds a blob to its additional data: it opens only with the same aad", () => {
+    const mk = parseMasterKey(KEY_HEX);
+    const blob = encryptSecret("token-bundle", mk, "seats-oauth:alice");
+    expect(decryptSecret(blob, mk, "seats-oauth:alice")).toBe("token-bundle");
+    expect(() => decryptSecret(blob, mk, "seats-oauth:bob")).toThrow();
+    expect(() => decryptSecret(blob, mk)).toThrow();
+    // A blob sealed without aad keeps opening without it (every stored API key).
+    expect(decryptSecret(encryptSecret("plain", mk), mk)).toBe("plain");
+  });
+
   it("validates MASTER_KEY without echoing it", () => {
     expect(() => parseMasterKey(undefined)).toThrow(/not set/);
     expect(() => parseMasterKey("deadbeef")).toThrow(/64 hex/);

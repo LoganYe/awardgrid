@@ -21,6 +21,7 @@
  */
 import nodeCron, { type ScheduledTask, type TaskOptions } from "node-cron";
 import { openDb, type Db } from "@/lib/db/client";
+import { sweepSeatsData } from "@/lib/seats-oauth/retention";
 import { parseMasterKey } from "@/lib/crypto/aes";
 import { createTransportFromEnv, runTelegramLinkPoller, TelegramTransport, type PollerEvent, type Transport } from "@/lib/notify";
 import { notifyFormatDigest, tick, type RunDeps, type SchedulerLogFields, type TickSummary } from "@/lib/scheduler";
@@ -149,6 +150,16 @@ export async function startWorker(io: WorkerIo): Promise<WorkerHandle> {
     }
   };
 
+  // Seats.aero results older than 24 hours, for every account (src/lib/seats-oauth/retention.ts). Counts only.
+  const sweepRetention = () => {
+    try {
+      const purged = sweepSeatsData(db, now());
+      if (purged.rows + purged.coverage + purged.routes + purged.runs > 0) log("worker.retention_sweep", { ...purged });
+    } catch (err) {
+      log("worker.retention_sweep_failed", { error: err instanceof Error ? err.name : typeof err });
+    }
+  };
+
   // 4. Master tick, serialised: node-cron's noOverlap covers its own executions and this
   //    promise covers the start-up tick and tickOnce().
   let inFlight: Promise<TickSummary | null> | null = null;
@@ -161,6 +172,8 @@ export async function startWorker(io: WorkerIo): Promise<WorkerHandle> {
     if (stopping) return Promise.resolve(null);
     inFlight = (async () => {
       try {
+        // Short-term caching first: what is 24 hours old leaves the database before anything reads it.
+        sweepRetention();
         const summary = await tick(db, deps);
         beat(summary.errors.length === 0);
         return summary;

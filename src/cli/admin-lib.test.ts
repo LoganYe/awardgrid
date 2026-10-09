@@ -15,8 +15,7 @@ import { consumeInvite, listInvites } from "@/lib/auth/invites";
 import { createSession, getSessionUser } from "@/lib/auth/session";
 import { registerWithInvite } from "@/lib/auth/users";
 import { openTestDb } from "@/lib/db/client";
-import { userKeys } from "@/lib/db/schema";
-import { encryptSecret } from "@/lib/crypto/aes";
+import { connectForTests } from "@/lib/seats-oauth/testing";
 
 const T0 = new Date("2026-09-06T10:00:00Z");
 
@@ -65,29 +64,28 @@ describe("admin commands", () => {
     });
   });
 
-  it("users lists username/created/has seats key and never any secret", async () => {
+  it("users lists username/created/seats.aero connected and never any secret", async () => {
     const db = openTestDb();
     const a = adminInvite(db, "alice", { now: T0 });
     const b = adminInvite(db, "bob", { now: T0 });
     const alice = await registerWithInvite(db, { inviteCode: a.code, username: "alice", password: "password-alice" }, { now: T0 });
     await registerWithInvite(db, { inviteCode: b.code, username: "bob", password: "password-bob00" }, { now: T0 });
-    const blob = encryptSecret("pro_key_ZZZZ", Buffer.alloc(32, 1));
-    db.insert(userKeys).values({ userId: alice.id, provider: "seats_aero", ...blob, last4: "ZZZZ", createdAt: T0.toISOString() }).run();
+    connectForTests(db, alice.id, { masterKey: Buffer.alloc(32, 1), access: "seats:ota:pro_key_ZZZZ" });
 
     expect(adminUsers(db)).toEqual([
-      { username: "alice", created: "2026-09-06", hasSeatsKey: "yes" },
-      { username: "bob", created: "2026-09-06", hasSeatsKey: "no" },
+      { username: "alice", created: "2026-09-06", seatsConnected: "yes" },
+      { username: "bob", created: "2026-09-06", seatsConnected: "no" },
     ]);
     const { out, io: sink } = io();
     runAdminCommand(db, { kind: "users" }, sink);
     const text = out.join("\n");
     expect(text).toContain("username");
-    expect(text).toContain("has seats key");
+    expect(text).toContain("seats.aero connected");
     expect(text).toMatch(/alice\s+2026-09-06\s+yes/);
     expect(text).toMatch(/bob\s+2026-09-06\s+no/);
     expect(text).not.toContain("argon2");
     expect(text).not.toContain("pro_key");
-    expect(text).not.toContain(blob.ciphertext);
+    expect(text).not.toContain("seats:ota:");
     expect(text).not.toContain(alice.id);
   });
 
@@ -133,6 +131,6 @@ describe("admin commands", () => {
 describe("formatTable", () => {
   it("pads columns and renders (none) for empty input", () => {
     expect(formatTable(["a", "bbb"], [["xx", "y"]])).toBe("a   bbb\n--  ---\nxx  y");
-    expect(renderUsers([])).toBe("username  created  has seats key\n--------  -------  -------------\n(none)");
+    expect(renderUsers([])).toBe("username  created  seats.aero connected\n--------  -------  --------------------\n(none)");
   });
 });

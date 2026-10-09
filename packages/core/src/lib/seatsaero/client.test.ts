@@ -211,6 +211,16 @@ describe("SeatsAeroClient errors", () => {
     expect((err as SeatsAeroResponseError).path).toBe("data.0.Route.ID");
   });
 
+  it("never leaks an OAuth access token either, even when the upstream echoes only the token", async () => {
+    const token = "seats:ota:31cDaqd4jLYjeozSECRET";
+    const fetch = fakeFetch(() => textResponse(`token ${token} is not valid`, 401));
+    const client = new SeatsAeroClient({ apiKey: `Bearer ${token}`, fetch });
+    const err = await client.getRoutes("united").catch((e: unknown) => e);
+    expect(fetch.calls[0]!.headers["partner-authorization"]).toBe(`Bearer ${token}`);
+    expect(String(err)).not.toContain(token);
+    expect((err as SeatsAeroHttpError).bodySnippet).toBe("token [redacted] is not valid");
+  });
+
   it("never leaks the key — even when the upstream echoes it", async () => {
     const fetch = fakeFetch(() => textResponse(`forbidden for key ${KEY}`, 403));
     const client = new SeatsAeroClient({ apiKey: KEY, fetch });

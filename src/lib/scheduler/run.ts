@@ -13,6 +13,11 @@
  * First run: there is nothing to diff against, so it notifies nothing and its snapshot becomes
  * the baseline (`skipped_reason = 'first_run'`).
  *
+ * Short-term caching: a run's cells are seats.aero data, kept 24 hours (src/lib/seats-oauth/retention.ts). A run older
+ * than that, or one whose cells were purged (Disconnect, a revoked grant), is never a baseline: the next run notifies
+ * nothing and becomes the new baseline (`skipped_reason = 'baseline_expired'`), as a first run does. Comparing with an
+ * empty snapshot instead would report every cell as new.
+ *
  * `last_run_at` is updated on EVERY outcome, including fetch failures, so a query with an
  * exhausted quota or a broken key re-tries on its next cron slot, not on every 5-minute tick.
  *
@@ -25,16 +30,16 @@
  * Retention: query_runs is bounded per saved query (RUNS_KEEP_PER_QUERY newest rows, never the
  * current baseline) — see `pruneQueryRuns`.
  *
- * Boundaries: the key is resolved inside findGridForUser and never reaches this file; the chat
+ * Boundaries: the seats.aero access token is resolved inside findGridForUser and never reaches this file; the chat
  * id goes only into `transport.sendMessage`; results and log fields carry ids and codes only.
  */
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, isNull, lt, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, ne, notInArray, or, sql } from "drizzle-orm";
 import { encodeQueryParam } from "@/components/grid/state";
 import type { Db } from "@/lib/db/client";
 import { queryRuns, savedQueries, users, type SavedQuery, type User } from "@/lib/db/schema";
 import { parseLocale } from "@awardgrid/core/i18n";
-import { NoKeyError } from "@/lib/keys";
+import { SeatsNotConnectedError, SeatsRenewalUnavailableError, shortTermCutoff } from "@/lib/seats-oauth";
 import type { SendResult } from "@/lib/notify/transport";
 import { QueryObject } from "@awardgrid/core/query/schema";
 import { SeatsAeroError, SeatsAeroHttpError } from "@awardgrid/core/seatsaero/client";
@@ -81,17 +86,25 @@ function baselineEligible() {
   return or(eq(queryRuns.notified, true), isNull(queryRuns.skippedReason), notInArray(queryRuns.skippedReason, NON_BASELINE_REASONS));
 }
 
-/** Most recent baseline-eligible run for a saved query, or null (first run). One indexed row read. */
-export function findBaseline(db: Db, savedQueryId: string): typeof queryRuns.$inferSelect | null {
+/**
+ * Most recent baseline-eligible run for a saved query whose cells are still kept at `now` (younger than 24 hours, not
+ * purged), or null (a first run, or the baseline expired). One indexed row read.
+ */
+export function findBaseline(db: Db, savedQueryId: string, now: Date = new Date()): typeof queryRuns.$inferSelect | null {
   return (
     db
       .select()
       .from(queryRuns)
-      .where(and(eq(queryRuns.savedQueryId, savedQueryId), baselineEligible()))
+      .where(and(eq(queryRuns.savedQueryId, savedQueryId), baselineEligible(), isNull(queryRuns.cellsPurgedAt), gte(queryRuns.ranAt, shortTermCutoff(now))))
       .orderBy(desc(queryRuns.ranAt), desc(sql`rowid`))
       .limit(1)
       .get() ?? null
   );
+}
+
+/** Whether the saved query ever had a baseline, kept or not: the difference between a first run and an expired one. */
+function hadBaseline(db: Db, savedQueryId: string): boolean {
+  return db.select({ id: queryRuns.id }).from(queryRuns).where(and(eq(queryRuns.savedQueryId, savedQueryId), baselineEligible())).limit(1).get() !== undefined;
 }
 
 /**
@@ -112,16 +125,16 @@ export function claimRun(db: Db, savedQueryId: string, ranAt: string, windowMs =
 
 /**
  * Retention: delete this saved query's runs beyond the `keep` newest, never the row that is
- * (or would become) the diff baseline. Returns the number of rows removed.
+ * (or would become) the diff baseline at `now`. Returns the number of rows removed.
  */
-export function pruneQueryRuns(db: Db, savedQueryId: string, keep = RUNS_KEEP_PER_QUERY): number {
+export function pruneQueryRuns(db: Db, savedQueryId: string, keep = RUNS_KEEP_PER_QUERY, now: Date = new Date()): number {
   const newest = db
     .select({ id: queryRuns.id })
     .from(queryRuns)
     .where(eq(queryRuns.savedQueryId, savedQueryId))
     .orderBy(desc(queryRuns.ranAt), desc(sql`rowid`))
     .limit(keep);
-  const baseline = findBaseline(db, savedQueryId);
+  const baseline = findBaseline(db, savedQueryId, now);
   const conditions = [eq(queryRuns.savedQueryId, savedQueryId), notInArray(queryRuns.id, newest)];
   if (baseline) conditions.push(ne(queryRuns.id, baseline.id));
   return db.delete(queryRuns).where(and(...conditions)).run().changes;
@@ -151,7 +164,8 @@ function counts(diff: SnapshotDiff): DiffCounts {
 
 /** Map a fetch-stage error to a skipped reason + a non-secret classifier. */
 export function classifyFetchError(err: unknown): { reason: SkippedReason; error: RunError } {
-  if (err instanceof NoKeyError) return { reason: "no_key", error: { code: "no_key", detail: err.name } };
+  if (err instanceof SeatsNotConnectedError) return { reason: "no_key", error: { code: "no_key", detail: err.name } };
+  if (err instanceof SeatsRenewalUnavailableError) return { reason: "upstream_error", error: { code: "upstream_error", detail: err.kind } };
   if (err instanceof QuotaExceededError) return { reason: "quota", error: { code: "quota", detail: err.name } };
   if (err instanceof SeatsAeroError) {
     const detail = err instanceof SeatsAeroHttpError ? err.kind : err.name;
@@ -193,7 +207,7 @@ function record(db: Db, input: RecordInput): string {
       })
       .run();
     tx.update(savedQueries).set({ lastRunAt: input.ranAt }).where(eq(savedQueries.id, input.savedQueryId)).run();
-    pruneQueryRuns(tx, input.savedQueryId);
+    pruneQueryRuns(tx, input.savedQueryId, RUNS_KEEP_PER_QUERY, new Date(input.ranAt));
   });
   return id;
 }
@@ -264,7 +278,7 @@ export async function runSavedQuery(db: Db, savedQuery: SavedQuery, deps: RunDep
     return skip("invalid_query", { code: "invalid_query", detail: "QueryObject" });
   }
 
-  // 3. Rows through the Phase-2 facade (own key, per-user cache + quota, TTL honoured).
+  // 3. Rows through the Phase-2 facade (own connection, per-user cache + quota, TTL honoured).
   let cells: CellSnapshot[];
   let apiCallsUsed = 0;
   let servedFromCache = false;
@@ -292,8 +306,8 @@ export async function runSavedQuery(db: Db, savedQuery: SavedQuery, deps: RunDep
   }
   const hash = cellsHash(cells);
 
-  // 4. Baseline + diff.
-  const baseline = findBaseline(db, savedQuery.id);
+  // 4. Baseline + diff (a baseline whose cells are no longer kept is none).
+  const baseline = findBaseline(db, savedQuery.id, now());
   const store = (notified: boolean, skippedReason: SkippedReason | null, diff: SnapshotDiff | null, error: RunError | null) => {
     const runId = record(db, {
       savedQueryId: savedQuery.id,
@@ -308,7 +322,7 @@ export async function runSavedQuery(db: Db, savedQuery: SavedQuery, deps: RunDep
     });
     return finish(runId, { notified, skippedReason, cells: cells.length, diff: diff ? counts(diff) : null, apiCallsUsed, servedFromCache, error });
   };
-  if (!baseline) return store(false, "first_run", null, null);
+  if (!baseline) return store(false, hadBaseline(db, savedQuery.id) ? "baseline_expired" : "first_run", null, null);
 
   const diff = diffSnapshots(parseSnapshot(baseline.cellsJson), cells, { dropThresholdPct: savedQuery.dropThresholdPct });
 

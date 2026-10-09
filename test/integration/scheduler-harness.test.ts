@@ -20,7 +20,7 @@ import { MASTER_TICK_CRON, MASTER_TICK_NAME, startWorker, type ScheduleFn } from
 import { openTestDb, type Db } from "@/lib/db/client";
 import { apiUsage, queryRuns, savedQueries, users, type SavedQuery } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
-import { setKey } from "@/lib/keys";
+import { connectForTests } from "@/lib/seats-oauth/testing";
 import { MockTransport } from "@/lib/notify";
 import { QueryObject } from "@awardgrid/core/query/schema";
 import { DEFAULT_CRON } from "@/lib/scheduler";
@@ -29,8 +29,8 @@ import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS } from "@awardgrid/core/test-fixt
 import { fakeFetch, jsonResponse, loadFixture, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 
 const MASTER_HEX = "0f".repeat(32);
-const ALICE_KEY = "alice_pro_key_SECRET_a1b2c3";
-const BOB_KEY = "bob_pro_key_SECRET_z9y8x7";
+const ALICE_KEY = "seats:ota:alice_pro_key_SECRET_a1b2c3";
+const BOB_KEY = "seats:ota:bob_pro_key_SECRET_z9y8x7";
 const ALICE_CHAT = "100200300";
 const BOB_CHAT = "400500600";
 const T0 = new Date("2026-10-01T12:00:00Z");
@@ -94,8 +94,8 @@ async function harness() {
   db.update(users).set({ telegramChatId: ALICE_CHAT }).where(eq(users.id, "alice")).run();
   db.update(users).set({ telegramChatId: BOB_CHAT, locale: "zh", timezone: "Asia/Shanghai" }).where(eq(users.id, "bob")).run();
   const master = Buffer.from(MASTER_HEX, "hex");
-  setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: master, now: T0 });
-  setKey(db, "bob", "seats_aero", BOB_KEY, { masterKey: master, now: T0 });
+  connectForTests(db, "alice", { masterKey: master, access: ALICE_KEY, now: T0 });
+  connectForTests(db, "bob", { masterKey: master, access: BOB_KEY, now: T0 });
   const a = saveQuery(db, "alice");
   const b = saveQuery(db, "bob");
 
@@ -104,7 +104,8 @@ async function harness() {
   const extraFor = new Map<string, Availability[]>();
   const fetch = fakeFetch((req) => {
     if (req.url.pathname === "/partnerapi/search") {
-      const extra = extraFor.get(req.headers["partner-authorization"] ?? "") ?? [];
+      // Keyed by the access token inside "Bearer seats:ota:…".
+      const extra = extraFor.get((req.headers["partner-authorization"] ?? "").replace(/^Bearer /, "")) ?? [];
       return jsonResponse({ ...fixture, data: [...fixture.data, ...extra] });
     }
     if (req.url.pathname === "/partnerapi/routes") return jsonResponse(syntheticRoutes(req.url.searchParams.get("source")!));
@@ -137,7 +138,7 @@ async function harness() {
 }
 
 function callsSignedWith(fetch: ReturnType<typeof fakeFetch>, key: string): number {
-  return fetch.calls.filter((c) => c.url.pathname === "/partnerapi/search" && c.headers["partner-authorization"] === key).length;
+  return fetch.calls.filter((c) => c.url.pathname === "/partnerapi/search" && c.headers["partner-authorization"] === `Bearer ${key}`).length;
 }
 
 describe("scheduler harness (kickoff §9 Phase 3)", () => {
@@ -207,7 +208,7 @@ describe("scheduler harness (kickoff §9 Phase 3)", () => {
 
     // Each request carried only its owner's key; no log line carries a key or a chat id.
     for (const c of fetch.calls) {
-      expect([ALICE_KEY, BOB_KEY]).toContain(c.headers["partner-authorization"]);
+      expect([`Bearer ${ALICE_KEY}`, `Bearer ${BOB_KEY}`]).toContain(c.headers["partner-authorization"]);
     }
     const logText = JSON.stringify(logs);
     for (const secret of [ALICE_KEY, BOB_KEY, ALICE_CHAT, BOB_CHAT, MASTER_HEX]) expect(logText).not.toContain(secret);

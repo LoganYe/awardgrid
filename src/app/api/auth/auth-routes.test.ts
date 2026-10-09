@@ -276,20 +276,19 @@ describe("GET /api/auth/me", () => {
     const res = await me(get("/api/auth/me", { cookie: `${SESSION_COOKIE}=${token}` }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { user: Record<string, unknown> };
-    expect(body.user).toEqual({ id, username: "alice", locale: "en", timezone: "UTC", theme: "system", hasSeatsKey: false });
+    expect(body.user).toEqual({ id, username: "alice", locale: "en", timezone: "UTC", theme: "system", seatsConnected: false });
     expect(JSON.stringify(body)).not.toMatch(/passwordHash|argon2/);
   });
 
-  it("reports hasSeatsKey=true once a seats_aero key row exists (never the key itself)", async () => {
+  it("reports seatsConnected=true once seats.aero is connected (never a token)", async () => {
     const { token, id } = await registerUser("alice");
-    const { userKeys } = await import("@/lib/db/schema");
-    db.insert(userKeys)
-      .values({ userId: id, provider: "seats_aero", ciphertext: "c", iv: "i", tag: "t", last4: "1234", createdAt: new Date().toISOString() })
-      .run();
+    const { connectForTests } = await import("@/lib/seats-oauth/testing");
+    const connection = connectForTests(db, id, { masterKey: Buffer.alloc(32, 3) });
     const res = await me(get("/api/auth/me", { cookie: `${SESSION_COOKIE}=${token}` }));
-    const body = (await res.json()) as { user: { hasSeatsKey: boolean } };
-    expect(body.user.hasSeatsKey).toBe(true);
-    expect(JSON.stringify(body)).not.toContain("1234");
+    const body = (await res.json()) as { user: { seatsConnected: boolean } };
+    expect(body.user.seatsConnected).toBe(true);
+    expect(JSON.stringify(body)).not.toContain(connection.access);
+    expect(JSON.stringify(body)).not.toContain("seats:o");
   });
 
   it("returns 401 without a cookie, with a garbage token, and after logout", async () => {

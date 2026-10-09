@@ -26,8 +26,10 @@ fi
 # generic markers those fixtures embed so a renamed fixture is still caught.
 FIXTURE_STRINGS=(
   # scripts/seed-dev.ts
-  "pro_dev_alice_FAKE_SEATS_KEY_a1c3"
-  "pro_dev_bob_FAKE_SEATS_KEY_b0b7"
+  "seeded-dev-alice-FAKE-SEATS-TOKEN-a1c3"
+  "seeded-dev-bob-FAKE-SEATS-TOKEN-b0b7"
+  "seeded-dev-alice-FAKE-a1c3"
+  "seeded-dev-bob-FAKE-b0b7"
   "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0"
   "password123"
   # test fixtures / colocated tests
@@ -42,6 +44,7 @@ FIXTURE_STRINGS=(
   "pro_key_for_find_tests_SECRET"
   # generic markers
   "FAKE_SEATS"
+  "FAKE-SEATS-TOKEN"
   "_SECRET_"
   "SUPERSECRET"
   "DO_NOT_LEAK"
