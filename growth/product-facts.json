@@ -145,7 +145,7 @@
       "evidence_level": "source-verified",
       "evidence_ref": [
         "docs/PIVOT.md:45-47 \"grounds this entire product on that basis\"",
-        "docs/DEPLOYMENT.md:51-54 \"Cloudflare Access is NOT set up.\"",
+        "docs/DEPLOYMENT.md:87-90 \"Cloudflare Access is NOT set up.\"",
         "src/app/api/auth/register/route.ts:2-4 \"POST /api/auth/register { inviteCode, username, password }\"",
         "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\""
       ],
@@ -169,7 +169,7 @@
       "evidence_level": "source-verified",
       "evidence_ref": [
         "src/app/api/auth/register/route.ts:2-4 \"POST /api/auth/register { inviteCode, username, password }\"",
-        "docs/DEPLOYMENT.md:49-56 \"## Not done\"",
+        "docs/DEPLOYMENT.md:85-92 \"## Not done\"",
         "sites/landing/DEPLOY.md:17-29 \"## Shape and boundaries\"",
         "src/app/page.tsx:25 \"if (user) redirect(\"/grid\");\"",
         "src/lib/auth/next.ts:40 \"if (!user) redirect(\"/login\");\""
@@ -659,7 +659,7 @@
         "packages/core/src/lib/seatsaero/normalize.ts:46 \"const timeBasis =\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:106 \"<p className=\"ag-result-time\">\"",
         "LEGAL.md:17-18 \"**Live Search is never used**\"",
-        "LEGAL.md:104-105 \"Cached award data can be stale and awards disappear.\""
+        "LEGAL.md:116-117 \"Cached award data can be stale and awards disappear.\""
       ],
       "allowed_copy": "Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points.",
       "allowed_copy_zh": "结果来自 seats.aero 的缓存，并非实时查询；每条结果都标明了数据时间。转点之前，请先到该里程计划的官网确认。",
@@ -794,7 +794,7 @@
         "apps/ios/src/ask/consent-copy.ts:50 \"title: \"Allow Ask to send data to Anthropic?\",\"",
         "packages/core/src/lib/ask/limits.ts:16 \"export const ASK_MODEL = \"claude-opus-5\";\"",
         "apps/ios/src/ask/ask-service.ts:558-559 \"Release D10: without the person's permission nothing goes to Anthropic\"",
-        "LEGAL.md:48-51 \"The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of\"",
+        "LEGAL.md:59-62 \"The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of\"",
         "apps/ios/src/search/search.ts:158-159 \"No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key\""
       ],
       "allowed_copy": "Ask, which answers questions about your results with Claude on your own Anthropic API key, is in testing; it is not part of the App Store version 1.0.",
@@ -837,9 +837,9 @@
         "apps/ios/src/native/webview-fetch-guard.ts:22 \"const NATIVE_ONLY_HOSTS: ReadonlySet<string> = new Set([\"api.anthropic.com\", \"seats.aero\"]);\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\"",
         "apps/ios/src/sample/sample-fetch.ts:9-10 \"includes it, and take/skip paging. Nothing leaves the device: it never calls the native HTTP adapter\"",
-        "LEGAL.md:48-51 \"The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of\"",
+        "LEGAL.md:59-62 \"The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of\"",
         "apps/ios/src/oauth/broker.ts:12 \"export const TOKEN_SERVICE_URL = \"https://awardgrid.dowhiz.com/oauth/seats\";\"",
-        "sites/auth/src/index.ts:16-19 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
+        "sites/auth/src/index.ts:24-27 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
         "sites/auth/wrangler.jsonc:15-17 \"\"observability\": { \"enabled\": false, \"logs\": { \"enabled\": false } },\"",
         "sites/auth/wrangler.jsonc:10 \"\"routes\": [{ \"pattern\": \"awardgrid.dowhiz.com/oauth/*\", \"zone_name\": \"dowhiz.com\" }],\""
       ],
@@ -851,7 +851,7 @@
       "limitations": [
         "The subject is always the iPhone app (NO_SERVER_SUBJECT): the private web app on the same host has accounts and a server. Since 2026-10-07 \"AwardGrid for iPhone\" counts as that subject too (the privacy policy and the store description); \"AwardGrid\" alone does not.",
         "Since 2026-10-07 (build 4): the App Store build has no Ask (the ask claim), so it sends nothing to Anthropic, and over sample data it sends nothing at all (the sample_mode claim). Until then the sentence ended \"Searches go to seats.aero and, only for Ask, to Anthropic.\", which is retired_copy.",
-        "Since 2026-10-07 the App Store build connects through seats.aero's own sign-in (the oauth_connection claim), so the iPhone app talks to one server of the developer's: the token service at awardgrid.dowhiz.com (sites/auth, the Worker awardgrid-auth), which holds AwardGrid's OAuth client secret and exchanges and refreshes the sign-in tokens. It is stateless: no storage binding, no console call, observability and Logpush off (sites/auth/src/index.ts:16-19, wrangler.jsonc). Searches never pass through it: they go from the iPhone to seats.aero with the access token (apps/ios/src/native/http.ts). \"No server of its own\" was true of the key flavour and is retired_copy. \"No accounts of its own\": the person's seats.aero account is seats.aero's; AwardGrid has no sign-up and no account of its own.",
+        "Since 2026-10-07 the App Store build connects through seats.aero's own sign-in (the oauth_connection claim), so the iPhone app talks to one server of the developer's: the token service at awardgrid.dowhiz.com (sites/auth, the Worker awardgrid-auth), which holds AwardGrid's OAuth client secret and exchanges and refreshes the sign-in tokens. It is stateless: no storage binding, no console call, observability and Logpush off (sites/auth/src/index.ts:24-27, wrangler.jsonc). Searches never pass through it: they go from the iPhone to seats.aero with the access token (apps/ios/src/native/http.ts). \"No server of its own\" was true of the key flavour and is retired_copy. \"No accounts of its own\": the person's seats.aero account is seats.aero's; AwardGrid has no sign-up and no account of its own.",
         "The token service was deployed by the owner on 2026-10-07, with its client secret as a Worker secret (sites/auth/DEPLOY.md). The copy describes the build that uses it.",
         "The token service is a Cloudflare Worker on the awardgrid.dowhiz.com/oauth/* route (wrangler.jsonc). Since 2026-10-08 /privacy/ names that host, Cloudflare Workers, in its token-service section, and its \"This website\" section says that the app's requests to the token service (the one-time code and the random value, or the refresh token) reach Cloudflare. Until then that section said the app sends nothing to Cloudflare, which was true of the key flavour only.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
@@ -934,7 +934,7 @@
         "apps/ios/ios/App/App/SeatsAuthPlugin.swift:58 \"session.prefersEphemeralWebBrowserSession = false\"",
         "apps/ios/src/oauth/token-vault.ts:59-60 \"const ACCESS = KeychainAccess.afterFirstUnlockThisDeviceOnly;\"",
         "apps/ios/src/oauth/broker.ts:12 \"export const TOKEN_SERVICE_URL = \"https://awardgrid.dowhiz.com/oauth/seats\";\"",
-        "sites/auth/src/index.ts:16-19 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
+        "sites/auth/src/index.ts:24-27 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
         "sites/auth/wrangler.jsonc:15-17 \"\"observability\": { \"enabled\": false, \"logs\": { \"enabled\": false } },\"",
         "apps/ios/src/app/bootstrap.ts:819 \"async disconnect(): Promise<DisconnectOutcome> {\"",
         "apps/ios/scripts/check-store-bundle.mjs:67 \"\"Paste your seats.aero API key\",\""
@@ -961,7 +961,7 @@
         "Registered on 2026-10-07 (release plan step 47F, step 5): the App Store build connects a seats.aero account only through seats.aero's own sign-in, Login with Seats.aero (OAuth 2.0). `npm run build:store` builds that flavour (apps/ios/package.json:10), App.tsx routes its connect page and drops the key page, and scripts/check-store-bundle.mjs fails the build if any word of the paste field reaches the bundle. seats.aero confirmed in writing on 7 October 2026 that AwardGrid may use Login with Seats.aero; the owner's approval of the plan (2026-10-06) covers this wording.",
         "\"seats.aero asks you to sign in and approve AwardGrid\": Connect seats.aero opens https://seats.aero/oauth2/consent in the system's sign-in sheet (ASWebAuthenticationSession, SeatsAuthPlugin.swift), which shares Safari's sign-in, so a person already signed in to seats.aero there may only be asked to approve. \"AwardGrid never sees your password\": the password is typed on seats.aero's page, inside the system sheet; the app receives only an authorization code, which the token service exchanges for tokens (apps/ios/src/oauth/connect.ts).",
         "\"Disconnect at any time\": Settings › seats.aero account › Disconnect removes the tokens and runs the purge (bootstrap.ts disconnect); removing AwardGrid's access in the seats.aero settings ends the refresh token, and the app purges on the next refresh it is refused (token-store.ts, the invalid_grant case).",
-        "The token service (sites/auth, the Worker awardgrid-auth) holds the client secret, exchanges the code and refreshes the access token; it keeps nothing and logs nothing (sites/auth/src/index.ts:16-19, wrangler.jsonc). The owner registered the OAuth client with seats.aero and deployed the Worker, with its secrets, on 2026-10-07 (sites/auth/DEPLOY.md); since then it runs on Cloudflare Workers, on the awardgrid.dowhiz.com/oauth/* route, and /privacy/ names that host. Build 1.0 (4), an internal TestFlight build, connects with a pasted key and is not submitted.",
+        "The token service (sites/auth, the Worker awardgrid-auth) holds the client secret, exchanges the code and refreshes the access token; it keeps nothing and logs nothing (sites/auth/src/index.ts:24-27, wrangler.jsonc). The owner registered the OAuth client with seats.aero and deployed the Worker, with its secrets, on 2026-10-07 (sites/auth/DEPLOY.md); since then it runs on Cloudflare Workers, on the awardgrid.dowhiz.com/oauth/* route, and /privacy/ names that host. Build 1.0 (4), an internal TestFlight build, connects with a pasted key and is not submitted.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra) is the wording of /support/#zh, written on 2026-10-07 to say what the English says and nothing more; it is pending a native speaker's review.",
         "The store description's privacy paragraph (since 2026-10-08) says \"the password to your provider account\" and \"directly to the provider\", in Chinese 你在数据提供方的账户密码 and 直接发往数据提供方: no App Store listing text uses the name seats.aero, per the data provider's trademark guidance; the provider is the award-data provider the description's paragraph on the account names. Until then it said \"your seats.aero password\", which /ios/award-grid/ still says, and \"directly to seats.aero\", which is no longer used anywhere. The Chinese is pending a native speaker's review.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
@@ -1033,9 +1033,9 @@
       "evidence_level": "source-verified",
       "evidence_ref": [
         "LEGAL.md:17-18 \"**Live Search is never used**\"",
-        "LEGAL.md:34-36 \"**No scraping.** awardgrid never automates, crawls or scrapes\"",
-        "LEGAL.md:80-81 \"No airline, alliance or loyalty-program logos, wordmarks or brand imagery are displayed.\"",
-        "LEGAL.md:87-90 \"awardgrid never accepts, stores, or transmits airline, bank or travel-portal usernames\"",
+        "LEGAL.md:45-47 \"**No scraping.** awardgrid never automates, crawls or scrapes\"",
+        "LEGAL.md:91-92 \"No airline, alliance or loyalty-program logos, wordmarks or brand imagery are displayed.\"",
+        "LEGAL.md:98-101 \"awardgrid never accepts, stores, or transmits airline, bank or travel-portal usernames\"",
         "BACKLOG.md:18 \"Round-trip / multi-city queries (v1 is one-way grid only)\"",
         "apps/ios/src/watch/capabilities.ts:40-44 \"export const IOS_WATCH_CAPABILITIES: WatchCapabilities = {\""
       ],
@@ -1061,7 +1061,7 @@
       "evidence_ref": [
         "apps/ios/src/screens/settings-copy.ts:92 \"\"AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero\"",
         "apps/ios/src/screens/settings-copy.ts:135 \"notAffiliated: STORE ? \"AwardGrid 与 seats.aero\"",
-        "LEGAL.md:81-83 \"Programs are referred to by their plain text names.\"",
+        "LEGAL.md:92-94 \"Programs are referred to by their plain text names.\"",
         "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\""
       ],

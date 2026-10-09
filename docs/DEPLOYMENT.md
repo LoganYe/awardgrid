@@ -33,6 +33,42 @@ The site is down while the Mac sleeps. That is inherent to this shape.
 
 Get any of these wrong and login breaks: the origin guard compares `Origin` against `Host`.
 
+## Login with Seats.aero (the web app)
+
+The web app connects each user's seats.aero account only through Login with Seats.aero (`src/lib/seats-oauth`); no
+seats.aero key is pasted or stored. It needs one more line in `.env`:
+
+    SEATS_OAUTH_CLIENT_ID=<AwardGrid's seats.aero client ID>   # the iPhone app's; not a secret
+
+The client secret stays in the token service (`sites/auth`, the Worker awardgrid-auth); this server never holds it.
+Codes are exchanged and tokens refreshed through `https://awardgrid.dowhiz.com/oauth/seats` (override with
+`SEATS_OAUTH_TOKEN_SERVICE_URL` only for development). The sign-in tokens are stored in `seats_connections`,
+encrypted with `MASTER_KEY`: rotating `MASTER_KEY` means every user connects again.
+
+Short-term caching: seats.aero results older than 24 hours are deleted from the database when the server opens it and
+every 10 minutes after (`src/lib/seats-oauth/retention.ts`), and on every `pnpm worker` tick.
+
+**Releasing it (owner's call; the order matters):**
+
+1. Redeploy the Worker first (`sites/auth/DEPLOY.md` section 7) and run its two curl checks. Until then the Worker sends
+   the web app's sign-ins to the iPhone app's scheme, and Connect cannot finish in a browser.
+2. Add `SEATS_OAUTH_CLIENT_ID` to `.env`.
+3. Back up the database and `.next`, as for any deploy: migration `0005_seats_oauth` **deletes every pasted seats.aero
+   key** (`user_keys` rows with provider `seats_aero`) and flags those accounts for a one-time "connect seats.aero"
+   notice. It runs on the first request that opens the database after the restart.
+
+       cp -Rc .next ~/Desktop/workspace/awardgrid-deploy-backup-$(date +%Y%m%d)/next
+       sqlite3 data/runtime/awardgrid.db ".backup '$HOME/Desktop/workspace/awardgrid-deploy-backup-$(date +%Y%m%d)/awardgrid.db'"
+
+4. With `main` checked out in the main checkout and clean: `pnpm build`, then at once
+   `launchctl kickstart -k gui/$(id -u)/com.awardgrid.app`; open `/api/auth/me` once to apply the migration.
+5. Check: Settings shows the seats.aero section with **Connect seats.aero**; Connect goes to seats.aero's page and
+   comes back "seats.aero is connected."; a search shows "Data: seats.aero" next to the results; Disconnect empties
+   it again. `pnpm admin users` lists who is connected.
+
+Rollback: restore `.next` and the database from the backup and kickstart again. The Worker change is backward
+compatible (the iPhone app's states never take the new path), so it can stay.
+
 ## DNS migration, 2026-09-09
 
 `dowhiz.com` moved GoDaddy → Cloudflare nameservers `jade` / `rodney.ns.cloudflare.com`.

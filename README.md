@@ -39,15 +39,17 @@ AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthr
 This repo also holds a private, invite-only web app, separate from the iPhone app.
 
 AwardGrid began as a private, invite-only web app for its developer and a small group of friends. The iPhone app
-has been submitted to the App Store as a separate public release. Every user brings their **own** seats.aero Pro key.
-**Data: seats.aero.**
+has been submitted to the App Store as a separate public release. Every user connects their **own** seats.aero account
+through seats.aero's own sign-in (Login with Seats.aero); the web app never asks for a seats.aero API key. Results from
+seats.aero are kept for at most 24 hours, on the server and in the browser, and Disconnect purges them
+(`src/lib/seats-oauth`). **Data: seats.aero.**
 
 The web app's scheduler (the **worker** lane below) is not running in the current deployment (`docs/DEPLOYMENT.md`).
 
 Two lanes plus a scheduler (`ARCHITECTURE.md` §1):
 
 - **find** (fast, deterministic): text → `QueryObject` (deterministic parser; one Claude structured-output call only when
-  dates or places cannot be resolved) → seats.aero Cached Search / Bulk Availability with the calling user's key →
+  dates or places cannot be resolved) → seats.aero Cached Search / Bulk Availability with the calling user's own token →
   per-user cache → pivot → grid. The LLM never fetches award data.
 - **ask** (slow, advisory): one Claude Agent SDK session per question with the pruned, MIT-licensed
   [travel-hacking-toolkit](https://github.com/borski/travel-hacking-toolkit) plugin; read-only, cost-capped, streamed.
@@ -60,8 +62,9 @@ No scraping, no shared keys, no Live Search, no logos, no money. See `LEGAL.md`.
 - Node ≥ 22 (`.nvmrc`; `better-sqlite3@13` needs 22). On this project's dev Mac the arm64 build lives at
   `~/.local/node-arm64` — put its `bin` first on `PATH`.
 - pnpm 12 via corepack: `corepack enable pnpm && corepack prepare pnpm@12.3.4 --activate` (pinned in `package.json#packageManager`).
-- One **seats.aero Pro** API key **per user** (seats.aero → Settings → API; Pro = 1,000 calls/day). It is
-  pasted by each user in Settings, never configured on the server.
+- Each user's own **seats.aero** account with API access (seats.aero Pro, 1,000 calls/day), connected in Settings
+  through Login with Seats.aero. The server holds only AwardGrid's OAuth client ID (`SEATS_OAUTH_CLIENT_ID`, not a
+  secret); the client secret is the token service's (`sites/auth`, `sites/auth/DEPLOY.md`), never this server's.
 - One **Anthropic API key** for the operator (`ANTHROPIC_API_KEY`) — used only by the parser fallback and the Ask lane.
 - Optional: a Telegram bot token (standing-query alerts), Docker + Compose (deployment).
 
@@ -84,7 +87,10 @@ once (see below).
 
 | Variable | Required | Default | Meaning |
 |---|---|---|---|
-| `MASTER_KEY` | yes | — | 64 hex chars (32 bytes). AES-256-GCM key for every stored user API key. Losing it invalidates all stored keys; rotating it means every user re-enters their key. |
+| `MASTER_KEY` | yes | — | 64 hex chars (32 bytes). AES-256-GCM key for every stored seats.aero sign-in token and optional API key. Losing it invalidates them; rotating it means every user connects seats.aero again and re-enters optional keys. |
+| `SEATS_OAUTH_CLIENT_ID` | yes (Connect) | — | AwardGrid's seats.aero OAuth client ID (not a secret). Unset: Settings says connecting is not set up; accounts already connected keep working. |
+| `SEATS_OAUTH_TOKEN_SERVICE_URL` | no | `https://awardgrid.dowhiz.com/oauth/seats` | The token service (`sites/auth`) the server exchanges and refreshes tokens through. Dev / e2e: the mock's stand-in, `http://127.0.0.1:3999/oauth/seats`. |
+| `SEATS_OAUTH_CONSENT_URL`, `SEATS_OAUTH_REDIRECT_URI` | dev / e2e only | seats.aero's consent page; the token service's callback | Point Connect at the mock (`http://127.0.0.1:3999/oauth2/consent`) and the app's own `/api/seats/oauth/callback`. Each must be https, or http on a loopback host. |
 | `ANTHROPIC_API_KEY` | yes (parser fallback, Ask) | — | Operator's Anthropic key. Without it, queries that the deterministic parser cannot resolve return a clear error and Ask is unavailable; the grid itself still works. |
 | `DATABASE_PATH` | no | `./data/runtime/awardgrid.db` | SQLite file shared by the app and the worker. Volume-mount it in Docker. |
 | `APP_URL` | no | `http://localhost:3000` | Public base URL used in Telegram messages (grid links). |
@@ -94,7 +100,7 @@ once (see below).
 | `AWARDGRID_DATA_DIR` | no | `./data/runtime` | Mock-transport JSONL sink and worker state. |
 | `AWARDGRID_PARSER_MODEL` | no | `claude-haiku-4-5-20251001` | Parser model (structured output). Haiku 4.5 retires no sooner than 2026-10-15 — set this when it does. |
 | `AWARDGRID_ASK_MODEL` | no | `claude-sonnet-5` | Ask-lane model passed to the Agent SDK. |
-| `CACHE_TTL_MINUTES` | no | `45` | Per-user availability cache TTL; re-renders and standing queries reuse pulls inside it. |
+| `CACHE_TTL_MINUTES` | no | `45` | Per-user availability cache TTL; re-renders and standing queries reuse pulls inside it. Capped at 1440 (24 hours, the seats.aero results limit). |
 | `SEATS_AERO_DAILY_SOFT_LIMIT` | no | `950` | Per-user hard stop below seats.aero's 1,000/day; the reset time (assumed 00:00 UTC) is shown. |
 | `ASK_DAILY_COST_CAP_USD` | no | `2` | Per-user daily Ask spend, summed from the SDK's `total_cost_usd`. |
 | `ASK_TIMEOUT_MS` | no | `120000` | Wall-clock abort for one Ask session (`AbortController`). |
@@ -125,7 +131,7 @@ the bare `pnpm find` for registry search, and built-ins win over `package.json` 
 
 ```
 pnpm admin invite --for <name>            mint one invite code (prints the code only)
-pnpm admin users                          list users: username, created, has seats key
+pnpm admin users                          list users: username, created, seats.aero connected
 pnpm admin invites                        list unused invite codes
 pnpm admin revoke-sessions --user <name>  sign a user out everywhere
 ```
@@ -136,22 +142,22 @@ Reads `DATABASE_PATH`. Never prints hashes, keys or session tokens.
 
 1. `pnpm admin invite --for alice` → one single-use code.
 2. Send them the code and the URL. The bare host now says what this is, that there is no public signup, and that they
-   must bring their own seats.aero Pro key; `/register?code=…` takes them straight to the form. They pick a
+   need their own seats.aero account with API access; `/register?code=…` takes them straight to the form. They pick a
    username and password (argon2id) and enter the code.
-3. They open **Settings → API keys** and paste their own seats.aero Pro key. Saving costs one seats.aero call (validation)
-   on *their* quota; the UI then shows only `••••` + the last four characters. Optional Duffel / Ignav keys are used
-   only by the Ask lane.
+3. They open **Settings → seats.aero → Connect seats.aero**: seats.aero's own page asks them to sign in and approve
+   AwardGrid, and they come back connected. The server keeps the sign-in tokens encrypted and never sees their
+   password; nothing is pasted. Optional Duffel / Ignav keys (Settings → Optional API keys) are used only by the Ask lane.
 4. Optional: Settings → Telegram → Link, and Settings → quiet hours / language.
 
-There is no server key: a user without a key sees an empty state pointing to Settings, and neither the grid nor the
-worker ever borrows another user's key. Caches and daily quotas are per user.
+There is no server key and no pasted key: a user without a connection sees an empty state pointing to Settings, and
+neither the grid nor the worker ever borrows another user's connection. Caches and daily quotas are per user.
 
 ## Standing queries + Telegram
 
 - Save any parsed query from the grid header with a name, a cron (default `0 */3 * * *`; anything more frequent than
   hourly is rejected), a notify rule (`new_cells` | `price_drop` | `both`, default `both`) and a drop threshold (default 10%).
   Manage them at `/queries` (list, last run, toggle, edit, delete, run now).
-- Run `pnpm worker` (same `.env`, same SQLite). It ticks every minute (UTC), runs due queries with the owner's key
+- Run `pnpm worker` (same `.env`, same SQLite). It ticks every minute (UTC), runs due queries with the owner's connection
   (respecting the cache TTL and quota — insufficient quota records `skipped_reason=quota` and sends nothing), diffs on
   `(program, origin, dest, date, cabin)`, and sends one digest per run with new cells and drops ≥ threshold. Quiet hours
   delay delivery to the next run rather than dropping it.
@@ -180,7 +186,8 @@ only the keyless kiwi / trivago / ferryhopper / skiplagged are passed to the ses
 `scripts/` are never copied.
 
 At runtime each question spawns one Agent SDK session with a **replaced** environment containing only the calling
-user's decrypted keys (`SEATS_AERO_API_KEY`, optional `DUFFEL_API_KEY_LIVE` / `IGNAV_API_KEY`), `settingSources: []`,
+user's seats.aero access token (`SEATS_AERO_API_KEY`, as `Bearer seats:ota:…`) and optional keys (`DUFFEL_API_KEY_LIVE` /
+`IGNAV_API_KEY`), `settingSources: []`,
 `strictMcpConfig: true`, a tool gate (Read/Glob/Grep inside the plugin only; `curl` to an allow-list of API hosts;
 no writes), `maxTurns: 12`, a per-request budget of `min($0.50, remaining)`, a **$2/user/day** cap, and a **120 s**
 abort. The current grid's `QueryObject` and the selected cell are injected as context; the answer streams over SSE.
@@ -202,16 +209,21 @@ floor); `docs/UI_PLAN.md` is the design record behind it.
   the row, **Ctrl/Cmd+Home / End** to the grid corners, **PageUp / PageDown** move 7 rows (one week), **Enter** or
   **Space** opens the cell drawer, **Esc** closes whichever drawer is open and returns focus to the cell that opened it.
   Every other control is reachable with Tab; the focus ring is a 2 px accent outline on `:focus-visible`.
-- **Demo mode** — the whole UI with no key, no network and no quota:
+- **Demo mode** — the whole UI with no seats.aero account, no network and no quota:
   ```sh
   pnpm demo                                                            # DEMO=1 mock seats.aero on :3999, serving fixtures/demo/
   set -a && . ./.env && set +a                                         # the tsx CLIs don't read .env; the seed needs the app's MASTER_KEY
   pnpm exec tsx scripts/seed-e2e.ts --db data/runtime/demo.db --fresh  # demo users (password demo-password-1); prints usernames only
   DATABASE_PATH=data/runtime/demo.db SEATS_AERO_BASE_URL=http://127.0.0.1:3999/partnerapi/ pnpm dev
   ```
-  Every value in `fixtures/demo/` is invented (`fixtures/demo/README.md` says so). Each seeded user's fake key selects a
-  scenario on the mock — `demo` (full dataset), `nokey`, `empty`, `slow` (loading states), `partial` (one program not
-  fetched), `quota` (daily limit reached) — so every page state can be reached without touching seats.aero.
+  Every value in `fixtures/demo/` is invented (`fixtures/demo/README.md` says so). Each seeded user's fake seats.aero
+  connection selects a scenario on the mock — `demo` (full dataset), `nokey` (not connected), `empty`, `slow` (loading
+  states), `partial` (one program not fetched), `quota` (daily limit reached) — so every page state can be reached without
+  touching seats.aero. To try Connect itself, also set `SEATS_OAUTH_CLIENT_ID=mock-client-id`,
+  `SEATS_OAUTH_CONSENT_URL=http://127.0.0.1:3999/oauth2/consent`,
+  `SEATS_OAUTH_TOKEN_SERVICE_URL=http://127.0.0.1:3999/oauth/seats` and
+  `SEATS_OAUTH_REDIRECT_URI=http://localhost:3000/api/seats/oauth/callback`, and start the mock with
+  `MOCK_OAUTH_REDIRECT_URI` set to that same callback.
 - **Screenshots.** `docs/screenshots/v0.2/<page>/<state>-<viewport>-<theme>[-zh].png` — every page in every state at
   1440 × 900 and 390 × 844, light and dark, with the grid and both drawers also in Chinese. `docs/screenshots/v0.2/before/`
   is the frozen record of the v0.1 UI, and `axe-summary.json` is the current accessibility audit.
@@ -221,13 +233,14 @@ floor); `docs/UI_PLAN.md` is the design record behind it.
 
 ```sh
 pnpm exec tsx scripts/mock-seatsaero.ts                     # 127.0.0.1:3999, serves the recorded fixtures, dates shifted to today
-pnpm exec tsx scripts/seed-dev.ts                           # users alice / bob, password "password123", two fake keys (dev MASTER_KEY if unset)
-SEATS_AERO_BASE_URL=http://127.0.0.1:3999/partnerapi/ pnpm dev
+pnpm exec tsx scripts/seed-dev.ts                           # users alice / bob, password "password123", two fake connections (dev MASTER_KEY if unset)
+SEATS_AERO_BASE_URL=http://127.0.0.1:3999/partnerapi/ SEATS_OAUTH_TOKEN_SERVICE_URL=http://127.0.0.1:3999/oauth/seats pnpm dev
 ```
 
-Any non-empty key is accepted by the mock, so the seeded fake keys "work" and no quota is spent. `seed-dev.ts`
-refuses to run with `NODE_ENV=production`; the fake key strings are exactly what `scripts/check-no-secrets-in-bundle.sh`
-greps the build for.
+The mock accepts the seeded fake tokens (`seats:ota:seeded-…`) as well as the ones its own consent page issues, so the
+seeded connections "work" and no quota is spent; point the token service at the mock too, so nothing ever reaches the
+real one. `seed-dev.ts` refuses to run with `NODE_ENV=production`; the fake token strings are exactly what
+`scripts/check-no-secrets-in-bundle.sh` greps the build for.
 
 ## Deployed at `awardgrid.dowhiz.com`
 
