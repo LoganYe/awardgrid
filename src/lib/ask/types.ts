@@ -5,7 +5,11 @@
  */
 import type { QueryObject } from "@awardgrid/core/query/schema";
 
-/** Decrypted per-user provider keys. seats.aero is mandatory (no key → `no_key`, never a fallback). */
+/**
+ * Per-user provider access. seats.aero is mandatory (no connection → `no_key`, never a fallback): its value is the
+ * account's Login with Seats.aero authorization, "Bearer seats:ota:…", exactly what the skills' curl sends as the
+ * Partner-Authorization header. Duffel and Ignav are the user's own optional keys.
+ */
 export interface AskKeys {
   seats_aero: string;
   duffel?: string;

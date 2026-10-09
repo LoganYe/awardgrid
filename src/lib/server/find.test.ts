@@ -8,14 +8,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { openTestDb, type Db } from "@/lib/db/client";
 import { apiUsage, availabilityCache } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
-import { setKey } from "@/lib/keys";
+import { connectForTests } from "@/lib/seats-oauth/testing";
+import { readConnection } from "@/lib/seats-oauth/store";
+import { SeatsRenewalUnavailableError, type TokenBroker } from "@/lib/seats-oauth";
 import { QueryObject, type QueryObjectInput } from "@awardgrid/core/query/schema";
 import { SOURCE_NAMES, type Route, type TripsResponse } from "@awardgrid/core/seatsaero/types";
 import { createSqliteAvailabilityCache } from "@/lib/db/stores/cache";
 import {
   NOT_FETCHED_REASON,
   cacheFeesFromTrips,
-  NoKeyError,
+  SeatsNotConnectedError,
   ParseError,
   QuotaExceededError,
   exportFilename,
@@ -36,8 +38,25 @@ import { fakeFetch, jsonResponse, loadFixture, textResponse } from "@awardgrid/c
 import { SYNTHETIC_ORIGINS, SYNTHETIC_PROGRAMS, generateSynthetic } from "@awardgrid/core/test-fixtures/seatsaero/generate-synthetic";
 
 const MASTER = Buffer.from("0f".repeat(32), "hex");
-const ALICE_KEY = "alice_pro_key_SECRET_a1b2c3";
-const BOB_KEY = "bob_pro_key_SECRET_z9y8x7";
+const ALICE_KEY = "seats:ota:alice_pro_key_SECRET_a1b2c3";
+const BOB_KEY = "seats:ota:bob_pro_key_SECRET_z9y8x7";
+/** The access token a renewal hands back (fake). */
+const RENEWED = "seats:ota:alice_renewed_SECRET_r3n3w";
+
+/** A token service that renews every refresh to RENEWED, recording the refresh tokens it was sent. */
+function renewingBroker(): { broker: TokenBroker; calls: string[] } {
+  const calls: string[] = [];
+  return {
+    calls,
+    broker: {
+      exchange: async () => ({ ok: false, reason: "unavailable", status: 0, error: null }),
+      refresh: async (refreshToken: string) => {
+        calls.push(refreshToken);
+        return { ok: true, grant: { access: RENEWED, refresh: null, expiresIn: 3600 } };
+      },
+    },
+  };
+}
 const NOW = new Date("2026-10-01T12:00:00Z");
 const now = () => NOW;
 
@@ -74,8 +93,8 @@ function syntheticRoutes(source: string): Route[] {
 function harness() {
   const db: Db = openTestDb();
   seedUsers(db, ["alice", "bob", "carol"]);
-  setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: MASTER, now: NOW });
-  setKey(db, "bob", "seats_aero", BOB_KEY, { masterKey: MASTER, now: NOW });
+  connectForTests(db, "alice", { masterKey: MASTER, access: ALICE_KEY, now: NOW });
+  connectForTests(db, "bob", { masterKey: MASTER, access: BOB_KEY, now: NOW });
   const fetch = fakeFetch((req) => {
     if (req.url.pathname === "/partnerapi/search") return jsonResponse(synthetic);
     if (req.url.pathname === "/partnerapi/routes") return jsonResponse(syntheticRoutes(req.url.searchParams.get("source")!));
@@ -158,7 +177,7 @@ describe("findGridForUser", () => {
 
     // Every request carried alice's key and nothing else.
     expect(fetch.calls).toHaveLength(N);
-    expect(fetch.calls.every((c) => c.headers["partner-authorization"] === ALICE_KEY)).toBe(true);
+    expect(fetch.calls.every((c) => c.headers["partner-authorization"] === `Bearer ${ALICE_KEY}`)).toBe(true);
 
     // Quota accounting rows were written for alice only.
     expect(db.select().from(apiUsage).all()).toEqual([{ userId: "alice", provider: "seats_aero", day: "2026-10-01", calls: N }]);
@@ -199,36 +218,111 @@ describe("findGridForUser", () => {
     expect(bob.grid.meta.served_from_cache).toBe(false); // alice's cache must not serve bob
     const bobCalls = fetch.calls.slice(aliceCalls);
     expect(bobCalls.length).toBeGreaterThan(0);
-    expect(bobCalls.every((c) => c.headers["partner-authorization"] === BOB_KEY)).toBe(true);
-    expect(fetch.calls.slice(0, aliceCalls).every((c) => c.headers["partner-authorization"] === ALICE_KEY)).toBe(true);
+    expect(bobCalls.every((c) => c.headers["partner-authorization"] === `Bearer ${BOB_KEY}`)).toBe(true);
+    expect(fetch.calls.slice(0, aliceCalls).every((c) => c.headers["partner-authorization"] === `Bearer ${ALICE_KEY}`)).toBe(true);
     const usage = db.select().from(apiUsage).all();
     expect(usage.map((u) => u.userId).sort()).toEqual(["alice", "bob"]);
   });
 
-  it("throws NoKeyError for a user without a key before touching the master key or the network", async () => {
+  it("throws SeatsNotConnectedError for a user without a connection before touching the master key or the network", async () => {
     const { db, fetch } = harness();
-    await expect(findGridForUser(db, { id: "carol" }, query(), { now, fetch })).rejects.toBeInstanceOf(NoKeyError);
+    await expect(findGridForUser(db, { id: "carol" }, query(), { now, fetch })).rejects.toBeInstanceOf(SeatsNotConnectedError);
     expect(fetch.calls).toHaveLength(0);
     expect(db.select().from(apiUsage).all()).toEqual([]);
   });
 
-  it("maps upstream failures to a SeatsAeroError whose text never contains the key", async () => {
+  it("maps upstream failures to a SeatsAeroError whose text never contains the token", async () => {
     const { db } = harness();
-    const fetch = fakeFetch(() => textResponse(`unauthorized ${ALICE_KEY}`, 401));
+    const fetch = fakeFetch((req) => textResponse(`unauthorized ${req.headers["partner-authorization"]}`, 401));
+    const renewing = renewingBroker();
     let caught: unknown;
     try {
-      await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER });
+      await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER, tokenBroker: renewing.broker });
     } catch (err) {
       caught = err;
     }
+    // Refused, renewed once, refused again with the new token: seats.aero's refusal stands (the account, not its token).
+    expect(renewing.calls).toHaveLength(1);
+    expect(new Set(fetch.calls.map((c) => c.headers["partner-authorization"]))).toEqual(new Set([`Bearer ${ALICE_KEY}`, `Bearer ${RENEWED}`]));
     expect(caught).toBeInstanceOf(SeatsAeroHttpError);
     expect((caught as Error).message).not.toContain(ALICE_KEY);
+    expect((caught as Error).message).not.toContain(RENEWED);
     const res = gridErrorResponse(caught);
     expect(res.status).toBe(502);
     const body = (await res.json()) as { error: string; kind: string; message: string };
     expect(body.error).toBe("seatsaero");
     expect(body.kind).toBe("invalid_key");
     expect(JSON.stringify(body)).not.toContain(ALICE_KEY);
+  });
+});
+
+describe("findGridForUser — the seats.aero connection's token", () => {
+  it("renews a token seats.aero refuses and sends the search again, once, with the new one", async () => {
+    const { db } = harness();
+    const base = fakeFetch((req) => {
+      if (req.headers["partner-authorization"] !== `Bearer ${RENEWED}`) return textResponse("unauthorized", 401);
+      if (req.url.pathname === "/partnerapi/search") return jsonResponse(synthetic);
+      if (req.url.pathname === "/partnerapi/routes") return jsonResponse(syntheticRoutes(req.url.searchParams.get("source")!));
+      return textResponse("not found", 404);
+    });
+    const renewing = renewingBroker();
+    const res = await findGridForUser(db, { id: "alice" }, query(), { now, fetch: base, masterKey: MASTER, tokenBroker: renewing.broker });
+    expect(res.grid.cells.flat().some((c) => c.status === "ok")).toBe(true);
+    expect(renewing.calls).toHaveLength(1);
+    expect(readConnection(db, "alice", MASTER)?.tokens.access).toBe(RENEWED);
+    expect(JSON.stringify(res)).not.toContain(RENEWED);
+  });
+
+  it("renews early: a token with less than five minutes left is replaced before it is sent", async () => {
+    const { db, fetch } = harness();
+    connectForTests(db, "alice", { masterKey: MASTER, access: ALICE_KEY, now: NOW, expiresIn: 120 });
+    const renewing = renewingBroker();
+    await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER, tokenBroker: renewing.broker });
+    expect(renewing.calls).toHaveLength(1);
+    expect(fetch.calls.every((c) => c.headers["partner-authorization"] === `Bearer ${RENEWED}`)).toBe(true);
+  });
+
+  it("a revoked grant removes the connection and purges what the server kept, then answers 409 no_key", async () => {
+    const { db, fetch } = harness();
+    await findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER });
+    await findGridForUser(db, { id: "bob" }, query(), { now, fetch, masterKey: MASTER });
+    expect(db.select().from(availabilityCache).all().some((r) => r.userId === "alice")).toBe(true);
+    connectForTests(db, "alice", { masterKey: MASTER, access: ALICE_KEY, now: NOW, expiresIn: 60 });
+    const revoked: TokenBroker = {
+      exchange: async () => ({ ok: false, reason: "unavailable", status: 0, error: null }),
+      refresh: async () => ({ ok: false, reason: "rejected", status: 400, error: "invalid_grant" }),
+    };
+    let caught: unknown;
+    try {
+      await findGridForUser(db, { id: "alice" }, query(), { now: () => new Date(NOW.getTime() + 2 * 60_000), fetch, masterKey: MASTER, tokenBroker: revoked });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(SeatsNotConnectedError);
+    expect((await gridErrorResponse(caught).json())).toEqual({ error: "no_key", provider: "seats_aero" });
+    expect(readConnection(db, "alice", MASTER)).toBeNull();
+    expect(db.select().from(availabilityCache).all().some((r) => r.userId === "alice")).toBe(false);
+    // Bob's results are his own and stay.
+    expect(db.select().from(availabilityCache).all().some((r) => r.userId === "bob")).toBe(true);
+  });
+
+  it("a token run out that cannot be renewed now is a passing failure: 502 renewal_unavailable, the connection kept", async () => {
+    const { db, fetch } = harness();
+    connectForTests(db, "alice", { masterKey: MASTER, access: ALICE_KEY, now: NOW, expiresIn: 60 });
+    const down: TokenBroker = {
+      exchange: async () => ({ ok: false, reason: "unavailable", status: 502, error: null }),
+      refresh: async () => ({ ok: false, reason: "unavailable", status: 502, error: "upstream_blocked" }),
+    };
+    let caught: unknown;
+    try {
+      await findGridForUser(db, { id: "alice" }, query(), { now: () => new Date(NOW.getTime() + 2 * 60_000), fetch, masterKey: MASTER, tokenBroker: down });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(SeatsRenewalUnavailableError);
+    expect((await gridErrorResponse(caught).json())).toEqual({ error: "seatsaero", kind: "renewal_unavailable" });
+    expect(readConnection(db, "alice", MASTER)?.tokens.access).toBe(ALICE_KEY);
+    expect(fetch.calls).toHaveLength(0);
   });
 });
 
@@ -239,7 +333,7 @@ describe("getTripsForUser", () => {
     expect(res.api_calls_used).toBe(1);
     expect(fetch.calls).toHaveLength(1);
     expect(fetch.calls[0]!.url.pathname).toBe("/partnerapi/trips/2PPrELk9WcfJaNREWEPXypvhXAD");
-    expect(fetch.calls[0]!.headers["partner-authorization"]).toBe(ALICE_KEY);
+    expect(fetch.calls[0]!.headers["partner-authorization"]).toBe(`Bearer ${ALICE_KEY}`);
     expect(res.trips.length).toBeGreaterThan(0);
     expect(res.trips[0]!.segments.length).toBeGreaterThan(0);
     expect(res.fees_cents).not.toBeNull();
@@ -631,9 +725,9 @@ describe("helpers", () => {
     expect(utcToday(NOW)).toBe("2026-10-01");
   });
 
-  it("gridErrorResponse maps NoKeyError → 409 and unknown errors → 500 logging only the name", async () => {
+  it("gridErrorResponse maps SeatsNotConnectedError → 409 and unknown errors → 500 logging only the name", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect((await gridErrorResponse(new NoKeyError("seats_aero")).json())).toEqual({ error: "no_key", provider: "seats_aero" });
+    expect((await gridErrorResponse(new SeatsNotConnectedError()).json())).toEqual({ error: "no_key", provider: "seats_aero" });
     const res = gridErrorResponse(new Error(`boom ${ALICE_KEY}`));
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "internal" });
@@ -696,7 +790,7 @@ function dynamicObjects(): SyntheticObject[] {
 function dynamicHarness() {
   const db: Db = openTestDb();
   seedUsers(db, ["alice"]);
-  setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: MASTER, now: NOW });
+  connectForTests(db, "alice", { masterKey: MASTER, access: ALICE_KEY, now: NOW });
   const extra = dynamicObjects();
   const fetch = fakeFetch((req) => {
     if (req.url.pathname === "/partnerapi/search") {
@@ -785,7 +879,7 @@ describe("findGridForUser — not fetched pairs (Phase 6)", () => {
   it("marks monitored pairs without rows as not fetched when the search was truncated", async () => {
     const db: Db = openTestDb();
     seedUsers(db, ["alice"]);
-    setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: MASTER, now: NOW });
+    connectForTests(db, "alice", { masterKey: MASTER, access: ALICE_KEY, now: NOW });
     const page = (synthetic.data as SyntheticObject[]).filter((o) => o.Route.OriginAirport === "HKG").slice(0, 5);
     const fetch = fakeFetch((req) => {
       // Every page claims there is more: the run stops at the page cap and warns.
@@ -831,7 +925,7 @@ describe("findGridForUser — one program's Get Routes failing (Phase 6)", () =>
   function failingHarness(status: number) {
     const db: Db = openTestDb();
     seedUsers(db, ["alice"]);
-    setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: MASTER, now: NOW });
+    connectForTests(db, "alice", { masterKey: MASTER, access: ALICE_KEY, now: NOW });
     const fetch = fakeFetch((req) => {
       if (req.url.pathname === "/partnerapi/search") return jsonResponse(synthetic);
       if (req.url.pathname === "/partnerapi/routes") {
@@ -925,8 +1019,17 @@ describe("findGridForUser — one program's Get Routes failing (Phase 6)", () =>
     expect(ok.warnings).toHaveLength(ok.notices.length);
   });
 
-  it("a key rejection on a route list still fails the request", async () => {
+  it("a token rejection on a route list is not swallowed: it fails the attempt, and the token is renewed", async () => {
     const { db, fetch } = failingHarness(401);
-    await expect(findGridForUser(db, { id: "alice" }, query(), { now, fetch, masterKey: MASTER })).rejects.toBeInstanceOf(SeatsAeroHttpError);
+    const renewing = renewingBroker();
+    // Refused for any token: the attempt after the renewal is refused too, and that refusal stands.
+    const refusing = fakeFetch((req) => (req.url.pathname === "/partnerapi/search" ? textResponse("unauthorized", 401) : fetch(req.url.toString(), { headers: req.headers })));
+    await expect(findGridForUser(db, { id: "alice" }, query(), { now, fetch: refusing, masterKey: MASTER, tokenBroker: renewing.broker })).rejects.toBeInstanceOf(SeatsAeroHttpError);
+    expect(renewing.calls).toEqual([`seats:otr:test-alice`]);
+    // The first attempt's own route-list refusal is what started the renewal (the catalog let it through).
+    const first = failingHarness(401);
+    const once = renewingBroker();
+    await findGridForUser(first.db, { id: "alice" }, query(), { now, fetch: first.fetch, masterKey: MASTER, tokenBroker: once.broker }).catch(() => undefined);
+    expect(once.calls).toHaveLength(1);
   });
 });

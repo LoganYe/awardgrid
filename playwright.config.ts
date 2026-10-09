@@ -21,6 +21,12 @@ export const APP_PORT = Number(process.env.E2E_APP_PORT ?? 3400);
 export const MOCK_PORT = Number(process.env.E2E_MOCK_PORT ?? 3999);
 export const APP_URL = `http://127.0.0.1:${APP_PORT}`;
 export const MOCK_BASE_URL = `http://127.0.0.1:${MOCK_PORT}/partnerapi/`;
+/**
+ * Login with Seats.aero in the e2e app: seats.aero's consent page and the token service are the mock's
+ * (scripts/mock-seatsaero.ts), and the redirect URI is the app's own callback, registered with the mock client, since
+ * no Worker sits in front of the app here (production redirects through sites/auth, tested on its own).
+ */
+export const E2E_OAUTH_REDIRECT_URI = `${APP_URL}/api/seats/oauth/callback`;
 /** Throwaway SQLite file; e2e/start-app.sh recreates it on every start. Override with E2E_DB_PATH. */
 export const E2E_DB_PATH = process.env.E2E_DB_PATH ?? path.join(os.tmpdir(), "awardgrid-e2e", "e2e.db");
 /** Test-only master key: 64 hex chars, deliberately trivial (it only ever protects fake keys). */
@@ -49,6 +55,11 @@ export const appEnv: Record<string, string> = {
   DATABASE_PATH: E2E_DB_PATH,
   MASTER_KEY: E2E_MASTER_KEY,
   SEATS_AERO_BASE_URL: MOCK_BASE_URL,
+  // The mock client (scripts/mock-seatsaero-oauth-core.ts MOCK_OAUTH_CLIENT): test values only.
+  SEATS_OAUTH_CLIENT_ID: "mock-client-id",
+  SEATS_OAUTH_CONSENT_URL: `http://127.0.0.1:${MOCK_PORT}/oauth2/consent`,
+  SEATS_OAUTH_REDIRECT_URI: E2E_OAUTH_REDIRECT_URI,
+  SEATS_OAUTH_TOKEN_SERVICE_URL: `http://127.0.0.1:${MOCK_PORT}/oauth/seats`,
   APP_URL,
   COOKIE_SECURE: "false",
   NODE_ENV: "production",
@@ -62,7 +73,7 @@ export const appEnv: Record<string, string> = {
 
 const webServer: NonNullable<PlaywrightTestConfig["webServer"]> = [
   {
-    command: `DEMO=1 MOCK_SEATS_PORT=${MOCK_PORT} pnpm exec tsx scripts/mock-seatsaero.ts`,
+    command: `DEMO=1 MOCK_SEATS_PORT=${MOCK_PORT} MOCK_OAUTH_REDIRECT_URI=${E2E_OAUTH_REDIRECT_URI} pnpm exec tsx scripts/mock-seatsaero.ts`,
     url: `http://127.0.0.1:${MOCK_PORT}/healthz`,
     timeout: 30_000,
     reuseExistingServer: !isCI,

@@ -3,17 +3,19 @@
  *   | 400 invalid_body | 401 unauthorized | 409 no_key { provider } | 500 internal (all JSON, before streaming)
  *
  * Boundaries honoured here:
- *   - The calling user's own keys, decrypted here and handed to runAsk() ONLY — no fallback
- *     key (§0.2 #2). They are never placed on a response, an event or a log line (§0.2 #8);
- *     every streamed byte also passes through redactSecrets() as a second line of defence.
+ *   - The calling user's own seats.aero connection ("Bearer seats:ota:…", renewed first when it is about to run out,
+ *     src/lib/seats-oauth/access.ts) and optional Duffel / Ignav keys, resolved here and handed to runAsk() ONLY — no
+ *     fallback (§0.2 #2). They are never placed on a response, an event or a log line (§0.2 #8); every streamed byte
+ *     also passes through redactSecrets() (the Bearer value and the bare token) as a second line of defence.
  *   - Client disconnect (request.signal) or ReadableStream cancel aborts the SDK session so
  *     an abandoned tab cannot keep spending the user's daily budget.
- *   - No key on file is answered with a JSON 409 before any stream starts, so the drawer can
- *     point at /settings without parsing SSE.
+ *   - No seats.aero connection is answered with a JSON 409 before any stream starts, so the drawer
+ *     can point at /settings without parsing SSE.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { runAsk } from "@/lib/ask";
-import { getDecryptedKey, getMasterKey, hasKey, NoKeyError, type KeyProvider } from "@/lib/keys";
+import { getDecryptedKey, getMasterKey, hasKey, type KeyProvider } from "@/lib/keys";
+import { SeatsNotConnectedError, authorizationSecrets, seatsAuthorization } from "@/lib/seats-oauth";
 import { getServerDb } from "@/lib/server/db";
 import { userFromRequest } from "@/lib/server/find";
 import { BodyError, readJson } from "@/lib/server/http";
@@ -35,14 +37,13 @@ interface ResolvedKeys {
 }
 
 /**
- * Decrypt the caller's keys. The "has a key" check runs before the master key is touched so a
- * keyless user gets a clean 409 even on a host where MASTER_KEY is unset.
+ * The caller's seats.aero authorization and optional keys. The "connected" check runs before the master key is
+ * touched (inside seatsAuthorization), so an account without a connection gets a clean 409 even on a host where
+ * MASTER_KEY is unset. An Ask session lasts at most two minutes; the access token handed to it has at least five left.
  */
-function resolveKeys(db: ReturnType<typeof getServerDb>, userId: string): ResolvedKeys {
-  if (!hasKey(db, userId, "seats_aero")) throw new NoKeyError("seats_aero");
+async function resolveKeys(db: ReturnType<typeof getServerDb>, userId: string): Promise<ResolvedKeys> {
+  const seats = await seatsAuthorization(db, userId);
   const master = getMasterKey();
-  const seats = getDecryptedKey(db, userId, "seats_aero", master);
-  if (seats === null) throw new NoKeyError("seats_aero");
   const optional = (provider: KeyProvider): string | undefined =>
     hasKey(db, userId, provider) ? (getDecryptedKey(db, userId, provider, master) ?? undefined) : undefined;
   const duffel = optional("duffel");
@@ -65,12 +66,12 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   let keys: ResolvedKeys;
   try {
-    keys = resolveKeys(db, user.id);
+    keys = await resolveKeys(db, user.id);
   } catch (err) {
-    if (err instanceof NoKeyError) return askError(409, "no_key", { provider: err.provider });
-    return askError(500, "internal"); // MASTER_KEY missing/malformed; never echo why
+    if (err instanceof SeatsNotConnectedError) return askError(409, "no_key", { provider: err.provider });
+    return askError(500, "internal"); // MASTER_KEY missing/malformed, or the sign-in could not be renewed; never echo why
   }
-  const secrets = [keys.seats_aero, keys.duffel, keys.ignav];
+  const secrets = [...authorizationSecrets(keys.seats_aero), keys.duffel, keys.ignav];
 
   // Client disconnect (request.signal) or ReadableStream cancel → `ac` fires. It is handed to
   // runAsk as `deps.signal` (wired straight to the SDK abortController, so the subprocess dies at

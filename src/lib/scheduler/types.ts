@@ -58,8 +58,11 @@ export type DigestFormatter = (input: DigestInput) => string;
 /**
  * `query_runs.skipped_reason` values.
  *   first_run       nothing to diff against yet — the snapshot becomes the baseline
+ *   baseline_expired  the last baseline is older than 24 hours, or was purged (Disconnect, a revoked grant): its
+ *                   seats.aero cells are gone (src/lib/seats-oauth/retention.ts), so nothing is compared or sent
+ *                   and this run's snapshot becomes the new baseline
  *   invalid_query   query_json no longer parses as a QueryObject
- *   no_key          the owner has no seats.aero key on file (kickoff §5: no fallback key)
+ *   no_key          the owner has no seats.aero account connected (kickoff §5: no fallback access)
  *   quota           the owner's daily quota headroom is exhausted (kickoff §6)
  *   upstream_error  seats.aero HTTP / network / schema error
  *   no_telegram     there is something to send but the owner has not linked a chat
@@ -72,6 +75,7 @@ export type DigestFormatter = (input: DigestInput) => string;
  */
 export type SkippedReason =
   | "first_run"
+  | "baseline_expired"
   | "invalid_query"
   | "no_key"
   | "quota"

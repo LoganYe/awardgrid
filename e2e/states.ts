@@ -635,19 +635,22 @@ export async function openAddKeyForm(page: Page): Promise<void> {
 }
 
 /**
- * Paste a key seats.aero rejects. The probe really goes to the DEMO mock, which answers 401, so
- * the row shows the true failure — and the stored key is untouched, because the write never ran.
+ * Ask to disconnect seats.aero and leave the inline confirmation up (what Disconnect deletes, said before it does).
+ * Nothing is confirmed: the account stays connected for every capture after this one.
  */
-export async function showKeyError(page: Page): Promise<void> {
-  const seats = keyRow(page, "seats_aero");
-  const replace = seats.getByRole("button", { name: en["settings.keys.replace"] });
-  if ((await replace.getAttribute("aria-expanded")) !== "true") await replace.click();
-  const input = seats.getByLabel(en["settings.keys.input_label"]);
-  await expect(input).toBeVisible();
-  await input.fill("demo-key-invalid");
-  await seats.getByRole("button", { name: en["settings.keys.add"] }).click();
-  await expect(seats.getByRole("alert")).toHaveText(en["error.invalid_key"]);
+export async function showSeatsDisconnectConfirm(page: Page): Promise<void> {
+  const seats = page.locator('[data-settings-section="seats"]');
+  await seats.getByTestId("seats-disconnect").click();
+  await expect(seats.getByTestId("seats-disconnect-confirm")).toBeVisible();
+  await expect(seats.getByText(en["settings.seats.disconnect_body"])).toBeVisible();
   await seats.scrollIntoViewIfNeeded();
+}
+
+/** Put the confirmation away with "Keep": the account is still connected. */
+export async function keepSeatsConnected(page: Page): Promise<void> {
+  const seats = page.locator('[data-settings-section="seats"]');
+  await seats.getByTestId("seats-disconnect-confirm").getByRole("button", { name: en["common.keep"] }).click();
+  await expect(seats.locator("[data-seats-status]")).toHaveAttribute("data-seats-status", "connected");
 }
 
 /** Mint a Telegram deep link (stubbed: the app process has no bot token) and show the QR. */
@@ -678,7 +681,7 @@ export async function showSettingsSection(page: Page, section: "account" | "lang
 /**
  * Elements whose text is a clock reading and would fail every baseline the next day: freshness
  * ages, the quota counters and "resets in", the grid's date row headers and Dates chip (the demo
- * dataset is shifted so day one is today), relative run times, and the "added <date>" key line.
+ * dataset is shifted so day one is today), relative run times, and the "connected since <date>" line.
  *
  * `mask` paints them over in both the baseline and the comparison, so the layout is still
  * asserted — only the reading inside the box is exempt.
@@ -692,7 +695,8 @@ export function timeMasks(page: Page): Locator[] {
     page.getByTestId("quota-banner"),
     page.getByTestId("drawer-when"),
     page.locator("[data-quota-state]"),
-    page.locator('[data-key-row="seats_aero"]'),
+    // "Connected since <date>": the seeded connection is made when the suite starts.
+    page.locator("[data-seats-status]"),
     page.locator(".aq-row td:nth-child(4), .aq-row td:nth-child(5)"),
     page.locator(".aq-card .aq-meta"),
     page.locator("table.aq-runs tbody td:first-child"),

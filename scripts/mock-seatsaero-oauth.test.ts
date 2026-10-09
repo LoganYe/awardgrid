@@ -7,7 +7,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SearchResponse } from "@awardgrid/core/seatsaero/types";
 import { APP_CALLBACK, type Deps, type Env, PATHS, REDIRECT_URI, SEATS_TOKEN_URL, handle } from "../sites/auth/src/index";
-import { MOCK_OAUTH_CLIENT, type MockHandle, createMockServer } from "./mock-seatsaero";
+import { DEMO_KEYS, MOCK_OAUTH_CLIENT, type MockHandle, SEEDED_TOKEN_PREFIX, createMockServer } from "./mock-seatsaero";
 
 const NOW = new Date("2026-10-06T15:00:00Z");
 let clock = NOW.getTime();
@@ -115,6 +115,36 @@ describe("the mock's token endpoint", () => {
     } finally {
       clock = NOW.getTime();
     }
+  });
+});
+
+describe("the web app's harness: seeded tokens and the token service's stand-in paths", () => {
+  it("accepts a seeded access token it never issued, and a DEMO server routes the scenario it names", async () => {
+    expect((await search(`Bearer ${SEEDED_TOKEN_PREFIX}dev-alice`)).status).toBe(200);
+    const demo = await createMockServer({ port: 0, demo: true, now: () => NOW, log: () => {} });
+    try {
+      const ask = (auth: string) => fetch(`${demo.baseUrl}search?origin_airport=HKG&destination_airport=SEA&cabins=business&take=10`, { headers: { "Partner-Authorization": auth } });
+      const empty = await ask(`Bearer ${SEEDED_TOKEN_PREFIX}${DEMO_KEYS.empty}`);
+      expect([empty.status, ((await empty.json()) as { data: unknown[] }).data]).toEqual([200, []]);
+      expect((await ask(`Bearer ${SEEDED_TOKEN_PREFIX}${DEMO_KEYS.invalid}`)).status).toBe(401);
+      // Only the exact prefix counts: anything else after "Bearer" must be a token the mock issued.
+      expect((await ask("Bearer seats:ota:seededdemo-key-normal")).status).toBe(401);
+    } finally {
+      await demo.close();
+    }
+  });
+
+  it("exchanges and refreshes on /oauth/seats/token and /refresh, adding the client and the registered redirect URI", async () => {
+    const code = await codeFromConsent();
+    const service = (path: string, body: unknown) => fetch(`${origin}/oauth/seats/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const exchanged = await service("token", { code, state: STATE });
+    const tokens = (await exchanged.json()) as Record<string, unknown>;
+    expect(exchanged.status).toBe(200);
+    // The token fields only, as the Worker answers.
+    expect(Object.keys(tokens).sort()).toEqual(["access_token", "expires_in", "refresh_token", "token_type"]);
+    const refreshed = await service("refresh", { refresh_token: tokens.refresh_token });
+    expect(refreshed.status).toBe(200);
+    expect([(await service("refresh", { refresh_token: "seats:otr:never-issued" })).status, await (await service("token", { code, state: STATE })).json()]).toEqual([400, { error: "invalid_grant" }]);
   });
 });
 

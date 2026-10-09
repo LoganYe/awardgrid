@@ -1,5 +1,7 @@
 /**
- * Encrypted per-user API key store (kickoff §0.2 #2 and #8, §5).
+ * Encrypted per-user API key store (kickoff §0.2 #2 and #8, §5): the optional Duffel and Ignav keys the Ask lane uses.
+ * seats.aero is not here: the web app reaches seats.aero only through Login with Seats.aero (src/lib/seats-oauth), and
+ * never accepts or reads a pasted seats.aero key.
  *
  * Rules enforced here:
  *   - AES-256-GCM with MASTER_KEY; the database holds ciphertext/iv/tag + last4 only.
@@ -13,14 +15,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { type ClockOptions, type DbConn as Db, resolveNow } from "@/lib/auth/clock";
 import { decryptSecret, encryptSecret, last4, maskedKey, parseMasterKey } from "@/lib/crypto/aes";
 import { KEY_PROVIDERS, type KeyProvider, userKeys } from "@/lib/db/schema";
-import {
-  SeatsAeroClient,
-  SeatsAeroHttpError,
-  SeatsAeroNetworkError,
-  SeatsAeroResponseError,
-  type SeatsAeroCallListener,
-} from "@awardgrid/core/seatsaero/client";
-import { type QuotaStore, utcDayKey } from "@awardgrid/core/seatsaero/quota";
 
 export type { KeyProvider };
 export { KEY_PROVIDERS };
@@ -55,7 +49,6 @@ export class KeyError extends Error {
 }
 
 export const PROVIDER_LABELS: Record<KeyProvider, string> = {
-  seats_aero: "seats.aero",
   duffel: "Duffel",
   ignav: "Ignav",
 };
@@ -160,7 +153,7 @@ export function getDecryptedKey(db: Db, userId: string, provider: KeyProvider, m
   return decryptSecret(row, masterKey);
 }
 
-/** getDecryptedKey that throws NoKeyError instead of returning null (fast lane, worker, ask lane). */
+/** getDecryptedKey that throws NoKeyError instead of returning null. */
 export function requireKey(db: Db, userId: string, provider: KeyProvider, masterKey: Buffer): string {
   const key = getDecryptedKey(db, userId, provider, masterKey);
   if (key === null) throw new NoKeyError(provider);
@@ -175,58 +168,4 @@ export function hasKey(db: Db, userId: string, provider: KeyProvider): boolean {
       .where(and(eq(userKeys.userId, userId), eq(userKeys.provider, provider)))
       .get() !== undefined
   );
-}
-
-// ---------------------------------------------------------------------------
-// seats.aero key validation (one cheap Cached Search; counts as 1 quota call)
-// ---------------------------------------------------------------------------
-
-export type KeyValidationResult =
-  | { ok: true }
-  | { ok: false; reason: "invalid" | "unknown" }
-  /** `timed_out`: the request left the process and may have reached seats.aero (charge it). */
-  | { ok: false; reason: "network"; timed_out: boolean };
-
-export interface ValidateKeyOptions extends ClockOptions {
-  fetch?: typeof fetch;
-  timeoutMs?: number;
-  /** Fires once per HTTP request that left the process (so the caller can settle its quota reservation). */
-  onCall?: SeatsAeroCallListener;
-}
-
-/**
- * Smallest documented Cached Search (take=10, one pair, one day). 401/403 → invalid; a
- * transport failure/timeout → network; any other non-2xx → unknown. A 200 with an unexpected
- * body still proves the key is accepted. The caller must record ONE quota call via
- * `recordValidationCall` — this function performs exactly one HTTP request.
- */
-export async function validateSeatsAeroKey(plaintext: string, opts: ValidateKeyOptions = {}): Promise<KeyValidationResult> {
-  let secret: string;
-  try {
-    secret = normalizeKeyInput(plaintext);
-  } catch {
-    return { ok: false, reason: "invalid" };
-  }
-  const today = utcDayKey(resolveNow(opts));
-  const client = new SeatsAeroClient({ apiKey: secret, fetch: opts.fetch, timeoutMs: opts.timeoutMs, onCall: opts.onCall });
-  try {
-    await client.cachedSearch({
-      origin_airport: ["SEA"],
-      destination_airport: ["NRT"],
-      start_date: today,
-      end_date: today,
-      take: 10,
-    });
-    return { ok: true };
-  } catch (err) {
-    if (err instanceof SeatsAeroResponseError) return { ok: true };
-    if (err instanceof SeatsAeroHttpError) return { ok: false, reason: err.kind === "invalid_key" ? "invalid" : "unknown" };
-    if (err instanceof SeatsAeroNetworkError) return { ok: false, reason: "network", timed_out: err.timedOut };
-    return { ok: false, reason: "unknown" };
-  }
-}
-
-/** Charge the single validation request to the user's seats.aero quota. Returns the day's new total. */
-export async function recordValidationCall(store: QuotaStore, userId: string, day?: string): Promise<number> {
-  return store.increment(userId, day ?? utcDayKey(new Date()), 1);
 }

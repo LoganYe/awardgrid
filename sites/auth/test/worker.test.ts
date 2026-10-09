@@ -5,10 +5,12 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import worker, { APP_CALLBACK, type Deps, type Env, MAX_BODY_BYTES, PATHS, REDIRECT_URI, SEATS_TOKEN_URL, handle } from "../src/index";
+import worker, { APP_CALLBACK, type Deps, type Env, MAX_BODY_BYTES, PATHS, REDIRECT_URI, SEATS_TOKEN_URL, WEB_CALLBACK, WEB_STATE_RE, handle } from "../src/index";
 
 const ORIGIN = "https://awardgrid.dowhiz.com";
 const STATE = "Ab3_dEf-Gh1jK2lM3nO4pQ5rS6tU7vW8xY9zA0bC1dE";
+/** A state the web app makes: `web_` and 43 base64url characters (src/lib/seats-oauth/state.ts). */
+const WEB_STATE = `web_${STATE}`;
 const CODE = "c0de.With-Allowed~chars";
 const REFRESH = "seats:otr:31cDtrDo16l2Sw";
 const SECRET = "client-secret-value-never-returned";
@@ -93,6 +95,65 @@ describe("GET /oauth/seats/callback", () => {
     expect(posted.status).toBe(405);
     expect(posted.headers.get("allow")).toBe("GET, HEAD");
     expect(fake.calls).toEqual([]);
+  });
+});
+
+describe("GET /oauth/seats/callback for the web app (a `web_` state)", () => {
+  it("sends a web state's code to the web app's pinned address, not the app's scheme", async () => {
+    const res = await handle(get(`${PATHS.callback}?code=${CODE}&state=${WEB_STATE}`), env(), upstream().deps);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe(`${WEB_CALLBACK}?${new URLSearchParams({ code: CODE, state: WEB_STATE })}`);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+  });
+
+  it("passes a refusal on to the web app as its OAuth error code only", async () => {
+    const res = await handle(get(`${PATHS.callback}?error=access_denied&error_description=${encodeURIComponent("<b>no</b>")}&state=${WEB_STATE}`), env(), upstream().deps);
+    expect(res.headers.get("location")).toBe(`${WEB_CALLBACK}?error=access_denied&state=${WEB_STATE}`);
+  });
+
+  it("is the web app's own address on the registered host, under a path the Worker does not serve", () => {
+    const web = new URL(WEB_CALLBACK);
+    expect(web.origin).toBe(new URL(REDIRECT_URI).origin);
+    expect(web.search).toBe("");
+    expect(web.pathname.startsWith("/oauth/")).toBe(false);
+  });
+
+  it("lets nothing in the request choose the destination: not the host, not an extra parameter", async () => {
+    const odd = new Request(`https://evil.example${PATHS.callback}?code=${CODE}&state=${WEB_STATE}&redirect_uri=${encodeURIComponent("https://evil.example/x")}&next=//evil.example`, {
+      headers: { "cf-connecting-ip": "203.0.113.7", host: "evil.example", "x-forwarded-host": "evil.example" },
+    });
+    const res = await handle(odd, env(), upstream().deps);
+    const location = new URL(res.headers.get("location")!);
+    expect(`${location.origin}${location.pathname}`).toBe(WEB_CALLBACK);
+    expect([...location.searchParams.keys()]).toEqual(["code", "state"]);
+  });
+
+  it("keeps every state the iPhone app can make on the app's scheme, including one that starts with web_", async () => {
+    // The app's states are 32 random bytes as base64url: 43 characters, no prefix.
+    for (const state of [STATE, `web_${STATE.slice(4)}`, `web_${STATE.slice(1)}`, `web_${STATE}x`, `WEB_${STATE}`, `xweb_${STATE}`]) {
+      const res = await handle(get(`${PATHS.callback}?code=${CODE}&state=${state}`), env(), upstream().deps);
+      expect(res.headers.get("location"), state).toMatch(/^com\.dowhiz\.awardgrid:\/\/oauth\/seats\?/);
+    }
+    for (let i = 0; i < 500; i++) {
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      const state = Buffer.from(bytes).toString("base64url");
+      expect(state).toHaveLength(43);
+      expect(WEB_STATE_RE.test(state)).toBe(false);
+    }
+  });
+
+  it("still refuses a web state's code of the wrong shape, and never echoes it", async () => {
+    const res = await handle(get(`${PATHS.callback}?code=${encodeURIComponent("<script>")}&state=${WEB_STATE}`), env(), upstream().deps);
+    expect(res.status).toBe(400);
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("exchanges a web state's code like any other: the same pinned redirect URI, the state passed on", async () => {
+    const fake = upstream();
+    const res = await handle(post(PATHS.token, { code: CODE, state: WEB_STATE }), env(), fake.deps);
+    expect(res.status).toBe(200);
+    expect(sentBody(fake.calls[0]!)).toMatchObject({ grant_type: "authorization_code", code: CODE, redirect_uri: REDIRECT_URI, state: WEB_STATE });
   });
 });
 
@@ -319,8 +380,10 @@ describe("what the Worker is allowed to be (source and wrangler.jsonc)", () => {
 
   it("logs nothing and calls one address: seats.aero's token endpoint (no user-info call)", () => {
     expect(source).not.toMatch(/console\./);
+    // The redirect URI and the web app's callback are addresses the browser is sent to, never fetched; the only
+    // address fetched is the token endpoint (every upstream test above records SEATS_TOKEN_URL and nothing else).
     const urls = [...source.matchAll(/https:\/\/[^\s"'`)]+/g)].map((m) => m[0]);
-    expect(new Set(urls)).toEqual(new Set([REDIRECT_URI, SEATS_TOKEN_URL]));
+    expect(new Set(urls)).toEqual(new Set([REDIRECT_URI, SEATS_TOKEN_URL, WEB_CALLBACK]));
     expect(new Set(source.match(/oauth2\/[a-z]+/g))).toEqual(new Set(["oauth2/token"]));
     expect(source).not.toMatch(/userinfo/i);
   });

@@ -9,7 +9,7 @@ import { openTestDb, type Db } from "@/lib/db/client";
 import { eq } from "drizzle-orm";
 import { apiUsage, queryRuns, savedQueries } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
-import { setKey } from "@/lib/keys";
+import { connectForTests } from "@/lib/seats-oauth/testing";
 import { QueryObject } from "@awardgrid/core/query/schema";
 import type { Route } from "@awardgrid/core/seatsaero/types";
 import { fakeFetch, jsonResponse, textResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
@@ -32,7 +32,7 @@ import {
 } from "./queries";
 
 const MASTER = Buffer.from("0f".repeat(32), "hex");
-const ALICE_KEY = "alice_pro_key_SECRET_a1b2c3";
+const ALICE_KEY = "seats:ota:alice_pro_key_SECRET_a1b2c3";
 const NOW = new Date("2026-10-01T12:00:00Z");
 const now = () => NOW;
 
@@ -50,7 +50,7 @@ const QUERY = QueryObject.parse({
 function harness(): { db: Db; fetch: ReturnType<typeof fakeFetch> } {
   const db = openTestDb();
   seedUsers(db, ["alice", "bob"]);
-  setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: MASTER, now: NOW });
+  connectForTests(db, "alice", { masterKey: MASTER, access: ALICE_KEY, now: NOW });
   const synthetic = generateSynthetic();
   const routes = (source: string): Route[] =>
     SYNTHETIC_ORIGINS.filter((o) => o !== "GMP").map((o) => ({
@@ -132,7 +132,7 @@ describe("runNow (through the scheduler)", () => {
     expect(first.notified).toBe(false);
     expect(first.skipped_reason).toBe("first_run");
     expect(fetch.calls.length).toBeGreaterThan(0);
-    expect(fetch.calls.every((c) => c.headers["partner-authorization"] === ALICE_KEY)).toBe(true);
+    expect(fetch.calls.every((c) => c.headers["partner-authorization"] === `Bearer ${ALICE_KEY}`)).toBe(true);
     expect(db.select().from(apiUsage).all().every((r) => r.userId === "alice")).toBe(true);
     expect(getSavedQuery(db, "alice", saved.id)?.last_run_at).toBe(NOW.toISOString());
 
@@ -161,10 +161,10 @@ describe("runNow (through the scheduler)", () => {
     expect(db.select().from(queryRuns).all()).toHaveLength(1);
   });
 
-  it("refuses to run for a user without a key (NoKeyError) and never uses another user's key", async () => {
+  it("refuses to run for a user without a key (SeatsNotConnectedError) and never uses another user's key", async () => {
     const { db, fetch } = harness();
     const saved = createSavedQuery(db, "bob", { name: "b", query: QUERY }, { now });
-    await expect(runNow(db, saved.id, { now, fetch, masterKey: MASTER, env: {} })).rejects.toMatchObject({ name: "NoKeyError" });
+    await expect(runNow(db, saved.id, { now, fetch, masterKey: MASTER, env: {} })).rejects.toMatchObject({ name: "SeatsNotConnectedError" });
     expect(fetch.calls).toHaveLength(0);
     // The scheduler records the skipped run (reason no_key); the API surfaces it as 409.
     const runs = db.select().from(queryRuns).all();
@@ -237,7 +237,7 @@ describe("lastRunDiff", () => {
     seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000), cell(K2, 80000)], notified: true });
     seedRun(db, q.id, { id: "r2", ranAt: "2026-10-01T12:00:00.000Z", cells: [cell(K1, 60000), cell(K3, 57500)], notified: true });
 
-    const diff = lastRunDiff(db, "alice", q.id)!;
+    const diff = lastRunDiff(db, "alice", q.id, NOW)!;
     expect(diff.new.map((r) => [r.program, r.origin, r.dest, r.date, r.cabin, r.miles])).toEqual([["aeroplan", "NRT", "SEA", "2026-10-07", "J", 57500]]);
     expect(diff.dropped.map((r) => r.program)).toEqual(["american"]);
     // Enough for the cell component; the fields a snapshot cannot carry are honest blanks.
@@ -252,7 +252,7 @@ describe("lastRunDiff", () => {
     seedRun(db, q.id, { id: "r2", ranAt: "2026-10-01T06:00:00.000Z", cells: [cell(K1, 60000), cell(K2, 80000)], skippedReason: "quiet_hours" });
     seedRun(db, q.id, { id: "r3", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000), cell(K2, 80000), cell(K3, 57500)], notified: true });
 
-    const diff = lastRunDiff(db, "alice", q.id)!;
+    const diff = lastRunDiff(db, "alice", q.id, NOW)!;
     expect(diff.new.map((r) => r.program).sort()).toEqual(["aeroplan", "american"]);
     expect(diff.dropped).toEqual([]);
   });
@@ -260,13 +260,13 @@ describe("lastRunDiff", () => {
   it("is empty when there is nothing to compare, and never invents dropped cells for a failed run", () => {
     const { db } = harness();
     const q = createSavedQuery(db, "alice", { name: "n", query: QUERY }, { now });
-    expect(lastRunDiff(db, "alice", q.id)).toEqual({ new: [], dropped: [], price_drops: [] }); // no runs
+    expect(lastRunDiff(db, "alice", q.id, NOW)).toEqual({ new: [], dropped: [], price_drops: [] }); // no runs
 
     seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000)], skippedReason: "first_run" });
-    expect(lastRunDiff(db, "alice", q.id)).toEqual({ new: [], dropped: [], price_drops: [] }); // first run: no baseline
+    expect(lastRunDiff(db, "alice", q.id, NOW)).toEqual({ new: [], dropped: [], price_drops: [] }); // first run: no baseline
 
     seedRun(db, q.id, { id: "r2", ranAt: "2026-10-01T12:00:00.000Z", cells: [], skippedReason: "quota" });
-    expect(lastRunDiff(db, "alice", q.id)).toEqual({ new: [], dropped: [], price_drops: [] }); // fetched nothing, so nothing dropped
+    expect(lastRunDiff(db, "alice", q.id, NOW)).toEqual({ new: [], dropped: [], price_drops: [] }); // fetched nothing, so nothing dropped
   });
 
   it("carries the price drops the scheduler notifies on, not only new and dropped cells", () => {
@@ -277,7 +277,7 @@ describe("lastRunDiff", () => {
     seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000)], notified: true });
     seedRun(db, q.id, { id: "r2", ranAt: "2026-10-01T12:00:00.000Z", cells: [cell(K1, 48000)], notified: true });
 
-    const diff = lastRunDiff(db, "alice", q.id)!;
+    const diff = lastRunDiff(db, "alice", q.id, NOW)!;
     expect(diff.new).toEqual([]);
     expect(diff.dropped).toEqual([]);
     expect(diff.price_drops).toHaveLength(1);
@@ -285,12 +285,25 @@ describe("lastRunDiff", () => {
     expect(diff.price_drops[0]!.row).toMatchObject({ program: "alaska", origin: "HKG", dest: "SEA", miles: 48000 });
   });
 
+  it("shows no cells once a snapshot is not kept: the last run 24 hours old, or a purged baseline", () => {
+    const { db } = harness();
+    const q = createSavedQuery(db, "alice", { name: "n", query: QUERY }, { now });
+    seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000)], notified: true });
+    seedRun(db, q.id, { id: "r2", ranAt: "2026-10-01T12:00:00.000Z", cells: [cell(K1, 60000), cell(K2, 80000)], notified: true });
+    const empty = { new: [], dropped: [], price_drops: [] };
+    // A day after the last run its cells are past the limit (the sweep empties them; the read never uses them).
+    expect(lastRunDiff(db, "alice", q.id, new Date("2026-10-02T12:00:00.001Z"))).toEqual(empty);
+    // The baseline purged (Disconnect): nothing to compare, never "everything is new".
+    db.update(queryRuns).set({ cellsJson: "[]", cellsPurgedAt: NOW.toISOString() }).where(eq(queryRuns.id, "r1")).run();
+    expect(lastRunDiff(db, "alice", q.id, NOW)).toEqual(empty);
+  });
+
   it("is scoped to the owner: another user's id is null, like every other read here", () => {
     const { db } = harness();
     const q = createSavedQuery(db, "alice", { name: "n", query: QUERY }, { now });
     seedRun(db, q.id, { id: "r1", ranAt: "2026-10-01T09:00:00.000Z", cells: [cell(K1, 60000)], notified: true });
-    expect(lastRunDiff(db, "bob", q.id)).toBeNull();
-    expect(lastRunDiff(db, "alice", "missing")).toBeNull();
+    expect(lastRunDiff(db, "bob", q.id, NOW)).toBeNull();
+    expect(lastRunDiff(db, "alice", "missing", NOW)).toBeNull();
   });
 
   it("drops a corrupted key instead of throwing", () => {

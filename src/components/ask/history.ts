@@ -5,6 +5,11 @@
  *
  * Pure except for the two storage calls, both guarded: a browser with storage disabled reads
  * back an empty history instead of throwing.
+ *
+ * Short-term caching: an answer can quote seats.aero results, which are kept 24 hours at most
+ * (src/components/workspace/retention.ts). Each turn records when it was answered, and a turn
+ * older than ASK_HISTORY_MAX_AGE_MS (or with no readable time, as turns stored before this rule)
+ * is dropped when the history is read. Disconnect clears it at once (clearAskSession).
  */
 
 import { ASK_DEMO_STORAGE_KEY } from "@/components/ask/demo";
@@ -12,12 +17,16 @@ import { ASK_DEMO_STORAGE_KEY } from "@/components/ask/demo";
 export const ASK_HISTORY_KEY = "awardgrid.ask.history";
 /** Keep the drawer light: only the last few turns survive a re-open. */
 export const ASK_HISTORY_MAX = 10;
+/** The Short-Term Caching limit for anything quoting seats.aero results. */
+export const ASK_HISTORY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export interface AskTurn {
   prompt: string;
   text: string;
   tools: string[];
   costUsd: number | null;
+  /** When the answer finished (ISO). */
+  at: string;
 }
 
 function isTurn(v: unknown): v is AskTurn {
@@ -28,17 +37,25 @@ function isTurn(v: unknown): v is AskTurn {
     typeof t.text === "string" &&
     Array.isArray(t.tools) &&
     t.tools.every((x) => typeof x === "string") &&
-    (t.costUsd === null || typeof t.costUsd === "number")
+    (t.costUsd === null || typeof t.costUsd === "number") &&
+    typeof t.at === "string"
   );
 }
 
-/** Parse a stored payload; anything unexpected becomes an empty history. */
-export function parseHistory(raw: string | null): AskTurn[] {
+/** Whether a turn was answered at or after `cutoff` (ms); a time that cannot be read cannot be shown to be recent. */
+function recent(turn: AskTurn, cutoff: number): boolean {
+  const at = Date.parse(turn.at);
+  return Number.isFinite(at) && at >= cutoff;
+}
+
+/** Parse a stored payload; anything unexpected, and any turn older than 24 hours at `nowMs`, is left out. */
+export function parseHistory(raw: string | null, nowMs: number = Date.now()): AskTurn[] {
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isTurn).slice(-ASK_HISTORY_MAX);
+    const cutoff = nowMs - ASK_HISTORY_MAX_AGE_MS;
+    return parsed.filter(isTurn).filter((turn) => recent(turn, cutoff)).slice(-ASK_HISTORY_MAX);
   } catch {
     return [];
   }

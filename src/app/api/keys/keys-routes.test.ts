@@ -76,86 +76,15 @@ afterEach(() => {
 });
 
 describe("PUT /api/keys", () => {
-  it("validates a seats.aero key with one call, stores it encrypted, returns the mask and charges 1 quota call", async () => {
+  it("refuses a seats.aero key: 400 invalid_provider, nothing stored, nothing sent, no quota charged", async () => {
     const alice = seedUser("alice");
     const { calls } = stubFetch(200);
-    const res = await putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: ` ${PLAINTEXT} ` }, token: alice.token }));
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as Record<string, unknown>;
-    expect(body).toEqual({ provider: "seats_aero", last4: "zx9q", masked: "••••zx9q", createdAt: expect.any(String) });
-
-    expect(calls).toHaveLength(1);
-    expect(calls[0]!.url).toContain("seats.aero/partnerapi/search");
-    expect(calls[0]!.headers.get("partner-authorization")).toBe(PLAINTEXT);
-
-    expect(getDecryptedKey(db, alice.id, "seats_aero", getMasterKey())).toBe(PLAINTEXT);
-    const row = db.select().from(userKeys).get()!;
-    expect(row.ciphertext).not.toContain(PLAINTEXT);
-    expect(row.last4).toBe("zx9q");
-
-    expect(getTodayUsage(db, alice.id).used).toBe(1);
-    const usageRows = db.select().from(apiUsage).all();
-    expect(usageRows).toHaveLength(1);
-    expect(usageRows[0]).toMatchObject({ userId: alice.id, provider: "seats_aero", calls: 1 });
-  });
-
-  it("rejects a key seats.aero answers 401 to: invalid_key, nothing stored, no quota charged", async () => {
-    const alice = seedUser("alice");
-    stubFetch(401, "nope");
     const res = await putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: PLAINTEXT }, token: alice.token }));
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "invalid_key" });
-    expect(db.select().from(userKeys).all()).toHaveLength(0);
-    expect(getTodayUsage(db, alice.id).used).toBe(0);
-  });
-
-  it("maps a transport failure to 502 seatsaero_unavailable and stores nothing", async () => {
-    const alice = seedUser("alice");
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      throw new TypeError("fetch failed");
-    }));
-    const res = await putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: PLAINTEXT }, token: alice.token }));
-    expect(res.status).toBe(502);
-    expect(await res.json()).toEqual({ error: "seatsaero_unavailable" });
-    expect(db.select().from(userKeys).all()).toHaveLength(0);
-    expect(getTodayUsage(db, alice.id).used).toBe(0);
-  });
-
-  it("refuses the probe with 429 quota when the user is at the soft limit — no request, nothing stored", async () => {
-    const alice = seedUser("alice");
-    const day = new Date().toISOString().slice(0, 10);
-    db.insert(apiUsage).values({ userId: alice.id, provider: "seats_aero", day, calls: 950 }).run();
-    const { calls } = stubFetch(200);
-    const res = await putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: PLAINTEXT }, token: alice.token }));
-    expect(res.status).toBe(429);
-    expect(await res.json()).toEqual({ error: "quota", resetAt: expect.stringMatching(/T00:00:00\.000Z$/) });
+    expect(await res.json()).toEqual({ error: "invalid_provider" });
     expect(calls).toHaveLength(0);
     expect(db.select().from(userKeys).all()).toHaveLength(0);
-    expect(getTodayUsage(db, alice.id).used).toBe(950);
-  });
-
-  it("charges a client-side timeout (the request left the process) but not a connection failure", async () => {
-    const alice = seedUser("alice");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((_input: unknown, init?: RequestInit) => {
-        return new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
-        });
-      }),
-    );
-    vi.useFakeTimers();
-    try {
-      const pending = putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: PLAINTEXT }, token: alice.token }));
-      await vi.advanceTimersByTimeAsync(20_000);
-      const res = await pending;
-      expect(res.status).toBe(502);
-      expect(await res.json()).toEqual({ error: "seatsaero_unavailable" });
-    } finally {
-      vi.useRealTimers();
-    }
-    expect(db.select().from(userKeys).all()).toHaveLength(0);
-    expect(getTodayUsage(db, alice.id).used).toBe(1);
+    expect(getTodayUsage(db, alice.id).used).toBe(0);
   });
 
   it("stores duffel/ignav keys without any network call and replaces an existing key", async () => {
@@ -183,9 +112,11 @@ describe("PUT /api/keys", () => {
     expect(await badJson.json()).toEqual({ error: "invalid_body" });
     const badProvider = await putKey(req("/api/keys", { method: "PUT", body: { provider: "united", key: "x" }, token: alice.token }));
     expect(badProvider.status).toBe(400);
-    expect(await badProvider.json()).toEqual({ error: "invalid_body" });
+    expect(await badProvider.json()).toEqual({ error: "invalid_provider" });
+    const noProvider = await putKey(req("/api/keys", { method: "PUT", body: { key: "x" }, token: alice.token }));
+    expect(await noProvider.json()).toEqual({ error: "invalid_body" });
 
-    const empty = await putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: "   " }, token: alice.token }));
+    const empty = await putKey(req("/api/keys", { method: "PUT", body: { provider: "duffel", key: "   " }, token: alice.token }));
     expect(empty.status).toBe(400);
     expect(await empty.json()).toEqual({ error: "key_empty" });
     const long = await putKey(req("/api/keys", { method: "PUT", body: { provider: "ignav", key: "k".repeat(600) }, token: alice.token }));
@@ -209,10 +140,10 @@ describe("PUT /api/keys", () => {
     stubFetch(500, "boom");
     const responses = [
       await putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: PLAINTEXT }, token: alice.token })),
-      await putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: PLAINTEXT } })),
+      await putKey(req("/api/keys", { method: "PUT", body: { provider: "duffel", key: PLAINTEXT } })),
     ];
     stubFetch(200);
-    responses.push(await putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: PLAINTEXT }, token: alice.token })));
+    responses.push(await putKey(req("/api/keys", { method: "PUT", body: { provider: "duffel", key: PLAINTEXT }, token: alice.token })));
     responses.push(await listKeysRoute(req("/api/keys", { token: alice.token })));
     for (const res of responses) {
       const text = await res.text();
@@ -227,13 +158,13 @@ describe("GET /api/keys", () => {
     const alice = seedUser("alice");
     const bob = seedUser("bob");
     stubFetch(200);
-    await putKey(req("/api/keys", { method: "PUT", body: { provider: "seats_aero", key: PLAINTEXT }, token: alice.token }));
+    await putKey(req("/api/keys", { method: "PUT", body: { provider: "duffel", key: PLAINTEXT }, token: alice.token }));
     await putKey(req("/api/keys", { method: "PUT", body: { provider: "ignav", key: "fake-ignav-key-value" }, token: alice.token }));
 
     const res = await listKeysRoute(req("/api/keys", { token: alice.token }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { keys: Record<string, unknown>[] };
-    expect(body.keys.map((k) => k.provider)).toEqual(["ignav", "seats_aero"]);
+    expect(body.keys.map((k) => k.provider)).toEqual(["duffel", "ignav"]);
     for (const k of body.keys) expect(Object.keys(k).sort()).toEqual(["createdAt", "last4", "masked", "provider"]);
     expect(JSON.stringify(body)).not.toContain(PLAINTEXT);
 

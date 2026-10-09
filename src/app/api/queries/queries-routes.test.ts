@@ -6,11 +6,11 @@
  */
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { createSession, SESSION_COOKIE } from "@/lib/auth";
 import { openTestDb, type Db } from "@/lib/db/client";
 import { queryRuns, savedQueries, users } from "@/lib/db/schema";
-import { NoKeyError } from "@/lib/keys";
+import { SeatsNotConnectedError } from "@/lib/seats-oauth";
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import { RunInProgressError, RunQuotaError, type RunSummary, type SavedQuerySummary } from "@/lib/server/queries";
 
@@ -343,7 +343,7 @@ describe("POST /api/queries/[id]/run", () => {
     expect(res.status).toBe(429);
     expect(await res.json()).toEqual({ error: "quota", resetAt: resetAt.toISOString() });
 
-    runNowMock.mockRejectedValueOnce(new NoKeyError("seats_aero"));
+    runNowMock.mockRejectedValueOnce(new SeatsNotConnectedError());
     res = await runRoute(req(`/api/queries/${created.id}/run`, { method: "POST", token: alice.token }), ctx(created.id));
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "no_key" });
@@ -374,6 +374,12 @@ describe("GET /api/queries/[id]/runs: the last run's diff cells", () => {
   }
 
   it("returns new and dropped cells as grid rows next to the run list", async () => {
+    // The snapshots are kept 24 hours (src/lib/seats-oauth/retention.ts): read them within that.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-01T13:00:00.000Z"));
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const alice = seedUser("alice");
     const created = await create(alice.token);
     db.insert(queryRuns)

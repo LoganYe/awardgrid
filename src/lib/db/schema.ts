@@ -23,6 +23,11 @@ export const users = sqliteTable("users", {
   locale: text("locale").notNull().default("en"),
   /** UI theme: "system" | "light" | "dark" (Phase 6.1; the ag_theme cookie wins on the current device). */
   theme: text("theme", { enum: ["system", "light", "dark"] }).notNull().default("system"),
+  /**
+   * The account had a pasted seats.aero key, which migration 0005 removed when the web app moved to Login with
+   * Seats.aero: Settings and the search pages say so once, until the person connects or dismisses the notice.
+   */
+  seatsReconnectNotice: integer("seats_reconnect_notice", { mode: "boolean" }).notNull().default(false),
 });
 
 export const inviteCodes = sqliteTable("invite_codes", {
@@ -49,7 +54,12 @@ export const sessions = sqliteTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
-export const KEY_PROVIDERS = ["seats_aero", "duffel", "ignav"] as const;
+/**
+ * Providers whose API key a user may paste: the optional cash-price keys the Ask lane uses. seats.aero is not one of
+ * them: the web app connects a seats.aero account only through Login with Seats.aero (`seats_connections`), and
+ * migration 0005 deleted every seats_aero row this table held.
+ */
+export const KEY_PROVIDERS = ["duffel", "ignav"] as const;
 export type KeyProvider = (typeof KEY_PROVIDERS)[number];
 
 /** AES-256-GCM encrypted API keys. Only `last4` is ever shown or logged. */
@@ -67,6 +77,45 @@ export const userKeys = sqliteTable(
     createdAt: text("created_at").notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.provider] })],
+);
+
+/**
+ * Login with Seats.aero: the account's seats.aero sign-in tokens (src/lib/seats-oauth). One row per account.
+ *
+ * `ciphertext`/`iv`/`tag` are AES-256-GCM (MASTER_KEY) of the JSON {access, refresh}, sealed with the account id as
+ * additional data, so a row copied onto another account does not open. `expires_at` is when the access token runs
+ * out (not secret). `generation` moves on every write: a refresh writes only over the generation it read, so two
+ * processes refreshing at once (the web app and `pnpm worker`) cannot overwrite each other, and a refresh still out
+ * when the person disconnects or connects again writes nothing.
+ */
+export const seatsConnections = sqliteTable("seats_connections", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  ciphertext: text("ciphertext").notNull(),
+  iv: text("iv").notNull(),
+  tag: text("tag").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  generation: integer("generation").notNull().default(1),
+  connectedAt: text("connected_at").notNull(),
+  refreshedAt: text("refreshed_at"),
+});
+
+/**
+ * A Connect seats.aero still under way: the SHA-256 of the state sent to seats.aero's consent page, the account that
+ * started it, and when it stops being accepted. Single use: the callback deletes the row it matches.
+ */
+export const seatsOauthStates = sqliteTable(
+  "seats_oauth_states",
+  {
+    stateHash: text("state_hash").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: text("created_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+  },
+  (t) => [index("seats_oauth_states_user_idx").on(t.userId)],
 );
 
 /** seats.aero quota: 1,000 calls/day per Pro key; awardgrid stops at 950. */
@@ -213,6 +262,12 @@ export const queryRuns = sqliteTable(
      * there would understate the quota the run actually consumed.
      */
     callsUsed: integer("calls_used"),
+    /**
+     * When this run's cell snapshot (`cells_json`, seats.aero data) was purged: 24 hours after the run, or when the
+     * owner disconnected seats.aero or revoked AwardGrid (src/lib/seats-oauth/retention.ts). A purged run keeps its
+     * counts but is never a diff baseline again. Null: the snapshot is as the run took it.
+     */
+    cellsPurgedAt: text("cells_purged_at"),
   },
   (t) => [index("query_runs_saved_query_idx").on(t.savedQueryId, t.ranAt)],
 );
@@ -245,6 +300,7 @@ export const askUsage = sqliteTable(
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type UserKey = typeof userKeys.$inferSelect;
+export type SeatsConnection = typeof seatsConnections.$inferSelect;
 export type SavedQuery = typeof savedQueries.$inferSelect;
 export type QueryRun = typeof queryRuns.$inferSelect;
 export type AvailabilityCacheRow = typeof availabilityCache.$inferSelect;

@@ -7,12 +7,13 @@
  * there is one.
  *
  * The data arrives with the page (the server reads the runs and rebuilds the diff from the
- * stored snapshots), so opening "Details" is instant; a "Run now" refetches
+ * stored snapshots, which are kept 24 hours: an older run shows its counts only), so opening "Details" is instant; a "Run now" refetches
  * GET /api/queries/[id]/runs and the panel shows a loading line while that is in flight. Calls
  * used is null for runs recorded before the run rows carried a call count, and reads as an
  * en dash rather than a made-up zero.
  */
 import { DiffCells } from "@/components/queries/diff-cells";
+import { SeatsAttribution } from "@/components/shell/seats-attribution";
 import { absoluteTime, runResultText, timeSince } from "@/components/queries/format";
 import type { QueryDetails } from "@/components/queries/api";
 import { useLocale, useT } from "@awardgrid/core/i18n/client";
@@ -71,6 +72,7 @@ export function RunHistory({ id, details, loading, error, now }: RunHistoryProps
               kind="price_drop"
               now={now}
             />
+            <SeatsAttribution />
           </>
         ) : (
           <p className="t-meta text-fg-muted" data-testid="diff-none">

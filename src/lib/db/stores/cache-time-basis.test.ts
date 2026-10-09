@@ -14,7 +14,7 @@ import { sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { type Db, openDb } from "@/lib/db/client";
 import { createSqliteAvailabilityCache, decodeTimeEvidence } from "@/lib/db/stores/cache";
-import { seedUsers, testDbWithUsers } from "@/lib/db/stores/testing";
+import { testDbWithUsers } from "@/lib/db/stores/testing";
 import type { AvailabilityRow } from "@awardgrid/core/grid/types";
 
 function row(overrides: Partial<AvailabilityRow> = {}): AvailabilityRow {
@@ -111,7 +111,8 @@ describe("migration 0003 on a database created before it", () => {
 
     const file = path.join(root, "db.sqlite");
     const old = openDb({ path: file, migrationsFolder: before });
-    seedUsers(old, ["u"]);
+    // Raw SQL, not seedUsers: the schema's users table has columns later migrations add.
+    old.run(sql`INSERT INTO users (id, username, password_hash, created_at) VALUES ('u', 'u', 'test-hash', '2026-09-06T00:00:00.000Z')`);
     old.run(sql`INSERT INTO availability_cache
       (user_id, program, origin, dest, date, cabin, miles, fees_cents, currency, seats_left, direct, airlines, computed_last_seen, source_id, booking_url, fetched_at)
       VALUES ('u', 'american', 'HKG', 'SEA', '2026-10-05', 'J', 70000, NULL, NULL, 2, 1, '["CX"]', '2026-10-01T10:00:00Z', 'id1', NULL, '2026-10-01T12:00:00.000Z')`);

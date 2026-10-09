@@ -10,7 +10,8 @@ import { describe, expect, it } from "vitest";
 import { openTestDb, type Db } from "@/lib/db/client";
 import { apiUsage, queryRuns, savedQueries, users, type SavedQuery } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
-import { setKey } from "@/lib/keys";
+import { connectForTests } from "@/lib/seats-oauth/testing";
+import { purgeSeatsDataForUser } from "@/lib/seats-oauth/retention";
 import { MockTransport } from "@/lib/notify/mock";
 import { QueryObject } from "@awardgrid/core/query/schema";
 import type { Availability, Route, SearchResponse } from "@awardgrid/core/seatsaero/types";
@@ -22,8 +23,8 @@ import { runNow, tick } from "./tick";
 import type { RunDeps, Transport } from "./types";
 
 const MASTER = Buffer.from("0f".repeat(32), "hex");
-const ALICE_KEY = "alice_pro_key_SECRET_a1b2c3";
-const BOB_KEY = "bob_pro_key_SECRET_z9y8x7";
+const ALICE_KEY = "seats:ota:alice_pro_key_SECRET_a1b2c3";
+const BOB_KEY = "seats:ota:bob_pro_key_SECRET_z9y8x7";
 const ALICE_CHAT = "100200300";
 const BOB_CHAT = "400500600";
 const T0 = new Date("2026-10-01T12:00:00Z"); // 20:00 Asia/Shanghai
@@ -83,8 +84,8 @@ function harness() {
   seedUsers(db, ["alice", "bob", "carol"]);
   db.update(users).set({ telegramChatId: ALICE_CHAT, timezone: "Asia/Shanghai", locale: "zh" }).where(eq(users.id, "alice")).run();
   db.update(users).set({ telegramChatId: BOB_CHAT }).where(eq(users.id, "bob")).run();
-  setKey(db, "alice", "seats_aero", ALICE_KEY, { masterKey: MASTER, now: T0 });
-  setKey(db, "bob", "seats_aero", BOB_KEY, { masterKey: MASTER, now: T0 });
+  connectForTests(db, "alice", { masterKey: MASTER, access: ALICE_KEY, now: T0 });
+  connectForTests(db, "bob", { masterKey: MASTER, access: BOB_KEY, now: T0 });
   // carol: chat linked, no key.
   db.update(users).set({ telegramChatId: "700800900" }).where(eq(users.id, "carol")).run();
 
@@ -181,7 +182,7 @@ describe("runSavedQuery", () => {
     expect(JSON.parse(runs3[2]!.cellsJson).some((c: { key: string }) => c.key === NEW_CELL_KEY)).toBe(true);
 
     // Every upstream request carried alice's key; no key, chat id or message text reached the log.
-    expect(fetch.calls.every((c) => c.headers["partner-authorization"] === ALICE_KEY)).toBe(true);
+    expect(fetch.calls.every((c) => c.headers["partner-authorization"] === `Bearer ${ALICE_KEY}`)).toBe(true);
     const logText = JSON.stringify(logs);
     expect(logText).not.toContain(ALICE_KEY);
     expect(logText).not.toContain(ALICE_CHAT);
@@ -285,7 +286,7 @@ describe("runSavedQuery", () => {
     const { db, fetch, deps } = harness();
     const sq = saveQuery(db, "carol");
     const r = await runSavedQuery(db, sq, deps(T0));
-    expect(r).toMatchObject({ skippedReason: "no_key", error: { code: "no_key", detail: "NoKeyError" } });
+    expect(r).toMatchObject({ skippedReason: "no_key", error: { code: "no_key", detail: "SeatsNotConnectedError" } });
     expect(fetch.calls).toHaveLength(0);
     expect(runsFor(db, sq.id)[0]!.callsUsed).toBe(0);
     expect(JSON.stringify(r)).not.toContain("700800900");
@@ -398,7 +399,8 @@ describe("runSavedQuery", () => {
     const { db, state, deps } = harness();
     const sq = saveQuery(db, "alice");
     await runSavedQuery(db, sq, deps(T0)); // baseline (first_run)
-    const baseline = findBaseline(db, sq.id)!;
+    const LAST = new Date(T0.getTime() + 15 * H);
+    const baseline = findBaseline(db, sq.id, LAST)!;
     // Five later runs that never become the baseline (send_failed is a PENDING reason).
     state.extra = [extraCell()];
     const failing = recorder({ fail: true });
@@ -406,13 +408,39 @@ describe("runSavedQuery", () => {
       await runSavedQuery(db, reload(db, sq.id), deps(new Date(T0.getTime() + i * 3 * H), { transport: failing }));
     }
     expect(runsFor(db, sq.id)).toHaveLength(6);
-    expect(findBaseline(db, sq.id)!.id).toBe(baseline.id);
-    expect(pruneQueryRuns(db, sq.id, 2)).toBe(3);
+    expect(findBaseline(db, sq.id, LAST)!.id).toBe(baseline.id);
+    expect(pruneQueryRuns(db, sq.id, 2, LAST)).toBe(3);
     const left = runsFor(db, sq.id);
     expect(left).toHaveLength(3);
     expect(left.map((r) => r.id)).toContain(baseline.id);
-    expect(findBaseline(db, sq.id)!.id).toBe(baseline.id);
-    expect(pruneQueryRuns(db, sq.id, 2)).toBe(0);
+    expect(findBaseline(db, sq.id, LAST)!.id).toBe(baseline.id);
+    expect(pruneQueryRuns(db, sq.id, 2, LAST)).toBe(0);
+  });
+
+  it("short-term caching: a baseline 24 hours old is none; the run says so, sends nothing and becomes the baseline", async () => {
+    const { db, state, transport, deps } = harness();
+    const sq = saveQuery(db, "alice");
+    await runSavedQuery(db, sq, deps(T0)); // first_run
+    // A new cell, but the baseline's cells are past the limit: nothing to compare with, so nothing is sent.
+    state.extra = [extraCell()];
+    const late = await runSavedQuery(db, reload(db, sq.id), deps(new Date(T0.getTime() + 24 * H + 60_000)));
+    expect(late).toMatchObject({ notified: false, skippedReason: "baseline_expired", diff: null, error: null });
+    expect(transport.sent).toEqual([]);
+    // The next run compares with that one, as usual.
+    const next = await runSavedQuery(db, reload(db, sq.id), deps(new Date(T0.getTime() + 27 * H)));
+    expect(next).toMatchObject({ skippedReason: null, diff: { new: 0, dropped: 0 } });
+  });
+
+  it("short-term caching: a purged baseline (Disconnect, a revoked grant) is none either", async () => {
+    const { db, state, transport, deps } = harness();
+    const sq = saveQuery(db, "alice");
+    await runSavedQuery(db, sq, deps(T0));
+    purgeSeatsDataForUser(db, "alice", new Date(T0.getTime() + H));
+    expect(runsFor(db, sq.id).every((r) => r.cellsJson === "[]" && r.cellsPurgedAt !== null)).toBe(true);
+    state.extra = [extraCell()];
+    const after = await runSavedQuery(db, reload(db, sq.id), deps(new Date(T0.getTime() + 3 * H)));
+    expect(after).toMatchObject({ notified: false, skippedReason: "baseline_expired" });
+    expect(transport.sent).toEqual([]);
   });
 
   it("uses the injected formatter (src/lib/notify/format.ts contract) when given", async () => {
@@ -445,8 +473,8 @@ describe("tick / runNow", () => {
       [a.id, "first_run"],
       [b.id, "first_run"],
     ]);
-    const aliceCalls = fetch.calls.filter((c) => c.headers["partner-authorization"] === ALICE_KEY).length;
-    const bobCalls = fetch.calls.filter((c) => c.headers["partner-authorization"] === BOB_KEY).length;
+    const aliceCalls = fetch.calls.filter((c) => c.headers["partner-authorization"] === `Bearer ${ALICE_KEY}`).length;
+    const bobCalls = fetch.calls.filter((c) => c.headers["partner-authorization"] === `Bearer ${BOB_KEY}`).length;
     expect(aliceCalls).toBe(1 + SYNTHETIC_PROGRAMS.length);
     expect(bobCalls).toBe(1 + SYNTHETIC_PROGRAMS.length);
     expect(fetch.calls).toHaveLength(aliceCalls + bobCalls);
@@ -470,7 +498,7 @@ describe("tick / runNow", () => {
     // Runs since t1 still used only the owner's key.
     const later = fetch.calls.slice(before);
     expect(later.length).toBeGreaterThan(0);
-    expect(later.every((c) => c.headers["partner-authorization"] === ALICE_KEY || c.headers["partner-authorization"] === BOB_KEY)).toBe(true);
+    expect(later.every((c) => c.headers["partner-authorization"] === `Bearer ${ALICE_KEY}` || c.headers["partner-authorization"] === `Bearer ${BOB_KEY}`)).toBe(true);
     expect(runsFor(db, a.id)).toHaveLength(2);
     expect(runsFor(db, b.id)).toHaveLength(2);
   });

@@ -17,6 +17,7 @@ import { DrawerShell } from "@/components/drawers/drawer-shell";
 import { apiTrips } from "@/components/grid/api";
 import { FlightsList, type FlightsState } from "@/components/grid/cell-drawer/flights-list";
 import { notifyUsageChanged } from "@/components/shell/quota-indicator";
+import { SeatsAttribution } from "@/components/shell/seats-attribution";
 import "@/components/grid/cell-drawer/cell-drawer.css";
 
 export const DETAIL_PANEL_WIDTH = 400;
@@ -154,6 +155,7 @@ export function DetailPanel({ open, snapshot, row, now, container, opener, saved
               <FlightsList state={trips} onRetry={() => void load()} />
             </div>
           </section>
+          <SeatsAttribution className="ag-ws-note" />
         </div>
       ) : null}
     </DrawerShell>

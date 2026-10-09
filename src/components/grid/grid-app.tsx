@@ -29,12 +29,16 @@ import { QueryBar } from "@/components/grid/query-bar";
 import { applyChipAction, gridHref, localToday, mergeTripsIntoGrid, type ChipAction } from "@/components/grid/state";
 import { QuotaBanner, Toolbar } from "@/components/grid/toolbar";
 import { AskDrawer } from "@/components/ask/ask-drawer";
+import { SeatsAttribution } from "@/components/shell/seats-attribution";
 import { useDrawerState, type CellAddress } from "@/components/drawers/use-drawer-state";
 import { cellContextFromCell } from "@/components/ask/context";
 
 export interface GridAppProps {
   initialQuery: QueryObject | null;
+  /** Whether the account has connected seats.aero (Login with Seats.aero); the name predates the connection. */
   hasKey: boolean;
+  /** The account's pasted key was removed by the move to Login with Seats.aero: say so once, until it connects. */
+  seatsNotice?: boolean;
   llmAvailable: boolean;
 }
 
@@ -63,7 +67,7 @@ function addDays(iso: string, days: number): string {
   return new Date(ms + days * DAY_MS).toISOString().slice(0, 10);
 }
 
-export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
+export function GridApp({ initialQuery, hasKey, seatsNotice = false, llmAvailable }: GridAppProps) {
   const t = useT();
   const locale = useLocale();
   // Three queries at once (chips-model.ts): the parser's output (the baseline "Reset to parsed"
@@ -386,7 +390,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
         </details>
       )}
 
-      {!hasKey && <NoKeyState />}
+      {!hasKey && <NoKeyState reconnect={seatsNotice} />}
 
       {/* The daily limit is a persistent banner above the toolbar (spec §3.7), not an alert.
           `cached` is what makes the banner truthful: with no grid behind it, "Cached results are
@@ -448,6 +452,7 @@ export function GridApp({ initialQuery, hasKey, llmAvailable }: GridAppProps) {
                 dimmed={modified}
               />
             )}
+            <SeatsAttribution />
           </>
         )
       )}

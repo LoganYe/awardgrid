@@ -17,6 +17,7 @@
  * Everything belongs to the signed-in account: its stores are made for its id (./services.ts).
  */
 import { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import type { Cabin, QueryObject } from "@awardgrid/core/query/schema";
@@ -28,6 +29,7 @@ import { AskDrawer } from "@/components/ask/ask-drawer";
 import { cellContextFromRow } from "@/components/ask/context";
 import { encodeQueryParam } from "@/components/grid/state";
 import { notifyUsageChanged } from "@/components/shell/quota-indicator";
+import { SeatsAttribution } from "@/components/shell/seats-attribution";
 import { CalendarView } from "./calendar-view";
 import { CommandPalette } from "./command-palette";
 import type { CommandId, WorkspaceCommand } from "./commands";
@@ -46,7 +48,10 @@ export interface WorkspaceAppProps {
   /** The signed-in account, from the server's session. */
   userId: string;
   initialQuery: QueryObject | null;
+  /** Whether the account has connected seats.aero (Login with Seats.aero); the name predates the connection. */
   hasKey: boolean;
+  /** The account's pasted key was removed by the move to Login with Seats.aero: say so once, until it connects. */
+  seatsNotice?: boolean;
 }
 
 export const ASSISTANT_PANEL_WIDTH = 360;
@@ -66,11 +71,11 @@ const textsOf = (query: QueryObject): DraftTexts => ({ origins: query.origins.jo
 
 const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
-export function WorkspaceApp({ userId, initialQuery, hasKey }: WorkspaceAppProps) {
+export function WorkspaceApp({ userId, initialQuery, hasKey, seatsNotice = false }: WorkspaceAppProps) {
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
-  const { services, ready } = useWorkspaceServices(userId);
+  const { services, ready } = useWorkspaceServices(userId, hasKey);
   const { workspace, favorites } = services;
   const state = useSyncExternalStore(workspace.subscribe, workspace.getState, workspace.getState);
   const saved = useSyncExternalStore(favorites.subscribe, favorites.all, favorites.all);
@@ -336,7 +341,7 @@ export function WorkspaceApp({ userId, initialQuery, hasKey }: WorkspaceAppProps
 
   const runKind = state.run.kind;
   const statusLine = !hasKey
-    ? t("workspace.no_key")
+    ? t(seatsNotice ? "seats.reconnect_notice" : "workspace.no_key")
     : runKind === "running"
       ? snapshot
         ? copy("run.inflight", locale)
@@ -409,8 +414,16 @@ export function WorkspaceApp({ userId, initialQuery, hasKey }: WorkspaceAppProps
           <div className="ag-ws-status">
             <p role="status" className="ag-ws-status-line">
               {statusLine}
+              {!hasKey ? (
+                <>
+                  {" "}
+                  <Link href="/settings#seats" className="ag-link">
+                    {t("grid.empty.no_key_cta")}
+                  </Link>
+                </>
+              ) : null}
             </p>
-            <p className="ag-ws-status-source">{copy("data.source", locale)}</p>
+            <SeatsAttribution className="ag-ws-status-source" />
           </div>
           {notices.length > 0 || dynamicNotShown > 0 ? (
             <ul className="ag-ws-notices">

@@ -1,9 +1,9 @@
 /**
  * Seeds the UI/UX Web surface's throwaway database (plan 04 T18). TEST-ONLY.
  *
- * One account per Web scenario, named after it, each with the fake key that tells the fixture's seats.aero which
- * scenario to answer (./mock-seatsaero.ts). `no-seats-key` has none; `quota-low` starts at the soft limit. Refuses
- * the runtime database, as scripts/seed-e2e.ts does.
+ * One account per Web scenario, named after it, each with a fake seats.aero connection whose token tells the fixture's
+ * seats.aero which scenario to answer (./mock-seatsaero.ts). `no-seats-key` is not connected; `quota-low` starts at the
+ * soft limit. Refuses the runtime database, as scripts/seed-e2e.ts does.
  */
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
@@ -29,7 +29,7 @@ export async function main(): Promise<number> {
   const now = process.env.UIUX_WEB_NOW ? new Date(process.env.UIUX_WEB_NOW) : new Date();
   const users = WEB_SCENARIOS.map((id) => ({
     username: id,
-    seatsAeroKey: id === "no-seats-key" ? null : webKeyFor(id),
+    seatsScenario: id === "no-seats-key" ? null : webKeyFor(id),
     quotaCalls: id === "quota-low" ? 950 : 0,
   })) as unknown as E2eUserSpec[];
   const seeded = await seedE2eDb(db, { users, password: UIUX_WEB_PASSWORD, masterKey: parseMasterKey(process.env.MASTER_KEY ?? E2E_MASTER_KEY_HEX), now: () => now });

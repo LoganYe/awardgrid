@@ -5,12 +5,12 @@
  * user object can be passed to a React prop or JSON-encoded without leaking anything.
  */
 import { randomUUID } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { type ClockOptions, type DbConn as Db, resolveNow } from "@/lib/auth/clock";
 import { AuthError, SettingsValidationError } from "@/lib/auth/errors";
 import { consumeInvite, isInviteRedeemable } from "@/lib/auth/invites";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { userKeys, users, type User as DbUser } from "@/lib/db/schema";
+import { seatsConnections, users, type User as DbUser } from "@/lib/db/schema";
 
 /** Public user shape: never carries the password hash. */
 export type User = Omit<DbUser, "passwordHash">;
@@ -137,23 +137,24 @@ export interface UserSummary {
   id: string;
   username: string;
   createdAt: string;
-  hasSeatsKey: boolean;
+  /** Whether the account has seats.aero connected through Login with Seats.aero. */
+  seatsConnected: boolean;
 }
 
-/** Every user with whether a seats.aero key is on file (never the key itself). */
+/** Every user with whether seats.aero is connected (never a token). */
 export function listUsers(db: Db): UserSummary[] {
   const rows = db
     .select({
       id: users.id,
       username: users.username,
       createdAt: users.createdAt,
-      keyUser: userKeys.userId,
+      connectedUser: seatsConnections.userId,
     })
     .from(users)
-    .leftJoin(userKeys, and(eq(userKeys.userId, users.id), eq(userKeys.provider, "seats_aero")))
+    .leftJoin(seatsConnections, eq(seatsConnections.userId, users.id))
     .orderBy(sql`${users.createdAt} ASC, ${users.username} ASC`)
     .all();
-  return rows.map((r) => ({ id: r.id, username: r.username, createdAt: r.createdAt, hasSeatsKey: r.keyUser !== null }));
+  return rows.map((r) => ({ id: r.id, username: r.username, createdAt: r.createdAt, seatsConnected: r.connectedUser !== null }));
 }
 
 // ---------------------------------------------------------------------------

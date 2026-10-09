@@ -1,11 +1,10 @@
 "use client";
 
 /**
- * API keys (spec §5.1, docs/UI_PLAN.md §6.8): one row per provider — seats.aero Pro required,
- * Duffel and Ignav optional. Each row is status text, the masked key, and Replace / Remove;
- * Remove confirms inline in the row (never a modal). Adding a seats.aero key validates it with
- * one cached-search call and reports either "Checked with seats.aero just now" or the exact
- * failure the API gave (rejected key, or unreachable). Today's quota sits under the rows.
+ * Optional API keys (spec §5.1, docs/UI_PLAN.md §6.8): one row per provider, Duffel and Ignav,
+ * both used by Ask only. Each row is status text, the masked key, and Replace / Remove; Remove
+ * confirms inline in the row (never a modal). There is no seats.aero row: seats.aero is connected
+ * through its own sign-in in the section above (./seats-section.tsx), never with a pasted key.
  *
  * Secrets: the plaintext only lives in local state between paste and PUT, is cleared on success,
  * and never reaches a prop, a URL or a log. What comes back is the masked summary.
@@ -19,8 +18,7 @@ import { Label } from "@/components/ui/label";
 import { KEY_PROVIDERS, type KeyProvider } from "@/lib/db/schema";
 import { errorText, type I18nKey } from "@awardgrid/core/i18n";
 import { useLocale, useT } from "@awardgrid/core/i18n/client";
-import { apiJson, formatDate, formatDayMonth } from "./api";
-import { QuotaBar, type QuotaView } from "./quota-bar";
+import { apiJson, formatDayMonth } from "./api";
 import { SettingsNotice, SettingsSection } from "./section";
 
 /** Exactly the fields the server's listKeys() returns — no key material by construction. */
@@ -33,16 +31,14 @@ export interface KeyRowData {
 
 export interface KeysSectionProps {
   keys: KeyRowData[];
-  quota: QuotaView;
 }
 
 const PROVIDER_LABEL_KEY: Record<KeyProvider, I18nKey> = {
-  seats_aero: "settings.keys.provider.seats_aero",
   duffel: "settings.keys.provider.duffel",
   ignav: "settings.keys.provider.ignav",
 };
 
-export function KeysSection({ keys, quota }: KeysSectionProps) {
+export function KeysSection({ keys }: KeysSectionProps) {
   const t = useT();
   const byProvider = new Map(keys.map((k) => [k.provider, k]));
   return (
@@ -52,7 +48,6 @@ export function KeysSection({ keys, quota }: KeysSectionProps) {
           <KeyRow key={provider} provider={provider} current={byProvider.get(provider) ?? null} />
         ))}
       </ul>
-      <QuotaBar quota={quota} />
     </SettingsSection>
   );
 }
@@ -71,7 +66,6 @@ function KeyRow({ provider, current }: { provider: KeyProvider; current: KeyRowD
   const [notice, setNotice] = useState<Notice>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
-  const isSeats = provider === "seats_aero";
   const label = t(PROVIDER_LABEL_KEY[provider]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -90,10 +84,10 @@ function KeyRow({ provider, current }: { provider: KeyProvider; current: KeyRowD
       setShow(false);
       setOpen(false);
       // seats.aero keys are the only ones checked upstream, so only they can say "checked".
-      setNotice({ kind: "ok", text: isSeats ? t("settings.keys.checked_now") : t("settings.keys.saved_ok_plain", { masked: res.data.masked }) });
+      setNotice({ kind: "ok", text: t("settings.keys.saved_ok_plain", { masked: res.data.masked }) });
       router.refresh();
     } else {
-      setNotice({ kind: "error", text: errorText(locale, res.error, res.resetAt ? { resetAt: formatDate(res.resetAt, locale) } : undefined) });
+      setNotice({ kind: "error", text: errorText(locale, res.error) });
     }
   }
 
@@ -127,7 +121,7 @@ function KeyRow({ provider, current }: { provider: KeyProvider; current: KeyRowD
         */}
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-4 gap-y-0.5 sm:grid sm:grid-cols-[11rem_5rem_minmax(0,1fr)_auto]">
           <span className="t-body truncate font-medium">{label}</span>
-          <span className="t-meta text-fg-muted">{t(isSeats ? "settings.keys.required" : "settings.keys.optional")}</span>
+          <span className="t-meta text-fg-muted">{t("settings.keys.optional")}</span>
           <span className="t-meta truncate text-fg-muted" data-key-status={current ? "set" : "unset"}>
             {status}
           </span>
@@ -197,11 +191,11 @@ function KeyRow({ provider, current }: { provider: KeyProvider; current: KeyRowD
             </Button>
           </div>
           <p id={`${inputId}-hint`} className="t-meta text-fg-muted">
-            {t(isSeats ? "settings.keys.input_hint_seats" : "settings.keys.input_hint_optional")}
+            {t("settings.keys.input_hint_optional")}
           </p>
           <div className="flex items-center gap-2">
             <Button type="submit" size="sm" disabled={busy || value.trim().length === 0}>
-              {busy ? (isSeats ? t("settings.keys.validating") : t("settings.keys.saving")) : t("settings.keys.add")}
+              {busy ? t("settings.keys.saving") : t("settings.keys.add")}
             </Button>
             <Button
               type="button"

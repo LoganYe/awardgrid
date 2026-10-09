@@ -1,6 +1,9 @@
 /**
- * AES-256-GCM for user API keys at rest (kickoff §0.2 #8, §5).
+ * AES-256-GCM for user API keys and seats.aero sign-in tokens at rest (kickoff §0.2 #8, §5).
  * MASTER_KEY: 64 hex chars (32 bytes) from the environment. Never logged.
+ *
+ * `aad` (optional) is authenticated but not encrypted: a blob sealed for one context (the seats.aero tokens bind the
+ * account id) fails to open under any other, so a row copied onto another account cannot be read there.
  */
 import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from "node:crypto";
 
@@ -27,18 +30,20 @@ export function parseMasterKey(hex: string | undefined): Buffer {
   return Buffer.from(clean, "hex");
 }
 
-export function encryptSecret(plaintext: string, masterKey: Buffer): EncryptedBlob {
+export function encryptSecret(plaintext: string, masterKey: Buffer, aad?: string): EncryptedBlob {
   if (masterKey.length !== 32) throw new MasterKeyError("master key must be 32 bytes");
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", masterKey, iv);
+  if (aad !== undefined) cipher.setAAD(Buffer.from(aad, "utf8"));
   const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return { ciphertext: ct.toString("base64"), iv: iv.toString("base64"), tag: tag.toString("base64") };
 }
 
-export function decryptSecret(blob: EncryptedBlob, masterKey: Buffer): string {
+export function decryptSecret(blob: EncryptedBlob, masterKey: Buffer, aad?: string): string {
   if (masterKey.length !== 32) throw new MasterKeyError("master key must be 32 bytes");
   const decipher = createDecipheriv("aes-256-gcm", masterKey, Buffer.from(blob.iv, "base64"));
+  if (aad !== undefined) decipher.setAAD(Buffer.from(aad, "utf8"));
   decipher.setAuthTag(Buffer.from(blob.tag, "base64"));
   const pt = Buffer.concat([decipher.update(Buffer.from(blob.ciphertext, "base64")), decipher.final()]);
   return pt.toString("utf8");

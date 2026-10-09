@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ASK_DEMO_STORAGE_KEY } from "./demo";
 import { appendTurn, ASK_HISTORY_KEY, ASK_HISTORY_MAX, clearAskSession, loadHistory, parseHistory, saveHistory, type AskTurn } from "./history";
 
-const turn = (prompt: string): AskTurn => ({ prompt, text: `answer to ${prompt}`, tools: ["Bash"], costUsd: 0.31 });
+/** Answered just now, so the 24-hour limit keeps it. */
+const NOW = Date.now();
+const turn = (prompt: string, at: number = NOW): AskTurn => ({ prompt, text: `answer to ${prompt}`, tools: ["Bash"], costUsd: 0.31, at: new Date(at).toISOString() });
 
 describe("parseHistory", () => {
   it("reads back what was written", () => {
@@ -18,6 +20,14 @@ describe("parseHistory", () => {
 
   it("drops entries that are not turns", () => {
     expect(parseHistory(JSON.stringify([turn("a"), { prompt: 1 }, "x"]))).toEqual([turn("a")]);
+  });
+
+  it("drops answers older than 24 hours, and turns stored with no time (they may quote seats.aero results)", () => {
+    const day = 24 * 60 * 60 * 1000;
+    const old = turn("yesterday", NOW - day - 1);
+    const edge = turn("just inside", NOW - day + 60_000);
+    const { at: _at, ...untimed } = turn("legacy");
+    expect(parseHistory(JSON.stringify([old, edge, untimed, turn("now")]), NOW)).toEqual([edge, turn("now")]);
   });
 });
 

@@ -1,10 +1,10 @@
 /**
  * Kickoff §9 Phase-2 self-acceptance, end to end through the real stack:
- * seed (invite → register → AES-encrypted key) → findGridForUser (decrypt → runFind over the
- * SQLite stores) for two users with two different keys.
+ * seed (invite → register → AES-encrypted seats.aero connection) → findGridForUser (decrypt →
+ * runFind over the SQLite stores) for two users with two different connections.
  *
  *   (a) caches and quotas are independent per user;
- *   (b) neither key appears in any api_usage / cache row — nor anywhere else in the database.
+ *   (b) neither token appears in any api_usage / cache row — nor anywhere else in the database.
  *
  * No network (fake fetch over the synthetic fixture), no env keys (test MASTER_KEY passed in),
  * fake clock. Reuses the dev seed so the seeded state matches `pnpm exec tsx scripts/seed-dev.ts`.
@@ -20,11 +20,12 @@ import {
   cacheCoverage,
   inviteCodes,
   routesCache,
+  seatsConnections,
   sessions,
   userKeys,
   users,
 } from "@/lib/db/schema";
-import { getDecryptedKey, listKeys } from "@/lib/keys";
+import { readConnection } from "@/lib/seats-oauth/store";
 import { QueryObject } from "@awardgrid/core/query/schema";
 import type { Route } from "@awardgrid/core/seatsaero/types";
 import { findGridForUser } from "@/lib/server/find";
@@ -74,7 +75,7 @@ function seatsAeroFake() {
 
 /** Every table that could conceivably hold key material, as one JSON blob. */
 function dumpDatabase(db: Db): string {
-  const tables = [users, inviteCodes, sessions, userKeys, apiUsage, availabilityCache, cacheCoverage, routesCache];
+  const tables = [users, inviteCodes, sessions, userKeys, seatsConnections, apiUsage, availabilityCache, cacheCoverage, routesCache];
   return JSON.stringify(Object.fromEntries(tables.map((t) => [getTableName(t), db.select().from(t).all()])));
 }
 
@@ -86,10 +87,10 @@ async function seeded() {
   return { db, alice, bob };
 }
 
-describe("two seeded users with two keys (kickoff §9 Phase 2)", () => {
-  it("seed creates both users with distinct encrypted keys and is idempotent", async () => {
+describe("two seeded users with two seats.aero connections (kickoff §9 Phase 2)", () => {
+  it("seed creates both users with distinct encrypted connections and is idempotent", async () => {
     const { db, alice, bob } = await seeded();
-    expect(ALICE.seatsAeroKey).not.toBe(BOB.seatsAeroKey);
+    expect(ALICE.seatsAccess).not.toBe(BOB.seatsAccess);
     expect(alice.id).not.toBe(bob.id);
 
     // Password works through the real argon2 path; the invite was consumed.
@@ -97,12 +98,10 @@ describe("two seeded users with two keys (kickoff §9 Phase 2)", () => {
     await expect(authenticate(db, { username: "bob", password: "wrong-password" })).rejects.toThrow();
     expect(db.select().from(inviteCodes).all().every((i) => i.usedBy !== null)).toBe(true);
 
-    // Round-trips under the master key; the UI only ever sees last4.
-    expect(getDecryptedKey(db, alice.id, "seats_aero", TEST_MASTER_KEY)).toBe(ALICE.seatsAeroKey);
-    expect(getDecryptedKey(db, bob.id, "seats_aero", TEST_MASTER_KEY)).toBe(BOB.seatsAeroKey);
-    expect(listKeys(db, alice.id)).toEqual([
-      expect.objectContaining({ provider: "seats_aero", last4: ALICE.seatsAeroKey.slice(-4), masked: `••••${ALICE.seatsAeroKey.slice(-4)}` }),
-    ]);
+    // Round-trips under the master key, each sealed to its own account.
+    expect(readConnection(db, alice.id, TEST_MASTER_KEY)?.tokens.access).toBe(ALICE.seatsAccess);
+    expect(readConnection(db, bob.id, TEST_MASTER_KEY)?.tokens.access).toBe(BOB.seatsAccess);
+    expect(db.select().from(userKeys).all()).toEqual([]);
 
     // Re-seeding neither duplicates users nor burns another invite.
     const again = await seedDevDb(db, { masterKey: TEST_MASTER_KEY, now: () => NOW });
@@ -111,7 +110,7 @@ describe("two seeded users with two keys (kickoff §9 Phase 2)", () => {
     expect(db.select().from(inviteCodes).all()).toHaveLength(2);
   });
 
-  it("(a) caches and quotas are independent; each request carries only its owner's key", async () => {
+  it("(a) caches and quotas are independent; each request carries only its owner's token", async () => {
     const { db, alice, bob } = await seeded();
     const fetch = seatsAeroFake();
     const opts = { fetch, masterKey: TEST_MASTER_KEY, now: () => NOW };
@@ -122,16 +121,16 @@ describe("two seeded users with two keys (kickoff §9 Phase 2)", () => {
     expect(a1.grid.meta.api_calls_used).toBe(expectedCalls);
     expect(a1.quota.used).toBe(expectedCalls);
     expect(fetch.calls).toHaveLength(expectedCalls);
-    expect(fetch.calls.every((c) => c.headers["partner-authorization"] === ALICE.seatsAeroKey)).toBe(true);
+    expect(fetch.calls.every((c) => c.headers["partner-authorization"] === `Bearer ${ALICE.seatsAccess}`)).toBe(true);
 
-    // Bob's identical query is NOT served from alice's cache: he pays under his own key.
+    // Bob's identical query is NOT served from alice's cache: he pays under his own connection.
     const b1 = await findGridForUser(db, bob, query, opts);
     expect(b1.grid.meta.served_from_cache).toBe(false);
     expect(b1.grid.meta.api_calls_used).toBe(expectedCalls);
     const bobCalls = fetch.calls.slice(expectedCalls);
     expect(bobCalls).toHaveLength(expectedCalls);
-    expect(bobCalls.every((c) => c.headers["partner-authorization"] === BOB.seatsAeroKey)).toBe(true);
-    expect(bobCalls.some((c) => c.headers["partner-authorization"] === ALICE.seatsAeroKey)).toBe(false);
+    expect(bobCalls.every((c) => c.headers["partner-authorization"] === `Bearer ${BOB.seatsAccess}`)).toBe(true);
+    expect(bobCalls.some((c) => c.headers["partner-authorization"] === `Bearer ${ALICE.seatsAccess}`)).toBe(false);
 
     // Same grid content for both (same fixture), separately owned rows.
     expect(b1.grid.cells.length).toBe(a1.grid.cells.length);
@@ -158,7 +157,7 @@ describe("two seeded users with two keys (kickoff §9 Phase 2)", () => {
     expect(b2.quota.used).toBe(expectedCalls);
   });
 
-  it("(b) neither key appears in any api_usage / cache row, nor anywhere else in the database", async () => {
+  it("(b) neither token appears in any api_usage / cache row, nor anywhere else in the database", async () => {
     const { db, alice, bob } = await seeded();
     const fetch = seatsAeroFake();
     const opts = { fetch, masterKey: TEST_MASTER_KEY, now: () => NOW };
@@ -167,20 +166,18 @@ describe("two seeded users with two keys (kickoff §9 Phase 2)", () => {
 
     const dump = dumpDatabase(db);
     expect(dump.length).toBeGreaterThan(10_000); // the dump really contains the cache rows
-    for (const secret of [ALICE.seatsAeroKey, BOB.seatsAeroKey, DEV_PASSWORD, "FAKE_SEATS"]) {
+    for (const secret of [ALICE.seatsAccess, BOB.seatsAccess, ALICE.seatsRefresh, BOB.seatsRefresh, DEV_PASSWORD, "FAKE-SEATS", "seats:ot"]) {
       expect(dump).not.toContain(secret);
     }
-    // Ciphertext is not the plaintext, and only last4 is stored in the clear.
-    for (const row of db.select().from(userKeys).all()) {
+    // The ciphertext is not the plaintext.
+    for (const row of db.select().from(seatsConnections).all()) {
       const spec = row.userId === alice.id ? ALICE : BOB;
-      expect(row.last4).toBe(spec.seatsAeroKey.slice(-4));
-      expect(row.ciphertext).not.toContain(spec.seatsAeroKey);
-      expect(Buffer.from(row.ciphertext, "base64").toString("utf8")).not.toContain(spec.seatsAeroKey);
+      expect(Buffer.from(row.ciphertext, "base64").toString("utf8")).not.toContain(spec.seatsAccess);
     }
     // The grid payloads handed to the client carry no key material either.
     const a = await findGridForUser(db, alice, query, opts);
     const payload = JSON.stringify(a);
-    expect(payload).not.toContain(ALICE.seatsAeroKey);
-    expect(payload).not.toContain(ALICE.seatsAeroKey.slice(-4));
+    expect(payload).not.toContain(ALICE.seatsAccess);
+    expect(payload).not.toContain("seats:ot");
   });
 });

@@ -45,7 +45,6 @@ import os from "node:os";
 import path from "node:path";
 import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { DbConn } from "@/lib/auth/clock";
-import { getDecryptedKey } from "@/lib/keys";
 import { holdAsk, releaseHold, settleHold } from "./budget";
 import { askModelFromEnv, buildAskOptions } from "./options";
 import { isPrunedSkill } from "./pruned";
@@ -88,7 +87,10 @@ export interface RunAskParams {
   user: AskUserRef;
   prompt: string;
   context?: AskContext;
-  /** Decrypted keys for THIS user (see `loadAskKeys`); null/empty seats_aero → `no_key`. */
+  /**
+   * THIS user's seats.aero authorization ("Bearer seats:ota:…", src/app/api/ask/route.ts) and optional keys;
+   * null/empty seats_aero → `no_key`.
+   */
   keys: AskKeys | null;
   deps?: Partial<AskDeps>;
 }
@@ -104,22 +106,15 @@ async function sdkQuery(): Promise<AskQueryFn> {
   return (p) => sdk.query({ prompt: p.prompt, options: p.options });
 }
 
-/** Decrypt the calling user's keys for a session. Returns null when no seats.aero key is on file. */
-export function loadAskKeys(db: DbConn, userId: string, masterKey: Buffer): AskKeys | null {
-  const seats = getDecryptedKey(db, userId, "seats_aero", masterKey);
-  if (!seats) return null;
-  const keys: AskKeys = { seats_aero: seats };
-  const duffel = getDecryptedKey(db, userId, "duffel", masterKey);
-  const ignav = getDecryptedKey(db, userId, "ignav", masterKey);
-  if (duffel) keys.duffel = duffel;
-  if (ignav) keys.ignav = ignav;
-  return keys;
+/** The bare access token inside a "Bearer seats:ota:…" value, so it is scrubbed on its own too. */
+function bareToken(value: string | undefined): string | undefined {
+  return value?.startsWith("Bearer ") ? value.slice("Bearer ".length) : undefined;
 }
 
 /** Remove every key value from a message (belt and braces — the SDK should never echo env). */
 function scrub(message: string, keys: AskKeys | null): string {
   let out = message;
-  for (const v of [keys?.seats_aero, keys?.duffel, keys?.ignav]) {
+  for (const v of [keys?.seats_aero, bareToken(keys?.seats_aero), keys?.duffel, keys?.ignav]) {
     if (v && v.length >= 4) out = out.split(v).join("[redacted]");
   }
   return out.length > 300 ? `${out.slice(0, 300)}…` : out;
@@ -192,7 +187,7 @@ export async function* runAsk(params: RunAskParams): AsyncGenerator<AskEvent, vo
     yield {
       type: "error",
       code: "no_key",
-      message: "No seats.aero API key on file. Add one in Settings.",
+      message: "No seats.aero account is connected. Connect seats.aero in Settings.",
     };
     return;
   }

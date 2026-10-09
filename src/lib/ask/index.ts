@@ -62,7 +62,6 @@ export {
   MAX_PROMPT_CHARS,
   askTimeoutFromEnv,
   checkInit,
-  loadAskKeys,
   runAsk,
   type AskDeps,
   type AskQueryFn,

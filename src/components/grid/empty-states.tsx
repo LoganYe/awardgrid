@@ -33,6 +33,9 @@ export function failureText(t: Translate, locale: Locale, f: ApiFailure): string
       return fields.length > 0 ? `${t("grid.empty.parse")} ${t("grid.empty.parse_missing", { fields: fields.join(", ") })}` : t("grid.empty.parse");
     }
     case "seatsaero":
+      // seats.aero refused the connection's token even after a renewal: the account, not the token.
+      if (f.kind === "invalid_key") return t("grid.empty.seats_refused");
+      if (f.kind === "renewal_unavailable") return t("grid.empty.seats_renewal_unavailable");
       return t("grid.empty.seatsaero", { kind: f.kind ?? "error" });
     case "unauthorized":
       return t("grid.empty.unauthorized");
@@ -90,11 +93,11 @@ export function FailureState({ failure, onRetry }: { failure: ApiFailure; onRetr
  * gets a border for looking like a component). They used to be shadcn <Alert>s and dashed
  * centred boxes, which made the four states that replace the grid disagree with each other.
  */
-export function NoKeyState() {
+export function NoKeyState({ reconnect = false }: { reconnect?: boolean }) {
   const t = useT();
   return (
     <div className="ag-empty" role="status" aria-live="polite" data-testid="grid-no-key">
-      <p>{t("grid.empty.no_key")}</p>
+      <p>{t(reconnect ? "seats.reconnect_notice" : "grid.empty.no_key")}</p>
       <p>
         <Link href="/settings" className="ag-link">
           {t("grid.empty.no_key_cta")}

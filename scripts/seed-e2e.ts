@@ -1,21 +1,23 @@
 /**
  * `pnpm exec tsx scripts/seed-e2e.ts --db <path> [--fresh]` — the Playwright suite's database.
  *
- * Creates the e2e users, each with a FAKE seats.aero key whose value selects a scenario on the
- * DEMO=1 mock server (scripts/mock-seatsaero.ts); the app itself is never touched:
+ * Creates the e2e users, each with a FAKE seats.aero connection (Login with Seats.aero tokens written straight into
+ * seats_connections, encrypted like real ones) whose value selects a scenario on the DEMO=1 mock server
+ * (scripts/mock-seatsaero.ts SEEDED_TOKEN_PREFIX); the app itself is never touched:
  *
  *   demo     demo-key-normal    full dataset; one saved standing query + one recorded run
  *   linked   demo-key-normal    Telegram already linked (fake chat id) + quiet hours set
- *   nokey    (no key)           the "add your key" empty state
+ *   nokey    (not connected)    the "connect seats.aero" empty state
  *   empty    demo-key-empty     /search answers with no rows
  *   slow     demo-key-slow      every mock response delayed (loading states)
  *   partial  demo-key-partial   one program not fetched
  *   quota    demo-key-normal    api_usage row for today at the soft limit (950) → quota state
  *
  * Every user's password is E2E_PASSWORD. Idempotent: re-running keeps existing users and
- * re-upserts keys, the quota row and the saved query. `--fresh` deletes the SQLite file (and its
+ * re-upserts connections, the quota row and the saved query. The seeded access tokens are valid for
+ * SEEDED_TOKEN_TTL_S, so a run never needs the token service. `--fresh` deletes the SQLite file (and its
  * -wal/-shm siblings) first. Refuses the default runtime database path so it can never seed a
- * real deployment. Prints usernames only — never a key, never a hash.
+ * real deployment. Prints usernames only — never a token, never a hash.
  */
 import { randomUUID } from "node:crypto";
 import { rmSync } from "node:fs";
@@ -28,13 +30,16 @@ import { parseMasterKey } from "@/lib/crypto/aes";
 import { DEFAULT_DB_PATH, openDb, type Db } from "@/lib/db/client";
 import { apiUsage, queryRuns, savedQueries, users } from "@/lib/db/schema";
 import { SEATS_AERO_PROVIDER } from "@/lib/db/stores/quota";
-import { removeKey, setKey } from "@/lib/keys";
+import { deleteConnection, saveConnection } from "@/lib/seats-oauth/store";
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import { cellsHash } from "@awardgrid/core/watch/diff";
 import type { CellSnapshot } from "@/lib/scheduler/types";
 import { utcDayKey } from "@awardgrid/core/seatsaero/quota";
 import { createSavedQuery, listSavedQueries } from "@/lib/server/queries";
-import { E2E_PASSWORD, E2E_SAVED_QUERY_NAME, E2E_USERS, type E2eUserSpec } from "../e2e/users";
+import { E2E_PASSWORD, E2E_SAVED_QUERY_NAME, E2E_USERS, SEEDED_ACCESS_PREFIX, SEEDED_REFRESH_PREFIX, type E2eUserSpec } from "../e2e/users";
+
+/** How long a seeded access token lives: 30 days, far beyond any run, so nothing asks the token service. */
+export const SEEDED_TOKEN_TTL_S = 30 * 24 * 60 * 60;
 
 export { E2E_PASSWORD, E2E_QUOTA_CALLS, E2E_SAVED_QUERY_NAME, E2E_USERS, type E2eUsername, type E2eUserSpec } from "../e2e/users";
 /** Same trivial test-only master key playwright.config.ts hands to the app (64 hex chars). */
@@ -69,7 +74,7 @@ export interface SeedE2eOptions {
 export interface SeededE2eUser {
   user: User;
   created: boolean;
-  hasKey: boolean;
+  connected: boolean;
 }
 
 /**
@@ -179,8 +184,14 @@ export async function seedE2eDb(db: Db, opts: SeedE2eOptions): Promise<SeededE2e
       user = await registerWithInvite(db, { inviteCode: code, username: spec.username, password }, { now });
       created = true;
     }
-    if (spec.seatsAeroKey) setKey(db, user.id, "seats_aero", spec.seatsAeroKey, { masterKey: opts.masterKey, now });
-    else removeKey(db, user.id, "seats_aero");
+    if (spec.seatsScenario) {
+      saveConnection(
+        db,
+        user.id,
+        { access: `${SEEDED_ACCESS_PREFIX}${spec.seatsScenario}`, refresh: `${SEEDED_REFRESH_PREFIX}${spec.seatsScenario}`, expiresIn: SEEDED_TOKEN_TTL_S },
+        { masterKey: opts.masterKey, now },
+      );
+    } else deleteConnection(db, user.id);
     // Telegram link state and quiet hours (Settings §5.2 states). The chat id is fake and the
     // app runs with no bot token, so nothing can be sent to it.
     db.update(users)
@@ -188,13 +199,14 @@ export async function seedE2eDb(db: Db, opts: SeedE2eOptions): Promise<SeededE2e
         telegramChatId: spec.telegramChatId ?? null,
         quietHoursStart: spec.quietHours?.start ?? null,
         quietHoursEnd: spec.quietHours?.end ?? null,
+        seatsReconnectNotice: spec.reconnectNotice === true,
         ...(spec.quietHours ? { timezone: spec.quietHours.timezone } : {}),
       })
       .where(eq(users.id, user.id))
       .run();
     upsertQuota(db, user.id, spec.quotaCalls ?? 0, day);
     if (spec.savedQuery) ensureSavedQuery(db, user.id, now());
-    out.push({ user, created, hasKey: spec.seatsAeroKey !== null });
+    out.push({ user, created, connected: spec.seatsScenario !== null });
   }
   return out;
 }
@@ -236,7 +248,7 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
   const seeded = await seedE2eDb(db, { masterKey });
   process.stdout.write(`seed-e2e: database ${dbPath}${args.fresh ? " (fresh)" : ""}\n`);
   for (const s of seeded) {
-    process.stdout.write(`  ${s.created ? "created" : "existing"} user ${s.user.username}  ${s.hasKey ? "seats.aero key on file" : "no key"}\n`);
+    process.stdout.write(`  ${s.created ? "created" : "existing"} user ${s.user.username}  ${s.connected ? "seats.aero connected" : "not connected"}\n`);
   }
   return 0;
 }

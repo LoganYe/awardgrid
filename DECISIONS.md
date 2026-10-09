@@ -1857,3 +1857,47 @@ step 3's probe mode, §1's two (§1.7) and §2.12's one, each with a key it reje
 - **The time line.** Core's `timeLabel` takes `{ sample: true }` and then returns `SAMPLE_TIME_LABEL` ("Sample data" /
   "示例数据") instead of "Source updated …"; the approved-copy table is unchanged (its keys are pinned by core's tests).
 - **Removing the key** in live mode now returns to Search, the first run, which says the key was removed.
+
+## The web app moves to Login with Seats.aero (2026-10-08)
+
+- **What changed.** The private web app connects each user's seats.aero account only through Login with Seats.aero,
+  as the iPhone app's App Store build does. The paste-a-key row for seats.aero is gone from Settings, `PUT /api/keys`
+  refuses `seats_aero` (400 `invalid_provider`), and nothing reads a stored seats.aero key any more. Migration
+  `0005_seats_oauth` deletes the stored ones and sets `users.seats_reconnect_notice`, which Settings, the grid and the
+  workspace say once ("…the seats.aero API key saved here was removed. Connect your seats.aero account…") until the
+  account connects or dismisses it. The optional Duffel and Ignav keys (Ask only) are not seats.aero keys and stay.
+- **Redirect: route by the state's shape, in the Worker.** There is one registered redirect URI, the token service's
+  callback, which sent every code to the iPhone app's scheme. The web app makes states of its own shape, `web_` and 43
+  base64url characters (47 in all); the Worker sends exactly those to a pinned `https://awardgrid.dowhiz.com/api/seats/
+  oauth/callback` and everything else to the app's scheme, as before. The iPhone app's states are always 43 characters
+  with no prefix, so none of them can take the new path, and both destinations are constants: the callback stays a
+  redirect to fixed addresses, not an open one. A second registered redirect URI would also have worked, but needed a
+  change in seats.aero's settings and a second pinned value in `/token`; this needs a Worker redeploy only.
+- **The state is the CSRF and login-CSRF guard.** `POST /api/seats/connect` (JSON body, Origin guard) records the
+  state's SHA-256 for the signed-in account, for ten minutes; the callback uses it up whatever happens next and accepts
+  it only for that account (`src/lib/seats-oauth/state.ts`). A code arriving with another account's, an old or a forged
+  state is never exchanged.
+- **Tokens never reach the browser.** The web server exchanges the code and refreshes the access token through the
+  Worker's `/token` and `/refresh` (the client secret stays there). The tokens are stored in `seats_connections`,
+  AES-256-GCM under `MASTER_KEY` with the account id as additional data. The access token goes out only as
+  `Partner-Authorization: Bearer seats:ota:…`, which the core client already sends unchanged, so find, details, standing
+  queries and Ask needed no second path. The API's error code for "no connection" stays `no_key`, so no client changed
+  its handling; the copy now says to connect.
+- **Renewal follows the iPhone app's rules** (`src/lib/seats-oauth/access.ts`): renew with less than five minutes left;
+  one renewal per account per process; across processes (the web app and `pnpm worker` share SQLite) a renewal writes
+  only over the generation it read, and a renewal that lost, or an `invalid_grant` that a concurrent renewal with a
+  rotated refresh token caused, reads what won instead of disconnecting. Only seats.aero's own `invalid_grant` /
+  `access_denied` means revoked: the tokens go and every seats.aero result the server holds for the account is purged.
+  A refused token is renewed once and the request sent once more; refused again, the refusal stands.
+- **Short-term caching.** Everything the web app keeps from seats.aero is kept 24 hours at most: the availability
+  cache and its coverage, the routes cache (whose TTL is 24 hours in the web app, not the catalog's 7 days), standing
+  queries' cell snapshots (`query_runs.cells_purged_at`; a purged or older run is never a diff baseline, the next run
+  says `baseline_expired` and becomes the baseline, so daily schedules compare nothing and notify nothing), the
+  workspace's snapshots and saved options' rows in the browser, and Ask turns in sessionStorage. The server sweeps on
+  open and every 10 minutes, and on each worker tick; `CACHE_TTL_MINUTES` is capped at 1440. Disconnect and a revoked
+  grant purge the account at once, on the server, and in the browser that disconnects (another browser purges the next
+  time it opens the workspace, which then knows nothing is connected).
+- **Attribution.** "Data: seats.aero", linking to seats.aero, sits beside the results in the grid, the cell drawer, the
+  workspace, an option's details, a standing query's changes and Ask's answers, besides the footer.
+- **Unchanged.** The iPhone app; the Worker's behaviour for every state the iPhone app makes; `pnpm grid` (the
+  operator's own CLI, still on `SEATS_AERO_API_KEY`).

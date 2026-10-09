@@ -18,6 +18,7 @@ import {
 import { encryptSecret } from "@/lib/crypto/aes";
 import { openTestDb } from "@/lib/db/client";
 import { userKeys } from "@/lib/db/schema";
+import { connectForTests } from "@/lib/seats-oauth/testing";
 
 const T0 = new Date("2026-09-06T10:00:00Z");
 const PASSWORD = "correct horse battery staple";
@@ -127,21 +128,20 @@ describe("authenticate", () => {
 });
 
 describe("listUsers", () => {
-  it("reports hasSeatsKey without exposing any key material", async () => {
+  it("reports seatsConnected without exposing any token or key material", async () => {
     const { db, user } = await seed();
     const c = await code(db);
     const bob = await registerWithInvite(db, { inviteCode: c, username: "bob", password: PASSWORD }, { now: T0 });
     const blob = encryptSecret("pro_secret_key_1234", Buffer.alloc(32, 7));
-    db.insert(userKeys)
-      .values({ userId: bob.id, provider: "seats_aero", ...blob, last4: "1234", createdAt: T0.toISOString() })
-      .run();
+    connectForTests(db, bob.id, { masterKey: Buffer.alloc(32, 7), access: "seats:ota:pro_secret_key_1234" });
+    // An optional Duffel key is not a seats.aero connection.
     db.insert(userKeys)
       .values({ userId: user.id, provider: "duffel", ...blob, last4: "1234", createdAt: T0.toISOString() })
       .run();
     const rows = listUsers(db);
     expect(rows).toEqual([
-      { id: user.id, username: "alice", createdAt: T0.toISOString(), hasSeatsKey: false },
-      { id: bob.id, username: "bob", createdAt: T0.toISOString(), hasSeatsKey: true },
+      { id: user.id, username: "alice", createdAt: T0.toISOString(), seatsConnected: false },
+      { id: bob.id, username: "bob", createdAt: T0.toISOString(), seatsConnected: true },
     ]);
     expect(JSON.stringify(rows)).not.toContain("pro_secret");
     expect(JSON.stringify(rows)).not.toContain(blob.ciphertext);

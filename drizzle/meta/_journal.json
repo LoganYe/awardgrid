@@ -36,6 +36,13 @@
       "when": 1790220410341,
       "tag": "0004_coverage_evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791506178305,
+      "tag": "0005_seats_oauth",
+      "breakpoints": true
     }
   ]
 }
