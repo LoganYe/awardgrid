@@ -1,5 +1,6 @@
 /**
- * awardgrid-auth: the token service behind "Login with Seats.aero" in AwardGrid for iPhone (release plan step 18b).
+ * awardgrid-auth: the token service behind "Login with Seats.aero" in AwardGrid for iPhone (release plan step 18b) and
+ * in the private web app.
  *
  * seats.aero's OAuth 2 flow needs a client secret, and the secret may never be on the device. So the iPhone app opens
  * seats.aero's own consent page in an ASWebAuthenticationSession, and this Worker does the three things that need a
@@ -13,6 +14,13 @@
  *   POST /oauth/seats/refresh   {refresh_token}: the same endpoint, refresh_token grant. seats.aero asks that refreshes
  *                               happen on the server side only.
  *
+ * The web app (awardgrid.dowhiz.com behind the tunnel) uses the same client and the same registered redirect URI. Its
+ * server makes a state of its own shape, `web_` and 43 base64url characters (WEB_STATE_RE); the callback sends that
+ * state, and only that one, to the web app's pinned callback address (WEB_CALLBACK) instead of the app's scheme. The
+ * iPhone app's states are 43 characters with no prefix, so none of them can take that path, and nothing in the request
+ * chooses where the browser goes: both targets are constants here. The web server then calls /token and /refresh like
+ * the app does.
+ *
  * It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response
  * body is logged (there is no console call in this file, and wrangler.jsonc turns observability and Logpush off). It
  * never calls seats.aero's user-info endpoint and never sees any seats.aero data: only tokens pass through, and only
@@ -20,7 +28,8 @@
  * SEATS_CLIENT_SECRET, set with `wrangler secret put`), never from the request and never from the repository.
  *
  * Hardening, each enforced below and tested in ../test/worker.test.ts:
- *   - the redirect URI is pinned here, not taken from the request;
+ *   - the redirect URI is pinned here, not taken from the request, and so are the callback's two destinations (the
+ *     app's scheme and the web app's address): the state's shape picks one, and no request value names one;
  *   - every value is checked for shape before it goes anywhere (refresh tokens must start "seats:otr:");
  *   - request bodies are JSON objects of at most 2 KB with exactly the expected fields;
  *   - a per-IP rate limit (the RATE_LIMITER binding; without it the Worker refuses to serve, so a deploy cannot
@@ -53,6 +62,11 @@ export interface Deps {
 export const REDIRECT_URI = "https://awardgrid.dowhiz.com/oauth/seats/callback";
 /** Where the callback sends the browser: the app's own scheme, caught by ASWebAuthenticationSession. */
 export const APP_CALLBACK = "com.dowhiz.awardgrid://oauth/seats";
+/**
+ * Where the callback sends the browser for a sign-in the web app started (a state matching WEB_STATE_RE): the web
+ * app's own route on the same host, which checks the state against the signed-in account and exchanges the code.
+ */
+export const WEB_CALLBACK = "https://awardgrid.dowhiz.com/api/seats/oauth/callback";
 /** seats.aero's token endpoint, the only address this Worker ever calls. */
 export const SEATS_TOKEN_URL = "https://seats.aero/oauth2/token";
 export const PATHS = { callback: "/oauth/seats/callback", token: "/oauth/seats/token", refresh: "/oauth/seats/refresh" } as const;
@@ -68,6 +82,11 @@ export const UPSTREAM_TIMEOUT_MS = 10_000;
 export const CODE_RE = /^[A-Za-z0-9._~+/=:-]{1,512}$/;
 /** The app's state: 16 to 128 base64url characters (the app sends 43, from 32 random bytes). */
 export const STATE_RE = /^[A-Za-z0-9_-]{16,128}$/;
+/**
+ * A state the web app made: `web_` and 43 base64url characters (32 random bytes), 47 in all. The iPhone app's states
+ * are exactly 43 characters (apps/ios/src/oauth/connect.ts randomState), so it never makes one of these.
+ */
+export const WEB_STATE_RE = /^web_[A-Za-z0-9_-]{43}$/;
 export const REFRESH_RE = /^seats:otr:[A-Za-z0-9._~+/=-]{1,500}$/;
 export const ACCESS_RE = /^seats:ota:[A-Za-z0-9._~+/=-]{1,500}$/;
 /** An OAuth error code's shape (RFC 6749 §5.2 style), as the consent page's callback may carry one. */
@@ -241,20 +260,26 @@ function credentials(env: Env): { client_id: string; client_secret: string } | n
   return id && secret ? { client_id: id, client_secret: secret } : null;
 }
 
+/** Where a callback with this (already checked) state goes: the web app's pinned address for its states, else the app's scheme. */
+function callbackTarget(state: string): string {
+  return WEB_STATE_RE.test(state) ? WEB_CALLBACK : APP_CALLBACK;
+}
+
 function callback(url: URL): Response {
   const params = url.searchParams;
   if ([...params.keys()].length === 0) return LANDING();
   const state = params.get("state") ?? "";
   if (!STATE_RE.test(state)) return BAD_CALLBACK();
+  const target = callbackTarget(state);
   const error = params.get("error");
   if (error !== null) {
     // The person declined, or seats.aero refused the request: the app hears which, and nothing else.
     const code = ERROR_CODE_RE.test(error) ? error : "access_denied";
-    return new Response(null, { status: 302, headers: { ...SECURITY_HEADERS, location: `${APP_CALLBACK}?${new URLSearchParams({ error: code, state })}` } });
+    return new Response(null, { status: 302, headers: { ...SECURITY_HEADERS, location: `${target}?${new URLSearchParams({ error: code, state })}` } });
   }
   const code = params.get("code") ?? "";
   if (!CODE_RE.test(code)) return BAD_CALLBACK();
-  return new Response(null, { status: 302, headers: { ...SECURITY_HEADERS, location: `${APP_CALLBACK}?${new URLSearchParams({ code, state })}` } });
+  return new Response(null, { status: 302, headers: { ...SECURITY_HEADERS, location: `${target}?${new URLSearchParams({ code, state })}` } });
 }
 
 export async function handle(request: Request, env: Env, deps: Deps): Promise<Response> {
