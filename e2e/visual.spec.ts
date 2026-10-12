@@ -67,6 +67,30 @@ async function holdTheCalendar(page: Page): Promise<void> {
   if (held.pill !== null) expect(held.pill, "the Ask pill's range was found and held").toBe(true);
 }
 
+/**
+ * The standing-query demo also shifts its five diff dates with today. Those captions were never masked, and their
+ * widths move the cells and the price-drop badge. Hold only their calendar readings to each committed baseline's
+ * capture day (light desktop: Sep 25; dark desktop and mobile: Oct 9), keeping routes, cells, tags and layout live.
+ */
+async function holdQueryDiffCalendar(page: Page): Promise<void> {
+  const dates = test.info().project.name === "desktop-light"
+    ? ["Tue, Sep 29", "Sun, Oct 4", "Fri, Oct 2", "Wed, Sep 30", "Mon, Sep 28"]
+    : ["Tue, Oct 13", "Sun, Oct 18", "Fri, Oct 16", "Wed, Oct 14", "Mon, Oct 12"];
+  const captions = page.locator(".aq-diff-caption");
+  await expect(captions.locator(":scope > span:first-child")).toHaveText([
+    "NRT to SEA", "HND to SEA", "ICN to SEA", "PVG to SEA", "HKG to SEA",
+  ]);
+  const readings = captions.locator(":scope > span:nth-child(2)");
+  await expect(readings).toHaveCount(dates.length);
+  for (const reading of await readings.allTextContents()) {
+    expect(reading).toMatch(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), [A-Z][a-z]{2} \d{1,2}$/);
+  }
+  await readings.evaluateAll((elements, held) => {
+    elements.forEach((element, index) => { element.textContent = held[index]!; });
+  }, dates);
+  await expect(readings).toHaveText(dates);
+}
+
 /** Mobile dark adds a fourth copy of every baseline and has never caught anything the other three missed. */
 const CURATED_PROJECTS = ["desktop-light", "desktop-dark", "mobile-light"];
 
@@ -123,6 +147,7 @@ test.describe("visual", () => {
   test("visual: an expanded query row", async ({ page }) => {
     await openQueries(page);
     await expandFirstQuery(page);
+    await holdQueryDiffCalendar(page);
     await expect(page).toHaveScreenshot("queries-expanded.png", { fullPage: true, mask: timeMasks(page) });
   });
 

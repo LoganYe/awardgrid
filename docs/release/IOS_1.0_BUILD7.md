@@ -147,3 +147,21 @@ After the owner restores Xcode → Settings → Accounts for Curastone CORP. and
 5. Submit the review round, require an ASC readback of **1.0 (7), Waiting for Review**, and replace the pending
    entries and product-facts provenance with the actual submission time. Provider approval/manual public release
    remain separate gates.
+
+## Follow-up CI verification
+
+The first PR run passed its typecheck/lint/test, Docker and secret-scan jobs, but exposed two separate test-harness
+issues. ASO tests still expected the retired active-keyword duplication and equated current keywords with build 3’s
+preserved history. Both assertions now follow the corrected active fields while retaining the historical record
+and duplication-negative tests: **97 ASO tests pass**, with active/next strict validators still clean.
+
+The desktop-light expanded-query screenshot differed because its unmasked demo dates move with today, changing
+caption widths and badge/cell positions. The downloaded expected/actual/diff images prove that calendar cause.
+The visual test now holds only the five date readings to the capture dates of its committed baselines and checks
+that all five routes and date shapes remain present. No baseline PNG or comparison threshold was replaced. Local
+state/harness checks pass on all **3 curated projects**; the intentionally uncurated mobile-dark case is skipped.
+Mac ignores Linux pixel comparisons by design; the updated Linux CI comparison is the separate final gate.
+
+These follow-up edits affect only tests and this record. They do not alter the archived Build 7 code or its IPA.
+The original failed CI logs/artifacts remain in external evidence. Whole-workspace typecheck is green again;
+App Store upload/submission remain blocked on Apple authentication.
