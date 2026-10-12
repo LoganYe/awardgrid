@@ -35,6 +35,13 @@ export class LocalFixtureFiles implements FileStore {
     return localStorage.getItem(FILES_NAMESPACE + path);
   }
 
+  async list(): Promise<string[]> {
+    return Object.keys(localStorage)
+      .filter((key) => key.startsWith(FILES_NAMESPACE))
+      .map((key) => key.slice(FILES_NAMESPACE.length))
+      .filter((path) => path.length > 0 && !path.includes("/"));
+  }
+
   async write(path: string, data: string): Promise<void> {
     this.#log.writes += 1;
     if (this.#failWrites) throw new FixtureWriteFailedError(path);

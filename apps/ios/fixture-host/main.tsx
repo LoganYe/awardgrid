@@ -76,6 +76,7 @@ async function consentGivenEarlier(at: Date): Promise<Record<string, string>> {
   const captured: Record<string, string> = {};
   const capture: FileStore = {
     read: async (path) => captured[path] ?? null,
+    list: async () => Object.keys(captured).filter((path) => !path.includes("/")),
     write: async (path, data) => {
       captured[path] = data;
     },

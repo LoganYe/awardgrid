@@ -79,7 +79,7 @@ test("Disconnect asks first and says what it removes, and nothing about AI", asy
 test("clearing the cache says what it keeps without naming Ask or a key", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "en" });
   await tab(page, "Settings").click();
-  await expect(page.getByText("This does not touch your seats.aero connection.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Clearing the cache does not touch your seats.aero connection.", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "Clear cached results" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Cached results cleared. Your seats.aero connection is untouched." })).toBeVisible();
 });
@@ -145,6 +145,7 @@ for (const [mode, said] of [
 ] as const) {
   test(`a sign-in that ends in "${mode}" saves nothing, says so, and offers Connect again`, async ({ page }) => {
     await openScenario(page, "no-seats-key", "ios", { lang: "en", oauth: mode });
+    await expect(page.locator(".app-save-problem")).toHaveCount(0);
     await page.getByTestId("welcome").getByRole("link", { name: "Connect your seats.aero account" }).click();
     await page.getByRole("button", { name: "Connect seats.aero", exact: true }).click();
     await expect(page.getByRole("alert")).toHaveText(said);
@@ -206,7 +207,8 @@ test("an account disconnected after a search: its results are removed; the welco
   await page.locator("#settings-row-seats").click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Disconnect", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Disconnected. Results from seats.aero were removed from this device." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Disconnected. Current account results were cleared." })).toBeVisible();
+  await expect(page.locator(".app-save-problem")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Connect seats.aero", exact: true })).toBeVisible();
   // Search is where the app starts again: the results went with the connection, so the welcome offers sample data
   // first, or the account.
