@@ -939,7 +939,7 @@
         "apps/ios/src/oauth/broker.ts:12 \"export const TOKEN_SERVICE_URL = \"https://awardgrid.dowhiz.com/oauth/seats\";\"",
         "sites/auth/src/index.ts:24-27 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
         "sites/auth/wrangler.jsonc:15-17 \"\"observability\": { \"enabled\": false, \"logs\": { \"enabled\": false } },\"",
-        "apps/ios/src/app/bootstrap.ts:862 \"async disconnect(): Promise<DisconnectOutcome> {\"",
+        "apps/ios/src/app/bootstrap.ts:865 \"async disconnect(): Promise<DisconnectOutcome> {\"",
         "apps/ios/scripts/check-store-bundle.mjs:67 \"\"Paste your seats.aero API key\",\""
       ],
       "allowed_copy": "You connect your seats.aero account with seats.aero's own sign-in (Login with Seats.aero): seats.aero asks you to sign in and approve AwardGrid, and AwardGrid never sees your password. You can disconnect at any time, in AwardGrid or in your seats.aero settings.",
@@ -984,11 +984,11 @@
       "evidence_ref": [
         "apps/ios/src/app/bootstrap.ts:471-473 \"const providerFiles = shortTermMs != null ? new ProviderConfigurationFiles(originalSnapshots.files) : null;\"",
         "apps/ios/src/retention/provider-files.ts:28-30 \"rows: [],\"",
-        "apps/ios/src/retention/provider-files.ts:139-142 \"const result = clean(path, JSON.parse(data));\"",
-        "apps/ios/src/retention/provider-files.ts:141 \"if (result.uncertain) throw new Error\"",
+        "apps/ios/src/retention/provider-files.ts:146-149 \"const result = clean(path, JSON.parse(data));\"",
+        "apps/ios/src/retention/provider-files.ts:148 \"if (result.uncertain) throw new Error\"",
         "apps/ios/src/store/favorites-store.ts:14 \"const query = { ...item.query, origins: [selected.origin], destinations: [selected.dest], date_from: selected.date, date_to: selected.date, cabins: [selected.cabin], programs: [selected.program] }\"",
-        "apps/ios/src/retention/short-term.ts:189-190 \"export function watchReset(): Partial<Watch> {\"",
-        "apps/ios/src/app/bootstrap-oauth.test.ts:535 \"persists queries and preferences without rows, coverage, watch baselines or copied prices, including after a restart\"",
+        "apps/ios/src/retention/short-term.ts:174-175 \"export function watchReset(): Partial<Watch> {\"",
+        "apps/ios/src/app/bootstrap-oauth.test.ts:577 \"persists queries and preferences without rows, coverage, watch baselines or copied prices, including after a restart\"",
         "apps/ios/src/screens/favorites-copy.ts:131 \"intro: \"Saved queries stay on this device. Account results stay only in memory;\"",
         "apps/ios/src/screens/oauth-copy.ts:44 \"While connected, searches go from this device to seats.aero. Account results stay only in memory;\""
       ],
