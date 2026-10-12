@@ -71,7 +71,9 @@ export const WATCHES: Record<Locale, WatchesCopy> = {
     eyebrow: "Watches",
     title: "Searches you are watching",
     onOpen: "Each watch is checked when you open the app, and at no other time.",
-    noBackground: "There is no background check, so a change is found the next time you open the app, not when it happens.",
+    noBackground: OAUTH
+      ? "There is no background check. Watch conditions stay on this device, but account comparison results stay only in memory. After the app restarts, the first check sets a new baseline and later checks compare with it."
+      : "There is no background check, so a change is found the next time you open the app, not when it happens.",
     skipSoon:
       "A check sooner than 45 minutes after the previous one is skipped: seats.aero's cached data could not be any newer, and skipping keeps your daily calls for your own searches.",
     empty: { before: "You are not watching any searches yet. Run a search, then choose ", action: "Watch this search", after: "." },
@@ -133,7 +135,9 @@ export const WATCHES: Record<Locale, WatchesCopy> = {
     eyebrow: "关注",
     title: "你关注的查询",
     onOpen: "关注只在你打开应用时检查，其他时间不会检查。",
-    noBackground: "没有后台检查，所以变化要等你再打开应用时才会发现，而不是在它发生时。",
+    noBackground: OAUTH
+      ? "没有后台检查。关注条件保存在本机，但账户结果的比较记录只保留在内存中。重启应用后，首次检查会重新建立基线，之后的检查再与它比较。"
+      : "没有后台检查，所以变化要等你再打开应用时才会发现，而不是在它发生时。",
     skipSoon: "距离上一次检查不到 45 分钟的检查会跳过：seats.aero 的缓存数据不可能更新，跳过能把今天的调用留给你自己的查询。",
     empty: { before: "你还没有关注任何查询。先查询一次，再选择“", action: "关注此查询", after: "”。" },
     justNow: "刚刚",

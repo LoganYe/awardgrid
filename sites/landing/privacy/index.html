@@ -30,7 +30,7 @@
       app's name. Since the same day (release plan 47F) the App Store version connects an account only with seats.aero's
       own sign-in (Login with Seats.aero): "no server of its own" gave way to the token service at awardgrid.dowhiz.com
       (sites/auth), which exchanges and refreshes the sign-in tokens and stores nothing, and results from seats.aero
-      are kept on the device for at most 24 hours (registry claims oauth_connection, short_term_caching and privacy).
+      stay only in memory in the OAuth build (registry claims oauth_connection, short_term_caching and privacy).
       Since 2026-10-08 the page names the token service's host, Cloudflare Workers (sites/auth/wrangler.jsonc), and
       "This website" says that the app's requests to it reach Cloudflare, where it said the app sends Cloudflare nothing.
       No script in this file and no webfont request (honesty.test.ts scans it). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the section "This website" says so.
@@ -48,7 +48,7 @@
       <header>
         <p class="eyebrow">Privacy policy</p>
         <h1>AwardGrid for iPhone</h1>
-        <p class="doc-meta">Last updated 8 October 2026.</p>
+        <p class="doc-meta">Last updated 12 October 2026.</p>
       </header>
 
       <section aria-labelledby="short-h">
@@ -73,8 +73,8 @@
             stores nothing and keeps no logs of tokens.
           </li>
           <li>
-            Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term
-            Caching rule); a saved search keeps the search and a summary, and opening it searches again.
+            Results from your seats.aero account are cached only in memory, not written to app files. Saved keeps
+            query conditions; after the app restarts, opening a saved query searches again.
           </li>
           <li>
             The App Store version sends nothing to Anthropic: Ask, which does, is only in the app's test builds and in
@@ -132,8 +132,8 @@
           <li>when you open a result's flight details, that result's availability ID.</li>
         </ul>
         <p>
-          These requests are made when you search, when you open flight details, when you open a saved search again
-          after its results were removed, and when you open or return to the app while you have watches (in a test
+          These requests are made when you search, when you open flight details, when you open a saved query without
+          its results in memory, and when you open or return to the app while you have watches (in a test
           build with Ask, also when Ask searches for a question). seats.aero handles them under its own terms (<a href="https://seats.aero/terms">seats.aero/terms</a>) and
           privacy practices.
         </p>
@@ -190,18 +190,24 @@
             through iCloud Keychain. The app never shows the tokens, and shows only the last four characters of a key.
           </li>
           <li>
-            <strong>The app's own files:</strong> whether you use sample data or your seats.aero account; search
-            results it has cached (for 45 minutes, so repeating a search costs no calls); today's count of seats.aero
-            calls; your watches; the search and results on screen, and how you view them; results you save; trip plans
-            you save; and your settings (language and appearance). In a test build with Ask, also whether Ask may send
-            data to Anthropic, and your Ask conversation, until you start a new one.
+            <strong>The app's own files:</strong> whether you use sample data or your seats.aero account; today's
+            count of seats.aero calls; your search conditions and view preferences; saved query conditions and when
+            you saved them; watch conditions; saved trip plans; and your settings (language and appearance).
+            In an OAuth test build with Ask, the app also keeps the permission to send data to Anthropic and your
+            questions, but not answers or tool results that may contain seats.aero data. A development test build
+            that uses a pasted key retains its existing cached results, saved snapshots and Ask conversations.
           </li>
           <li>
-            <strong>At most 24 hours:</strong> results from seats.aero are kept on the device for at most 24 hours
-            (seats.aero's Short-Term Caching rule). The app removes older ones when it opens, when you return to it and
-            while it stays open: cached results, the results on screen, the results in saved searches, and what
-            your watches last saw. A saved search keeps the search and a summary (when it was saved and how many options
-            it showed), and opening it searches again; your watches keep their conditions.
+            <strong>Account results in memory:</strong> the OAuth version does not write seats.aero results or
+            watch comparisons to app files. Repeated searches can use an in-memory cache for 45 minutes. Restarting
+            the app loses those results; Saved keeps query conditions and searches again when opened. Watches keep
+            their conditions; the first check after restart sets a new baseline, and later checks compare with it.
+          </li>
+          <li>
+            <strong>Older stored data:</strong> the app checks older files for known seats.aero result fields and
+            removes those fields. If a file is unknown, damaged or cannot be updated safely, it is kept and the app
+            reports that cleanup could not finish. Such an error does not mean every old copy was deleted. This
+            cleanup does not rewrite backups you made outside the app.
           </li>
           <li>
             <strong>Sample data:</strong> while it is on, the app keeps its own copies of these files (its cached
@@ -220,9 +226,10 @@
         <h2 id="choices-h">Your choices</h2>
         <ul>
           <li>
-            Disconnect in Settings › seats.aero account: it removes the sign-in tokens and all results from seats.aero
-            from your device. You can also remove AwardGrid's access in your seats.aero settings; the app then removes
-            them the next time it renews the connection.
+            Disconnect in Settings › seats.aero account: it removes sign-in tokens and clears current account results.
+            Saved query conditions and watches stay. If tokens or older stored data cannot be cleared, the app
+            reports the failure. You can also remove AwardGrid's access in your seats.aero settings; the app clears
+            the connection and current account results when its next token refresh is refused.
           </li>
           <li>Clear cached results in Settings.</li>
           <li>Exit sample data to delete everything sample data kept.</li>
@@ -301,7 +308,7 @@
       <section id="zh" lang="zh-CN" aria-labelledby="zh-h">
         <p class="eyebrow">隐私政策</p>
         <h2 id="zh-h">AwardGrid iPhone 版</h2>
-        <p class="doc-meta">最后更新：2026 年 10 月 8 日。</p>
+        <p class="doc-meta">最后更新：2026 年 10 月 12 日。</p>
 
         <h3>概要</h3>
         <ul>
@@ -310,7 +317,7 @@
           <li>你用 seats.aero 自己的登录（Login with Seats.aero）连接 seats.aero 账户：seats.aero 会请你登录并批准 AwardGrid，AwardGrid 不会看到你的密码。你可以随时在 AwardGrid 或 seats.aero 设置中断开连接。</li>
           <li>连接账户后，查票时应用用这次登录得到的访问令牌，把你的查询从本机直接发送给 seats.aero。</li>
           <li>awardgrid.dowhiz.com 上的一个小型令牌服务为 AwardGrid 交换和续期登录令牌；它不保存任何内容，也不记录令牌。</li>
-          <li>来自你的 seats.aero 账户的结果在 iPhone 上最多保留 24 小时（seats.aero 的短期缓存规则）；收藏的查询会保留查询条件和摘要，打开时会重新查询。</li>
+          <li>来自你的 seats.aero 账户的结果只在内存中缓存，不写入应用文件。收藏会保留查询条件；重启应用后，打开收藏的查询时会重新查票。</li>
           <li>App Store 版本不向 Anthropic 发送任何内容：会发送的 AI 辅助（Ask）只在应用的测试版本和独立的网页应用里。</li>
           <li>连接账户后，登录令牌保存在本机钥匙串中。应用保存的其他内容都留在本机上它自己的存储中。</li>
           <li>本网站（不是应用）用 Cloudflare Web Analytics 统计访问，不使用 cookie（见<a href="#zh-site">本网站</a>）。</li>
@@ -345,7 +352,7 @@
           <li>打开某个结果的航班详情时，该结果的 availability ID。</li>
         </ul>
         <p>
-          这些请求发生在：你查票时、打开航班详情时、在收藏的结果被移除后再次打开该查询时，以及你有关注并打开或回到应用时（在有 AI 辅助的测试版本中，还包括 AI 辅助为问题查票时）。seats.aero
+          这些请求发生在：你查票时、打开航班详情时、再次打开内存中已无结果的收藏查询时，以及你有关注并打开或回到应用时（在有 AI 辅助的测试版本中，还包括 AI 辅助为问题查票时）。seats.aero
           按其自身的条款（<a href="https://seats.aero/terms">seats.aero/terms</a>）和隐私做法处理这些请求。
         </p>
 
@@ -379,12 +386,13 @@
         <ul>
           <li><strong>钥匙串：</strong>你连接账户后的 seats.aero 登录令牌（在有 AI 辅助的测试版本中，还有你添加的 Anthropic 密钥）。它们只保存在本机，不通过 iCloud 钥匙串同步。应用从不显示令牌，密钥只显示末四位。</li>
           <li>
-            <strong>应用自己的文件：</strong>你使用示例数据还是 seats.aero 账户；缓存的查票结果（保留 45 分钟，重复查询不消耗调用）；今天的 seats.aero
-            调用次数；你的关注；屏幕上的查询和结果及其显示方式；你保存的结果；你保存的行程规划；以及你的设置（语言和外观）。在有 AI 辅助的测试版本中，还有是否允许 AI 辅助向 Anthropic
-            发送数据，以及你的 AI 辅助对话，直到你开始新对话。
+            <strong>应用自己的文件：</strong>你使用示例数据还是 seats.aero 账户；今天的 seats.aero 调用次数；查询条件和显示偏好；收藏的查询条件及收藏时间；关注条件；保存的行程规划；以及你的设置（语言和外观）。在有 AI 辅助的 OAuth 测试版本中，还保存是否允许向 Anthropic 发送数据以及你提出的问题，但不保存可能包含 seats.aero 数据的回答或工具结果。使用粘贴密钥的开发测试版本仍按原来的方式保存缓存结果、收藏快照和 AI 辅助对话。
           </li>
           <li>
-            <strong>最多 24 小时：</strong>来自 seats.aero 的结果在本机最多保留 24 小时（seats.aero 的短期缓存规则）。应用会在打开时、你回到应用时以及保持打开期间移除更早的结果：缓存结果、屏幕上的结果、收藏中的结果，以及关注上次看到的内容。收藏的查询会保留查询条件和摘要（保存时间和显示过的选项数），打开时会重新查询；关注会保留其条件。
+            <strong>内存中的账户结果：</strong>OAuth 版本不把 seats.aero 的结果或关注比较记录写入应用文件。重复查询可以使用 45 分钟的内存缓存。重启应用后，这些结果不再保留；收藏会保留查询条件，打开时重新查询。关注会保留条件；重启后的首次检查重新建立基线，之后的检查再与它比较。
+          </li>
+          <li>
+            <strong>旧版保存的数据：</strong>应用会检查旧文件中能识别的 seats.aero 结果字段，并移除这些字段。文件格式未知、损坏或无法安全更新时，文件会保留，应用会报告清理未完成。出现这类错误不表示所有旧副本都已删除。此清理不会改写你在应用之外创建的备份。
           </li>
           <li>
             <strong>示例数据：</strong>开启期间，应用把自己的一套文件（缓存结果、关注、保存的结果和行程规划、屏幕上的查询和设置）放在单独的文件夹里，退出示例数据时会删除它们。示例数据从不读取或更改你的登录令牌，也不读取或更改今天的
@@ -395,7 +403,7 @@
 
         <h3>你的选择</h3>
         <ul>
-          <li>在“设置 › seats.aero 账户”中断开连接：这会从本机移除登录令牌和所有来自 seats.aero 的结果。你也可以在 seats.aero 设置中移除 AwardGrid 的访问权限；应用下次续期连接时会移除它们。</li>
+          <li>在“设置 › seats.aero 账户”中断开连接：这会移除登录令牌并清除当前账户结果，收藏的查询条件和关注会保留。令牌或旧版数据如无法清除，应用会报告失败。你也可以在 seats.aero 设置中移除 AwardGrid 的访问权限；应用的下一次令牌刷新被拒绝时，会清除连接和当前账户结果。</li>
           <li>在设置中清除缓存结果。</li>
           <li>退出示例数据，即删除示例数据保存的全部内容。</li>
           <li>在有 AI 辅助的测试版本中：在设置中移除 Anthropic 密钥；在 AI 辅助中开始新对话，即从本机删除该对话；在设置的 Anthropic 密钥页撤回 AI 辅助的许可。</li>

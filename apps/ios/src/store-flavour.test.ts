@@ -134,7 +134,7 @@ describe("the App Store flavour compiles Ask out", () => {
         expect(text, text).not.toMatch(KEY_WORDS);
       }
     }
-    expect(t.en.cacheNote).toContain("This does not touch your seats.aero connection.");
+    expect(t.en.cacheNote).toContain("Clearing the cache does not touch your seats.aero connection.");
     expect(t.zh.cacheCleared).toBe("缓存结果已清除，seats.aero 连接未受影响。");
     // The key flavour's store build (internal test builds only) words the same sentences for its key, still without Ask.
     const keyStore = await load({ store: true, connect: "key" });
@@ -258,11 +258,11 @@ describe("Settings › About over sample data (PR-D), in both flavours", () => {
   it("with an account, About keeps the account's sentences, in each flavour's wording", async () => {
     const store = await load(STORE_BUILD);
     expect(about(at("/settings", createElement(store.settings.SettingsScreen), settingsServices("en"))).slice(0, 2)).toEqual([
-      "Searches go from this device to seats.aero through your connected seats.aero account. A small token service at awardgrid.dowhiz.com renews the connection and stores nothing. Results from seats.aero are kept on this device for 24 hours at most.",
+      "Searches go from this device to seats.aero through your connected seats.aero account. A small token service at awardgrid.dowhiz.com renews the connection and stores nothing. Account results stay only in memory; saved queries stay on this device and search again after the app restarts.",
       "Data: seats.aero",
     ]);
     expect(about(at("/settings", createElement(store.settings.SettingsScreen), settingsServices("zh"))).slice(0, 2)).toEqual([
-      "查票请求通过你已连接的 seats.aero 账户从本机发往 seats.aero。awardgrid.dowhiz.com 上的一个小型令牌服务只负责续期连接，不保存任何内容。来自 seats.aero 的结果在本机最多保留 24 小时。",
+      "查票请求通过你已连接的 seats.aero 账户从本机发往 seats.aero。awardgrid.dowhiz.com 上的一个小型令牌服务只负责续期连接，不保存任何内容。账户结果只保留在内存中；收藏的查询条件保存在本机，重启应用后会重新查询。",
       "数据：seats.aero",
     ]);
     // The key flavour's store build (internal test builds only): the key's own sentence.

@@ -60,11 +60,12 @@ export interface FavoritesCopy {
   saveProblem: (message: string) => string;
   saveProblemRetry: string;
   /**
-   * The OAuth flavour (release plan step 18b): seats.aero's results in a saved item are kept for 24 hours at most;
-   * after that the item keeps its search and a summary, and opening it searches again.
+   * The OAuth flavour: provider results stay only in memory. Saved files retain the query, not its result rows;
+   * after restart, opening the saved query searches again.
    */
   shortTerm: {
     intro: string;
+    querySaved: string;
     /** On an item whose results were removed. */
     removedNote: string;
     open: string;
@@ -91,7 +92,7 @@ export const FAVORITES: Record<Locale, FavoritesCopy> = {
     dates: (from, to) => `${from} to ${to}`,
     goSettings: "Connect your seats.aero account",
     emptyTitle: "Nothing saved yet",
-    emptyBody: "Save the results of a search to read them again later, as they were.",
+    emptyBody: "Save a search to find it here later.",
     goSearch: "Go to Search",
     savedAt: (when) => `Saved ${when}`,
     options: (n) => `${n} ${n === 1 ? "option" : "options"} when saved`,
@@ -127,8 +128,9 @@ export const FAVORITES: Record<Locale, FavoritesCopy> = {
     saveRetried: "Still could not save.",
     saveFixed: "Saved.",
     shortTerm: {
-      intro: "Saved on this device only. Results from seats.aero stay in a saved item for 24 hours; after that it keeps its search and a summary, and opening it searches again.",
-      removedNote: "Results older than 24 hours are removed from this device. Open it to search seats.aero again.",
+      intro: "Saved queries stay on this device. Account results stay only in memory; after the app restarts, opening a saved query searches again.",
+      querySaved: "Query conditions saved",
+      removedNote: "Only the query is saved here. Open it to search seats.aero again.",
       open: "Open and search again",
       openName: (name) => `Open and search again: ${name}`,
       searching: "Searching seats.aero again",
@@ -151,7 +153,7 @@ export const FAVORITES: Record<Locale, FavoritesCopy> = {
     dates: (from, to) => `${from} 至 ${to}`,
     goSettings: "连接你的 seats.aero 账户",
     emptyTitle: "还没有收藏",
-    emptyBody: "收藏一次查询的结果，之后可以按当时的样子再次查看。",
+    emptyBody: "收藏一次查询，之后可以在这里找到它。",
     goSearch: "去查票",
     savedAt: (when) => `收藏于 ${when}`,
     options: (n) => `收藏时 ${n} 个选项`,
@@ -187,8 +189,9 @@ export const FAVORITES: Record<Locale, FavoritesCopy> = {
     saveRetried: "仍然无法保存。",
     saveFixed: "已保存。",
     shortTerm: {
-      intro: "仅保存在本机。收藏中来自 seats.aero 的结果保留 24 小时；之后只保留查询条件和摘要，打开时会重新查询。",
-      removedNote: "超过 24 小时的结果已从本机移除。打开后会重新向 seats.aero 查询。",
+      intro: "收藏的查询条件保存在本机。账户结果只保留在内存中；重启应用后，打开收藏的查询时会重新查票。",
+      querySaved: "已保存查询条件",
+      removedNote: "这里只保存查询条件。打开后会重新向 seats.aero 查询。",
       open: "打开并重新查询",
       openName: (name) => `打开并重新查询：${name}`,
       searching: "正在重新向 seats.aero 查询",

@@ -30,15 +30,15 @@
     "checked_at": "2026-10-06",
     "evidence_level": "observed",
     "evidence_ref": [
-      "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\"",
-      "docs/release/IOS_1.0_RELEASE.md:37 \"P16 | App Review's decision on 1.0 (3) | Apple | **Rejected 2026-10-05 23:49 PT**\"",
-      "docs/release/IOS_1.0_RELEASE.md:100-101 \"B3 | Register the App ID `com.dowhiz.awardgrid`\"",
-      "docs/release/IOS_1.0_RELEASE.md:193 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
-      "docs/release/IOS_1.0_RELEASE.md:153 \"`ea4bf2d` | The new icon and build 3\"",
-      "docs/release/IOS_1.0_RELEASE.md:115-116 \"D4 | iPhone only\"",
+      "docs/release/IOS_1.0_RELEASE.md:44 \"build 3 submitted 2026-09-26 20:24\"",
+      "docs/release/IOS_1.0_RELEASE.md:48 \"P16 | App Review's decision on 1.0 (3) | Apple | **Rejected 2026-10-05 23:49 PT**\"",
+      "docs/release/IOS_1.0_RELEASE.md:121-122 \"B3 | Register the App ID `com.dowhiz.awardgrid`\"",
+      "docs/release/IOS_1.0_RELEASE.md:214 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
+      "docs/release/IOS_1.0_RELEASE.md:174 \"`ea4bf2d` | The new icon and build 3\"",
+      "docs/release/IOS_1.0_RELEASE.md:136-137 \"D4 | iPhone only\"",
       "apps/ios/ios/App/App.xcodeproj/project.pbxproj:370-378 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
       "apps/ios/ios/App/App.xcodeproj/project.pbxproj:391-398 \"IPHONEOS_DEPLOYMENT_TARGET = 18.0;\"",
-      "docs/release/IOS_1.0_RELEASE.md:28-29 \"P7 | Price: Free\"",
+      "docs/release/IOS_1.0_RELEASE.md:39-40 \"P7 | Price: Free\"",
       "apps/ios/ios/App/App/Info.plist:9-13 \"<key>CFBundleLocalizations</key>\"",
       "apps/ios/src/app/locale.ts:11-19 \"Chinese for any zh-* language tag, English otherwise.\"",
       "docs/release/APP_STORE_HANDOFF.md:205 \"the keys are credentials for the user's own third-party accounts: nothing is sold\"",
@@ -66,10 +66,10 @@
       "checked_at": "2026-09-28",
       "evidence_level": "observed",
       "evidence_ref": [
-        "docs/release/IOS_1.0_RELEASE.md:101 \"B4 | Create the App Store Connect record\"",
-        "docs/release/IOS_1.0_RELEASE.md:115 \"D4 | iPhone only\"",
-        "docs/release/IOS_1.0_RELEASE.md:193 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
-        "docs/release/IOS_1.0_RELEASE.md:329 \"**Copyright:** 2026 Curastone CORP.\"",
+        "docs/release/IOS_1.0_RELEASE.md:122 \"B4 | Create the App Store Connect record\"",
+        "docs/release/IOS_1.0_RELEASE.md:136 \"D4 | iPhone only\"",
+        "docs/release/IOS_1.0_RELEASE.md:214 \"Signed **Apple Distribution: Curastone CORP. (232AGCYZ2Z)**\"",
+        "docs/release/IOS_1.0_RELEASE.md:350 \"**Copyright:** 2026 Curastone CORP.\"",
         "apps/ios/ios/App/App/Info.plist:7-8 \"<key>CFBundleDisplayName</key>\""
       ],
       "allowed_copy": "AwardGrid is an iPhone app by Curastone CORP.",
@@ -112,8 +112,8 @@
       "checked_at": "2026-10-06",
       "evidence_level": "observed",
       "evidence_ref": [
-        "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\"",
-        "docs/release/IOS_1.0_RELEASE.md:37 \"P16 | App Review's decision on 1.0 (3) | Apple | **Rejected 2026-10-05 23:49 PT**\"",
+        "docs/release/IOS_1.0_RELEASE.md:44 \"build 3 submitted 2026-09-26 20:24\"",
+        "docs/release/IOS_1.0_RELEASE.md:48 \"P16 | App Review's decision on 1.0 (3) | Apple | **Rejected 2026-10-05 23:49 PT**\"",
         "[external] https://itunes.apple.com/lookup?id=6816321841&country=us&cb=<epoch> (read 2026-09-28): resultCount 0 in us, gb, hk, tw, sg, jp, ca and au"
       ],
       "allowed_copy_by_status": {
@@ -147,7 +147,7 @@
         "docs/PIVOT.md:45-47 \"grounds this entire product on that basis\"",
         "docs/DEPLOYMENT.md:87-90 \"Cloudflare Access is NOT set up.\"",
         "src/app/api/auth/register/route.ts:2-4 \"POST /api/auth/register { inviteCode, username, password }\"",
-        "docs/release/IOS_1.0_RELEASE.md:33 \"Submitted 2026-09-26 20:24\""
+        "docs/release/IOS_1.0_RELEASE.md:44 \"build 3 submitted 2026-09-26 20:24\""
       ],
       "allowed_copy_by_status": {
         "submitted_not_live": "AwardGrid began as a private, invite-only web app for its developer and a small group of friends. The iPhone app has been submitted to the App Store as a separate public release.",
@@ -339,7 +339,7 @@
       "checked_at": "2026-09-28",
       "evidence_level": "observed",
       "evidence_ref": [
-        "docs/release/IOS_1.0_RELEASE.md:28 \"P7 | Price: Free\"",
+        "docs/release/IOS_1.0_RELEASE.md:39 \"P7 | Price: Free\"",
         "docs/release/APP_STORE_HANDOFF.md:205 \"the keys are credentials for the user's own third-party accounts: nothing is sold\"",
         "apps/ios/package.json:17-27 \"\"dependencies\": {\""
       ],
@@ -659,7 +659,7 @@
         "packages/core/src/lib/seatsaero/normalize.ts:46 \"const timeBasis =\"",
         "apps/ios/src/components/results/AvailabilityCard.tsx:106 \"<p className=\"ag-result-time\">\"",
         "LEGAL.md:17-18 \"**Live Search is never used**\"",
-        "LEGAL.md:116-117 \"Cached award data can be stale and awards disappear.\""
+        "LEGAL.md:118-119 \"Cached award data can be stale and awards disappear.\""
       ],
       "allowed_copy": "Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points.",
       "allowed_copy_zh": "结果来自 seats.aero 的缓存，并非实时查询；每条结果都标明了数据时间。转点之前，请先到该里程计划的官网确认。",
@@ -691,9 +691,9 @@
       "evidence_ref": [
         "apps/ios/src/watch/capabilities.ts:29-44 \"export const WATCH_CHECKS = {\"",
         "apps/ios/src/app/App.tsx:458-474 \"Check watches now that the app is open\"",
-        "packages/core/src/lib/watch/watch.ts:154 \"export const DEFAULT_MIN_QUOTA = 25;\"",
-        "packages/core/src/lib/watch/watch.ts:163-178 \"export function dueForCheck(watch: Watch, opts: DueOptions)\"",
-        "apps/ios/src/watch/runner.ts:114 \"quotaRemaining: quota.remaining,\"",
+        "packages/core/src/lib/watch/watch.ts:159 \"export const DEFAULT_MIN_QUOTA = 25;\"",
+        "packages/core/src/lib/watch/watch.ts:168-183 \"export function dueForCheck(watch: Watch, opts: DueOptions)\"",
+        "apps/ios/src/watch/runner.ts:115 \"quotaRemaining: quota.remaining,\"",
         "packages/core/src/lib/seatsaero/quota.ts:106-108 \"/** Calls left before the SOFT limit\""
       ],
       "allowed_copy": "Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.",
@@ -706,6 +706,7 @@
         "A watch is skipped when it was checked in the last 45 minutes, or when fewer than 25 calls are left before the app's 950-call stop (the watch runner reads Quota.remaining, which counts to that stop: quota.ts:106-108), i.e. once more than 925 calls are used that UTC day.",
         "The only calls to checkWatches are when the app opens and when it becomes visible again (App.tsx:261-269).",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed.",
+        "In the OAuth build prepared on 2026-10-12, watch conditions persist but baseline, change and comparison history stay only in memory. The first check after a process restart establishes a new baseline; returning from the background within the same process does not itself restart that baseline.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved"
@@ -721,7 +722,7 @@
         "apps/ios/src/components/plan/plan-copy.ts:68-69 \"section: \"Plan a trip\",\"",
         "apps/ios/src/components/plan/plan-copy.ts:88 \"save: \"Save plan\",\"",
         "apps/ios/src/components/plan/plan-copy.ts:101-102 \"tryNote: \"Try with sample data opens the sample data on this device and searches the plan there. Nothing is sent.\",\"",
-        "apps/ios/src/screens/SearchScreen.tsx:651-652 \"<Welcome locale={locale} onTrySample={entering.enter} busy={entering.busy} failed={entering.failed} />\"",
+        "apps/ios/src/screens/SearchScreen.tsx:658-659 \"<Welcome locale={locale} onTrySample={entering.enter} busy={entering.busy} failed={entering.failed} />\"",
         "e2e/uiux/store-planner.spec.ts:5-7 \"With no data source, the Search screen's welcome is followed by the planner: a typed trip, in English or Chinese,\""
       ],
       "allowed_copy": "Plan a trip shows how AwardGrid reads a trip you type, as airports, dates and cabins, without an account and without sending anything. A plan can be saved on the device, in Saved › Trip plans, and tried on sample data.",
@@ -752,7 +753,7 @@
         "packages/core/src/lib/seatsaero/quota.ts:90 \"this.softLimit = opts.softLimit ?? DEFAULT_SOFT_LIMIT;\"",
         "apps/ios/src/store/quota-store.ts:10 \"used(day) = max(locally counted calls, DAILY_LIMIT - X-RateLimit-Remaining)\"",
         "apps/ios/src/store/quota-store.ts:20-23 \"**It is keyed by UTC day**\"",
-        "apps/ios/src/app/bootstrap.ts:517 \"quota: new Quota({ store: quotaStore, now }),\"",
+        "apps/ios/src/app/bootstrap.ts:527 \"quota: new Quota({ store: quotaStore, now }),\"",
         "packages/core/src/lib/seatsaero/cache.ts:17 \"export const DEFAULT_CACHE_TTL_MINUTES = 45;\"",
         "packages/core/src/lib/seatsaero/cache.ts:406-410 \"/** Parse CACHE_TTL_MINUTES, falling back to 45 on garbage. */\"",
         "apps/ios/src/search/search.ts:216-224 \"const result = await runFind({\"",
@@ -763,7 +764,8 @@
       "allowed_copy_zh": "应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。",
       "allowed_copy_extra": [
         "The app's own count restarts at midnight UTC, when seats.aero resets usage.",
-        "Sample data uses no seats.aero calls."
+        "Sample data uses no seats.aero calls.",
+        "The app stops at 950 of seats.aero's 1,000 daily calls and caches results in memory for 45 minutes, so repeating a search costs no calls. The app's own count restarts at midnight UTC."
       ],
       "limitations": [
         "\"seats.aero's 1,000 daily calls\": the daily limit seats.aero gives an account's API key (getting-started-p.md:25). Until 2026-10-07 the sentence said \"the 1,000 daily calls a Pro key allows\"; since build 4 the public copy does not call the key a Pro key (decision D6), and that wording is retired_copy.",
@@ -773,6 +775,7 @@
         "The app counts calls by UTC day and raises its count to what seats.aero's X-RateLimit-Remaining header says has been used (apps/ios/src/store/quota-store.ts:10, :20-23).",
         "The Chinese sentence (sites/landing/support/index.html) is pending a native speaker's review.",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
+        "In the OAuth build prepared on 2026-10-12, those cached account results are in memory only. A process restart does not reload provider rows from cache.json; user quota counts stay on disk. Sample mode and non-OAuth builds keep their existing storage rules.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
@@ -794,7 +797,7 @@
         "apps/ios/src/ask/consent-copy.ts:50 \"title: \"Allow Ask to send data to Anthropic?\",\"",
         "packages/core/src/lib/ask/limits.ts:16 \"export const ASK_MODEL = \"claude-opus-5\";\"",
         "apps/ios/src/ask/ask-service.ts:558-559 \"Release D10: without the person's permission nothing goes to Anthropic\"",
-        "LEGAL.md:59-62 \"The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of\"",
+        "LEGAL.md:61-64 \"The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of\"",
         "apps/ios/src/search/search.ts:158-159 \"No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key\""
       ],
       "allowed_copy": "Ask, which answers questions about your results with Claude on your own Anthropic API key, is in testing; it is not part of the App Store version 1.0.",
@@ -837,7 +840,7 @@
         "apps/ios/src/native/webview-fetch-guard.ts:22 \"const NATIVE_ONLY_HOSTS: ReadonlySet<string> = new Set([\"api.anthropic.com\", \"seats.aero\"]);\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\"",
         "apps/ios/src/sample/sample-fetch.ts:9-10 \"includes it, and take/skip paging. Nothing leaves the device: it never calls the native HTTP adapter\"",
-        "LEGAL.md:59-62 \"The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of\"",
+        "LEGAL.md:61-64 \"The iOS app's App Store build has no Ask and sends nothing to Anthropic: Ask is compiled out of\"",
         "apps/ios/src/oauth/broker.ts:12 \"export const TOKEN_SERVICE_URL = \"https://awardgrid.dowhiz.com/oauth/seats\";\"",
         "sites/auth/src/index.ts:24-27 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
         "sites/auth/wrangler.jsonc:15-17 \"\"observability\": { \"enabled\": false, \"logs\": { \"enabled\": false } },\"",
@@ -872,7 +875,7 @@
       "evidence_level": "observed",
       "evidence_ref": [
         "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
-        "sites/landing/privacy/index.html:262-268 \"<h2 id=\"site-h\">This website</h2>\"",
+        "sites/landing/privacy/index.html:269-275 \"<h2 id=\"site-h\">This website</h2>\"",
         "sites/landing/DEPLOY.md:39-40 \"- Cloudflare Web Analytics can add its disclosed beacon to browser HTML responses.\"",
         "apps/ios/package.json:17-27 \"\"dependencies\": {\""
       ],
@@ -924,7 +927,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-08",
+      "checked_at": "2026-10-12",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/package.json:10 \"\"build:store\": \"VITE_AG_STORE=1 VITE_AG_CONNECT=oauth vite build && node scripts/check-fixture-free-bundle.mjs\"",
@@ -936,7 +939,7 @@
         "apps/ios/src/oauth/broker.ts:12 \"export const TOKEN_SERVICE_URL = \"https://awardgrid.dowhiz.com/oauth/seats\";\"",
         "sites/auth/src/index.ts:24-27 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
         "sites/auth/wrangler.jsonc:15-17 \"\"observability\": { \"enabled\": false, \"logs\": { \"enabled\": false } },\"",
-        "apps/ios/src/app/bootstrap.ts:819 \"async disconnect(): Promise<DisconnectOutcome> {\"",
+        "apps/ios/src/app/bootstrap.ts:862 \"async disconnect(): Promise<DisconnectOutcome> {\"",
         "apps/ios/scripts/check-store-bundle.mjs:67 \"\"Paste your seats.aero API key\",\""
       ],
       "allowed_copy": "You connect your seats.aero account with seats.aero's own sign-in (Login with Seats.aero): seats.aero asks you to sign in and approve AwardGrid, and AwardGrid never sees your password. You can disconnect at any time, in AwardGrid or in your seats.aero settings.",
@@ -947,7 +950,7 @@
         "AwardGrid never sees the password to your provider account, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off.",
         "A small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens for AwardGrid; it stores nothing and keeps no logs of tokens.",
         "Searches go from the iPhone directly to the provider.",
-        "Disconnect removes the sign-in tokens and all results from seats.aero from the iPhone.",
+        "Disconnect in Settings › seats.aero account: it removes sign-in tokens and clears current account results. Saved query conditions and watches stay. If tokens or older stored data cannot be cleared, the app reports the failure.",
         "Never send your seats.aero password: AwardGrid never sees it, and nobody helping you needs it."
       ],
       "allowed_copy_zh_extra": [
@@ -960,41 +963,56 @@
       "limitations": [
         "Registered on 2026-10-07 (release plan step 47F, step 5): the App Store build connects a seats.aero account only through seats.aero's own sign-in, Login with Seats.aero (OAuth 2.0). `npm run build:store` builds that flavour (apps/ios/package.json:10), App.tsx routes its connect page and drops the key page, and scripts/check-store-bundle.mjs fails the build if any word of the paste field reaches the bundle. seats.aero confirmed in writing on 7 October 2026 that AwardGrid may use Login with Seats.aero; the owner's approval of the plan (2026-10-06) covers this wording.",
         "\"seats.aero asks you to sign in and approve AwardGrid\": Connect seats.aero opens https://seats.aero/oauth2/consent in the system's sign-in sheet (ASWebAuthenticationSession, SeatsAuthPlugin.swift), which shares Safari's sign-in, so a person already signed in to seats.aero there may only be asked to approve. \"AwardGrid never sees your password\": the password is typed on seats.aero's page, inside the system sheet; the app receives only an authorization code, which the token service exchanges for tokens (apps/ios/src/oauth/connect.ts).",
-        "\"Disconnect at any time\": Settings › seats.aero account › Disconnect removes the tokens and runs the purge (bootstrap.ts disconnect); removing AwardGrid's access in the seats.aero settings ends the refresh token, and the app purges on the next refresh it is refused (token-store.ts, the invalid_grant case).",
+        "\"Disconnect at any time\": the app removes tokens, clears current in-memory account results and sanitises known legacy stored provider fields. Token-removal or legacy-cleanup failures are reported and do not claim complete deletion. Removing access in seats.aero invalidates refresh access; the app clears the connection and current account results when its next refresh is refused.",
         "The token service (sites/auth, the Worker awardgrid-auth) holds the client secret, exchanges the code and refreshes the access token; it keeps nothing and logs nothing (sites/auth/src/index.ts:24-27, wrangler.jsonc). The owner registered the OAuth client with seats.aero and deployed the Worker, with its secrets, on 2026-10-07 (sites/auth/DEPLOY.md); since then it runs on Cloudflare Workers, on the awardgrid.dowhiz.com/oauth/* route, and /privacy/ names that host. Build 1.0 (4), an internal TestFlight build, connects with a pasted key and is not submitted.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra) is the wording of /support/#zh, written on 2026-10-07 to say what the English says and nothing more; it is pending a native speaker's review.",
         "The store description's privacy paragraph (since 2026-10-08) says \"the password to your provider account\" and \"directly to the provider\", in Chinese 你在数据提供方的账户密码 and 直接发往数据提供方: no App Store listing text uses the name seats.aero, per the data provider's trademark guidance; the provider is the award-data provider the description's paragraph on the account names. Until then it said \"your seats.aero password\", which /ios/award-grid/ still says, and \"directly to seats.aero\", which is no longer used anywhere. The Chinese is pending a native speaker's review.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "approved"
+      "public_use": "approved",
+      "retired_copy": [
+        "Disconnect removes the sign-in tokens and all results from seats.aero from the iPhone."
+      ]
     },
     {
       "claim_id": "short_term_caching",
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-07",
+      "checked_at": "2026-10-12",
       "evidence_level": "source-verified",
       "evidence_ref": [
-        "apps/ios/src/retention/short-term.ts:31 \"export const SHORT_TERM_MAX_AGE_MS = 24 * 60 * 60 * 1000;\"",
-        "apps/ios/src/retention/short-term.ts:156 \"export function favoriteExpired(item: FavoriteV1, cutoff: number): boolean {\"",
-        "apps/ios/src/retention/short-term.ts:167 \"export function watchExpiry(watch: Watch, cutoff: number): Partial<Watch> | null {\"",
-        "apps/ios/src/screens/favorites-copy.ts:130 \"intro: \"Saved on this device only. Results from seats.aero stay in a saved item for 24 hours;\"",
-        "apps/ios/src/screens/oauth-copy.ts:44 \"\"While connected, searches go from this device to seats.aero, and their results are kept on this device for 24 hours at most.\""
+        "apps/ios/src/app/bootstrap.ts:471-473 \"const providerFiles = shortTermMs != null ? new ProviderConfigurationFiles(originalSnapshots.files) : null;\"",
+        "apps/ios/src/retention/provider-files.ts:28-30 \"rows: [],\"",
+        "apps/ios/src/retention/provider-files.ts:139-142 \"const result = clean(path, JSON.parse(data));\"",
+        "apps/ios/src/retention/provider-files.ts:141 \"if (result.uncertain) throw new Error\"",
+        "apps/ios/src/store/favorites-store.ts:14 \"const query = { ...item.query, origins: [selected.origin], destinations: [selected.dest], date_from: selected.date, date_to: selected.date, cabins: [selected.cabin], programs: [selected.program] }\"",
+        "apps/ios/src/retention/short-term.ts:189-190 \"export function watchReset(): Partial<Watch> {\"",
+        "apps/ios/src/app/bootstrap-oauth.test.ts:535 \"persists queries and preferences without rows, coverage, watch baselines or copied prices, including after a restart\"",
+        "apps/ios/src/screens/favorites-copy.ts:131 \"intro: \"Saved queries stay on this device. Account results stay only in memory;\"",
+        "apps/ios/src/screens/oauth-copy.ts:44 \"While connected, searches go from this device to seats.aero. Account results stay only in memory;\""
       ],
-      "allowed_copy": "Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term Caching rule); a saved search keeps the search and a summary, and opening it searches again.",
-      "allowed_copy_zh": "来自你的 seats.aero 账户的结果在 iPhone 上最多保留 24 小时（seats.aero 的短期缓存规则）；收藏的查询会保留查询条件和摘要，打开时会重新查询。",
+      "allowed_copy": "Results from your seats.aero account are cached only in memory, not written to app files. Saved keeps query conditions; after the app restarts, opening a saved query searches again.",
+      "allowed_copy_zh": "来自你的 seats.aero 账户的结果只在内存中缓存，不写入应用文件。收藏会保留查询条件；重启应用后，打开收藏的查询时会重新查票。",
       "allowed_copy_extra": [
-        "seats.aero results are kept on the iPhone for at most 24 hours (Short-Term Caching); saved searches keep the search and a summary."
+        "In the OAuth version, account results are cached only in memory, not written to app files. Saved retains query conditions; after restart, opening a saved query searches again.",
+        "Watches keep their conditions; the first check after restart sets a new baseline, and later checks compare with it.",
+        "The app checks older files for known seats.aero result fields and removes those fields. If a file is unknown, damaged or cannot be updated safely, it is kept and the app reports that cleanup could not finish. Such an error does not mean every old copy was deleted."
       ],
       "limitations": [
-        "Registered on 2026-10-07 with the oauth_connection claim: under Login with Seats.aero, seats.aero's OAuth Addendum allows short-term caching only, automatically purged. In the App Store build (the OAuth flavour) everything fetched from seats.aero more than 24 hours ago is removed from the device: cached rows and coverage, the search on screen, the rows in Saved (each item keeps its query, when it was saved, its origin and how many options it showed), what watches last saw (the next check sets a new baseline; the watches and their conditions stay), and loaded option details (short-term.ts). The sweep runs at launch, before every save, on every return to the app and hourly while it is open; while sample data is on it runs over the account's files with no account (sample/boot.ts).",
-        "\"Opening it searches again\": a saved item past 24 hours opens with \"Open and search again\", which runs its own query on the connected account and puts the fresh rows back (favorites-copy.ts), unless all its dates have passed or no account is connected; the page says which.",
-        "The 45-minute cache (the quota claim) still decides when a search fetches again; 24 hours is the most anything from seats.aero stays. Sample data is not seats.aero data and has no such limit.",
-        "The Chinese is the wording of /privacy/#zh, written on 2026-10-07; it is pending a native speaker's review.",
+        "Updated on 2026-10-12 for build 7: the OAuth storage boundary strips provider responses before writing cache, workspace, Saved, watch and Ask files. New account results and watch comparisons therefore remain in process memory. Restarting the process cold-starts account results; saved query conditions and watch configuration persist. Sample-mode files and non-OAuth development/test builds retain their existing behaviour.",
+        "Saved retains query conditions and the saved time, without result rows, result counts or provider row identity. Opening a saved query without its results in memory runs a fresh search, unless all dates have passed or no account is connected; the screen explains those cases. Saving a selected option retains its route/date/cabin/program conditions so the query remains specific to the selection.",
+        "The 45-minute in-memory search cache (quota claim) decides whether a search fetches again during the same process. The existing foreground/hourly expiry also prunes old in-memory results. The copy makes no exact physical-deletion deadline while iOS suspends the app.",
+        "Known legacy provider fields and app-created old watch backups are sanitised on read/sweep. Unknown or damaged shapes, listing failures and unverified writes remain explicit SaveStatus/Disconnect failures; the app does not claim all stored data was removed. This does not rewrite device backups made outside the app.",
+        "The Chinese is the wording of /privacy/#zh, revised on 2026-10-12; it is pending a native speaker review. These local files are not evidence of a public deployment or an Apple-approved binary.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "approved"
+      "public_use": "approved",
+      "retired_copy": [
+        "Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term Caching rule); a saved search keeps the search and a summary, and opening it searches again.",
+        "来自你的 seats.aero 账户的结果在 iPhone 上最多保留 24 小时（seats.aero 的短期缓存规则）；收藏的查询会保留查询条件和摘要，打开时会重新查询。",
+        "seats.aero results are kept on the iPhone for at most 24 hours (Short-Term Caching); saved searches keep the search and a summary."
+      ]
     },
     {
       "claim_id": "program_link",
@@ -1033,9 +1051,9 @@
       "evidence_level": "source-verified",
       "evidence_ref": [
         "LEGAL.md:17-18 \"**Live Search is never used**\"",
-        "LEGAL.md:45-47 \"**No scraping.** awardgrid never automates, crawls or scrapes\"",
-        "LEGAL.md:91-92 \"No airline, alliance or loyalty-program logos, wordmarks or brand imagery are displayed.\"",
-        "LEGAL.md:98-101 \"awardgrid never accepts, stores, or transmits airline, bank or travel-portal usernames\"",
+        "LEGAL.md:47-49 \"**No scraping.** awardgrid never automates, crawls or scrapes\"",
+        "LEGAL.md:93-94 \"No airline, alliance or loyalty-program logos, wordmarks or brand imagery are displayed.\"",
+        "LEGAL.md:100-103 \"awardgrid never accepts, stores, or transmits airline, bank or travel-portal usernames\"",
         "BACKLOG.md:18 \"Round-trip / multi-city queries (v1 is one-way grid only)\"",
         "apps/ios/src/watch/capabilities.ts:40-44 \"export const IOS_WATCH_CAPABILITIES: WatchCapabilities = {\""
       ],
@@ -1061,7 +1079,7 @@
       "evidence_ref": [
         "apps/ios/src/screens/settings-copy.ts:92 \"\"AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero\"",
         "apps/ios/src/screens/settings-copy.ts:135 \"notAffiliated: STORE ? \"AwardGrid 与 seats.aero\"",
-        "LEGAL.md:92-94 \"Programs are referred to by their plain text names.\"",
+        "LEGAL.md:94-96 \"Programs are referred to by their plain text names.\"",
         "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\""
       ],
@@ -1094,7 +1112,7 @@
       "checked_at": "2026-09-28",
       "evidence_level": "observed",
       "evidence_ref": [
-        "docs/release/IOS_1.0_RELEASE.md:29 \"P8 | Availability: every country or region except China mainland.\""
+        "docs/release/IOS_1.0_RELEASE.md:40 \"P8 | Availability: every country or region except China mainland.\""
       ],
       "allowed_copy_by_status": {
         "submitted_not_live": "AwardGrid for iPhone will be offered in 174 countries or regions; not in mainland China.",

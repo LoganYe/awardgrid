@@ -1,10 +1,22 @@
 # AwardGrid iOS 1.0: release status
 
-Release mode **PUBLIC (App Store) since 2026-09-26; version 1.0 (build 3) submitted for review that evening and rejected on 2026-10-05 under Guideline 3.1.1 (§0 P16).** The owner decided on 2026-09-26 not to ask seats.aero first (§0 P1); since 2026-10-06 the 3.1.1 remediation applies (§0 P17, §0.1), and seats.aero has been asked for written permission (§0 P19). It was first
+**Current snapshot, read 2026-10-12:** App Store Connect app **6816321841**, version **1.0**, selected build **6**,
+**Waiting for Review**, resubmitted **2026-10-08 17:12 PT**, with **Manual** release. The Messages history still has
+only Apple's build-3 rejection of **2026-10-05 23:49 PT** and the owner's **2026-10-06** reply: no later Apple
+message accepts the OAuth connection or the proposed sample-data review path. App Review Information's Attachment
+field is empty. seats.aero's **2026-10-07/08** written answers cover Login with Seats.aero and commercial use; the
+OAuth registration is still unapproved. These are separate from Apple review acceptance and public availability.
+**Build 7 is being prepared** in `/Users/yegaoyang/.codex/worktrees/awardgrid-review-build7/awardgrid`; its source,
+verification, upload and submission evidence belong in [`IOS_1.0_BUILD7.md`](IOS_1.0_BUILD7.md).
+
+Release mode **PUBLIC (App Store) since 2026-09-26** describes the intended distribution, not a public release.
+Version 1.0 (build 3) was submitted that evening and rejected on 2026-10-05 under Guideline 3.1.1 (§0 P16).
+The owner decided on 2026-09-26 not to ask seats.aero first (§0 P1); since 2026-10-06 the 3.1.1 remediation applies
+(§0 P17, §0.1). It was first
 written on 2026-09-25 for release mode INTERNAL_PRIVATE (the owner's own use through internal TestFlight), and §1-§9
 still describe that build. `release/ios-1.0` merged as `927b70b` ([PR #99](https://github.com/LoganYe/awardgrid/pull/99))
 and was deployed to the web app on 2026-09-26. The App Store work continues on `release/ios-1.0-appstore` in the
-worktree `/Users/yegaoyang/Desktop/workspace/awardgrid-uiux`. The account state, the rules and the background are
+worktree `/Users/yegaoyang/Desktop/workspace/awardgrid-uiux` for the earlier builds. The account state, the rules and the background are
 in `APP_STORE_HANDOFF.md`.
 
 ---
@@ -13,31 +25,30 @@ in `APP_STORE_HANDOFF.md`.
 
 The owner chose a public App Store release. This reverses D1 and D9 as first applied (internal TestFlight only, no
 review access). The owner also set aside the handoff's rule of waiting for seats.aero's written permission (P1).
-The App Store Connect work below was done on the owner's OK. Submission waits for the Account Holder (P2).
-Meanwhile build 1.0 (1) is Ready to Test in TestFlight (internal; expires 90 days after upload). Create an internal
-group with the owner, then install it from the TestFlight app.
+The App Store Connect work below was done on the owner's OK. The table retains the original release history and
+adds the 2026-10-12 snapshot; it does not treat an upload, submission or provider letter as a public release.
 
 | # | Step | Who | State |
 |---|---|---|---|
-| P1 | seats.aero's permission | Owner | **Superseded 2026-10-06 (§0 P17, decisions D4 and D15):** seats.aero was asked for written permission on 2026-10-06 (§0 P19), and a build is released only with seats.aero's written permission covering the way it connects (D15). *Until then (2026-09-26):* not sought, by the owner's decision; the older draft in the owner's Gmail was never sent and is retired |
+| P1 | seats.aero's permission | Owner | **Snapshot 2026-10-12:** written answers on 2026-10-07 and 2026-10-08 cover Login with Seats.aero and commercial use; AwardGrid's OAuth registration remains unapproved. **Manual release stays on hold until registration approval** (D15). Asked on 2026-10-06; before that, permission was not sought by the owner's 2026-09-26 decision |
 | P2 | Accept the updated Program License Agreement (B1) | Account Holder | **Done** (read 2026-09-26: App Store Connect no longer shows the agreement or the membership banner) |
 | P3 | The membership renewal (B2) | Account Holder | **Done; verified 2026-10-06:** the membership renews on 2027-10-10, and the Paid and Free Apps agreements, banking and tax are active |
-| P4 | How App Review uses the app (D9) | Owner | **Superseded 2026-10-06 (§0 P17, decision D2):** from build 4, a clearly labelled sample-data mode that works for any route is the review path, with a recording of the optional connection on the owner's own account in App Review Information › Attachment; no key is given to Apple. *For build 3:* explained in the Review Notes (no key, no demo mode) |
-| P5 | The build for review | Agent | **Build 1.0 (3), with the new icon** (P14), archived, exported, inspected and uploaded 2026-09-26 20:10 on the owner's OK; it replaces build 2 on version 1.0 once processed. Build 2 (00:54, the first icon) stays in App Store Connect, unused |
+| P4 | How App Review uses the app (D9) | Owner | **Snapshot 2026-10-12:** build 6 offers labelled sample data without an account and optional provider OAuth. Apple has not yet given written approval of sample mode in lieu of a demo account. No shared account is supplied; **Attachment is empty**, so no attached recording is claimed. New Build 7 notes request assessment under 3.1.3(f) and acceptance of the review path under 2.1 |
+| P5 | The build for review | Agent | **Snapshot 2026-10-12:** selected build **1.0 (6)**, Waiting for Review after the 2026-10-08 resubmission. Build **1.0 (7)** is in preparation; archive/upload/selection are recorded only after verification in `IOS_1.0_BUILD7.md`. *Historical:* build 3, with the new icon (P14), uploaded 2026-09-26 20:10; build 4 was internal TestFlight only |
 | P6 | App Information: subtitle "Award seats in one table"; primary category Travel | Agent | **Saved** |
 | P7 | Price: Free | Agent | **Saved:** $0.00 in 175 countries or regions |
 | P8 | Availability: every country or region except China mainland. Apple silicon Mac and Vision Pro: off (D11) | Agent, on the owner's OK | **Saved 2026-09-26:** 174 countries or regions, China mainland "Not Available"; Mac and Vision Pro off; distribution Public |
-| P9 | Version 1.0: screenshots, promotional text, description, keywords, support and marketing URLs, copyright | Agent | **Saved:** the 7 en-US screenshots in the 6.9-inch set, in order (list, calendar, matrix, details, compare, watches, Ask; the 6.5-inch set uses them); the §7 texts; `https://awardgrid.dowhiz.com/support/` and `/ios/`; "2026 Curastone CORP."; release automatically after approval. **Changing (§0 P17):** Version Release becomes Manual (D9), and build 4 gets new screenshots and texts without Ask (D3, D6). Build 4's 7 screenshots: `docs/release/appstore/1.0-build4/en-US` (list, calendar, matrix, details, compare, watches, welcome; sample mode, from the App Store bundle; how they were made is in that folder's README) |
-| P10 | App Privacy; age rating; content rights; DSA; regulated medical device | Agent, on the owner's OK | **Done 2026-09-26.** App Privacy published (D8: Search History and Other User Content, app functionality, linked, no tracking; privacy policy URL set). **Age rating 4+**: every question No or None, from the app's facts, and no override; Brazil shows ALL and Korea 00+. **Content rights**: the app shows third-party content (seats.aero's data), and the owner holds that it has the necessary rights. **DSA**: the account already declares non-trader, as for Restful. **Medical device**: not asked of a Travel app with no medical content. **Changing with build 4 (§0 P17):** Other User Content leaves App Privacy, `PrivacyInfo.xcprivacy` and the privacy policy together, and the AI question of the age rating is answered again (D8); the content-rights answer is decided again before resubmission (D16) |
-| P11 | App Review information | Agent | **Saved:** contact Logan Ye with Restful's phone number, e-mail knowhiz.us@gmail.com; sign-in not required; the notes (P4). **The notes are rewritten for build 4 (§0 P17, D2): `docs/release/appreview/review-notes-1.0-4.md`;** the contact fields are changed only in the single App Store Connect pass before resubmission |
-| P12 | Submit for Review | Agent, on the owner's request | **Submitted 2026-09-26 20:24:** version 1.0 with build 3; App Store Connect then showed "Waiting for Review". **Rejected 2026-10-05 (§0 P16).** The next submission is build 4 on the same version, with Manual release (§0 P17, D9) |
+| P9 | Version 1.0: screenshots, promotional text, description, keywords, support and marketing URLs, copyright | Agent | **Current release setting, read 2026-10-12: Manual** (D9). Active local metadata is provider-neutral and omits Ask; Build 7 preparation replaces repeated en-US keywords with the validated existing `next/en-US` keywords. Saved ASC metadata and screenshot sets must be read back for Build 7. *Historical:* build 3's 7 screenshots included Ask and automatic release; the later no-Ask sample screenshots are in `docs/release/appstore/1.0-build4/en-US` |
+| P10 | App Privacy; age rating; content rights; DSA; regulated medical device | Agent, on the owner's OK | **Historical 2026-09-26 record:** App Privacy published with Search History and Other User Content, linked for app functionality, no tracking; age rating 4+; third-party content rights declared; account non-trader; no medical content. The remediation removed Ask and required the Other User Content, AI and content-rights answers to be reconsidered (D8/D16). **Before Build 7:** read back the actual saved ASC privacy/age/content-rights answers and align them with the final store bundle and policy. This table does not infer those current answers from the older record |
+| P11 | App Review information | Agent | **Snapshot 2026-10-12:** current saved build-6 notes read from `/Users/yegaoyang/Desktop/workspace/awardgrid-asc-1.0-6/3-app-review-notes.txt`; they describe sample mode, optional OAuth, no Ask and no shared account. Attachment empty. Build 7 draft is `docs/release/appreview/review-notes-1.0-7.txt`; the older build-4/5 drafts are historical, not evidence of a saved field or attachment. Current contact fields must be read back before submitting |
+| P12 | Submit for Review | Agent, on the owner's request | **Resubmitted 2026-10-08 17:12 PT:** version **1.0**, build **6**; **Waiting for Review** and **Manual** release, read 2026-10-12. Build 7 submission will be recorded only after the ASC action and readback. *Historical:* build 3 submitted 2026-09-26 20:24 and rejected 2026-10-05 (P16); build 4 was never submitted |
 | P14 | A new icon, based on what the app does | Agent; the owner chose it | **Done 2026-09-26:** a two-by-two table on the deep teal, the top-right cell lit amber with a top-down airliner in it, chosen from three directions; `apps/ios/scripts/app-icon.py`; PR #102 |
 | P15 | Cloudflare Web Analytics on the site | Owner decided; agent | **Found 2026-09-27** by the growth session: Cloudflare injects its Web Analytics beacon into every HTML page on awardgrid.dowhiz.com, for browsers only (a plain curl gets none). The owner chose to keep it and **disclose** it: the privacy policy's "This website" section (EN/ZH), the /ios/ row, LEGAL.md. PR on `site/analytics-disclosure`, stacked on #103; deploy the Worker and the web app after merge, on the owner's OK |
 | P13 | Once approved: LEGAL.md, the landing page and the privacy policy stop saying the app is tested privately and not on the App Store | Agent, with the owner's OK | Later |
-| P16 | App Review's decision on 1.0 (3) | Apple | **Rejected 2026-10-05 23:49 PT** (submission `c6c3b469-875a-48bd-b19e-7f47eace8672`) under **Guideline 3.1.1**: "the app uses Pro key to unlock or enable digital features". Reviewed on an iPad Air 11-inch (M3), where the iPhone-only app runs in compatibility mode. Apple's screenshot is the `#/settings/seats` screen (Settings › seats.aero, where the user pastes the key from their own seats.aero account). Nothing was resubmitted and no appeal was filed |
+| P16 | App Review's decision on 1.0 (3) | Apple | **Rejected 2026-10-05 23:49 PT** (submission `c6c3b469-875a-48bd-b19e-7f47eace8672`) under **Guideline 3.1.1**: "the app uses Pro key to unlock or enable digital features". Reviewed on an iPad Air 11-inch (M3), where the iPhone-only app runs in compatibility mode. Apple's screenshot is the `#/settings/seats` pasted-key screen. **Build 6 was resubmitted 2026-10-08 (P12); no later Apple decision or written acceptance is in Messages as read 2026-10-12** |
 | P17 | The 3.1.1 remediation plan | Owner | **Decided 2026-10-06 17:37 PDT: "follow the recommendations"** for every decision, D1-D15, with D16 left for the step before resubmission. The decisions are §0.1. In short: build 4 works for everyone on labelled sample data, Ask is compiled out of the App Store build, the app loses "Pro", "paid", "subscribe" and "live", its pages and App Store texts lose every purchase call to action and keep one neutral sentence about seats.aero Pro (D6), "Login with Seats.aero" is built in parallel, release is Manual (D9), and a build is released only with seats.aero's written permission (D15) |
 | P18 | Reply to App Review (Resolution Center) | Agent, on the owner's instruction (§0.1 D13) | **Sent 2026-10-06 17:45 PDT** in the rejected submission (App Store Connect › App Review › Reply to App Review), after saving a draft and re-reading it. It is a clarification, not an appeal: it explains what "Pro" is, lists build 4's changes and asks three questions. The text is `docs/release/appreview/2026-10-06-reply.md`. The 5-business-day window for an answer ends on Tue 2026-10-13 (D5) |
-| P19 | seats.aero | Agent, from the owner's account, on the owner's instruction (§0.1 D13) | **seats.aero was asked for written permission on 2026-10-06.** Follow-ups are due on Tue 2026-10-13 and Tue 2026-10-20. The owner's seats.aero account has the Apps tab (Developer Tools › Apps); no OAuth app has been created, because creating one accepts seats.aero's OAuth Addendum, which is the owner's act. The Terms and the OAuth Addendum were read on 2026-10-06 |
+| P19 | seats.aero | Agent, from the owner's account, on the owner's instruction (§0.1 D13) | **Snapshot 2026-10-12:** written replies of 2026-10-07 and 2026-10-08 address using Login with Seats.aero and commercial use. The AwardGrid OAuth app exists; its registration remains **unapproved**. The earlier permission-request and follow-up plan is historical; no follow-up is treated as sent unless separately recorded. The original request was sent 2026-10-06 |
 | P20 | Membership and agreements | Agent (read) | **Verified 2026-10-06:** renews on 2027-10-10 (P3) |
 | P21 | Internal TestFlight | Agent, on the owner's instruction (§0.1 D13); the device test is the owner's | **Group created 2026-10-06:** the internal group "AwardGrid owner", automatic distribution on, builds 1, 2 and 3 added, a tester invited. The device smoke test of build 3 is the owner's, on the iPhone |
 | P22 | The public GitHub description | Agent, on the owner's instruction (§0.1 D13) | **Updated 2026-10-06:** "AwardGrid: award seats for many routes and dates in one table, from your own seats.aero account. iPhone app, not yet on the App Store. This repo also holds a private, invite-only web app. Not affiliated with seats.aero." |
@@ -85,9 +96,19 @@ not §2's or the handoff's. Facts only: what was decided, and what has been done
 | D15 | Release rule (revises P1 for release, not for submission) | A build is released only with seats.aero's written permission covering how that build connects (a pasted key, or an approved OAuth client). Silence, or an answer of "use OAuth", means the build is held in Pending Developer Release |
 | D16 | Content rights | The owner decides again, before resubmitting, whether "has the necessary rights" holds |
 
+The table above is the **2026-10-06 decision record**. It is not the current execution status: build 4 was never
+submitted, and build 6 was resubmitted on 2026-10-08 with OAuth and Manual release. No later Apple reply accepts
+OAuth or sample-mode review in the 2026-10-12 Messages snapshot. The original D5 waiting plan does not mean the app
+is still unsubmitted; P12 records the actual submission. D15's separate provider-registration approval gate remains
+unsatisfied.
+
 ---
 
 ## 1. Where it stands
+
+**Historical internal-TestFlight baseline (2026-09-25).** The section below describes build 1 and the original
+blocking steps, not the current public-review submission. The current 2026-10-12 snapshot is at the top and in
+§0 P4/P5/P11/P12/P19; Build 7 execution is tracked in `IOS_1.0_BUILD7.md`.
 
 The engineering for 1.0 is done on the branch and its gates pass. Build 1.0 (1) is archived, signed, exported as an
 internal-TestFlight-only `.ipa` (§5) and uploaded to App Store Connect (B7). Nothing has run on a physical iPhone.

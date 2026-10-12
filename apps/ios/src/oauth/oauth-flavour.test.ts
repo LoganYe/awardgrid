@@ -2,7 +2,7 @@
  * The OAuth flavour (VITE_AG_CONNECT=oauth) as screens and routes, beside the key flavour, read the way a build reads
  * the flags (the environment stubbed, the modules imported afresh): the connect page is a "Connect seats.aero" button
  * with no paste field, Settings says "Connected" rather than characters of a key, the sentences that named the key
- * name the account and the 24-hour limit, and Saved says what opening an item past 24 hours does. In sample mode the
+ * name the account and the memory-only cache, and Saved says what opening an item after restart does. In sample mode the
  * connect page is sample mode's own (the way back to the account), as in the key flavour.
  */
 import { createElement } from "react";
@@ -75,7 +75,8 @@ describe("the connect page", () => {
     expect((seats.element as { type: unknown }).type).toBe(oauth.connectScreen.SeatsConnectScreen);
     const html = at("/settings/seats", createElement(oauth.connectScreen.SeatsConnectScreen), services());
     expect(html).toContain("Connect seats.aero");
-    expect(html).toContain("24 hours");
+    expect(html).toContain("Account results stay only in memory");
+    expect(html).not.toContain("24 hours at most");
     // One sentence: seats.aero's own page asks to sign in and approve, no password seen, and Disconnect.
     const how = /<p[^>]*data-testid="seats-connect-how"[^>]*>([^<]*)<\/p>/.exec(html)?.[1];
     expect(how).toBe(
@@ -119,12 +120,13 @@ describe("the connect page", () => {
 });
 
 describe("the words that named the key", () => {
-  it("OAuth: the account, the token service and the 24-hour limit, in both languages; key: as before", async () => {
+  it("OAuth: the account, token service and memory-only results, in both languages; key: as before", async () => {
     const oauth = (await load("oauth")).copy.SETTINGS;
     for (const locale of ["en", "zh"] as const) {
       for (const text of [oauth[locale].cacheNote, oauth[locale].cacheCleared, oauth[locale].aboutSent]) expect(text, text).not.toMatch(/API key|API 密钥|密钥/);
       expect(oauth[locale].aboutSent).toContain("awardgrid.dowhiz.com");
-      expect(oauth[locale].aboutSent).toContain("24");
+      expect(oauth[locale].aboutSent).toContain(locale === "en" ? "only in memory" : "只保留在内存中");
+      expect(oauth[locale].aboutSent).not.toMatch(/24 hours|24 小时/);
       // The cache note and its result also show in sample mode and before anything is connected: they say the
       // connection is untouched, never that an account is connected.
       for (const text of [oauth[locale].cacheNote, oauth[locale].cacheCleared]) expect(text, text).not.toMatch(/stays connected|still connected|保持连接/);
@@ -145,24 +147,38 @@ describe("the words that named the key", () => {
   });
 });
 
-describe("Saved past 24 hours", () => {
-  it("the card keeps the search and its summary, says the results were removed, and names what opening does", async () => {
+describe("Saved after an OAuth app restart", () => {
+  it("the card keeps the query and explains that opening searches again without promising stored results", async () => {
     const oauth = await load("oauth");
     const snapshot = fixtureSnapshot();
-    const removed: FavoriteV1 = { ...favoriteFromSnapshot(snapshot, FIXTURE_NOW, "f1"), rows: [], rowsRemoved: { at: FIXTURE_NOW, options: 3 } };
+    const removed: FavoriteV1 = { ...favoriteFromSnapshot(snapshot, FIXTURE_NOW, "f1"), rows: [], rowsRemoved: { at: FIXTURE_NOW, options: 0 } };
+    const items = [removed];
     const favorites = {
       subscribe: () => () => {},
-      all: () => [removed],
+      all: () => items,
+      get: (id: string) => items.find((item) => item.id === id),
       usage: () => ({ count: 1, maxItems: 100, bytes: 1000, maxBytes: 5 * 1024 * 1024 }),
       isReadOnly: () => false,
       unreadableCount: () => 0,
       forget: () => {},
     };
     const html = at("/saved", createElement(oauth.favorites.FavoritesScreen), services({ favorites } as unknown as Partial<AppServices>));
-    expect(html).toContain("3 options when saved");
-    expect(html).toContain("Results older than 24 hours are removed from this device");
+    expect(html).toContain("Query conditions saved");
+    expect(html).not.toContain("0 options when saved");
+    expect(html).toContain("Only the query is saved here");
     expect(html).toContain("Open and search again");
-    expect(html).toContain("Results from seats.aero stay in a saved item for 24 hours");
+    expect(html).toContain("after the app restarts");
+    expect(html).not.toContain("24 hours");
     expect(html).not.toContain("Saved snapshot; availability may change");
+
+    const detail = at("/saved/f1", createElement(oauth.favorites.SavedScreen), services({ favorites } as unknown as Partial<AppServices>), "saved/:id");
+    expect(detail).toContain("Query conditions saved");
+    expect(detail).not.toContain("0 options when saved");
+
+    // Ordinary snapshots still describe the rows actually saved, including sample data.
+    items[0] = favoriteFromSnapshot(snapshot, FIXTURE_NOW, "f1");
+    const snapshotCard = at("/saved", createElement(oauth.favorites.FavoritesScreen), services({ favorites } as unknown as Partial<AppServices>));
+    expect(snapshotCard).toContain(`${snapshot.rows.length} options when saved`);
+    expect(snapshotCard).not.toContain("Query conditions saved");
   });
 });

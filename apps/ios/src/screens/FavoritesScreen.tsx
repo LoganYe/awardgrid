@@ -18,8 +18,8 @@
  * "Search again" shows the conditions (with the year) and what it sends, and runs only when confirmed; dates that
  * have all passed are said, with a way to change them instead; without a key it says so, with the way to add one.
  *
- * The OAuth flavour (release plan step 18b; AppServices.shortTermMs) keeps seats.aero's results for 24 hours at most.
- * An item past that keeps its search and a summary (core FavoriteV1.rowsRemoved): its card says so, "Open and search
+ * The OAuth flavour (AppServices.shortTermMs) keeps account results only in memory. Saved files retain query
+ * conditions without a result count (core FavoriteV1.rowsRemoved): its card says so, "Open and search
  * again" names what opening does, and opening it searches its own query again (AppServices.refreshSaved) and shows the
  * fresh results — unless its dates have all passed, or no account is connected, which are said instead.
  */
@@ -288,7 +288,7 @@ export function FavoritesScreen() {
                 <p className="ag-saved-card-sub">{querySubline(item.query, locale)}</p>
                 {savedOptionLine(item, locale) ? <p className="ag-saved-card-option tabular">{savedOptionLine(item, locale)}</p> : null}
                 <p className="ag-saved-card-meta tabular">
-                  {f.savedAt(shortDateTime(item.savedAt, locale))} · {f.options(optionCount(item))}
+                  {f.savedAt(shortDateTime(item.savedAt, locale))} · {item.rowsRemoved?.options === 0 ? f.shortTerm.querySaved : f.options(optionCount(item))}
                 </p>
                 <p className="ag-saved-card-note">{item.rowsRemoved ? f.shortTerm.removedNote : copy("favorite.snapshot", locale)}</p>
                 <div className="ag-saved-card-actions">
@@ -406,7 +406,7 @@ export function SavedScreen() {
       <p className="ag-saved-card-sub">{querySubline(item.query, locale)}</p>
       {savedOptionLine(item, locale) ? <p className="ag-saved-card-option tabular">{savedOptionLine(item, locale)}</p> : null}
       <p className="ag-saved-card-meta tabular">
-        {f.savedAt(shortDateTime(item.savedAt, locale))} · {f.options(optionCount(item))}
+        {f.savedAt(shortDateTime(item.savedAt, locale))} · {item.rowsRemoved?.options === 0 ? f.shortTerm.querySaved : f.options(optionCount(item))}
       </p>
       {/* Said as it happens: the search again that opening an item past 24 hours starts, and how it went. */}
       <p role="status" className="ag-saved-status">

@@ -164,6 +164,8 @@ describe("the facts registry", () => {
       privacy: 3,
       developer_data: 1,
       keys: 3,
+      oauth_connection: 1,
+      short_term_caching: 3,
     });
     for (const [id, text] of retired) {
       expect(scanContent(text, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), id).toContain("PENDING_CLAIM_TEXT");
