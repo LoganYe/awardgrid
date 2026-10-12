@@ -23,7 +23,7 @@
  * Entering copies the language and appearance chosen in Settings into sample/'s settings, so the app looks the same;
  * leaving copies them back (a choice made in sample mode is still the person's choice) and deletes sample/.
  */
-import { type BootstrapOptions, bootstrap, shortTermLimitOf } from "../app/bootstrap";
+import { type BootstrapOptions, type SaveProblem, bootstrap, shortTermLimitOf } from "../app/bootstrap";
 import { type DataSourceControl, type SampleCoverage, writeDataSource } from "../app/data-source";
 import { SETTINGS_NAMESPACE, SettingsStore } from "../app/settings-store";
 import { MemoryKeyStore } from "../native/keychain";
@@ -180,6 +180,9 @@ export interface AccountSweeper {
   stop(): Promise<void>;
   /** Sweep again: the exit that stopped it failed, and sample mode goes on. */
   resume(): void;
+  /** The account's cleanup failure, kept visible while sample mode's own files save successfully. */
+  problem(): SaveProblem | null;
+  subscribe(listener: (problem: SaveProblem | null) => void): () => void;
 }
 
 /**
@@ -193,6 +196,14 @@ export interface AccountSweeper {
 export function accountSweeper(live: BootstrapOptions, files: FileStore, limitMs: number): AccountSweeper {
   let running: Promise<void> | null = null;
   let stopped = false;
+  let problem: SaveProblem | null = null;
+  const listeners = new Set<(problem: SaveProblem | null) => void>();
+  const report = (next: SaveProblem | null) => {
+    problem = next;
+    for (const listener of listeners) {
+      try { listener(problem); } catch { /* A subscriber cannot suppress the cleanup report. */ }
+    }
+  };
   const sweep = (): Promise<void> => {
     if (stopped) return Promise.resolve();
     running ??= (async () => {
@@ -212,7 +223,9 @@ export function accountSweeper(live: BootstrapOptions, files: FileStore, limitMs
           shortTermMs: limitMs,
         });
         await account.sweepShortTerm();
-      } catch {
+        report(account.saveStatus.get());
+      } catch (error) {
+        report({ failed: ["retention"], message: error instanceof Error ? error.message || error.name : String(error), at: (live.now?.() ?? new Date()).toISOString() });
         // The next sweep tries again, and the account's own launch prunes the same way.
       } finally {
         running = null;
@@ -228,6 +241,11 @@ export function accountSweeper(live: BootstrapOptions, files: FileStore, limitMs
     },
     resume() {
       stopped = false;
+    },
+    problem: () => problem,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
   };
 }
@@ -260,7 +278,7 @@ export async function sampleBootstrapOptions(live: BootstrapOptions, files: File
       ...control,
       kind: "sample",
       coverage: SAMPLE_COVERAGE,
-      ...(sweeper ? { sweepAccount: sweeper.sweep } : {}),
+      ...(sweeper ? { sweepAccount: sweeper.sweep, accountCleanupProblem: sweeper.problem, onAccountCleanupChanged: sweeper.subscribe } : {}),
       // These services stop writing under sample/ before it is deleted (SampleFiles.seal), and go on if the exit fails.
       // The account sweeper finishes before the account's own services boot over its files, and goes on likewise.
       async exitSample() {

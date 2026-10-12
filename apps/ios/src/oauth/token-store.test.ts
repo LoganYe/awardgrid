@@ -102,6 +102,48 @@ describe("TokenKeyStore", () => {
     expect(await store.renew("Bearer seats:ota:first")).toEqual({ key: null, reason: "none" });
   });
 
+  it("a revoked grant still clears provider data when Keychain removal fails, and reports the removal failure", async () => {
+    const vault = new MemoryTokenVault({ ...TOKENS, expiresAt: T0 });
+    const removalError = new Error("Keychain removal refused");
+    vault.clear = async () => { throw removalError; };
+    let providerRows = ["a retained provider result"];
+    let reported: unknown;
+    const store = new TokenKeyStore({
+      vault,
+      broker: broker([{ ok: false, reason: "rejected", status: 400, error: "invalid_grant" }]).broker,
+      now: () => T0,
+      onRevoked: (error?: unknown) => { providerRows = []; reported = error; },
+    });
+    await expect(store.get()).rejects.toBe(removalError);
+    expect(providerRows).toEqual([]);
+    expect(reported).toBe(removalError);
+    expect(await vault.read()).not.toBeNull();
+    expect(await store.connected()).toBe(true);
+  });
+
+  it("never hands out a known revoked token while its failed Keychain removal is retried", async () => {
+    const vault = new MemoryTokenVault({ ...TOKENS, expiresAt: T0 });
+    const clear = vault.clear.bind(vault);
+    let refusing = true;
+    vault.clear = async () => { if (refusing) throw new Error("Keychain removal refused"); await clear(); };
+    const { broker: b, calls } = broker([
+      { ok: false, reason: "rejected", status: 400, error: "invalid_grant" },
+      { ok: false, reason: "network", status: 0, error: null },
+    ]);
+    let removalProblem: unknown;
+    const store = new TokenKeyStore({ vault, broker: b, now: () => T0, onRevoked: (error?: unknown) => { removalProblem = error; } });
+    await expect(store.get()).rejects.toThrow("Keychain removal refused");
+    await expect(store.get()).rejects.toThrow("Keychain removal refused");
+    expect(calls).toEqual(["seats:otr:keep"]);
+    refusing = false;
+    expect(await store.get()).toBeNull();
+    expect(await vault.read()).toBeNull();
+    expect(await store.connected()).toBe(false);
+    expect(removalProblem).toBeUndefined();
+    await store.save({ access: "seats:ota:connected-again", refresh: "seats:otr:new", expiresIn: 3599 });
+    expect(await store.get()).toBe("Bearer seats:ota:connected-again");
+  });
+
   it("AwardGrid's own client being refused (invalid_client) is not the person's revocation", async () => {
     const onRevoked = vi.fn();
     const vault = new MemoryTokenVault({ ...TOKENS, expiresAt: T0 });

@@ -54,7 +54,7 @@ export interface TokenKeyStoreOptions {
   now?: () => number;
   earlyMs?: number;
   /** seats.aero refused the refresh token: the connection is gone. Purges what the device kept from it. */
-  onRevoked?: () => Promise<void> | void;
+  onRevoked?: (keychainFailure?: unknown) => Promise<void> | void;
 }
 
 export class TokenKeyStore implements KeyStore {
@@ -62,7 +62,7 @@ export class TokenKeyStore implements KeyStore {
   readonly #broker: TokenBroker;
   readonly #now: () => number;
   readonly #earlyMs: number;
-  readonly #onRevoked: (() => Promise<void> | void) | undefined;
+  readonly #onRevoked: ((keychainFailure?: unknown) => Promise<void> | void) | undefined;
   #renewal: Promise<RenewalOutcome> | null = null;
   /** Moves on every clear() and save(): a renewal started before either never writes. */
   #generation = 0;
@@ -73,6 +73,8 @@ export class TokenKeyStore implements KeyStore {
    * every read until the Keychain keeps them.
    */
   #unsaved: SeatsTokens | null = null;
+  /** The provider refused this grant. A failed Keychain deletion must never make it usable again. */
+  #revoked = false;
 
   constructor(opts: TokenKeyStoreOptions) {
     this.#vault = opts.vault;
@@ -84,6 +86,11 @@ export class TokenKeyStore implements KeyStore {
 
   /** The tokens on file, or the newer ones a renewal could not write there, which are written again first. */
   async #read(): Promise<SeatsTokens | null> {
+    if (this.#revoked) {
+      await this.clear();
+      try { await this.#onRevoked?.(); } catch { /* The purge reports its own failures. */ }
+      return null;
+    }
     const unsaved = this.#unsaved;
     if (unsaved) {
       const generation = this.#generation;
@@ -135,6 +142,7 @@ export class TokenKeyStore implements KeyStore {
     this.#generation += 1;
     this.#unsaved = null;
     await this.#vault.write({ access: grant.access, refresh: grant.refresh, expiresAt: this.#now() + grant.expiresIn * 1000 });
+    this.#revoked = false;
   }
 
   async set(_value: string): Promise<void> {
@@ -147,6 +155,7 @@ export class TokenKeyStore implements KeyStore {
     this.#renewal = null;
     this.#unsaved = null;
     await this.#vault.clear();
+    this.#revoked = false;
   }
 
   /** One renewal at a time; everyone asking meanwhile gets its outcome. */
@@ -173,12 +182,22 @@ export class TokenKeyStore implements KeyStore {
       if (meansRevoked(result)) {
         this.#generation += 1;
         this.#unsaved = null;
-        await this.#vault.clear();
+        this.#revoked = true;
+        let keychainFailure: unknown;
+        let removalFailed = false;
         try {
-          await this.#onRevoked?.();
-        } catch {
-          // The purge reports its own failures; the tokens are gone either way.
+          await this.#vault.clear();
+          this.#revoked = false;
+        } catch (error) {
+          keychainFailure = error;
+          removalFailed = true;
         }
+        try {
+          await this.#onRevoked?.(keychainFailure);
+        } catch {
+          // The purge reports its own failures; a Keychain failure remains a failed removal below.
+        }
+        if (removalFailed) throw keychainFailure;
         return { kind: "revoked" };
       }
       return { kind: "failed", result };

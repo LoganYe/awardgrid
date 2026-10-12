@@ -5,6 +5,9 @@
  * appearance; leaving brings them back, keeps the choice and deletes sample/.
  */
 import { SAMPLE_TIME_LABEL, timeLabel } from "@awardgrid/core/workspace/present";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SETTINGS_NAMESPACE } from "../app/settings-store";
 import type { KeyStore } from "../native/keychain";
@@ -27,6 +30,7 @@ vi.mock("../native/http", async (importOriginal) => {
 });
 
 const { bootstrap } = await import("../app/bootstrap");
+const { Chrome } = await import("../app/App");
 const { DATA_SOURCE_NAMESPACE, readDataSource, resolveBoot, writeDataSource } = await import("../app/data-source");
 const { SAMPLE_INDEX, SAMPLE_KEY, SampleFiles, clearSampleFiles, enterSampleData, exitSampleData, sampleBootstrapOptions } = await import("./boot");
 
@@ -109,6 +113,65 @@ describe("the data source", () => {
 });
 
 describe("sample mode's boot", () => {
+  it("shows account cleanup failures while sample mode runs and keeps them visible after a successful sample save", async () => {
+    const files = new MemoryFileStore();
+    const backup = "watches.damaged-2026-10-18T08-00-00-000Z.json";
+    files.files.set(backup, "{torn user configuration and provider results");
+    await enterSampleData(files);
+    const keys = untouchableKeys();
+    const control = { kind: "live" as const, coverage: null, enterSample: async () => {}, exitSample: async () => {} };
+    const options = await sampleBootstrapOptions({ keys, snapshots: new SnapshotStore(files), now: () => NOW, shortTermMs: 86_400_000 }, files, control);
+    const services = await bootstrap(options);
+    let notices = 0;
+    const unsubscribe = services.saveStatus.subscribe(() => { notices += 1; });
+    await services.dataSource.sweepAccount!();
+    expect(services.saveStatus.get()).toMatchObject({ failed: expect.arrayContaining(["retention"]) });
+    expect(services.saveStatus.get()?.message).toContain(backup);
+    expect(notices).toBeGreaterThan(0);
+    const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(Chrome, { services })));
+    expect(html).toContain('role="alert"');
+    expect(html).toContain(backup);
+    await services.persist();
+    expect(services.saveStatus.get()?.message).toContain(backup);
+    expect(files.files.get(backup)).toBe("{torn user configuration and provider results");
+    expect(keys.touched).toBe(0);
+    expect(nativeBuilt.count).toBe(0);
+    files.files.delete(backup);
+    await services.dataSource.sweepAccount!();
+    expect(services.saveStatus.get()).toBeNull();
+    unsubscribe();
+  });
+
+  it("reports an account backup write failure without touching sample results or credentials", async () => {
+    const files = new MemoryFileStore();
+    const backup = "watches.v1.json";
+    files.files.set(backup, JSON.stringify({ version: 1, watches: [{
+      id: "user-watch", name: "My watch", text: "SFO to NRT next 30 days business", enabled: true,
+      createdAt: NOW.toISOString(), dropThresholdPct: 10, lastCheckedAt: NOW.toISOString(),
+      baseline: [{ key: "program|SFO|NRT|2026-11-01|J", miles: 50_000, fees_cents: 1000 }],
+    }] }));
+    const write = files.write.bind(files);
+    let refuse = true;
+    files.write = async (path, text) => { if (path === backup && refuse) throw new Error("account backup is read-only"); await write(path, text); };
+    await enterSampleData(files);
+    const keys = untouchableKeys();
+    const control = { kind: "live" as const, coverage: null, enterSample: async () => {}, exitSample: async () => {} };
+    const services = await bootstrap(await sampleBootstrapOptions({ keys, snapshots: new SnapshotStore(files), now: () => NOW, shortTermMs: 86_400_000 }, files, control));
+    await services.searchText("SFO to NRT next 30 days business");
+    const sampleRows = services.workspace.getState().displayedSnapshot?.rows;
+    expect(sampleRows?.length).toBeGreaterThan(0);
+    await services.dataSource.sweepAccount!();
+    expect(services.saveStatus.get()?.message).toContain("account backup is read-only");
+    expect(JSON.parse(files.files.get(backup)!).watches[0].baseline).toHaveLength(1);
+    expect(services.workspace.getState().displayedSnapshot?.rows).toBe(sampleRows);
+    expect(keys.touched).toBe(0);
+    refuse = false;
+    await services.dataSource.sweepAccount!();
+    expect(services.saveStatus.get()).toBeNull();
+    expect(JSON.parse(files.files.get(backup)!).watches[0]).toMatchObject({ id: "user-watch", name: "My watch", baseline: [] });
+    expect(services.workspace.getState().displayedSnapshot?.rows).toBe(sampleRows);
+  });
+
   it("enters: saves what live mode holds first, keeps the choice, and boots again", async () => {
     const files = await liveFilesWith(null);
     const order: string[] = [];
