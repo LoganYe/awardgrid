@@ -302,20 +302,24 @@ export class FavoritesStore {
   /**
    * Short-term caching: take the rows (and the coverage they proved) out of every item `expired` names, keeping its
    * query, saved time, origin and `options(item)`, the number of options it showed, as `rowsRemoved`. An item already
-   * without rows is left as it is. One write for all of them; nothing changes in memory unless it succeeds. The undo
+   * without rows and coverage is left as it is. One write for all of them; by default memory changes on success.
+   * `forgetImmediately` is used by OAuth retention so a failed disk cleanup never keeps showing expired responses. The undo
    * of a deletion still offered is forgotten for an item whose rows are removed, so it cannot bring them back.
    */
-  removeRows(expired: (item: FavoriteV1) => boolean, at: string, options: (item: FavoriteV1) => number): Promise<FavoriteRowsRemoval> {
+  removeRows(expired: (item: FavoriteV1) => boolean, at: string, options: (item: FavoriteV1) => number, forgetImmediately = false): Promise<FavoriteRowsRemoval> {
     return this.#serial(async (): Promise<FavoriteRowsRemoval> => {
       if (this.#readOnly) return { ok: false, reason: "read_only" };
       let removed = 0;
       const next = this.#items.map((item) => {
-        if (item.rowsRemoved || item.rows.length === 0 || !expired(item)) return item;
+        if (item.rowsRemoved || (item.rows.length === 0 && item.coverage.state === "unknown") || !expired(item)) return item;
         removed += 1;
         return { ...item, rows: [], coverage: restoreCoverage(null, scopeKey(item.query)), rowsRemoved: { at, options: Math.max(0, Math.trunc(options(item))) } };
       });
       for (const [token, entry] of this.#removed) if (expired(entry.item)) this.#removed.delete(token);
       if (removed === 0) return { ok: true, removed };
+      // OAuth retention must stop showing expired responses even when storage refuses the cleanup write.
+      // Queries stay available; the caller reports the failed disk cleanup and retries it independently.
+      if (forgetImmediately) { this.#items = next; this.#notify(); }
       const written = await this.#write(next);
       return written.ok ? { ok: true, removed } : written;
     });

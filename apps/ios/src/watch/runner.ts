@@ -78,9 +78,10 @@ export interface CheckWatchesOptions {
 }
 
 /** Whether a watch's baseline is older than the short-term limit (its time is the last successful check's). */
-export function baselineExpired(watch: Pick<Watch, "lastCheckedAt">, now: Date, maxAgeMs: number | null | undefined): boolean {
-  if (maxAgeMs == null || watch.lastCheckedAt === null) return false;
-  const at = Date.parse(watch.lastCheckedAt);
+export function baselineExpired(watch: Pick<Watch, "lastCheckedAt" | "baselineFetchedAt">, now: Date, maxAgeMs: number | null | undefined): boolean {
+  const sourceTime = watch.baselineFetchedAt ?? watch.lastCheckedAt;
+  if (maxAgeMs == null || sourceTime === null) return false;
+  const at = Date.parse(sourceTime);
   return !Number.isFinite(at) || now.getTime() - at > maxAgeMs;
 }
 
@@ -171,14 +172,17 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
 
     const cells = snapshot(res.value.grid.cells.flat().flatMap((c) => c.all));
     const window = { date_from: res.value.query.date_from, date_to: res.value.query.date_to };
-    const diff = diffWithinOverlap(watch.baseline, watch.baselineWindow, cells, window, {
+    const diff = diffWithinOverlap(firstCheck ? [] : watch.baseline, firstCheck ? null : watch.baselineWindow, cells, window, {
       dropThresholdPct: watch.dropThresholdPct,
     });
     const changed = !firstCheck && isChanged(diff);
     // The dates this check compared against the baseline; null when it could not compare (first check, no overlap).
     const compared = firstCheck ? null : overlapWindow(watch.baselineWindow, window);
     // What is still unseen now, not when the check started: changes marked seen meanwhile stay seen.
-    const unseenChanges = changed ? [...changesFrom(diff, iso), ...(current.unseenChanges ?? [])].slice(0, MAX_UNSEEN_CHANGES) : (current.unseenChanges ?? null);
+    const fetchedTimes = (res.value.rows ?? []).map((row) => Date.parse(row.fetched_at));
+    const fetchedAt = new Date(Math.min(now.getTime(), ...fetchedTimes.filter(Number.isFinite))).toISOString();
+    const changes = changesFrom(diff, iso).map((change) => opts.baselineMaxAgeMs != null ? { ...change, beforeFetchedAt: change.before ? watch.baselineFetchedAt ?? watch.lastCheckedAt : null, afterFetchedAt: change.after ? fetchedAt : null } : change);
+    const unseenChanges = changed ? [...changes, ...(current.unseenChanges ?? [])].slice(0, MAX_UNSEEN_CHANGES) : (current.unseenChanges ?? null);
 
     const prev = current.unseen ?? null;
     const unseen = changed
@@ -193,6 +197,7 @@ export async function checkWatches(opts: CheckWatchesOptions): Promise<WatchChec
     opts.store.update(watch.id, {
       baseline: cells,
       baselineWindow: window,
+      ...(opts.baselineMaxAgeMs != null ? { baselineFetchedAt: fetchedAt } : {}),
       lastCheckedAt: iso,
       lastAttemptAt: iso,
       lastResult: { at: iso, status: "checked", firstCheck, compared },

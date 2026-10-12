@@ -41,6 +41,15 @@ function heldEngine() {
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 describe("createSearchPort", () => {
+  it("forgets unclaimed answers on expiry and Disconnect instead of keeping their rows in its queue", async () => {
+    const port = createSearchPort({ engine: { searchQuery: async () => ({ ok: true, value: value() }) }, keys: { get: async () => KEY }, now: () => new Date(FIXTURE_NOW) });
+    await port.execute(fixtureQuery(), { id: "old", revision: 1 });
+    (port as typeof port & { clearResults?(cutoff: number): void }).clearResults?.(Date.parse(FIXTURE_NOW) + 1);
+    expect(port.takeResult("old")).toBeNull();
+    await port.execute(fixtureQuery(), { id: "disconnect", revision: 2 });
+    (port as typeof port & { clearResults?(cutoff: number): void }).clearResults?.(Infinity);
+    expect(port.takeResult("disconnect")).toBeNull();
+  });
   it("reads the key when the run starts and returns a snapshot with the run's revision", async () => {
     let key: string | null = null;
     const { engine, started } = heldEngine();

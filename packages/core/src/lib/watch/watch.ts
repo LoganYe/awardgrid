@@ -55,6 +55,8 @@ export interface Watch {
   baseline: CellSnapshot[];
   /** The window `baseline` was taken over. Needed to tell "the date aged out" from "the seat went". */
   baselineWindow?: DateWindow | null;
+  /** OAuth: oldest actual fetch behind the baseline, including a check answered from cache. */
+  baselineFetchedAt?: string | null;
   /** Minimum miles decrease that counts as a price drop, in percent of the baseline. */
   dropThresholdPct: number;
   /**
@@ -101,6 +103,9 @@ export interface WatchChange {
   after: { miles: number; fees_cents: number | null } | null;
   /** When the check that found it ran. */
   at: string;
+  /** OAuth provenance: copying a previous price into a newer change must not reset its retention clock. */
+  beforeFetchedAt?: string | null;
+  afterFetchedAt?: string | null;
 }
 
 /** How many change details a watch keeps until they are seen. */

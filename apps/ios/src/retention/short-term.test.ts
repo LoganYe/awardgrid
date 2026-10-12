@@ -189,6 +189,16 @@ describe("watches", () => {
   const cell = { key: "aeroplan|HKG|SEA|2026-10-20|J", miles: 70000, fees_cents: null, seats_left: 2, computed_last_seen: "2026-10-05T00:00:00Z" };
   const watch = (over: Partial<Watch>): Watch => ({ id: "w", name: "w", text: "t", lastCheckedAt: null, baseline: [], dropThresholdPct: 10, enabled: true, createdAt: "2026-10-01T00:00:00Z", ...over });
 
+  it("does not extend a copied baseline price to 48 hours just because the change was found later", () => {
+    const change = { kind: "cheaper" as const, key: cell.key, before: { miles: 80000, fees_cents: null }, after: { miles: 70000, fees_cents: null }, at: new Date(NOW - 60_000).toISOString(), beforeFetchedAt: new Date(NOW - DAY - 1).toISOString(), afterFetchedAt: new Date(NOW - 60_000).toISOString() };
+    expect(watchExpiry(watch({ lastCheckedAt: change.at, baseline: [cell], unseenChanges: [change] }), cutoff)).toEqual({ unseenChanges: null });
+  });
+
+  it("expires a cache-derived baseline from when its rows were fetched, even after a recent watch check", () => {
+    const w = Object.assign(watch({ lastCheckedAt: new Date(NOW - 60_000).toISOString(), baseline: [cell] }), { baselineFetchedAt: new Date(NOW - DAY - 1).toISOString() });
+    expect(watchExpiry(w, cutoff)).toEqual({ baseline: [], baselineWindow: null, baselineFetchedAt: null });
+  });
+
   it("purges a baseline taken before the cutoff, and change details found before it; the counts and conditions stay", () => {
     const old = new Date(NOW - DAY - 60_000).toISOString();
     const recent = new Date(NOW - 60_000).toISOString();
@@ -199,7 +209,7 @@ describe("watches", () => {
       unseen: { new: 2, dropped: 0, cheaper: 1, since: old },
       unseenChanges: [
         { kind: "new", key: cell.key, before: null, after: { miles: 70000, fees_cents: null }, at: old },
-        { kind: "cheaper", key: cell.key, before: { miles: 80000, fees_cents: null }, after: { miles: 70000, fees_cents: null }, at: recent },
+        { kind: "cheaper", key: cell.key, before: { miles: 80000, fees_cents: null }, after: { miles: 70000, fees_cents: null }, at: recent, beforeFetchedAt: recent, afterFetchedAt: recent },
       ],
     });
     expect(watchExpiry(w, cutoff)).toEqual({ baseline: [], baselineWindow: null, unseenChanges: [w.unseenChanges![1]] });
@@ -209,6 +219,6 @@ describe("watches", () => {
   });
 
   it("a reset (Disconnect) leaves a watch as a new one: no baseline, changes or history, its conditions untouched", () => {
-    expect(watchReset()).toEqual({ baseline: [], baselineWindow: null, unseen: null, unseenChanges: null, lastCheckedAt: null, lastAttemptAt: null, lastResult: null });
+    expect(watchReset()).toEqual({ baseline: [], baselineWindow: null, baselineFetchedAt: null, unseen: null, unseenChanges: null, lastCheckedAt: null, lastAttemptAt: null, lastResult: null });
   });
 });

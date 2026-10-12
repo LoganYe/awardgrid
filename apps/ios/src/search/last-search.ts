@@ -65,6 +65,8 @@ export interface WorkspaceLastSearch extends LastSearchStore {
   record(snapshotId: SnapshotId, entry: LastSearchEntry): void;
   /** Forget every remembered answer (the OAuth flavour's Disconnect: nothing from seats.aero stays, even in memory). */
   clear(): void;
+  /** Forget cached full answers from before the limit; the workspace still supplies each user's query. */
+  expire(cutoff: number): void;
 }
 
 /** Rebuilds the screen's view of a snapshot this session did not produce. */
@@ -73,15 +75,21 @@ export type SnapshotViewer = (snapshot: ResultSnapshot) => SearchView;
 /** Recorded entries for snapshots the workspace has not shown yet (recorded just before it publishes one). */
 const PENDING = 4;
 
-export function createWorkspaceLastSearch(workspace: ShownSnapshots, view?: SnapshotViewer): WorkspaceLastSearch {
+export function createWorkspaceLastSearch(workspace: ShownSnapshots, view?: SnapshotViewer, now: () => Date = () => new Date()): WorkspaceLastSearch {
   const entries = new Map<SnapshotId, LastSearchEntry>();
+  const fetched = new Map<SnapshotId, number>();
+  const ageOf = (entry: LastSearchEntry) => Math.min(now().getTime(), ...(entry.value.rows ?? []).map((row) => {
+    const at = Date.parse(row.fetched_at);
+    return Number.isFinite(at) ? at : -Infinity;
+  }));
   const record = (snapshotId: SnapshotId, entry: LastSearchEntry) => {
     entries.delete(snapshotId);
     entries.set(snapshotId, { text: entry.text, value: entry.value });
+    fetched.set(snapshotId, ageOf(entry));
     // Keep entries for kept snapshots, plus the few most recent ones not published yet.
     const kept = new Set(workspace.history().map((s) => s.id));
     const pending = [...entries.keys()].filter((id) => !kept.has(id));
-    for (const id of pending.slice(0, Math.max(0, pending.length - PENDING))) entries.delete(id);
+    for (const id of pending.slice(0, Math.max(0, pending.length - PENDING))) { entries.delete(id); fetched.delete(id); }
   };
   return {
     get() {
@@ -101,6 +109,7 @@ export function createWorkspaceLastSearch(workspace: ShownSnapshots, view?: Snap
       const restored = workspace.wasRestored?.(shown.id) ?? true;
       const rebuilt: LastSearchEntry = restored ? { text: shown.query.raw_text, value, savedAt: shown.createdAt } : { text: shown.query.raw_text, value };
       entries.set(shown.id, rebuilt);
+      fetched.set(shown.id, ageOf(rebuilt));
       return rebuilt;
     },
     /** For the snapshot on screen now. The app records by snapshot id instead (`record`). */
@@ -111,6 +120,10 @@ export function createWorkspaceLastSearch(workspace: ShownSnapshots, view?: Snap
     record,
     clear() {
       entries.clear();
+      fetched.clear();
+    },
+    expire(cutoff) {
+      for (const [id, at] of fetched) if (at < cutoff) { entries.delete(id); fetched.delete(id); }
     },
   };
 }

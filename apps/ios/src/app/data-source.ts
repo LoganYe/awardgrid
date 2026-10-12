@@ -12,7 +12,7 @@
  */
 import type { QueryObject } from "@awardgrid/core/query/schema";
 import { createContext } from "react";
-import type { AppServices, BootstrapOptions } from "./bootstrap";
+import type { AppServices, BootstrapOptions, SaveProblem } from "./bootstrap";
 import { type FileStore, capacitorFiles } from "../store/persistence";
 import { SlotFileStorage } from "../workspace/slot-storage";
 
@@ -58,6 +58,9 @@ export interface DataSourceControl {
    * foreground and hourly, as the account's services run their own sweep. Absent otherwise. Never throws.
    */
   sweepAccount?: () => Promise<void>;
+  /** A cleanup failure in the account's files remains visible while sample data is open. */
+  accountCleanupProblem?: () => SaveProblem | null;
+  onAccountCleanupChanged?: (listener: () => void) => () => void;
 }
 
 /** A run with no way to switch (tests, the probe builds): live, and switching does nothing. */

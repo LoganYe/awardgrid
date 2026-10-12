@@ -19,6 +19,16 @@ import { checkWatches } from "./runner";
 
 const KEY = "pro_test_key_ABC123xyz_DO_NOT_LEAK";
 
+it("an expired cached baseline is never copied into a new Watch result just because the last check was recent", async () => {
+  const c = clock("2026-10-02T01:00:00Z");
+  const store = new WatchStore();
+  store.add({ ...watch({ lastCheckedAt: "2026-10-02T00:00:00Z", baseline: [{ key: "alaska|HKG|SEA|2026-10-05|J", miles: 80000, fees_cents: null, seats_left: 2, computed_last_seen: "2026-10-01T00:00:00Z" }], baselineWindow: { date_from: "2026-10-01", date_to: "2026-10-30" } }), baselineFetchedAt: "2026-10-01T00:00:00Z" });
+  const results = await checkWatches({ engine: realEngine(seatsAero(() => [["2026-10-05", "60000"]]), c.now), store, apiKey: KEY, now: c.now, baselineMaxAgeMs: 24 * 3600_000 });
+  expect(results[0]?.firstCheck).toBe(true);
+  expect(results[0]?.outcome).toMatchObject({ status: "checked", changed: false, diff: { dropped: [], price_drops: [] } });
+  expect(store.get("w1")?.baselineFetchedAt).toBe("2026-10-02T01:00:00.000Z");
+});
+
 function watch(over: Partial<Watch> = {}): Watch {
   return {
     id: "w1",

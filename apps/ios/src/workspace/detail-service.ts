@@ -37,6 +37,8 @@ export type DetailOutcome = { kind: "loaded"; value: DetailLoaded } | { kind: "f
 export interface DetailService {
   /** Forget every loaded itinerary (Disconnect). A load still out when this runs keeps nothing either. */
   clear(): void;
+  /** Forget expired itineraries during a sweep, including options no screen opens again. */
+  expire(cutoff: number): void;
   /** The shown result a reference names, or null: nothing else can be opened. */
   resolve(ref: ResultRef): { snapshot: ResultSnapshot; row: WorkspaceRow } | null;
   /** Itineraries loaded before on this device for this option, if any. Sends nothing. */
@@ -97,6 +99,9 @@ export function createDetailService(deps: DetailServiceDeps): DetailService {
       generation += 1;
       loaded.clear();
       inFlight.clear();
+    },
+    expire(cutoff) {
+      for (const [key, value] of loaded) if (!(Date.parse(value.loadedAt) >= cutoff)) loaded.delete(key);
     },
     peek(ref) {
       const found = resolve(ref);

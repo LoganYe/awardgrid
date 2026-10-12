@@ -1,25 +1,10 @@
 /**
- * Short-term caching for the OAuth flavour (release plan step 18b; app/flags.ts OAUTH).
- *
- * seats.aero's OAuth Addendum (2025-08-14) allows results obtained through an OAuth client to be cached for at most
- * 24 hours, purged automatically, with no persistent storage or offline copy beyond that. The key flavour keeps what
- * it always kept; under OAuth every place the device holds seats.aero's results follows the 24-hour limit:
- *
- *   - **The availability cache** (cache.json and memory). Its 45-minute TTL decides when a search fetches again, but
- *     the rows themselves stayed until a later fetch of the same scope replaced them. `pruneCacheSnapshot` drops rows
- *     and coverage fetched more than 24 hours ago, on launch, before every save and on every sweep.
- *   - **The workspace** (workspace-v1: the snapshots on the Search screen and the ones before them). `shortTermStorage`
- *     drops snapshots holding older rows whenever the file is read or written, and writes the pruned file back when a
- *     read found any, so they leave the disk as well as the screen; it also writes both of the two-slot storage's
- *     slots, for the workspace and for Saved, so no older version lingers in the second one.
- *   - **Saved** keeps each item's query, when it was saved and how many options it showed; its rows go once they are
- *     24 hours old (core FavoritesStore.removeRows), and opening it searches again (FavoritesStore.replaceRows).
- *   - **Watch baselines** are purged after 24 hours (`expireWatchData`): the next check sets a new baseline instead of
- *     comparing (watch/runner.ts baselineExpired), and change details older than 24 hours go too. A fingerprint was
- *     the alternative; it cannot say how much cheaper a seat became, which is what a watch reports.
- *   - **An option's details** are forgotten after 24 hours (workspace/detail-service.ts maxAgeMs).
- *
- * Disconnecting purges all of it at once (app/bootstrap.ts purgeSeatsData), as does a revoked grant.
+ * Expiry of the OAuth flavour's in-memory provider responses. ProviderConfigurationFiles is the separate
+ * persistence boundary: it saves user queries/settings while excluding results from every new file and cleaning
+ * known fields in legacy copies. Suspended iOS apps cannot run a physical deletion deadline, so new OAuth results
+ * have no persistent offline copy. Launch, foreground, saves and running sweeps expire the cache, workspace,
+ * Saved rows, watch baselines/change details, Ask answers and loaded itineraries. Disconnect and revocation purge
+ * those responses immediately. The key and sample flavours keep their existing persistence behavior.
  */
 import type { CacheSnapshot } from "@awardgrid/core/seatsaero/cache";
 import type { Watch } from "@awardgrid/core/watch";
@@ -154,7 +139,7 @@ export function favoriteFetchedAt(item: FavoriteV1): number | null {
 
 /** Whether a saved item still holds rows older than `cutoff` (the rows to remove). */
 export function favoriteExpired(item: FavoriteV1, cutoff: number): boolean {
-  if (item.rows.length === 0) return false;
+  if (item.rows.length === 0 && item.coverage.state === "unknown") return false;
   const at = favoriteFetchedAt(item);
   return at === null || at < cutoff;
 }
@@ -166,15 +151,16 @@ export function favoriteExpired(item: FavoriteV1, cutoff: number): boolean {
  */
 export function watchExpiry(watch: Watch, cutoff: number): Partial<Watch> | null {
   const patch: Partial<Watch> = {};
-  const checkedAt = ms(watch.lastCheckedAt);
+  const checkedAt = ms(watch.baselineFetchedAt ?? watch.lastCheckedAt);
   const baselineOld = checkedAt === null || checkedAt < cutoff;
   if (baselineOld && (watch.baseline.length > 0 || (watch.baselineWindow ?? null) !== null)) {
     patch.baseline = [];
     patch.baselineWindow = null;
+    if (watch.baselineFetchedAt !== undefined) patch.baselineFetchedAt = null;
   }
   const changes = watch.unseenChanges ?? null;
   if (changes && changes.length > 0) {
-    const kept = changes.filter((change) => recent(change.at, cutoff));
+    const kept = changes.filter((change) => recent(change.at, cutoff) && (!change.before || recent(change.beforeFetchedAt, cutoff)) && (!change.after || recent(change.afterFetchedAt ?? change.at, cutoff)));
     if (kept.length !== changes.length) patch.unseenChanges = kept.length > 0 ? kept : null;
   }
   return Object.keys(patch).length > 0 ? patch : null;
@@ -186,5 +172,5 @@ export function watchExpiry(watch: Watch, cutoff: number): Partial<Watch> | null
  * conditions and whether it is on are kept.
  */
 export function watchReset(): Partial<Watch> {
-  return { baseline: [], baselineWindow: null, unseen: null, unseenChanges: null, lastCheckedAt: null, lastAttemptAt: null, lastResult: null };
+  return { baseline: [], baselineWindow: null, baselineFetchedAt: null, unseen: null, unseenChanges: null, lastCheckedAt: null, lastAttemptAt: null, lastResult: null };
 }

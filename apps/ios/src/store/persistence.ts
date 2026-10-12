@@ -31,6 +31,8 @@ export interface FileStore {
   read(path: string): Promise<string | null>;
   write(path: string, data: string): Promise<void>;
   remove(path: string): Promise<void>;
+  /** Root-level names only. OAuth cleanup uses this to find this app's old watch backups. */
+  list?(): Promise<string[]>;
 }
 
 export const capacitorFiles: FileStore = {
@@ -53,9 +55,13 @@ export const capacitorFiles: FileStore = {
   async remove(path) {
     try {
       await Filesystem.deleteFile({ path, directory: Directory.Data });
-    } catch {
-      // Already gone.
+    } catch (err) {
+      if (!isFileNotFound(err)) throw err;
     }
+  },
+  async list() {
+    const result = await Filesystem.readdir({ path: "", directory: Directory.Data });
+    return result.files.filter((file) => file.type === "file").map((file) => file.name);
   },
 };
 
@@ -76,6 +82,9 @@ export class MemoryFileStore implements FileStore {
   }
   async remove(path: string) {
     this.files.delete(path);
+  }
+  async list() {
+    return [...this.files.keys()].filter((path) => !path.includes("/"));
   }
 }
 
