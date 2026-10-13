@@ -1,5 +1,6 @@
 /**
  * POST /api/seats/connect {} → 200 { url } | 400 invalid_body | 401 unauthorized | 503 { error: "not_configured" }
+ *   | 503 { error: "paused" } (connecting is paused on this server: SEATS_OAUTH_WEB=off, src/lib/seats-oauth/pause.ts)
  *
  * Starts Login with Seats.aero for the signed-in account: records a fresh state for it (src/lib/seats-oauth/state.ts)
  * and answers seats.aero's consent URL, which the settings page opens. The person comes back through the token
@@ -9,7 +10,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServerDb } from "@/lib/server/db";
 import { hasJsonContentType, jsonError } from "@/lib/server/http";
-import { beginConnect, consentUrl, seatsOAuthConfigFromEnv } from "@/lib/seats-oauth";
+import { beginConnect, consentUrl, seatsOAuthConfigFromEnv, seatsOAuthPaused } from "@/lib/seats-oauth";
 import { userFromRequest } from "../../keys/session";
 
 export const runtime = "nodejs";
@@ -25,6 +26,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const user = userFromRequest(request, db);
   if (!user) return jsonError(401, "unauthorized");
   if (!hasJsonContentType(request)) return jsonError(400, "invalid_body");
+  // Paused: no sign-in is started, so none can come back.
+  if (seatsOAuthPaused()) return NextResponse.json({ error: "paused" }, { status: 503, headers: NO_STORE });
   const config = seatsOAuthConfigFromEnv();
   if (!config) return NextResponse.json({ error: "not_configured" }, { status: 503, headers: NO_STORE });
   const state = beginConnect(db, user.id);

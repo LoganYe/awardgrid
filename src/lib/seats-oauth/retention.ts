@@ -17,7 +17,8 @@
  *                                       next run sets a new baseline instead of reporting everything as new.
  *
  * The sweep runs when the web server opens the database and every SWEEP_INTERVAL_MS after (src/lib/server/db.ts), and
- * on every worker tick (src/cli/worker-main.ts). Nothing is logged but counts.
+ * on every worker tick (src/cli/worker-main.ts). With Login with Seats.aero paused (./pause.ts) all of it goes at once,
+ * whatever its age (`purgeAllSeatsData`). Nothing is logged but counts.
  */
 import { and, eq, inArray, isNull, lt } from "drizzle-orm";
 import type { DbConn } from "@/lib/auth/clock";
@@ -78,6 +79,21 @@ export function purgeSeatsDataForUser(db: DbConn, userId: string, now: Date = ne
     const routes = tx.delete(routesCache).where(eq(routesCache.userId, userId)).run().changes;
     const owned = tx.select({ id: savedQueries.id }).from(savedQueries).where(eq(savedQueries.userId, userId));
     const runs = purgeRuns(tx, at, and(inArray(queryRuns.savedQueryId, owned), isNull(queryRuns.cellsPurgedAt)));
+    return { rows, coverage, routes, runs };
+  });
+}
+
+/**
+ * Everything seats.aero-derived held for EVERY account, whatever its age: Login with Seats.aero paused on this server
+ * (./pause.ts). One transaction.
+ */
+export function purgeAllSeatsData(db: DbConn, now: Date = new Date()): PurgeReport {
+  const at = now.toISOString();
+  return db.transaction((tx) => {
+    const rows = tx.delete(availabilityCache).run().changes;
+    const coverage = tx.delete(cacheCoverage).run().changes;
+    const routes = tx.delete(routesCache).run().changes;
+    const runs = purgeRuns(tx, at, isNull(queryRuns.cellsPurgedAt));
     return { rows, coverage, routes, runs };
   });
 }

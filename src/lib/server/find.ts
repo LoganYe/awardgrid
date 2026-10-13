@@ -21,7 +21,15 @@ import { createSqliteStores } from "@/lib/db/stores";
 import { buildGrid, enumeratePairs } from "@awardgrid/core/grid/pivot";
 import type { AvailabilityRow, Grid, NotFetchedPair, Orientation, RoutePair } from "@awardgrid/core/grid/types";
 import type { CoverageEvidence } from "@awardgrid/core/workspace/types";
-import { SeatsNotConnectedError, SeatsRenewalUnavailableError, SHORT_TERM_MAX_AGE_MINUTES, SHORT_TERM_MAX_AGE_MS, withSeatsAuthorization, type TokenBroker } from "@/lib/seats-oauth";
+import {
+  SeatsNotConnectedError,
+  SeatsRenewalUnavailableError,
+  SHORT_TERM_MAX_AGE_MINUTES,
+  SHORT_TERM_MAX_AGE_MS,
+  pausedExtra,
+  withSeatsAuthorization,
+  type TokenBroker,
+} from "@/lib/seats-oauth";
 import { BodyError } from "@/lib/server/http";
 import { PARSER_MODEL_DEFAULT, ParseError, parseQuery, resolveParserModel, type ParseQueryResult, type ParserClient } from "@awardgrid/core/query";
 import type { QueryObject } from "@awardgrid/core/query/schema";
@@ -716,7 +724,7 @@ export function utcToday(now: Date = new Date()): string {
  */
 export function gridErrorResponse(err: unknown): NextResponse {
   if (err instanceof BodyError) return gridError(400, "invalid_body");
-  if (err instanceof SeatsNotConnectedError) return gridError(409, "no_key", { provider: err.provider });
+  if (err instanceof SeatsNotConnectedError) return gridError(409, "no_key", { provider: err.provider, ...pausedExtra(err) });
   if (err instanceof SeatsRenewalUnavailableError) return gridError(502, "seatsaero", { kind: err.kind });
   if (err instanceof QuotaExceededError) {
     return gridError(429, "quota", { resetAt: err.resetAt.toISOString(), remaining: err.remaining, requested: err.requested });

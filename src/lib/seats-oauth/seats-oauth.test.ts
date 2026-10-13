@@ -1,21 +1,25 @@
 /**
  * Login with Seats.aero in the web app (src/lib/seats-oauth): the state, the encrypted token store, the token service
- * client, renewal (early, single-flight, across processes, revocation), connecting, short-term caching, and migration
- * 0005. In-memory SQLite, a fake token service and fake clocks: nothing reaches the network.
+ * client, renewal (early, single-flight, across processes, revocation), connecting, short-term caching, the owner's
+ * pause switch, and migration 0005. In-memory SQLite, a fake token service and fake clocks: nothing reaches the
+ * network.
  */
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type Database from "better-sqlite3";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { openDb, openTestDb, type Db } from "@/lib/db/client";
-import { availabilityCache, cacheCoverage, queryRuns, routesCache, savedQueries, seatsConnections, seatsOauthStates, userKeys, users } from "@/lib/db/schema";
+import { apiUsage, availabilityCache, cacheCoverage, queryRuns, routesCache, savedQueries, seatsConnections, seatsOauthStates, userKeys, users } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
-import { SeatsNotConnectedError, renewSeatsAuthorization, seatsAuthorization, withSeatsAuthorization } from "./access";
+import { setKey } from "@/lib/keys";
+import { SeatsNotConnectedError, SeatsPausedError, renewSeatsAuthorization, seatsAuthorization, withSeatsAuthorization } from "./access";
 import { type BrokerResult, type TokenBroker, createTokenBroker, meansRevoked } from "./broker";
 import { OAUTH_REDIRECT_URI, SEATS_CONSENT_URL, TOKEN_SERVICE_URL, consentUrl, safeAddress, seatsOAuthConfigFromEnv } from "./config";
 import { finishConnect } from "./connect";
-import { SHORT_TERM_MAX_AGE_MS, purgeSeatsDataForUser, sweepSeatsData } from "./retention";
+import { OFF_VALUES, ON_VALUES, checkpointAfterPurge, purgeForPause, purgedAnything, seatsOAuthPaused, seatsOAuthWebSetting } from "./pause";
+import { SHORT_TERM_MAX_AGE_MS, purgeAllSeatsData, purgeSeatsDataForUser, sweepSeatsData } from "./retention";
 import { MAX_PENDING_STATES, STATE_TTL_MS, WEB_STATE_RE, beginConnect, consumeState, hashState, randomWebState } from "./state";
 import { connectionStatus, isSeatsConnected, readConnection, reconnectNoticeDue, saveConnection, tokenAad, writeRefreshed } from "./store";
 import { connectForTests } from "./testing";
@@ -389,6 +393,142 @@ describe("short-term caching (server)", () => {
   });
 });
 
+describe("pause (SEATS_OAUTH_WEB=off)", () => {
+  const config = { clientId: "seats:cid:test", consentUrl: SEATS_CONSENT_URL, redirectUri: OAUTH_REDIRECT_URI, tokenServiceUrl: TOKEN_SERVICE_URL };
+  afterEach(() => {
+    delete process.env.SEATS_OAUTH_WEB;
+  });
+
+  it("off (and its other spellings) pauses; unset or on changes nothing; a value it does not know pauses too", () => {
+    for (const value of ["off", "OFF", " off ", "0", "false", "no", "paused"]) {
+      expect(seatsOAuthWebSetting({ SEATS_OAUTH_WEB: value }), value).toBe("off");
+      expect(seatsOAuthPaused({ SEATS_OAUTH_WEB: value }), value).toBe(true);
+    }
+    for (const value of [undefined, "", " ", "on", "ON", "1", "true", "yes"]) {
+      expect(seatsOAuthWebSetting({ SEATS_OAUTH_WEB: value }), String(value)).toBe("on");
+      expect(seatsOAuthPaused({ SEATS_OAUTH_WEB: value }), String(value)).toBe(false);
+    }
+    // Set only ever to pause: a spelling the switch does not know is not read as on.
+    for (const value of ["pause", "disabled", "of", "offf"]) {
+      expect(seatsOAuthWebSetting({ SEATS_OAUTH_WEB: value }), value).toBe("unknown");
+      expect(seatsOAuthPaused({ SEATS_OAUTH_WEB: value }), value).toBe(true);
+    }
+    expect(seatsOAuthPaused({})).toBe(false);
+    expect([...OFF_VALUES]).toContain("off");
+    for (const value of ON_VALUES) expect(OFF_VALUES.has(value), value).toBe(false);
+    // The default reads the process environment.
+    expect(seatsOAuthPaused()).toBe(false);
+    process.env.SEATS_OAUTH_WEB = "off";
+    expect(seatsOAuthPaused()).toBe(true);
+  });
+
+  it("a fresh database holds no sign-in and no seats.aero result, so the first purge has nothing to do", () => {
+    const d = openTestDb();
+    for (const table of [seatsConnections, seatsOauthStates, availabilityCache, cacheCoverage, routesCache, queryRuns]) expect(d.select().from(table).all()).toEqual([]);
+    const report = purgeForPause(d, T0);
+    expect(report).toEqual({ connections: 0, states: 0, rows: 0, coverage: 0, routes: 0, runs: 0 });
+    expect(purgedAnything(report)).toBe(false);
+  });
+
+  it("purgeForPause deletes every account's tokens, sign-ins under way and seats.aero results, whatever their age", () => {
+    const d = db();
+    connectForTests(d, "alice", { masterKey: MASTER, now: T0 });
+    connectForTests(d, "bob", { masterKey: MASTER, now: T0 });
+    beginConnect(d, "bob", { now: T0 });
+    seedSeatsData(d, "alice", T0);
+    seedSeatsData(d, "bob", new Date(T0.getTime() + 60_000)); // fresh: the 24-hour sweep would keep it
+    setKey(d, "alice", "duffel", "duffel_live_SECRET_kept", { masterKey: MASTER });
+    d.insert(apiUsage).values({ userId: "alice", provider: "seats_aero", day: "2026-10-08", calls: 7 }).run();
+
+    const report = purgeForPause(d, new Date(T0.getTime() + 120_000));
+    expect(report).toEqual({ connections: 2, states: 1, rows: 2, coverage: 2, routes: 2, runs: 2 });
+    expect(purgedAnything(report)).toBe(true);
+    expect(d.select().from(seatsConnections).all()).toEqual([]);
+    expect(d.select().from(seatsOauthStates).all()).toEqual([]);
+    expect(heldBy(d, "alice")).toEqual({ rows: 0, coverage: 0, routes: 0, runs: 0 });
+    expect(heldBy(d, "bob")).toEqual({ rows: 0, coverage: 0, routes: 0, runs: 0 });
+    // A run keeps its counts; its snapshot is gone and it is never a baseline again.
+    expect(d.select().from(queryRuns).where(eq(queryRuns.id, "run-bob")).get()).toMatchObject({ cellsJson: "[]", cellsHash: "", newCells: 3, cellsPurgedAt: new Date(T0.getTime() + 120_000).toISOString() });
+    // What is not seats.aero data stays: accounts, saved queries, call counts, other providers' keys.
+    expect(d.select({ id: users.id }).from(users).all()).toHaveLength(2);
+    expect(d.select().from(savedQueries).all()).toHaveLength(2);
+    expect(d.select().from(apiUsage).all()).toHaveLength(1);
+    expect(d.select({ provider: userKeys.provider }).from(userKeys).all()).toEqual([{ provider: "duffel" }]);
+    // Nothing more to do a second time.
+    expect(purgedAnything(purgeForPause(d, T0))).toBe(false);
+    expect(purgeAllSeatsData(d, T0)).toEqual({ rows: 0, coverage: 0, routes: 0, runs: 0 });
+  });
+
+  it("what the purge deletes leaves the files on disk too: zeroed in the database file, and the write-ahead log emptied", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "awardgrid-pause-disk-"));
+    const file = path.join(root, "awardgrid.db");
+    const d = openDb({ path: file });
+    try {
+      expect(sqliteOf(d).pragma("secure_delete", { simple: true })).toBe(1);
+      seedUsers(d, ["alice"]);
+      connectForTests(d, "alice", { masterKey: MASTER, access: ACCESS, now: T0 });
+      const ciphertext = d.select().from(seatsConnections).get()!.ciphertext;
+      const iso = T0.toISOString();
+      d.insert(availabilityCache)
+        .values({ userId: "alice", program: "alaska", origin: "HKG", dest: "SEA", date: "2026-10-20", cabin: "J", miles: 70000, computedLastSeen: iso, sourceId: "PURGE-DISK-MARKER-ROW", fetchedAt: iso })
+        .run();
+      d.insert(savedQueries).values({ id: "sq-alice", userId: "alice", name: "n", queryJson: "{}", createdAt: iso }).run();
+      d.insert(queryRuns).values({ id: "run-alice", savedQueryId: "sq-alice", ranAt: iso, cellsHash: "h", cellsJson: '["PURGE-DISK-MARKER-RUN"]', newCells: 1 }).run();
+      // As a running server would have it: the rows in the database file itself.
+      sqliteOf(d).pragma("wal_checkpoint(TRUNCATE)");
+      const markers = [ciphertext, "PURGE-DISK-MARKER-ROW", "PURGE-DISK-MARKER-RUN"];
+      expect(markers.map((m) => readFileSync(file).includes(m))).toEqual([true, true, true]);
+
+      expect(purgedAnything(purgeForPause(d, T0))).toBe(true);
+      checkpointAfterPurge(d);
+      expect(markers.map((m) => readFileSync(file).includes(m))).toEqual([false, false, false]);
+      expect(existsSync(`${file}-wal`) ? statSync(`${file}-wal`).size : 0).toBe(0);
+    } finally {
+      sqliteOf(d).close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("no token is read, handed out or renewed for anyone: SeatsPausedError, a SeatsNotConnectedError, comes first", async () => {
+    const d = db();
+    // About to run out: unpaused, this would ask the token service.
+    connectForTests(d, "alice", { masterKey: MASTER, access: ACCESS, refresh: REFRESH, expiresIn: 60, now: T0 });
+    process.env.SEATS_OAUTH_WEB = "off";
+    const service: TokenBroker = { exchange: NOT_USED, refresh: NOT_USED };
+    const opts = { now: () => T0, broker: service };
+    const paused = seatsAuthorization(d, "alice", opts); // no masterKey: MASTER_KEY is never read either
+    await expect(paused).rejects.toBeInstanceOf(SeatsPausedError);
+    await expect(seatsAuthorization(d, "bob", opts)).rejects.toBeInstanceOf(SeatsNotConnectedError);
+    expect(await renewSeatsAuthorization(d, "alice", `Bearer ${ACCESS}`, opts)).toEqual({ key: null, reason: "none" });
+    let attempts = 0;
+    await expect(
+      withSeatsAuthorization(d, "alice", opts, async () => {
+        attempts += 1;
+        return "sent";
+      }),
+    ).rejects.toMatchObject({ name: "SeatsPausedError", code: "no_key", provider: "seats_aero", paused: true });
+    expect(attempts).toBe(0);
+    // Turned back on, the same connection works again.
+    delete process.env.SEATS_OAUTH_WEB;
+    expect(await seatsAuthorization(d, "alice", { now: () => T0, masterKey: MASTER, earlyMs: 0 })).toBe(`Bearer ${ACCESS}`);
+  });
+
+  it("finishConnect: paused, nothing exchanged, and the account's sign-ins under way are forgotten; on again, it connects", async () => {
+    const d = db();
+    const state = beginConnect(d, "alice", { now: T0 });
+    process.env.SEATS_OAUTH_WEB = "off";
+    const service = broker(fresh(ACCESS, REFRESH));
+    const opts = { now: () => T0, masterKey: MASTER, broker: service, config };
+    expect(await finishConnect(d, "alice", new URLSearchParams({ code: "c", state }), opts)).toBe("paused");
+    expect(service.exchanged).toEqual([]);
+    expect(d.select().from(seatsOauthStates).all()).toEqual([]);
+    expect(isSeatsConnected(d, "alice")).toBe(false);
+    delete process.env.SEATS_OAUTH_WEB;
+    const again = beginConnect(d, "alice", { now: T0 });
+    expect(await finishConnect(d, "alice", new URLSearchParams({ code: "c", state: again }), opts)).toBe("connected");
+  });
+});
+
 describe("migration 0005", () => {
   const dirs: string[] = [];
   afterEach(() => {
@@ -435,6 +575,11 @@ describe("migration 0005", () => {
 // ---------------------------------------------------------------------------
 
 /** One row of every kind of seats.aero data the server keeps, for `userId`, fetched at `at`. */
+/** drizzle's better-sqlite3 handle carries its connection as $client; the repo's Db alias does not declare it. */
+function sqliteOf(d: Db): Database.Database {
+  return (d as Db & { $client: Database.Database }).$client;
+}
+
 function seedSeatsData(d: Db, userId: string, at: Date): void {
   const iso = at.toISOString();
   d.insert(availabilityCache)

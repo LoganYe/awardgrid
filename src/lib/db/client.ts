@@ -1,6 +1,8 @@
 /**
  * SQLite via better-sqlite3 + Drizzle. One file, volume-mounted (kickoff §2).
  * WAL mode + foreign keys on. Migrations are the SQL files drizzle-kit generated in ./drizzle.
+ * secure_delete on: a deleted row is overwritten with zeros, not left in a free page of the file, so what the app
+ * deletes (seats.aero sign-ins and results: src/lib/seats-oauth/retention.ts, pause.ts) leaves the disk as well.
  */
 import Database from "better-sqlite3";
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -33,6 +35,7 @@ export function openDb(opts: OpenDbOptions = {}): Db {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   sqlite.pragma("busy_timeout = 5000");
+  sqlite.pragma("secure_delete = ON");
   const db = drizzle(sqlite, { schema });
   if (opts.migrate !== false) {
     migrate(db, { migrationsFolder: opts.migrationsFolder ?? path.resolve(process.cwd(), "drizzle") });

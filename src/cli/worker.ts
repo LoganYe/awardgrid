@@ -19,6 +19,7 @@ try {
       MASTER_KEY: env.MASTER_KEY,
       AWARDGRID_DATA_DIR: env.AWARDGRID_DATA_DIR,
       TELEGRAM_API_BASE: env.TELEGRAM_API_BASE,
+      SEATS_OAUTH_WEB: env.SEATS_OAUTH_WEB,
     },
   });
 } catch (err) {

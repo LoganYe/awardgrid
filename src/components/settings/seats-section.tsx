@@ -12,6 +12,9 @@
  *     options' rows, the Ask conversation).
  *   - An account whose pasted key the move to Login with Seats.aero removed is told so once, until it connects or
  *     dismisses the notice (DELETE /api/seats/notice).
+ *   - While connecting is paused on the server (SEATS_OAUTH_WEB=off, src/lib/seats-oauth/pause.ts) Connect is off and
+ *     one line says so; the server has deleted every sign-in, and this browser forgets its results on every page
+ *     (src/components/shell/seats-paused-purge.tsx). Disconnect stays, for a connection the purge has not reached yet.
  *
  * No token ever reaches this page: the server hands it a boolean and a date.
  */
@@ -26,6 +29,7 @@ import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import type { ConnectOutcome } from "@/lib/seats-oauth/connect";
 import { apiJson, formatDayMonth } from "./api";
 import { QuotaBar, type QuotaView } from "./quota-bar";
+import { SEATS_PAUSED_COPY } from "./seats-paused-copy";
 import { SettingsNotice, SettingsSection } from "./section";
 
 export interface SeatsSectionProps {
@@ -35,6 +39,8 @@ export interface SeatsSectionProps {
   connectedAt: string | null;
   /** Whether this server has a seats.aero client ID (SEATS_OAUTH_CLIENT_ID). */
   configured: boolean;
+  /** Whether connecting is paused on this server (SEATS_OAUTH_WEB=off). */
+  paused: boolean;
   /** Say, once, that the pasted key was removed and seats.aero now connects through its own sign-in. */
   reconnectNotice: boolean;
   /** How a sign-in that just came back ended (?seats=), or null. */
@@ -42,7 +48,8 @@ export interface SeatsSectionProps {
   quota: QuotaView;
 }
 
-const OUTCOME_TEXT: Record<ConnectOutcome, I18nKey> = {
+/** "paused" has no line of its own: the section says so whenever connecting is paused. */
+const OUTCOME_TEXT: Record<Exclude<ConnectOutcome, "paused">, I18nKey> = {
   connected: "settings.seats.outcome.connected",
   denied: "settings.seats.outcome.denied",
   mismatch: "settings.seats.outcome.mismatch",
@@ -55,14 +62,14 @@ const OUTCOME_TEXT: Record<ConnectOutcome, I18nKey> = {
 
 type Notice = { kind: "ok" | "error"; text: string } | null;
 
-export function SeatsSection({ userId, connected, connectedAt, configured, reconnectNotice, outcome, quota }: SeatsSectionProps) {
+export function SeatsSection({ userId, connected, connectedAt, configured, paused, reconnectNotice, outcome, quota }: SeatsSectionProps) {
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [notice, setNotice] = useState<Notice>(() =>
-    outcome ? { kind: outcome === "connected" ? "ok" : "error", text: t(OUTCOME_TEXT[outcome]) } : null,
+    outcome && outcome !== "paused" ? { kind: outcome === "connected" ? "ok" : "error", text: t(OUTCOME_TEXT[outcome]) } : null,
   );
   const [showReconnect, setShowReconnect] = useState(reconnectNotice);
 
@@ -95,7 +102,16 @@ export function SeatsSection({ userId, connected, connectedAt, configured, recon
       return;
     }
     setBusy(false);
-    setNotice({ kind: "error", text: res.ok ? t("settings.seats.outcome.failed") : res.error === "not_configured" ? t("settings.seats.not_configured") : errorText(locale, res.error) });
+    setNotice({
+      kind: "error",
+      text: res.ok
+        ? t("settings.seats.outcome.failed")
+        : res.error === "not_configured"
+          ? t("settings.seats.not_configured")
+          : res.error === "paused"
+            ? SEATS_PAUSED_COPY[locale]
+            : errorText(locale, res.error),
+    });
   }
 
   async function disconnect() {
@@ -134,7 +150,7 @@ export function SeatsSection({ userId, connected, connectedAt, configured, recon
     <SettingsSection id="seats" title={t("settings.seats.title")}>
       <p className="t-meta text-fg-muted">{t("settings.seats.intro")}</p>
 
-      {showReconnect && !connected && (
+      {showReconnect && !connected && !paused && (
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1" data-testid="seats-reconnect-notice">
           <p className="t-body" role="status">
             {t("seats.reconnect_notice")}
@@ -168,13 +184,19 @@ export function SeatsSection({ userId, connected, connectedAt, configured, recon
             {t("settings.seats.disconnect")}
           </Button>
         ) : (
-          <Button type="button" size="sm" onClick={() => void connect()} disabled={busy || !configured} data-testid="seats-connect">
+          <Button type="button" size="sm" onClick={() => void connect()} disabled={busy || !configured || paused} data-testid="seats-connect">
             {busy ? t("settings.seats.opening") : t("settings.seats.connect")}
           </Button>
         )}
       </div>
       {confirmDisconnect && <p className="t-meta text-fg-muted">{t("settings.seats.disconnect_body")}</p>}
-      {!connected && !configured && <p className="t-meta text-fg-muted">{t("settings.seats.not_configured")}</p>}
+      {paused ? (
+        <p className="t-body" role="status" data-testid="seats-paused">
+          {SEATS_PAUSED_COPY[locale]}
+        </p>
+      ) : (
+        !connected && !configured && <p className="t-meta text-fg-muted">{t("settings.seats.not_configured")}</p>
+      )}
 
       {notice && <SettingsNotice kind={notice.kind}>{notice.text}</SettingsNotice>}
 

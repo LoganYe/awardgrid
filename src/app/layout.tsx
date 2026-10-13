@@ -2,10 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Footer } from "@/components/shell/footer";
 import { Header } from "@/components/shell/header";
+import { SeatsPausedPurge } from "@/components/shell/seats-paused-purge";
 import { getCurrentUser } from "@/lib/auth/next";
 import { htmlLang } from "@awardgrid/core/i18n";
 import { LocaleProvider } from "@awardgrid/core/i18n/client";
 import { getLocale } from "@/lib/i18n/server";
+import { seatsOAuthPaused } from "@/lib/seats-oauth/pause";
 import { THEME_SCRIPT } from "@/lib/theme";
 import { ThemeProvider } from "@/lib/theme/client";
 import { getTheme } from "@/lib/theme/server";
@@ -27,7 +29,8 @@ export const viewport: Viewport = {
  * fine for a private, authenticated app) and the session, so the server renders
  * <html data-theme> and the signed-in top bar without a flash. The inline script in <head>
  * re-applies the cookie before paint for cached documents. Fonts are self-hosted (globals.css);
- * no next/font, no network.
+ * no next/font, no network. While Login with Seats.aero is paused on this server
+ * (src/lib/seats-oauth/pause.ts), every signed-in page also has the browser forget its seats.aero results.
  */
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
@@ -42,6 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <LocaleProvider locale={locale}>
           <ThemeProvider theme={theme} persist={user !== null}>
             <Header locale={locale} username={user?.username ?? null} />
+            {user && seatsOAuthPaused() && <SeatsPausedPurge userId={user.id} />}
             <main className="flex w-full flex-1 flex-col px-gutter py-4">{children}</main>
             <Footer locale={locale} />
           </ThemeProvider>

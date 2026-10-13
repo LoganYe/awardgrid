@@ -17,6 +17,8 @@
  *   - **One retry after a refusal** (`withSeatsAuthorization`): seats.aero refusing a token the server thought valid
  *     renews it once and sends again; refused again with a token renewed just now, the refusal stands (the account,
  *     not its token: most likely one without API access).
+ *   - **Paused means none at all.** With SEATS_OAUTH_WEB=off (./pause.ts) no token is read, handed out or renewed, for
+ *     any account: SeatsPausedError comes first.
  *
  * No token is logged, returned to a browser or placed on an error.
  */
@@ -25,6 +27,7 @@ import { getMasterKey } from "@/lib/keys";
 import { SeatsAeroHttpError } from "@awardgrid/core/seatsaero/client";
 import { type BrokerResult, type TokenBroker, createTokenBroker, meansRevoked } from "./broker";
 import { tokenServiceUrlFromEnv } from "./config";
+import { seatsOAuthPaused } from "./pause";
 import { purgeSeatsDataForUser } from "./retention";
 import { type SeatsTokens, type StoredConnection, deleteConnection, isSeatsConnected, readConnection, writeRefreshed } from "./store";
 
@@ -49,10 +52,28 @@ export function accessOf(value: string): string {
 export class SeatsNotConnectedError extends Error {
   readonly code = "no_key" as const;
   readonly provider = "seats_aero" as const;
-  constructor() {
-    super("No seats.aero account is connected. Connect seats.aero in Settings.");
+  constructor(message = "No seats.aero account is connected. Connect seats.aero in Settings.") {
+    super(message);
     this.name = "SeatsNotConnectedError";
   }
+}
+
+/**
+ * Login with Seats.aero is paused on this server (./pause.ts, SEATS_OAUTH_WEB=off): no account has an authorization.
+ * A SeatsNotConnectedError, so every caller stops exactly where an account without a connection stops; the API adds
+ * `paused: true` to its 409 `no_key`.
+ */
+export class SeatsPausedError extends SeatsNotConnectedError {
+  readonly paused = true as const;
+  constructor() {
+    super("Connecting seats.aero is paused on this server.");
+    this.name = "SeatsPausedError";
+  }
+}
+
+/** What an API error body adds for a SeatsNotConnectedError: `{ paused: true }` while the sign-in is paused. */
+export function pausedExtra(err: SeatsNotConnectedError): { paused?: true } {
+  return err instanceof SeatsPausedError ? { paused: true } : {};
 }
 
 /** The access token has run out and the token service could not renew it now: a passing failure, to try again soon. */
@@ -122,11 +143,13 @@ function renew(db: DbConn, userId: string, current: StoredConnection, opts: Seat
 }
 
 /**
- * "Bearer seats:ota:…" for the account, renewed first when it is about to run out. Throws SeatsNotConnectedError
- * (nothing connected, or the grant was just found revoked) or SeatsRenewalUnavailableError. The "connected" check runs
- * before MASTER_KEY is read, so an account without a connection gets a clean 409 even where MASTER_KEY is unset.
+ * "Bearer seats:ota:…" for the account, renewed first when it is about to run out. Throws SeatsPausedError (the sign-in
+ * is paused on this server), SeatsNotConnectedError (nothing connected, or the grant was just found revoked) or
+ * SeatsRenewalUnavailableError. The "connected" check runs before MASTER_KEY is read, so an account without a
+ * connection gets a clean 409 even where MASTER_KEY is unset.
  */
 export async function seatsAuthorization(db: DbConn, userId: string, opts: SeatsAccessOptions = {}): Promise<string> {
+  if (seatsOAuthPaused()) throw new SeatsPausedError();
   if (!isSeatsConnected(db, userId)) throw new SeatsNotConnectedError();
   const masterKey = opts.masterKey ?? getMasterKey();
   const stored = readConnection(db, userId, masterKey);
@@ -146,7 +169,7 @@ export async function seatsAuthorization(db: DbConn, userId: string, opts: Seats
  * longer that one, another caller has renewed it already, and it is returned as it is.
  */
 export async function renewSeatsAuthorization(db: DbConn, userId: string, rejected: string, opts: SeatsAccessOptions = {}): Promise<Renewal> {
-  if (!isSeatsConnected(db, userId)) return { key: null, reason: "none" };
+  if (seatsOAuthPaused() || !isSeatsConnected(db, userId)) return { key: null, reason: "none" };
   const masterKey = opts.masterKey ?? getMasterKey();
   const stored = readConnection(db, userId, masterKey);
   if (!stored) return { key: null, reason: "none" };

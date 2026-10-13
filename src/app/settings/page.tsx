@@ -7,7 +7,8 @@
  * Server component: requires a session (redirects to /login), reads whether seats.aero is
  * connected (a boolean and a date, never a token), masked key summaries and the api_usage row,
  * and hands only safe fields to the client sections. `?seats=<outcome>` is how a seats.aero
- * sign-in that just came back ended (src/app/api/seats/oauth/callback/route.ts).
+ * sign-in that just came back ended (src/app/api/seats/oauth/callback/route.ts). While connecting is
+ * paused on this server (src/lib/seats-oauth/pause.ts) the section says so, and asks nobody to connect.
  */
 import type { Metadata } from "next";
 import { AccountSection } from "@/components/settings/account-section";
@@ -19,7 +20,7 @@ import { PageColumn } from "@/components/shell/page-column";
 import { requireUser } from "@/lib/auth/next";
 import { getT } from "@/lib/i18n/server";
 import { listKeys } from "@/lib/keys";
-import { connectionStatus, isConnectOutcome, reconnectNoticeDue, seatsOAuthConfigFromEnv } from "@/lib/seats-oauth";
+import { connectionStatus, isConnectOutcome, reconnectNoticeDue, seatsOAuthConfigFromEnv, seatsOAuthPaused } from "@/lib/seats-oauth";
 import { getServerDb } from "@/lib/server/db";
 import { telegramConfigured } from "@/lib/server/queries";
 import { getTodayUsage } from "@/lib/server/usage";
@@ -34,6 +35,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const keys = listKeys(db, user.id);
   const usage = getTodayUsage(db, user.id);
   const seats = connectionStatus(db, user.id);
+  const paused = seatsOAuthPaused();
   const params = await searchParams;
   const outcome = Array.isArray(params.seats) ? params.seats[0] : params.seats;
 
@@ -45,7 +47,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         connected={seats.connected}
         connectedAt={seats.connectedAt}
         configured={seatsOAuthConfigFromEnv() !== null}
-        reconnectNotice={reconnectNoticeDue(db, user.id)}
+        paused={paused}
+        reconnectNotice={!paused && reconnectNoticeDue(db, user.id)}
         outcome={isConnectOutcome(outcome) ? outcome : null}
         quota={{ used: usage.used, limit: usage.limit, hardLimit: usage.hardLimit, resetAt: usage.resetAt }}
       />

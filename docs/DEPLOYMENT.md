@@ -92,3 +92,47 @@ Baseline + zone export: `docs/dns-baseline-dowhiz.md` (the zone export itself is
   Telegram digests are sent. Add a third LaunchAgent if you want it (needs `MASTER_KEY`).
 - Two `pnpm worker` processes from 2026-09-06 05:17 are still alive from an old session
   (`ps aux | grep '[s]rc/cli/worker.ts'`). They tick against the same database.
+
+## Pausing Login with Seats.aero (owner's call)
+
+`SEATS_OAUTH_WEB=off` in `.env` pauses Login with Seats.aero on this server
+(`src/lib/seats-oauth/pause.ts`). Connect answers "paused" and a sign-in coming back is not exchanged; no seats.aero call
+is made with a sign-in token (search, Get Trips, "Run now", the worker's standing queries, Ask); when the server starts,
+and every 10 minutes after, every account's sign-in tokens, sign-ins under way, cached results, route lists and
+standing-query snapshots are deleted; every signed-in page has the browser forget its seats.aero results. The database
+overwrites what it deletes (`secure_delete`) and empties its write-ahead log after a purge that removed anything. Pasted
+Duffel / Ignav keys are untouched. The Telegram linking and the rest of the app keep working. Unset, empty or `on`
+leaves it on; a value the switch does not know pauses too, with a warning in the log.
+
+1. Back up `.next` and the database, then take the seats.aero data out of the copy, so the backup does not keep what
+   the pause deletes:
+
+       B=~/Desktop/workspace/awardgrid-deploy-backup-$(date +%Y%m%dT%H%M)-seatspause; mkdir -p "$B"
+       cp -Rc .next "$B/next"
+       sqlite3 data/runtime/awardgrid.db ".backup '$B/awardgrid.db'"
+       sqlite3 "$B/awardgrid.db" "PRAGMA secure_delete = ON; DELETE FROM seats_connections; DELETE FROM seats_oauth_states; DELETE FROM availability_cache; DELETE FROM cache_coverage; DELETE FROM routes_cache; UPDATE query_runs SET cells_json = '[]', cells_hash = '', cells_purged_at = coalesce(cells_purged_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')); VACUUM;"
+
+   Older backups (`~/Desktop/workspace/awardgrid-deploy-backup-*`) hold the database as it was when each was taken, with
+   whatever seats.aero data it held then; delete them once they are no longer needed.
+2. Add `SEATS_OAUTH_WEB=off` to `.env` in the main checkout.
+3. If the code with the switch is not live yet: in the main checkout, on a clean `main`, `git pull --ff-only`, then
+   `pnpm build`.
+4. `launchctl kickstart -k gui/$(id -u)/com.awardgrid.app`. A `.env` change alone takes effect on this restart; no build
+   is needed for it.
+5. Check: `~/Library/Logs/awardgrid/app.log` has `[seats-oauth] paused: purged {…}` right after the restart, with its
+   counts even when they are all 0 (counts only; no such line means this server is not paused). A
+   `[seats-oauth] SEATS_OAUTH_WEB is neither on nor off` warning before it means a misspelt value: it pauses all the
+   same, but fix the spelling. Settings shows "Connecting seats.aero is paused on this server." with Connect off;
+   `POST /api/seats/connect` from a signed-in page answers 503 `paused`; `pnpm admin users` lists nobody connected;
+   `sqlite3 data/runtime/awardgrid.db "select count(*) from seats_connections; select count(*) from availability_cache;"`
+   prints 0 and 0.
+6. Then rewrite the database file once, so pages freed before `secure_delete` was on no longer hold old rows. The server
+   can stay up:
+
+       sqlite3 data/runtime/awardgrid.db ".timeout 5000" "VACUUM;" "PRAGMA wal_checkpoint(TRUNCATE);"
+
+7. If `pnpm worker` runs anywhere, give it `SEATS_OAUTH_WEB=off` too and restart it (`ps aux | grep '[s]rc/cli/worker.ts'`).
+
+Rollback: restore `.next` and the database from `$B` and kickstart. The copy holds no sign-in and no seats.aero result
+(step 1), so after a rollback each account connects again. To turn the switch back on, remove the line and kickstart
+again; each account connects again in Settings.
