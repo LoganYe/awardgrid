@@ -92,3 +92,26 @@ Baseline + zone export: `docs/dns-baseline-dowhiz.md` (the zone export itself is
   Telegram digests are sent. Add a third LaunchAgent if you want it (needs `MASTER_KEY`).
 - Two `pnpm worker` processes from 2026-09-06 05:17 are still alive from an old session
   (`ps aux | grep '[s]rc/cli/worker.ts'`). They tick against the same database.
+
+## Pausing Login with Seats.aero (owner's call)
+
+`SEATS_OAUTH_WEB=off` in `.env` pauses Login with Seats.aero on this server
+(`src/lib/seats-oauth/pause.ts`). Connect answers "paused" and a sign-in coming back is not exchanged; no seats.aero call
+is made with a sign-in token (search, Get Trips, "Run now", the worker's standing queries, Ask); when the server starts,
+and every 10 minutes after, every account's sign-in tokens, sign-ins under way, cached results, route lists and
+standing-query snapshots are deleted; every signed-in page has the browser forget its seats.aero results. Pasted
+Duffel / Ignav keys are untouched. The Telegram linking and the rest of the app keep working.
+
+1. Back up the database and `.next` as above.
+2. Add `SEATS_OAUTH_WEB=off` to `.env` in the main checkout.
+3. If the code with the switch is not live yet: with `main` checked out in the main checkout and clean, `pnpm build`.
+4. `launchctl kickstart -k gui/$(id -u)/com.awardgrid.app`. A `.env` change alone takes effect on this restart; no build
+   is needed for it.
+5. Check: `~/Library/Logs/awardgrid/app.log` has `[seats-oauth] paused: purged {…}` when anything was stored (counts
+   only; nothing logged when there was nothing); Settings shows "Connecting seats.aero is paused on this server." with
+   Connect off; `POST /api/seats/connect` from a signed-in page answers 503 `paused`; `pnpm admin users` lists nobody
+   connected; `sqlite3 data/runtime/awardgrid.db "select count(*) from seats_connections; select count(*) from
+   availability_cache;"` prints 0 and 0.
+6. If `pnpm worker` runs anywhere, give it `SEATS_OAUTH_WEB=off` too and restart it (`ps aux | grep '[s]rc/cli/worker.ts'`).
+
+To turn it back on, remove the line and kickstart again; each account connects again in Settings.
