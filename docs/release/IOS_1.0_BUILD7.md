@@ -9,8 +9,7 @@ has been asked to restore both existing logins. Build 6 was not cancelled. A pre
 Live ASC snapshot supplied by the coordinating agent on 2026-10-12: app **6816321841**, version **1.0**, build
 **6**, **Waiting for Review**, resubmitted **2026-10-08 17:12 PT**, release **Manual**. Messages has only the
 2026-10-05 23:49 PT build-3 rejection under 3.1.1 and the owner's 2026-10-06 reply. There is no later written Apple
-acceptance of OAuth or sample mode. App Review Attachment is empty. seats.aero's 2026-10-07/08 written answers
-cover OAuth and commercial use; its AwardGrid registration is still unapproved.
+acceptance of OAuth or sample mode. App Review Attachment is empty. seats.aero status: tracked privately; release waits for both approvals.
 
 Build 7 addresses provider-result persistence and its claims, improves review notes, and fixes duplicate en-US
 keywords. The intended store policy keeps provider results in memory rather than files; Saved retains query
@@ -69,15 +68,14 @@ description, promotional text and URLs were preserved by the keyword correction.
 | Active en-US strict metadata validator | 2026-10-12: exit 0; 1 locale, **0 errors, 0 warnings, 2 notes**; keywords **99/100** |
 | All next-locale strict metadata validator | 2026-10-12: exit 0; 4 locales, **0 errors, 0 warnings, 7 notes** |
 | Public claims gate and related tests | 2026-10-12: **53 files, 0 findings, 0 exemptions**; current-tree + validate-public-claims tests **373/373** |
-| Review Notes text | `docs/release/appreview/review-notes-1.0-7.txt` |
+| Review Notes text | Kept privately, outside this repository |
 | Review Notes Unicode character count (max 4,000) | 2026-10-12: **3,743**, including final newline; recount if the attachment or any other text changes |
 | Saved ASC field equals verified local notes and keyword text | **Not saved**: existing browser login expired; verified local build-7 notes and 99-character keywords ready |
-| New/changed notes checked against shipped behaviour | Independent code review approved `0a59382`; subsequent `04126d0` adjusts only E2E expectations to preserve owned queries after Disconnect; full suite and final E2E pass. Notes accurately mark Apple’s requested classifications/provider registration as unapproved and no recording attached |
+| New/changed notes checked against shipped behaviour | Independent code review approved `0a59382`; subsequent `04126d0` adjusts only E2E expectations to preserve owned queries after Disconnect; full suite and final E2E pass. Notes accurately mark Apple’s requested classifications as unapproved and no recording attached |
 
 The copy requests assessment under **3.1.3(f)** and acceptance of sample mode under **2.1**. Neither request is
 represented as an existing Apple approval. It does not claim an attached recording or an offline run. Any new
-recording or change in the provider-registration status must be reflected after verification in both the notes
-and this record.
+recording must be reflected after verification in both the notes and this record.
 
 Metadata/copy preparation additionally ran the OAuth screen-copy suite (**7/7**), landing suite (**255/255**) and
 public proxy checks (**9/9**), all with exit 0. Source snippets in `growth/product-facts.json` were moved to actual
@@ -120,13 +118,13 @@ for this preparation.
 | Submit for Review action | **Not performed**, waiting for existing Apple logins to be restored |
 | Post-action App Review status and selected build readback | No new action; last live readback before session expiry is **1.0 (6), Waiting for Review**, Manual release |
 | Later Apple decision or acceptance | None in starting snapshot; update only on evidence |
-| seats.aero registration approval | Unapproved in starting snapshot; update only on evidence |
+| seats.aero status | Tracked privately; release waits for both approvals |
 | Pending Developer Release / public App Store availability | Not established; manual release is a separate action |
 
 ## Remaining acceptance gates
 
 Apple may require a reviewer-access alternative or decline the requested 3.1.3(f) classification. An OAuth code
-path and a provider letter do not establish successful real-account review access or registration approval.
+path does not establish successful real-account review access.
 Simulator/browser/unit checks and an uploaded binary do not establish a physical-iPhone pass or a public release.
 Record the exact unsatisfied gate and its evidence; do not convert missing evidence into success.
 
