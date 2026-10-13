@@ -6,6 +6,6 @@
 import type { Locale } from "@awardgrid/core/i18n";
 
 export const SEATS_PAUSED_COPY: Record<Locale, string> = {
-  en: "Connecting seats.aero is paused on this server. awardgrid deleted every seats.aero sign-in and every seats.aero result it kept, on the server and in this browser. Searches, standing queries and Ask stay off until connecting is back.",
-  zh: "此服务器已暂停 seats.aero 连接。awardgrid 已删除所有 seats.aero 登录，以及服务器和此浏览器中保留的所有 seats.aero 结果。恢复连接之前，搜索、定时查询和提问都不可用。",
+  en: "Connecting seats.aero is paused on this server. awardgrid deleted every seats.aero sign-in and every seats.aero result from its database and from this browser. Searches, standing queries and Ask stay off until connecting is back.",
+  zh: "此服务器已暂停 seats.aero 连接。awardgrid 已从其数据库和此浏览器中删除所有 seats.aero 登录和所有 seats.aero 结果。恢复连接之前，搜索、定时查询和提问都不可用。",
 };
