@@ -77,6 +77,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  delete process.env.SEATS_OAUTH_WEB;
 });
 
 describe("auth", () => {
@@ -361,6 +362,19 @@ describe("POST /api/queries/[id]/run", () => {
     const text = JSON.stringify(await res.json());
     expect(text).not.toContain("KEY123");
     expect(JSON.stringify(errorSpy.mock.calls)).not.toContain("KEY123");
+  });
+
+  it("SEATS_OAUTH_WEB=off: 409 no_key { paused } before anything runs; no run is recorded", async () => {
+    const alice = seedUser("alice");
+    const created = await create(alice.token);
+    process.env.SEATS_OAUTH_WEB = "off";
+    const res = await runRoute(req(`/api/queries/${created.id}/run`, { method: "POST", token: alice.token }), ctx(created.id));
+    expect([res.status, await res.json()]).toEqual([409, { error: "no_key", paused: true }]);
+    expect(runNowMock).not.toHaveBeenCalled();
+    expect(db.select().from(queryRuns).all()).toEqual([]);
+    // Ownership is still checked first.
+    const bob = seedUser("bob");
+    expect((await runRoute(req(`/api/queries/${created.id}/run`, { method: "POST", token: bob.token }), ctx(created.id))).status).toBe(404);
   });
 });
 

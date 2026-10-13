@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { MASTER_TICK_CRON, MASTER_TICK_NAME, startWorker, type ScheduleFn } from "@/cli/worker-main";
 import { openTestDb, type Db } from "@/lib/db/client";
-import { apiUsage, queryRuns, savedQueries, users, type SavedQuery } from "@/lib/db/schema";
+import { apiUsage, availabilityCache, queryRuns, savedQueries, seatsConnections, users, type SavedQuery } from "@/lib/db/schema";
 import { seedUsers } from "@/lib/db/stores/testing";
 import { connectForTests } from "@/lib/seats-oauth/testing";
 import { MockTransport } from "@/lib/notify";
@@ -238,6 +238,64 @@ describe("scheduler harness (kickoff §9 Phase 3)", () => {
     expect(runsFor(db, b.id).at(-1)).toMatchObject({ notified: false, skippedReason: "quota", cellsHash: "", cellsJson: "[]" });
     expect(transport.sent).toHaveLength(0);
     expect(JSON.stringify(logs)).not.toContain(BOB_CHAT);
+    await worker.stop();
+  });
+});
+
+describe("SEATS_OAUTH_WEB=off (src/lib/seats-oauth/pause.ts): the worker runs nothing and keeps nothing from seats.aero", () => {
+  it("purges at start and on every tick; no seats.aero call, no run recorded, no message; logs are counts only", async () => {
+    const db = openTestDb();
+    seedUsers(db, ["alice"]);
+    db.update(users).set({ telegramChatId: ALICE_CHAT }).where(eq(users.id, "alice")).run();
+    const master = Buffer.from(MASTER_HEX, "hex");
+    connectForTests(db, "alice", { masterKey: master, access: ALICE_KEY, now: T0 });
+    const a = saveQuery(db, "alice");
+    // What an earlier tick left: a run with its snapshot, and a cached row.
+    db.insert(queryRuns)
+      .values({ id: "run-0", savedQueryId: a.id, ranAt: T0.toISOString(), cellsHash: "h", cellsJson: '[{"key":"american|HKG|SEA|2026-10-10|F","miles":62000}]', newCells: 1, skippedReason: "first_run", callsUsed: 3 })
+      .run();
+    db.insert(availabilityCache)
+      .values({ userId: "alice", program: "american", origin: "HKG", dest: "SEA", date: "2026-10-10", cabin: "F", miles: 62000, computedLastSeen: T0.toISOString(), sourceId: "s", fetchedAt: T0.toISOString() })
+      .run();
+    const fetch = fakeFetch(() => textResponse("seats.aero was not expected to be called", 500));
+    const transport = new MockTransport({ now: () => T0 });
+    const logs: { event: string; fields: Record<string, unknown> }[] = [];
+    const clock = { now: new Date(T0.getTime() + 3 * H) };
+    // The worker reads the switch from its own environment (src/cli/worker.ts passes it), not the test process's.
+    const worker = await startWorker({
+      env: { MASTER_KEY: MASTER_HEX, SEATS_OAUTH_WEB: "off" },
+      db,
+      fetch,
+      now: () => clock.now,
+      transport,
+      schedule: () => ({ stop: () => {}, destroy: () => {} }),
+      tickOnStart: false,
+      log: (event, fields = {}) => logs.push({ event, fields }),
+    });
+
+    // At start.
+    expect(db.select().from(seatsConnections).all()).toEqual([]);
+    expect(db.select().from(availabilityCache).all()).toEqual([]);
+    expect(runsFor(db, a.id)).toMatchObject([{ id: "run-0", cellsJson: "[]", cellsHash: "", newCells: 1, cellsPurgedAt: clock.now.toISOString() }]);
+    expect(logs.find((l) => l.event === "worker.seats_paused_purge")?.fields).toEqual({ connections: 1, states: 0, rows: 1, coverage: 0, routes: 0, runs: 1 });
+
+    // A due query does not run; a connection another process wrote meanwhile goes on the tick.
+    connectForTests(db, "alice", { masterKey: master, access: ALICE_KEY, now: T0 });
+    expect(await worker.tickOnce()).toBeNull();
+    expect(db.select().from(seatsConnections).all()).toEqual([]);
+    clock.now = new Date(T0.getTime() + 6 * H);
+    expect(await worker.tickOnce()).toBeNull();
+
+    expect(fetch.calls).toEqual([]);
+    expect(transport.sent).toEqual([]);
+    expect(runsFor(db, a.id)).toHaveLength(1);
+    expect(db.select().from(savedQueries).where(eq(savedQueries.id, a.id)).get()?.lastRunAt).toBeNull();
+    const events = logs.map((l) => l.event);
+    expect(events).toContain("worker.seats_paused");
+    expect(logs.filter((l) => l.event === "worker.tick_skipped").map((l) => l.fields)).toEqual([{ reason: "seats_paused" }, { reason: "seats_paused" }]);
+    expect(events).not.toContain("scheduler.tick");
+    const logText = JSON.stringify(logs);
+    for (const secret of [ALICE_KEY, ALICE_CHAT, MASTER_HEX]) expect(logText).not.toContain(secret);
     await worker.stop();
   });
 });
