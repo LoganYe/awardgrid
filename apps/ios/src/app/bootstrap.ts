@@ -17,8 +17,8 @@
  *
  * The OAuth flavour (./flags.ts OAUTH, release plan step 18b) is wired here as well: the seats.aero "key" is the
  * token store (../oauth/token-store.ts), the account is connected and disconnected through `seatsAccount`, and every
- * seats.aero result the device keeps follows the 24-hour Short-Term Caching limit (../retention/short-term.ts): pruned
- * at launch, before each save, and on each `sweepShortTerm`; purged whole by Disconnect or a revoked grant. The key
+ * seats.aero result stays in memory, with user configuration saved through ../retention/provider-files.ts. Memory is
+ * expired before each save and on `sweepShortTerm`; Disconnect/revocation purge it and known legacy copies. The key
  * flavour has no `seatsAccount` and no limit, and launches exactly as it did.
  */
 import { ANTHROPIC_IDLE_TIMEOUT_MS } from "@awardgrid/core/ask/limits";
@@ -63,6 +63,7 @@ import type { AuthorizeResult } from "../oauth/seats-auth-plugin";
 import type { TokenKeyStore } from "../oauth/token-store";
 import type { TokenVault } from "../oauth/token-vault";
 import { SHORT_TERM_MAX_AGE_MS, favoriteExpired, pruneCacheSnapshot, shortTermStorage, snapshotFetchedAt, watchExpiry, watchReset } from "../retention/short-term";
+import { ProviderConfigurationFiles } from "../retention/provider-files";
 
 export interface AppServices {
   engine: SearchEngine;
@@ -443,6 +444,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
    * part the purge could not finish (a file that could not be written) is finished by the next sweep.
    */
   let purgedAt = Number.NEGATIVE_INFINITY;
+  let revocationKeychainFailure: string | null = null;
   /** Anything from seats.aero fetched before this instant (ms) has passed the short-term limit (all of it while purging). */
   const cutoff = () => (purging ? Number.POSITIVE_INFINITY : Math.max(now().getTime() - (shortTermMs ?? 0), purgedAt));
   // Declared before the token store, which calls it when seats.aero revokes the grant; assigned once the stores exist.
@@ -456,13 +458,21 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     oauth && kit && tokenBroker
       ? opts.keys instanceof kit.TokenKeyStore
         ? opts.keys
-        : new kit.TokenKeyStore({ vault: oauth.vault ?? kit.keychainTokenVault, broker: tokenBroker, now: () => now().getTime(), onRevoked: () => void purgeSeatsData() })
+        : new kit.TokenKeyStore({ vault: oauth.vault ?? kit.keychainTokenVault, broker: tokenBroker, now: () => now().getTime(), onRevoked: (failure?: unknown) => {
+            revocationKeychainFailure = failure === undefined ? null : failure instanceof Error ? failure.message || failure.name : String(failure);
+            void purgeSeatsData();
+          } })
       : null;
   const keys: KeyStore & RenewableKeys = opts.keys ?? tokenStore ?? keychain;
   const anthropicKeys = opts.anthropicKeys ?? anthropicKeychain;
-  const snapshots = opts.snapshots ?? new SnapshotStore();
+  const originalSnapshots = opts.snapshots ?? new SnapshotStore();
+  // Provider responses stay in memory: an iOS app cannot delete an on-disk copy while it is suspended.
+  // The same boundary also cleans the account's files when sample mode boots its token-free account sweeper.
+  const providerFiles = shortTermMs != null ? new ProviderConfigurationFiles(originalSnapshots.files) : null;
+  const snapshots = providerFiles ? new SnapshotStore(providerFiles) : originalSnapshots;
+  await providerFiles?.sweep();
   /** The two-slot storage for the namespaces that can hold seats.aero's rows, under the short-term limit when there is one. */
-  const seatsStorage = () => (shortTermMs != null ? shortTermStorage(new SlotFileStorage(snapshots.files), cutoff) : new SlotFileStorage(snapshots.files));
+  const seatsStorage = () => (shortTermMs != null ? shortTermStorage(new SlotFileStorage(snapshots.files), () => Number.NEGATIVE_INFINITY) : new SlotFileStorage(snapshots.files));
 
   const cache = new InMemoryAvailabilityCache();
   const quotaStore = new DeviceQuotaStore();
@@ -561,9 +571,12 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   await favorites.load();
   const expireFavorites = async () => {
     if (shortTermMs == null) return;
-    await favorites.removeRows((item) => favoriteExpired(item, cutoff()), now().toISOString(), optionsShown);
+    const result = await favorites.removeRows((item) => favoriteExpired(item, cutoff()), now().toISOString(), optionsShown, true);
+    if (!result.ok) throw new Error(result.reason === "write_failed" ? result.message : "Saved's stored results could not be cleaned on this device.");
   };
-  await expireFavorites();
+  let startupRetentionProblem: string | null = null;
+  try { await expireFavorites(); }
+  catch (error) { startupRetentionProblem = error instanceof Error ? error.message || error.name : String(error); }
   // Saved trip plans (release plan step 18): read at launch, the same way. Over sample mode's files in sample mode.
   const plans = new PlansStore(new SlotFileStorage(snapshots.files));
   await plans.load();
@@ -581,6 +594,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   };
 
   let lastRun: WatchCheckResult[] = [];
+  let lastRunFetchedAt = Number.NEGATIVE_INFINITY;
   let inFlight: Promise<WatchCheckResult[]> | null = null;
   const whenWatchesIdle = (): Promise<void> =>
     inFlight === null
@@ -590,7 +604,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
           () => undefined,
         );
 
-  const lastSearch = createWorkspaceLastSearch(workspace, searchViewFromSnapshot);
+  const lastSearch = createWorkspaceLastSearch(workspace, searchViewFromSnapshot, now);
   const ask = createAskService({
     // Release D10: read at every question, so a permission withdrawn in Settings stops the next one.
     consent: () => settings.aiConsent() !== null,
@@ -636,6 +650,19 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   };
 
   const saveStatus = new SaveStatus();
+  let ownSaveProblem: SaveProblem | null = providerFiles?.problems().length || startupRetentionProblem ? { failed: ["retention"], message: providerFiles?.problems().join("\n") || startupRetentionProblem!, at: now().toISOString() } : null;
+  const updateSaveStatus = () => {
+    const account = opts.dataSource?.accountCleanupProblem?.() ?? null;
+    saveStatus.set(ownSaveProblem && account ? { failed: [...new Set([...ownSaveProblem.failed, ...account.failed])], message: `${ownSaveProblem.message}\n${account.message}`, at: now().toISOString() } : ownSaveProblem ?? account);
+  };
+  opts.dataSource?.onAccountCleanupChanged?.(updateSaveStatus);
+  updateSaveStatus();
+  const expireWorkspace = async () => {
+    if (shortTermMs == null) return;
+    // This marks the store dirty even with no user edits, so persist cannot skip its retention write.
+    workspace.forgetResultRows((snapshot) => (snapshot.rows.length > 0 || snapshot.coverage.state !== "unknown" || snapshot.receipt.sentCalls !== null) && !((snapshotFetchedAt(snapshot) ?? -Infinity) >= cutoff()));
+    if (workspace.selectionEntries().some((entry) => entry.row !== null && !(Date.parse(entry.row.value.fetched_at) >= cutoff()))) workspace.clearSelection();
+  };
   const persist = async (): Promise<PersistReport> => {
     const failed: string[] = [];
     let message = "";
@@ -652,13 +679,16 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     // watches' baselines and an Ask conversation lose what passed it first, as on a sweep, so a save between two
     // sweeps does not write it back.
     pruneCache();
-    try {
-      await expireFavorites();
-    } catch {
-      // Saved writes its own file and keeps its rows until a later save or sweep can remove them.
+    if (shortTermMs != null) {
+      searchPort.clearResults(cutoff());
+      lastSearch.expire(cutoff());
+      details.expire(cutoff());
+      if (lastRunFetchedAt < cutoff()) lastRun = [];
     }
+    await attempt("saved", expireFavorites);
+    await attempt("workspace", expireWorkspace);
     const watchesExpired = expireWatches() > 0;
-    await expireAsk().catch(() => undefined);
+    await attempt("ask", expireAsk);
     await attempt("cache", () => snapshots.saveCache(cache.snapshot()));
     if (quotaStore.dirty) {
       // Marked clean only once written, so a failed write is tried again next time.
@@ -684,7 +714,26 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       // Ask's own save never rejects (a question must not fail on it); it says whether ask.json is still unsaved.
       if (ask.saveFailed?.()) throw new Error("ask.json could not be saved");
     });
-    saveStatus.set(failed.length > 0 ? { failed, message, at: now().toISOString() } : null);
+    if (providerFiles) {
+      await providerFiles.sweep();
+      if (providerFiles.problems().length > 0) {
+        failed.push("retention");
+        message ||= providerFiles.problems().join("\n");
+      }
+    }
+    if (revocationKeychainFailure) {
+      failed.push("keychain");
+      message ||= revocationKeychainFailure;
+    }
+    ownSaveProblem = failed.length > 0 ? { failed, message, at: now().toISOString() } : null;
+    // Retry includes the account cleanup failure that sample mode's own successful save cannot repair.
+    if (opts.dataSource?.accountCleanupProblem?.()) await opts.dataSource.sweepAccount?.();
+    updateSaveStatus();
+    const accountProblem = opts.dataSource?.accountCleanupProblem?.();
+    if (accountProblem) {
+      failed.push(...accountProblem.failed);
+      message ||= accountProblem.message;
+    }
     if (watchesExpired) notify();
     return failed.length > 0 ? { ok: false, failed, message } : { ok: true };
   };
@@ -736,16 +785,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     try {
       pruneCache();
       // Snapshots past the limit leave memory and both slots: save (pruned on the way), then read back (pruned again).
-      const stale = workspace.history().some((snapshot) => !((snapshotFetchedAt(snapshot) ?? -Infinity) >= cutoff()));
-      if (stale && workspace.getState().run.kind !== "running") {
-        await workspace.persist();
-        // A search started during the save would be set aside by reading back now (restore resets the run), so the
-        // read-back waits for the next sweep; every save meanwhile writes the workspace without the old rows.
-        if (workspace.getState().run.kind !== "running") {
-          await workspace.restore();
-          workspace.clearSelection();
-        }
-      }
+      await expireWorkspace();
       // A chosen option is kept as a copy once its search leaves the history (core selection.ts): that copy, too.
       if (workspace.selectionEntries().some((entry) => entry.row !== null && !(Date.parse(entry.row.value.fetched_at) >= cutoff()))) {
         workspace.clearSelection();
@@ -775,13 +815,15 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     try {
       details.clear();
       lastSearch.clear();
+      searchPort.clearResults(Infinity);
+      lastRun = [];
       await engine.routes.clear();
       cache.restore(null);
       await snapshots.clearCache().catch(() => undefined);
       const state = workspace.getState();
       let workspaceWritten = true;
       try {
-        await workspaceStorage.writeAtomically(WORKSPACE_NAMESPACE, { schemaVersion: 1, revision: state.revision, displayedId: null, previousId: null, preferences: state.preferences, snapshots: [] });
+        await workspaceStorage.writeAtomically(WORKSPACE_NAMESPACE, { schemaVersion: 1, revision: state.revision, displayedId: state.displayedSnapshot?.id ?? null, previousId: state.previousSnapshot?.id ?? null, preferences: state.preferences, snapshots: workspace.history() });
       } catch {
         workspaceWritten = false;
       }
@@ -792,7 +834,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       // That old file is then written over by the save below, and by every later save until one succeeds; the save
       // below reports it if it fails again.
       if (!workspaceWritten) workspace.setPreferences({});
-      const saved = await favorites.removeRows(() => true, now().toISOString(), optionsShown);
+      const saved = await favorites.removeRows(() => true, now().toISOString(), optionsShown, true);
       if (!saved.ok) fail("saved", saved.reason === "write_failed" ? saved.message : "Saved could not be changed on this device, so its seats.aero results were not removed.");
       if (!watches.hold) for (const watch of watches.all()) watches.update(watch.id, watchReset());
       if (ask.state().entries.length > 0 && ask.state().running === null) await ask.newConversation();
@@ -815,12 +857,17 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       ? {
           configured: clientId !== "",
           connected: () => tokenStore.connected(),
-          connect: () => kit.connectSeats({ clientId, authorize: oauth.authorize ?? ((url) => kit.authorizeWithSeats(url)), broker: tokenBroker, store: tokenStore }),
+          async connect() {
+            const outcome = await kit.connectSeats({ clientId, authorize: oauth.authorize ?? ((url) => kit.authorizeWithSeats(url)), broker: tokenBroker, store: tokenStore });
+            if (outcome.ok) revocationKeychainFailure = null;
+            return outcome;
+          },
           async disconnect(): Promise<DisconnectOutcome> {
-            await tokenStore.clear().catch(() => undefined);
+            try { await tokenStore.clear(); revocationKeychainFailure = null; }
+            catch (error) { revocationKeychainFailure = error instanceof Error ? error.message || error.name : String(error); }
             await legacyKeys?.clear().catch(() => undefined);
             const report = await purgeSeatsData();
-            if (await tokenStore.connected()) return { ok: false, reason: "keychain" };
+            if (revocationKeychainFailure || await tokenStore.connected()) return { ok: false, reason: "keychain" };
             return report.ok ? { ok: true } : { ok: false, reason: "saved", message: report.message };
           },
         }
@@ -880,11 +927,20 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       inFlight = (async () => {
         try {
           // T17: one watch run is one job in the queue: it starts after a search or lookup under way, and they after it.
+          const beforeTimes = new Map(watches.all().map((watch) => [watch.id, Date.parse(watch.baselineFetchedAt ?? watch.lastCheckedAt ?? "")]));
           const results = await requests.run("watch", async () =>
             checkWatches({ engine, store: watches, apiKey: await keys.get(), now, renewKey, baselineMaxAgeMs: shortTermMs }),
           );
           await persist();
           lastRun = results;
+          const sourceTimes = results.flatMap((result) => {
+            if (result.outcome.status !== "checked") return [];
+            const after = Date.parse(watches.get(result.watchId)?.baselineFetchedAt ?? now().toISOString());
+            const before = beforeTimes.get(result.watchId);
+            const keepsBefore = result.outcome.diff.dropped.length > 0 || result.outcome.diff.price_drops.length > 0;
+            return keepsBefore && before !== undefined && Number.isFinite(before) ? [after, before] : [after];
+          });
+          lastRunFetchedAt = Math.min(now().getTime(), ...sourceTimes);
           notify();
           return results;
         } finally {

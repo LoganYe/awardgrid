@@ -150,20 +150,27 @@ describe("the facts registry", () => {
     // its sentence, its extra sentence and its Chinese, and cell_fields' "Not monitored" as an empty line's example.
     // The same day: the dependency sentence that paraphrased seats.aero's terms, in English and Chinese (it now says
     // how AwardGrid connects and that seats.aero's terms apply to the person's account), and the home page's link into
-    // the web app ("Web app users: open the grid.").
+    // the web app ("Web app users: open the grid."). Since 2026-10-12: the prerequisite's "part of seats.aero Pro"
+    // sentences (the D6 sentence, the "What you need" item and the "no API access" answer, in English and Chinese),
+    // the retention sentences that did not say which build they describe (short_term_caching's "cached only in
+    // memory", twice in English and once in Chinese; quota's "keeps results on the device" and "caches results in
+    // memory"), and views' "save results on the device", twice.
     expect(Object.fromEntries(CLAIMS.filter((c) => c.retired_copy).map((c) => [c.claim_id, c.retired_copy!.length]))).toEqual({
       webapp_note: 1,
       dependency: 2,
-      prerequisite: 7,
+      prerequisite: 13,
       grid: 8,
       filters: 1,
+      views: 2,
       cell_fields: 1,
       programs: 3,
-      quota: 1,
+      quota: 3,
       ask: 4,
       privacy: 3,
       developer_data: 1,
       keys: 3,
+      oauth_connection: 1,
+      short_term_caching: 6,
     });
     for (const [id, text] of retired) {
       expect(scanContent(text, { registry: REGISTRY, root: ROOT }).map((f: { rule: string }) => f.rule), id).toContain("PENDING_CLAIM_TEXT");

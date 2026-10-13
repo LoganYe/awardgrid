@@ -79,7 +79,7 @@ test("Disconnect asks first and says what it removes, and nothing about AI", asy
 test("clearing the cache says what it keeps without naming Ask or a key", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "en" });
   await tab(page, "Settings").click();
-  await expect(page.getByText("This does not touch your seats.aero connection.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Clearing the cache does not touch your seats.aero connection.", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "Clear cached results" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Cached results cleared. Your seats.aero connection is untouched." })).toBeVisible();
 });
@@ -145,6 +145,7 @@ for (const [mode, said] of [
 ] as const) {
   test(`a sign-in that ends in "${mode}" saves nothing, says so, and offers Connect again`, async ({ page }) => {
     await openScenario(page, "no-seats-key", "ios", { lang: "en", oauth: mode });
+    await expect(page.locator(".app-save-problem")).toHaveCount(0);
     await page.getByTestId("welcome").getByRole("link", { name: "Connect your seats.aero account" }).click();
     await page.getByRole("button", { name: "Connect seats.aero", exact: true }).click();
     await expect(page.getByRole("alert")).toHaveText(said);
@@ -199,22 +200,24 @@ test("sample data, made up, carries no seats.aero attribution and names no paid 
   await expect(page.locator("main")).not.toContainText(ASK_WORDS);
 });
 
-test("an account disconnected after a search: its results are removed; the welcome offers sample data or the account again", async ({ page }) => {
+test("an account disconnected after a search: results are removed, query conditions remain, and sample data or reconnect is offered", async ({ page }) => {
   await openScenario(page, "complete", "ios", { lang: "en" });
   await searchByText(page, SEARCH_TEXT);
   await tab(page, "Settings").click();
   await page.locator("#settings-row-seats").click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Disconnect", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Disconnected. Results from seats.aero were removed from this device." })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Disconnected. Current account results were cleared." })).toBeVisible();
+  await expect(page.locator(".app-save-problem")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Connect seats.aero", exact: true })).toBeVisible();
-  // Search is where the app starts again: the results went with the connection, so the welcome offers sample data
-  // first, or the account.
+  // The user's query conditions stay; the disconnected callout offers sample data or reconnection.
   await tab(page, "Search").click();
   await expect(page.getByTestId("availability-list")).toHaveCount(0);
-  const welcome = page.getByTestId("welcome");
-  await expect(welcome.getByRole("link", { name: "Connect your seats.aero account" })).toBeVisible();
-  await welcome.getByRole("button", { name: "Try with sample data" }).click();
+  await expect(page.getByRole("link", { name: /^Edit search: HKG/ })).toBeVisible();
+  const disconnected = page.getByRole("alert");
+  await expect(disconnected).toContainText("No seats.aero account connected.");
+  await expect(disconnected.getByRole("link", { name: "connect your seats.aero account", exact: true })).toBeVisible();
+  await disconnected.getByRole("link", { name: "Try sample data", exact: true }).click();
   await expect(page.getByTestId("sample-banner")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Search" })).toBeVisible();
 });

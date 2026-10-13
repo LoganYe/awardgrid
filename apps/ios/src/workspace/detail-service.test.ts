@@ -62,6 +62,14 @@ const ok = (over: Partial<GetTripsResult> = {}): ApiResult<GetTripsResult> => ({
 });
 
 describe("createDetailService", () => {
+  it("a sweep forgets expired loaded itineraries without waiting for anyone to open that option again", async () => {
+    const { service, release, snapshot } = setup(ok());
+    const ref = { snapshotId: snapshot.id, rowKey: snapshot.rows[0]!.key };
+    release();
+    await service.load(ref);
+    (service as typeof service & { expire?(cutoff: number): void }).expire?.(Date.parse(FIXTURE_NOW) + 1);
+    expect(service.peek(ref)).toBeNull();
+  });
   it("an unknown snapshot or row is refused before anything is sent", async () => {
     const { service, calls, snapshot } = setup(ok());
     expect(await service.load({ snapshotId: "nope", rowKey: snapshot.rows[0]!.key })).toEqual({ kind: "unknown_ref" });

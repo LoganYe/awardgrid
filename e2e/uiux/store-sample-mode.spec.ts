@@ -236,11 +236,14 @@ test("the old example's address enters sample mode, and an account disconnected 
   await page.locator("#settings-row-seats").click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Disconnect", exact: true }).click();
-  // Disconnect stays on the page and says what went: the connection and every seats.aero result on the device.
-  await expect(page.getByRole("status").filter({ hasText: "Disconnected. Results from seats.aero were removed from this device." })).toBeVisible();
-  // Search is where the app starts again (the results went with the connection): sample data first, or the account.
+  // Disconnect stays on the page and reports that the current account's results were cleared.
+  await expect(page.getByRole("status").filter({ hasText: "Disconnected. Current account results were cleared." })).toBeVisible();
+  await expect(page.locator(".app-save-problem")).toHaveCount(0);
+  // The query conditions stay after Disconnect, with sample data offered by the disconnected callout.
   await tab(page, "Search").click();
-  await page.getByTestId("welcome").getByRole("button", { name: "Try with sample data" }).click();
+  await expect(page.getByTestId("availability-list")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Edit search: HKG/ })).toBeVisible();
+  await page.getByRole("alert").getByRole("link", { name: "Try sample data", exact: true }).click();
   await expect(banner(page)).toBeVisible();
   await sampleScreen(page, "after disconnecting");
   await expect(page.getByTestId("availability-list")).toHaveCount(0);
@@ -275,4 +278,3 @@ for (const theme of ["light", "dark"] as const) {
     expect(bad).toEqual([]);
   });
 }
-

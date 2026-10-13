@@ -234,14 +234,21 @@ const CASES: ReadonlyArray<{ rule: string; lang: "en" | "zh"; fail: string[]; pa
       "AwardGrid is a free app, and you don't need a seats.aero Pro subscription.",
       "Totally free: no seats.aero Pro needed.",
       "Free to use. You do not need seats.aero Pro.",
-      // "seats.aero Pro" more than 160 characters away does not count.
+      // "seats.aero Pro" more than 180 characters away does not count.
       `AwardGrid is a free app. ${"It puts award seats for many routes and dates into one table. ".repeat(3)}It works with seats.aero Pro.`,
+      // Nor does the 2026-10-12 wording, denied or too far away.
+      "AwardGrid is free: seats.aero no longer decides which accounts have API access.",
+      `AwardGrid is a free app. ${"It puts award seats for many routes and dates into one table. ".repeat(3)}seats.aero decides which accounts have API access.`,
     ],
     pass: [
       "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. It needs your own paid seats.aero Pro subscription with API access; without that key it searches nothing.",
       // The price sentence and the D6 sentence (2026-10-06), as the pages put them: "seats.aero Pro" about 145 characters on.
       "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.",
       "AwardGrid is free on the App Store (App ID 6816321841). Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.",
+      // The D6 sentence since 2026-10-12, which names no plan: before the price sentence, as on /ios/, and after the
+      // released status line, as on the home page and in llms.txt.
+      "AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (seats.aero decides which accounts have API access; AwardGrid sells nothing), you can connect it to see results from that account instead of sample data.",
+      "Your own seats.aero data (optional): if you have a seats.aero account with API access (seats.aero decides which accounts have API access; AwardGrid sells nothing), you can connect it to see results from that account instead of sample data. AwardGrid is free on the App Store (App ID 6816321841).",
       "Is AwardGrid free?",
       "A free-text query.",
       "Questions? Feel free to write to support.",
@@ -251,11 +258,19 @@ const CASES: ReadonlyArray<{ rule: string; lang: "en" | "zh"; fail: string[]; pa
   {
     rule: "FREE_WITHOUT_PRO",
     lang: "zh",
-    fail: ["AwardGrid 是免费应用。", "无广告，完全免费。", "AwardGrid 免费，不需要 Pro 订阅。", `AwardGrid 是免费应用。${"它把多条航线、多个日期的里程票排进一张表。".repeat(5)}它使用 seats.aero Pro。`],
+    fail: [
+      "AwardGrid 是免费应用。",
+      "无广告，完全免费。",
+      "AwardGrid 免费，不需要 Pro 订阅。",
+      `AwardGrid 是免费应用。${"它把多条航线、多个日期的里程票排进一张表。".repeat(5)}它使用 seats.aero Pro。`,
+      `AwardGrid 是免费应用。${"它把多条航线、多个日期的里程票排进一张表。".repeat(5)}哪些账户有 API 权限由 seats.aero 决定。`,
+    ],
     pass: [
       "免费应用，但需要你自己的 seats.aero Pro 订阅。",
       // The Chinese price sentence and the Chinese D6 sentence (2026-10-06): Pro about 90 characters on.
       "AwardGrid 可在 App Store 免费下载（App ID 6816321841）。你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据。",
+      // The Chinese D6 sentence since 2026-10-12: 由 seats.aero 决定 about 75 characters on.
+      "AwardGrid iPhone 版已提交 App Store，定价为免费，没有内购。你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（哪些账户有 API 权限由 seats.aero 决定；AwardGrid 不出售任何东西），你可以连接这个账户，看到它的结果，而不是示例数据。",
     ],
   },
   {

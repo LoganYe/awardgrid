@@ -62,7 +62,7 @@ import { AvailabilityMatrix } from "../components/results/AvailabilityMatrix";
 import { TraySlot } from "../app/tray-slot";
 import { CompareTray } from "../components/CompareTray";
 import { WithTail } from "../app/WithTail";
-import { favoriteFromOption, favoriteFromSnapshot, optionOrigin } from "../store/favorites-store";
+import { accountOptionFromSnapshot, favoriteFromOption, favoriteFromSnapshot, optionOrigin } from "../store/favorites-store";
 import type { RowKey } from "@awardgrid/core/workspace/types";
 import { FAVORITES } from "./favorites-copy";
 import { SAVED_TITLE } from "./FavoritesScreen";
@@ -265,13 +265,20 @@ export function SearchScreen() {
   const shownId = workspace.displayedSnapshot?.id ?? null;
   const savedOptions = useMemo(() => {
     if (!shownId) return new Set<RowKey>();
+    if (services.shortTermMs != null) {
+      const shown = services.workspace.getState().displayedSnapshot;
+      return new Set((shown?.rows ?? []).filter((row) => {
+        const option = accountOptionFromSnapshot(shown!, row.key, services.now().toISOString());
+        return option && savedItems.some((item) => item.originalSnapshotId === option.originalSnapshotId);
+      }).map((row) => row.key));
+    }
     const prefix = optionOrigin(shownId, "");
     return new Set(savedItems.filter((f) => f.originalSnapshotId.startsWith(prefix)).map((f) => f.originalSnapshotId.slice(prefix.length) as RowKey));
-  }, [savedItems, shownId]);
+  }, [savedItems, shownId, services]);
   const saveOption = useCallback(
     async (rowKey: RowKey) => {
       const shown = services.workspace.getState().displayedSnapshot;
-      const item = shown ? favoriteFromOption(shown, rowKey, services.now().toISOString(), `fav-${optionOrigin(shown.id, rowKey)}`) : null;
+      const item = shown ? services.shortTermMs != null ? accountOptionFromSnapshot(shown, rowKey, services.now().toISOString()) : favoriteFromOption(shown, rowKey, services.now().toISOString(), `fav-${optionOrigin(shown.id, rowKey)}`) : null;
       if (!shown || !item) return;
       const f = FAVORITES[locale];
       setSaveMessage(null);

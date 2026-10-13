@@ -1,1 +1,1 @@
-award,miles,points,award seats,award flights,business class,first class,frequent flyer,redemption
+points,miles,flights,travel,reward,business,first,class,frequent,flyer,saver,redeem,search,calendar

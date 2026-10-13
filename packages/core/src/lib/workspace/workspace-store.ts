@@ -253,6 +253,22 @@ export class WorkspaceStore {
   }
 
   /** Save to the workspace namespace. Never throws; a failed write leaves the previous file as it was. */
+  /** Forget result copies selected by a retention rule while keeping each search's own query and view settings. */
+  forgetResultRows(shouldForget: (snapshot: ResultSnapshot) => boolean): number {
+    const changed = new Map<string, ResultSnapshot>();
+    this.#history = this.#history.map((snapshot) => {
+      if (!shouldForget(snapshot)) return snapshot;
+      const next: ResultSnapshot = { ...snapshot, rows: [], coverage: { state: "unknown", scopeKey: snapshot.scopeKey, slices: [] }, receipt: { sentCalls: null, fromCache: false } };
+      changed.set(snapshot.id, next);
+      return next;
+    });
+    if (changed.size === 0) return 0;
+    const replace = (snapshot: ResultSnapshot | null) => snapshot ? changed.get(snapshot.id) ?? snapshot : null;
+    this.#dirty = true;
+    this.#set({ displayedSnapshot: replace(this.#state.displayedSnapshot), previousSnapshot: replace(this.#state.previousSnapshot) });
+    return changed.size;
+  }
+
   async persist(): Promise<PersistResult> {
     if (!this.#storage || !this.#dirty) return { ok: true };
     const saved: SavedWorkspace = {

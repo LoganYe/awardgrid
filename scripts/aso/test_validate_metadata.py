@@ -684,7 +684,7 @@ def blockquote(section: str, label: str, until: str) -> str:
 
 
 class TestShippedMetadata(unittest.TestCase):
-    """The committed files: the next/ drafts pass strictly, and en-US is version 1.0's fields with build 4's prose."""
+    """The committed active and next/ fields pass strictly; historical build-3 metadata stays in the release record."""
 
     NEXT = v.DEFAULT_DIR
     V1 = v.METADATA_ROOT / "en-US"
@@ -714,22 +714,20 @@ class TestShippedMetadata(unittest.TestCase):
             "points,miles,flights,travel,reward,business,first,class,frequent,flyer,saver,redeem,search,calendar",
         )
 
-    def test_version_1_0_reports_the_award_repetition(self):
+    def test_version_1_0_keywords_pass_strict_after_build_7_correction(self):
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "--strict", "--dir", str(v.METADATA_ROOT)], capture_output=True, text=True, cwd=v.REPO_ROOT
         )
-        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("skipped next/", result.stdout)
-        self.assertIn("'award' is repeated across keyword terms (award, award seats, award flights)", result.stdout)
-        self.assertIn("'award' (in 'award seats') already appears in the name or subtitle", result.stdout)
-        self.assertIn("'seats' (in 'award seats') already appears in the name or subtitle", result.stdout)
+        self.assertRegex(result.stdout, r"\n1 locales: 0 errors, 0 warnings, \d+ notes \(strict\)")
         report = v.validate_locale(self.V1)
-        self.assertEqual({i.message.split(" ")[0] for i in report.errors}, {"'award'", "'seats'"})
+        self.assertEqual(report.errors + report.warnings, [], messages(report))
+        self.assertEqual(v.field_len(v.read_field(self.V1, "keywords")), 99)
 
-    def test_en_us_is_build_4_on_version_1_0s_fields(self):
-        # Since 2026-10-07 en-US/ holds the texts for version 1.0 as resubmitted with build 4 (the 3.1.1 remediation
-        # plan's step 36): the name, subtitle, keywords and URLs are version 1.0's as recorded in the release doc, while
-        # the promotional text and the description are new; build 3's stay recorded in §7.6.
+    def test_en_us_keeps_version_1_0_identity_and_build_7_keywords(self):
+        # Build 7 corrects active keywords to the existing validated next/en-US string. Identity and URLs stay;
+        # §7.6 preserves build 3's historical keywords and prose instead of pretending they are the current fields.
         info = release_doc_section("### 7.1 App Information", "### 7.2")
         privacy = release_doc_section("### 7.3 App Privacy", "### 7.4")
         listing = release_doc_section("### 7.6 Listing drafts", "\n---")
@@ -738,7 +736,10 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertIn(f"**Support URL:** `{v.read_field(self.V1, 'support_url')}`", info)
         self.assertIn(f"`{v.read_field(self.V1, 'marketing_url')}`", info)
         self.assertIn(f"**Privacy Policy URL:** `{v.read_field(self.V1, 'privacy_url')}`", privacy)
-        self.assertIn(f"**Keywords** (97 of 100): `{v.read_field(self.V1, 'keywords')}`", listing)
+        historical_keywords = "award,miles,points,award seats,award flights,business class,first class,frequent flyer,redemption"
+        self.assertIn(f"**Keywords** (97 of 100): `{historical_keywords}`", listing)
+        self.assertNotEqual(v.read_field(self.V1, "keywords"), historical_keywords)
+        self.assertEqual(v.read_field(self.V1, "keywords"), v.read_field(self.NEXT / "en-US", "keywords"))
         promotional = v.read_field(self.V1, "promotional_text")
         self.assertEqual(
             promotional,

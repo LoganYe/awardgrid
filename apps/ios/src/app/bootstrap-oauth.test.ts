@@ -214,17 +214,17 @@ describe("the OAuth flavour", () => {
     await first.checkWatches();
     expect(first.watches.get("w1")!.baseline.length).toBeGreaterThan(0);
     await first.persist();
-    expect(disk(s.files)).toContain("81234");
+    expect(disk(s.files)).not.toContain("81234");
 
     // 25 hours later, a new launch.
     s.now.t = T0 + 25 * HOUR;
     s.vault = new MemoryTokenVault({ access: "seats:ota:first", refresh: "seats:otr:one", expiresAt: s.now.t + 3599_000 });
     const later = await boot(s);
     expect(later.cache.snapshot().users.every((u) => u.rows.length === 0 && u.coverage.length === 0)).toBe(true);
-    expect(later.workspace.getState().displayedSnapshot).toBeNull();
-    expect(later.workspace.history()).toEqual([]);
+    expect(later.workspace.getState().displayedSnapshot).toMatchObject({ rows: [], query: shown.query });
+    expect(later.workspace.history().every((snapshot) => snapshot.rows.length === 0)).toBe(true);
     const saved = later.favorites.get("f1")!;
-    expect(saved).toMatchObject({ rows: [], rowsRemoved: { at: new Date(s.now.t).toISOString(), options: shown.rows.length } });
+    expect(saved).toMatchObject({ rows: [], rowsRemoved: { at: new Date(T0).toISOString(), options: 0 } });
     expect(saved.query).toEqual(shown.query);
     expect(later.watches.get("w1")).toMatchObject({ baseline: [], baselineWindow: null, text: QUERY });
     await later.persist();
@@ -244,9 +244,11 @@ describe("the OAuth flavour", () => {
     expect(svc.favorites.get("f1")!.rows.length).toBeGreaterThan(0);
     s.now.t += 2 * HOUR;
     await svc.sweepShortTerm();
-    expect(svc.workspace.getState().displayedSnapshot).toBeNull();
+    expect(svc.workspace.getState().displayedSnapshot?.rows ?? []).toEqual([]);
+    expect(svc.lastSearch.get()?.value.rows).toEqual([]);
     expect(svc.favorites.get("f1")!.rowsRemoved).toBeDefined();
     expect(svc.cache.snapshot().users.every((u) => u.rows.length === 0)).toBe(true);
+    expect(svc.favorites.get("f1")?.rows).toEqual([]);
     expect(disk(s.files)).not.toContain("81234");
   });
 
@@ -258,7 +260,7 @@ describe("the OAuth flavour", () => {
     svc.watches.add(watch());
     await svc.checkWatches();
     await svc.persist();
-    expect(disk(s.files)).toContain("81234");
+    expect(disk(s.files)).not.toContain("81234");
     const heard = vi.fn();
     svc.onWatchesChanged(heard);
 
@@ -268,8 +270,8 @@ describe("the OAuth flavour", () => {
     expect(svc.favorites.get("f1")!.rowsRemoved).toBeDefined();
     expect(svc.watches.get("w1")).toMatchObject({ baseline: [], baselineWindow: null });
     expect(heard).toHaveBeenCalled();
-    // The workspace's two slots wait for the sweep, which reads them back (its snapshot is still on screen until then).
-    expect([...s.files.files].filter(([, text]) => text.includes("81234")).map(([path]) => path)).toEqual(["workspace-v1.a.json", "workspace-v1.b.json"]);
+    expect(disk(s.files)).not.toContain("81234");
+    expect(svc.workspace.getState().displayedSnapshot?.rows ?? []).toEqual([]);
   });
 
   it("opening a Saved item past 24 hours searches its query again and puts fresh rows back", async () => {
@@ -327,18 +329,20 @@ describe("the OAuth flavour", () => {
     svc.workspace.setSelected({ snapshotId: shown.id, rowKey: shown.rows[0]!.key }, true);
     await svc.engine.routes.prime(LOCAL_USER, "alaska", []);
     await svc.persist();
-    expect(disk(s.files)).toContain("81234");
+    expect(disk(s.files)).not.toContain("81234");
 
     expect(await svc.seatsAccount!.disconnect()).toEqual({ ok: true });
+    expect(svc.lastWatchRun()).toEqual([]);
     expect(svc.engine.routes.loadedSources(LOCAL_USER)).toEqual([]);
     expect(await svc.engine.routes.hydrate(LOCAL_USER, ["alaska"])).toEqual([]);
     expect(await s.vault.read()).toBeNull();
     expect(await svc.seatsAccount!.connected()).toBe(false);
     expect(svc.cache.snapshot().users.every((u) => u.rows.length === 0)).toBe(true);
     expect(JSON.parse(s.files.files.get(CACHE_FILE) ?? "{}").users ?? []).toEqual([]);
-    expect(svc.workspace.getState().displayedSnapshot).toBeNull();
+    expect(svc.workspace.getState().displayedSnapshot?.rows ?? []).toEqual([]);
     expect(svc.workspace.getState().selected).toEqual([]);
-    expect(svc.lastSearch.get()).toBeNull();
+    expect(svc.lastSearch.get()).toMatchObject({ text: QUERY, value: { rows: [] } });
+    expect(svc.workspace.getState().displayedSnapshot?.query).toEqual(shown.query);
     expect(svc.favorites.get("f1")).toMatchObject({ rows: [], query: shown.query });
     expect(svc.watches.get("w1")).toMatchObject({ baseline: [], lastCheckedAt: null, lastResult: null, text: QUERY, enabled: true });
     expect(disk(s.files)).not.toContain("81234");
@@ -353,7 +357,7 @@ describe("the OAuth flavour", () => {
     const shown = svc.workspace.getState().displayedSnapshot!;
     await svc.favorites.save(favoriteFromSnapshot(shown, new Date(s.now.t).toISOString(), "f1"));
     await svc.persist();
-    expect(disk(s.files)).toContain("81234");
+    expect(disk(s.files)).not.toContain("81234");
     s.now.t += 60_000;
 
     // The disk refuses every write to the workspace's and Saved's slot files.
@@ -368,9 +372,10 @@ describe("the OAuth flavour", () => {
     expect(outcome).toMatchObject({ ok: false, reason: "saved", message: "disk full" });
     expect(await s.vault.read()).toBeNull();
     // Nothing from seats.aero is shown any more, although the old workspace file could not be written over.
-    expect(svc.workspace.getState().displayedSnapshot).toBeNull();
-    expect(svc.workspace.history()).toEqual([]);
+    expect(svc.workspace.getState().displayedSnapshot?.rows ?? []).toEqual([]);
+    expect(svc.workspace.history().every((snapshot) => snapshot.rows.length === 0)).toBe(true);
     expect(svc.cache.snapshot().users.every((u) => u.rows.length === 0)).toBe(true);
+    expect(svc.favorites.get("f1")?.rows).toEqual([]);
 
     // The disk recovers: the next sweep (on returning to the app, or hourly) finishes the purge, well inside 24 hours.
     refuse = false;
@@ -431,7 +436,167 @@ describe("the OAuth flavour", () => {
     expect(await s.vault.read()).toMatchObject({ access: "seats:ota:first", refresh: "seats:otr:one" });
     expect(await svc.seatsAccount!.connected()).toBe(true);
     expect(svc.favorites.get("f1")!.rows.length).toBeGreaterThan(0);
-    expect(disk(s.files)).toContain("81234");
+    expect(disk(s.files)).not.toContain("81234");
+  });
+});
+
+describe("OAuth cleanup includes watch copies it cannot load", () => {
+  it("preserves unknown workspace configuration through a new search, persist and Disconnect", async () => {
+    const s = session();
+    for (const slot of ["a", "b"]) s.files.files.set(`workspace-v1.${slot}.json`, JSON.stringify({ generation: 1, value: { schemaVersion: 2, snapshots: [], futureUserSetting: "keep-me" } }));
+    const svc = await boot(s);
+    await svc.searchText(QUERY);
+    expect(await svc.persist()).toMatchObject({ ok: false });
+    expect(await svc.seatsAccount!.disconnect()).toMatchObject({ ok: false, reason: "saved" });
+    for (const slot of ["a", "b"]) expect(s.files.files.get(`workspace-v1.${slot}.json`)).toContain("keep-me");
+  });
+  it.each(["newer", "damaged", "unreadable"])("launches with a %s Saved file and surfaces its cleanup failure", async (kind) => {
+    const s = session();
+    if (kind === "newer") s.files.files.set("favorites-v1.a.json", JSON.stringify({ generation: 1, value: { schemaVersion: 2, items: [], futureSetting: "keep" } }));
+    if (kind === "damaged") {
+      s.files.files.set("favorites-v1.a.json", "{torn-user-configuration");
+      s.files.files.set("favorites-v1.b.json", "{torn-user-configuration");
+    }
+    if (kind === "unreadable") {
+      const read = s.files.read.bind(s.files);
+      s.files.read = async (path) => { if (path === "favorites-v1.a.json") throw new Error("Saved unreadable"); return read(path); };
+    }
+    const pending = boot(s);
+    await expect(pending).resolves.toBeDefined();
+    const svc = await pending;
+    expect(svc.saveStatus.get()).not.toBeNull();
+    expect(await svc.persist()).toMatchObject({ ok: false });
+    expect(await svc.seatsAccount!.disconnect()).toMatchObject({ ok: false, reason: "saved" });
+  });
+  const marker = "PROVIDER_RESULT_81234";
+  const legacy = () => {
+    const { draft: _draft, ...conditions } = watch();
+    return { ...conditions, name: "My own name", lastCheckedAt: "2026-09-28T00:00:00Z", baseline: [{ key: marker, miles: 81234 }], ownerPreference: { keep: true } };
+  };
+
+  it("cleans a legacy migration backup while preserving every watch condition", async () => {
+    const s = session();
+    s.files.files.set("watches.json", JSON.stringify({ version: 1, watches: [legacy()] }));
+    const svc = await boot(s);
+    await svc.sweepShortTerm();
+    expect(s.files.files.get("watches.v1.json")).not.toContain(marker);
+    expect(JSON.parse(s.files.files.get("watches.v1.json")!).watches[0]).toMatchObject({ name: "My own name", text: QUERY, enabled: true, ownerPreference: { keep: true } });
+    expect(await svc.seatsAccount!.disconnect()).toEqual({ ok: true });
+    expect(disk(s.files)).not.toContain(marker);
+  });
+
+  it("cleans known fields in a newer held file but reports that its unknown format cannot be verified", async () => {
+    const s = session();
+    s.files.files.set("watches.json", JSON.stringify({ version: 3, watches: [legacy()], futureSetting: "keep" }));
+    const svc = await boot(s);
+    expect(svc.watches.hold).toBe("newer");
+    expect(await svc.seatsAccount!.disconnect()).toMatchObject({ ok: false, reason: "saved" });
+    expect(s.files.files.get("watches.json")).not.toContain(marker);
+    expect(JSON.parse(s.files.files.get("watches.json")!)).toMatchObject({ version: 3, futureSetting: "keep", watches: [{ name: "My own name", text: QUERY, ownerPreference: { keep: true } }] });
+    expect(svc.saveStatus.get()?.failed).toContain("retention");
+  });
+
+  it("never claims a damaged copy was purged when its user configuration cannot be separated safely", async () => {
+    const s = session();
+    const damaged = '{"version":2,"watches":[{"name":"my condition","baseline":"' + marker;
+    s.files.files.set("watches.damaged-2026-09-28.json", damaged);
+    const svc = await boot(s);
+    expect(await svc.seatsAccount!.disconnect()).toMatchObject({ ok: false, reason: "saved" });
+    expect(s.files.files.get("watches.damaged-2026-09-28.json")).toBe(damaged);
+    expect(svc.saveStatus.get()?.failed).toContain("retention");
+  });
+
+  it("reports an unreadable held watch instead of silently skipping its provider results", async () => {
+    const s = session();
+    const read = s.files.read.bind(s.files);
+    s.files.read = async (path) => {
+      if (path === "watches.json") throw new Error("watch file unreadable");
+      return read(path);
+    };
+    const svc = await boot(s);
+    expect(svc.watches.hold).toBe("unreadable");
+    expect(await svc.seatsAccount!.disconnect()).toMatchObject({ ok: false, reason: "saved", message: expect.stringContaining("unreadable") });
+  });
+});
+
+describe("OAuth provider results stay in memory", () => {
+  it("dates the last Watch result from the cached row's original fetch, rather than the later first check", async () => {
+    const s = session();
+    const svc = await boot(s);
+    await svc.searchText(QUERY);
+    s.now.t += 30 * 60_000;
+    svc.watches.add(watch());
+    await svc.checkWatches();
+    expect(svc.lastWatchRun()[0]?.outcome.status).toBe("checked");
+    expect(svc.watches.get("w1")?.baselineFetchedAt).toBe(new Date(T0).toISOString());
+    s.now.t = T0 + 24 * HOUR + 15 * 60_000;
+    await svc.persist();
+    expect(svc.lastWatchRun()).toEqual([]);
+  });
+  it("expires the provider's empty-result coverage proof as well as rows", async () => {
+    const s = session();
+    s.seats.fetchImpl = fakeFetch(() => jsonResponse({ data: [], hasMore: false }));
+    const svc = await boot(s);
+    await svc.searchText(QUERY);
+    const shown = svc.workspace.getState().displayedSnapshot!;
+    expect(shown.rows).toEqual([]);
+    expect(shown.coverage.state).toBe("complete");
+    await svc.favorites.save(favoriteFromSnapshot(shown, new Date(T0).toISOString(), "empty"));
+    s.now.t += 25 * HOUR;
+    await svc.persist();
+    expect(svc.workspace.getState().displayedSnapshot?.coverage.state).toBe("unknown");
+    expect(svc.lastSearch.get()?.value.coverage?.state).toBe("unknown");
+    expect(svc.favorites.get("empty")?.coverage.state).toBe("unknown");
+  });
+  it("expires an older history result without erasing a fresh search from the same session", async () => {
+    const s = session();
+    const svc = await boot(s);
+    await svc.searchText(QUERY);
+    s.now.t += 23 * HOUR;
+    await svc.searchText(QUERY);
+    const freshId = svc.workspace.getState().displayedSnapshot!.id;
+    s.now.t += 2 * HOUR;
+    await svc.persist();
+    expect(svc.workspace.getState().displayedSnapshot!.id).toBe(freshId);
+    expect(svc.workspace.getState().displayedSnapshot!.rows.length).toBeGreaterThan(0);
+    expect(svc.workspace.history()[0]?.rows).toEqual([]);
+  });
+  it("forgets the last Watch result and the full last-search answer when their source data expires", async () => {
+    const s = session();
+    const svc = await boot(s);
+    await svc.searchText(QUERY);
+    svc.watches.add(watch());
+    await svc.checkWatches();
+    expect(svc.lastWatchRun()[0]?.outcome.status).toBe("checked");
+    expect(svc.lastSearch.get()?.value.rows?.length).toBeGreaterThan(0);
+    s.now.t += 25 * HOUR;
+    await svc.persist();
+    expect(svc.lastWatchRun()).toEqual([]);
+    expect(svc.lastSearch.get()?.value.rows).toEqual([]);
+  });
+  it("persists queries and preferences without rows, coverage, watch baselines or copied prices, including after a restart", async () => {
+    const s = session();
+    const svc = await boot(s);
+    await svc.searchText(QUERY);
+    const shown = svc.workspace.getState().displayedSnapshot!;
+    svc.workspace.setPreferences({ kind: "calendar" });
+    await svc.favorites.save(favoriteFromSnapshot(shown, new Date(T0).toISOString(), "f1"));
+    svc.watches.add({ ...watch(), name: "My watch" });
+    await svc.checkWatches();
+    expect(svc.workspace.getState().displayedSnapshot!.rows[0]!.value.miles).toBe(81234);
+    expect(svc.watches.get("w1")!.baseline.length).toBeGreaterThan(0);
+    expect(await svc.persist()).toEqual({ ok: true });
+    expect(disk(s.files)).not.toContain("81234");
+    expect(disk(s.files)).not.toContain("id-2026-10-05");
+
+    const later = await boot(s);
+    expect(later.cache.snapshot().users.every((user) => user.rows.length === 0 && user.coverage.length === 0)).toBe(true);
+    expect(later.workspace.getState().displayedSnapshot).toMatchObject({ rows: [], query: shown.query, coverage: { state: "unknown" }, receipt: { sentCalls: null, fromCache: false } });
+    expect(later.workspace.getState().preferences.kind).toBe("calendar");
+    expect(later.favorites.get("f1")).toMatchObject({ rows: [], query: shown.query, coverage: { state: "unknown" } });
+    expect(later.watches.get("w1")).toMatchObject({ name: "My watch", text: QUERY, enabled: true, baseline: [], lastCheckedAt: null, lastResult: null });
+    expect(later.watches.get("w1")!.draft).toBeNull();
+    expect(later.quotaStore.snapshot(new Date(T0))).toEqual(svc.quotaStore.snapshot(new Date(T0)));
   });
 });
 
@@ -472,7 +637,7 @@ async function accountWithResults(s: Session) {
   live.watches.add(watch());
   await live.checkWatches();
   await live.persist();
-  expect(accountDisk(s.files)).toContain("81234");
+  expect(accountDisk(s.files)).not.toContain("81234");
   return live;
 }
 
@@ -525,7 +690,7 @@ describe("sample mode in the OAuth flavour", () => {
     // Within 24 hours the sweep keeps the account's results.
     s.now.t += 23 * HOUR;
     await sweepAccount!();
-    expect(accountDisk(s.files)).toContain("81234");
+    expect(accountDisk(s.files)).not.toContain("81234");
 
     // Past them, it removes them from every file and both slots: cache, workspace, Saved rows, the watch's baseline.
     s.now.t += 2 * HOUR;

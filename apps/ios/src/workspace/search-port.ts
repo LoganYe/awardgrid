@@ -24,6 +24,8 @@ import { SearchRunError } from "./workspace-store";
 export interface EngineSearchPort extends SearchPort {
   /** The engine's answer to a run, once: the second call for the same run returns null. */
   takeResult(runId: string): ApiResult<FindValue> | null;
+  /** Forget unclaimed provider answers older than cutoff; Infinity forgets all (Disconnect). */
+  clearResults(cutoff: number): void;
 }
 
 export interface SearchPortOptions {
@@ -44,12 +46,15 @@ const KEPT_RESULTS = 4;
 
 export function createSearchPort(opts: SearchPortOptions): EngineSearchPort {
   const results = new Map<string, ApiResult<FindValue>>();
+  const fetched = new Map<string, number>();
   let tail: Promise<unknown> = Promise.resolve();
 
   const keep = (runId: string, result: ApiResult<FindValue>) => {
     results.delete(runId);
     results.set(runId, result);
-    while (results.size > KEPT_RESULTS) results.delete(results.keys().next().value!);
+    const rowTimes = result.ok ? (result.value.rows ?? []).map((row) => Date.parse(row.fetched_at)) : [];
+    fetched.set(runId, Math.min(opts.now().getTime(), ...rowTimes.map((at) => Number.isFinite(at) ? at : -Infinity)));
+    while (results.size > KEPT_RESULTS) { const first = results.keys().next().value!; results.delete(first); fetched.delete(first); }
   };
 
   const executeNow = async (query: QueryObject, run: SearchRun): Promise<ResultSnapshot> => {
@@ -76,7 +81,11 @@ export function createSearchPort(opts: SearchPortOptions): EngineSearchPort {
     takeResult(runId) {
       const result = results.get(runId) ?? null;
       results.delete(runId);
+      fetched.delete(runId);
       return result;
+    },
+    clearResults(cutoff) {
+      for (const [id, at] of fetched) if (at < cutoff) { results.delete(id); fetched.delete(id); }
     },
   };
 }
