@@ -4,9 +4,10 @@
  * pause switch, and migration 0005. In-memory SQLite, a fake token service and fake clocks: nothing reaches the
  * network.
  */
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type Database from "better-sqlite3";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { openDb, openTestDb, type Db } from "@/lib/db/client";
@@ -17,7 +18,7 @@ import { SeatsNotConnectedError, SeatsPausedError, renewSeatsAuthorization, seat
 import { type BrokerResult, type TokenBroker, createTokenBroker, meansRevoked } from "./broker";
 import { OAUTH_REDIRECT_URI, SEATS_CONSENT_URL, TOKEN_SERVICE_URL, consentUrl, safeAddress, seatsOAuthConfigFromEnv } from "./config";
 import { finishConnect } from "./connect";
-import { OFF_VALUES, purgeForPause, purgedAnything, seatsOAuthPaused } from "./pause";
+import { OFF_VALUES, ON_VALUES, checkpointAfterPurge, purgeForPause, purgedAnything, seatsOAuthPaused, seatsOAuthWebSetting } from "./pause";
 import { SHORT_TERM_MAX_AGE_MS, purgeAllSeatsData, purgeSeatsDataForUser, sweepSeatsData } from "./retention";
 import { MAX_PENDING_STATES, STATE_TTL_MS, WEB_STATE_RE, beginConnect, consumeState, hashState, randomWebState } from "./state";
 import { connectionStatus, isSeatsConnected, readConnection, reconnectNoticeDue, saveConnection, tokenAad, writeRefreshed } from "./store";
@@ -398,11 +399,23 @@ describe("pause (SEATS_OAUTH_WEB=off)", () => {
     delete process.env.SEATS_OAUTH_WEB;
   });
 
-  it("off (and its other spellings) pauses; unset or any other value changes nothing", () => {
-    for (const value of ["off", "OFF", " off ", "0", "false", "no", "paused"]) expect(seatsOAuthPaused({ SEATS_OAUTH_WEB: value }), value).toBe(true);
-    for (const value of [undefined, "", "on", "1", "true", "yes", "of"]) expect(seatsOAuthPaused({ SEATS_OAUTH_WEB: value }), String(value)).toBe(false);
+  it("off (and its other spellings) pauses; unset or on changes nothing; a value it does not know pauses too", () => {
+    for (const value of ["off", "OFF", " off ", "0", "false", "no", "paused"]) {
+      expect(seatsOAuthWebSetting({ SEATS_OAUTH_WEB: value }), value).toBe("off");
+      expect(seatsOAuthPaused({ SEATS_OAUTH_WEB: value }), value).toBe(true);
+    }
+    for (const value of [undefined, "", " ", "on", "ON", "1", "true", "yes"]) {
+      expect(seatsOAuthWebSetting({ SEATS_OAUTH_WEB: value }), String(value)).toBe("on");
+      expect(seatsOAuthPaused({ SEATS_OAUTH_WEB: value }), String(value)).toBe(false);
+    }
+    // Set only ever to pause: a spelling the switch does not know is not read as on.
+    for (const value of ["pause", "disabled", "of", "offf"]) {
+      expect(seatsOAuthWebSetting({ SEATS_OAUTH_WEB: value }), value).toBe("unknown");
+      expect(seatsOAuthPaused({ SEATS_OAUTH_WEB: value }), value).toBe(true);
+    }
     expect(seatsOAuthPaused({})).toBe(false);
     expect([...OFF_VALUES]).toContain("off");
+    for (const value of ON_VALUES) expect(OFF_VALUES.has(value), value).toBe(false);
     // The default reads the process environment.
     expect(seatsOAuthPaused()).toBe(false);
     process.env.SEATS_OAUTH_WEB = "off";
@@ -444,6 +457,36 @@ describe("pause (SEATS_OAUTH_WEB=off)", () => {
     // Nothing more to do a second time.
     expect(purgedAnything(purgeForPause(d, T0))).toBe(false);
     expect(purgeAllSeatsData(d, T0)).toEqual({ rows: 0, coverage: 0, routes: 0, runs: 0 });
+  });
+
+  it("what the purge deletes leaves the files on disk too: zeroed in the database file, and the write-ahead log emptied", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "awardgrid-pause-disk-"));
+    const file = path.join(root, "awardgrid.db");
+    const d = openDb({ path: file });
+    try {
+      expect(sqliteOf(d).pragma("secure_delete", { simple: true })).toBe(1);
+      seedUsers(d, ["alice"]);
+      connectForTests(d, "alice", { masterKey: MASTER, access: ACCESS, now: T0 });
+      const ciphertext = d.select().from(seatsConnections).get()!.ciphertext;
+      const iso = T0.toISOString();
+      d.insert(availabilityCache)
+        .values({ userId: "alice", program: "alaska", origin: "HKG", dest: "SEA", date: "2026-10-20", cabin: "J", miles: 70000, computedLastSeen: iso, sourceId: "PURGE-DISK-MARKER-ROW", fetchedAt: iso })
+        .run();
+      d.insert(savedQueries).values({ id: "sq-alice", userId: "alice", name: "n", queryJson: "{}", createdAt: iso }).run();
+      d.insert(queryRuns).values({ id: "run-alice", savedQueryId: "sq-alice", ranAt: iso, cellsHash: "h", cellsJson: '["PURGE-DISK-MARKER-RUN"]', newCells: 1 }).run();
+      // As a running server would have it: the rows in the database file itself.
+      sqliteOf(d).pragma("wal_checkpoint(TRUNCATE)");
+      const markers = [ciphertext, "PURGE-DISK-MARKER-ROW", "PURGE-DISK-MARKER-RUN"];
+      expect(markers.map((m) => readFileSync(file).includes(m))).toEqual([true, true, true]);
+
+      expect(purgedAnything(purgeForPause(d, T0))).toBe(true);
+      checkpointAfterPurge(d);
+      expect(markers.map((m) => readFileSync(file).includes(m))).toEqual([false, false, false]);
+      expect(existsSync(`${file}-wal`) ? statSync(`${file}-wal`).size : 0).toBe(0);
+    } finally {
+      sqliteOf(d).close();
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("no token is read, handed out or renewed for anyone: SeatsPausedError, a SeatsNotConnectedError, comes first", async () => {
@@ -532,6 +575,11 @@ describe("migration 0005", () => {
 // ---------------------------------------------------------------------------
 
 /** One row of every kind of seats.aero data the server keeps, for `userId`, fetched at `at`. */
+/** drizzle's better-sqlite3 handle carries its connection as $client; the repo's Db alias does not declare it. */
+function sqliteOf(d: Db): Database.Database {
+  return (d as Db & { $client: Database.Database }).$client;
+}
+
 function seedSeatsData(d: Db, userId: string, at: Date): void {
   const iso = at.toISOString();
   d.insert(availabilityCache)

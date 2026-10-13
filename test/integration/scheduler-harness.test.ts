@@ -298,4 +298,29 @@ describe("SEATS_OAUTH_WEB=off (src/lib/seats-oauth/pause.ts): the worker runs no
     for (const secret of [ALICE_KEY, ALICE_CHAT, MASTER_HEX]) expect(logText).not.toContain(secret);
     await worker.stop();
   });
+
+  it("a value the switch does not know pauses too, and the log says so (without the value)", async () => {
+    const db = openTestDb();
+    seedUsers(db, ["alice"]);
+    connectForTests(db, "alice", { masterKey: Buffer.from(MASTER_HEX, "hex"), access: ALICE_KEY, now: T0 });
+    saveQuery(db, "alice");
+    const fetch = fakeFetch(() => textResponse("seats.aero was not expected to be called", 500));
+    const logs: { event: string; fields: Record<string, unknown> }[] = [];
+    const worker = await startWorker({
+      env: { MASTER_KEY: MASTER_HEX, SEATS_OAUTH_WEB: "pause" },
+      db,
+      fetch,
+      now: () => new Date(T0.getTime() + 3 * H),
+      transport: new MockTransport({ now: () => T0 }),
+      schedule: () => ({ stop: () => {}, destroy: () => {} }),
+      tickOnStart: false,
+      log: (event, fields = {}) => logs.push({ event, fields }),
+    });
+    expect(logs.find((l) => l.event === "worker.seats_paused")?.fields).toEqual({ unknown_value: true });
+    expect(db.select().from(seatsConnections).all()).toEqual([]);
+    expect(await worker.tickOnce()).toBeNull();
+    expect(fetch.calls).toEqual([]);
+    expect(logs.flatMap((l) => Object.values(l.fields))).not.toContain("pause");
+    await worker.stop();
+  });
 });

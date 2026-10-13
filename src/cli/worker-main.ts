@@ -23,7 +23,7 @@
  */
 import nodeCron, { type ScheduledTask, type TaskOptions } from "node-cron";
 import { openDb, type Db } from "@/lib/db/client";
-import { purgeForPause, purgedAnything, seatsOAuthPaused } from "@/lib/seats-oauth/pause";
+import { checkpointAfterPurge, purgeForPause, purgedAnything, seatsOAuthWebSetting } from "@/lib/seats-oauth/pause";
 import { sweepSeatsData } from "@/lib/seats-oauth/retention";
 import { parseMasterKey } from "@/lib/crypto/aes";
 import { createTransportFromEnv, runTelegramLinkPoller, TelegramTransport, type PollerEvent, type Transport } from "@/lib/notify";
@@ -154,18 +154,27 @@ export async function startWorker(io: WorkerIo): Promise<WorkerHandle> {
   };
 
   // Login with Seats.aero paused (src/lib/seats-oauth/pause.ts): every account's tokens and every seats.aero result go,
-  // now and on every tick, and no standing query runs. Counts only.
-  const paused = seatsOAuthPaused({ SEATS_OAUTH_WEB: env.SEATS_OAUTH_WEB });
+  // now and on every tick, and no standing query runs. A value the switch does not know pauses too (`unknown_value`).
+  // Counts only.
+  const setting = seatsOAuthWebSetting({ SEATS_OAUTH_WEB: env.SEATS_OAUTH_WEB });
+  const paused = setting !== "on";
   const purgeForPaused = () => {
     try {
       const purged = purgeForPause(db, now());
-      if (purgedAnything(purged)) log("worker.seats_paused_purge", { ...purged });
+      if (!purgedAnything(purged)) return;
+      log("worker.seats_paused_purge", { ...purged });
     } catch (err) {
       log("worker.seats_paused_purge_failed", { error: err instanceof Error ? err.name : typeof err });
+      return;
+    }
+    try {
+      checkpointAfterPurge(db);
+    } catch (err) {
+      log("worker.seats_paused_checkpoint_failed", { error: err instanceof Error ? err.name : typeof err });
     }
   };
   if (paused) {
-    log("worker.seats_paused", {});
+    log("worker.seats_paused", setting === "unknown" ? { unknown_value: true } : {});
     purgeForPaused();
   }
 

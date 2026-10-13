@@ -18,7 +18,16 @@ export {
 export { type TokenBroker, createTokenBroker } from "./broker";
 export { seatsOAuthConfigFromEnv, consentUrl, type SeatsOAuthConfig } from "./config";
 export { CONNECT_OUTCOMES, finishConnect, isConnectOutcome, type ConnectOutcome } from "./connect";
-export { type PausePurgeReport, SEATS_OAUTH_WEB_ENV, purgeForPause, purgedAnything, seatsOAuthPaused } from "./pause";
+export {
+  type PausePurgeReport,
+  type SeatsOAuthWebSetting,
+  SEATS_OAUTH_WEB_ENV,
+  checkpointAfterPurge,
+  purgeForPause,
+  purgedAnything,
+  seatsOAuthPaused,
+  seatsOAuthWebSetting,
+} from "./pause";
 export { SHORT_TERM_MAX_AGE_MINUTES, SHORT_TERM_MAX_AGE_MS, purgeAllSeatsData, purgeSeatsDataForUser, shortTermCutoff, sweepSeatsData } from "./retention";
 export { beginConnect, clearPendingStates } from "./state";
 export { connectionStatus, deleteConnection, dismissReconnectNotice, isSeatsConnected, reconnectNoticeDue, type ConnectionStatus } from "./store";
