@@ -76,8 +76,8 @@ awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no c
   include that directory. Anthropic bills
   the user's own account.
 
-  The iOS app's privacy policy says all of this for its users: `sites/landing/privacy/index.html`,
-  built for <https://awardgrid.dowhiz.com/privacy/>.
+  The iOS app's privacy policy (`sites/landing/privacy/index.html`, <https://awardgrid.dowhiz.com/privacy/>) covers the
+  App Store version only, which has no Ask and sends nothing to Anthropic; it does not describe test builds.
 - **Sample data (iOS app).** Without a seats.aero account, the iOS app shows sample data: invented
   numbers under real program names, generated on the device for any route between the airports the
   app recognises, labelled "Sample data" on every screen that shows it, with no booking or program
