@@ -1,6 +1,6 @@
 /**
  * POST /api/ask { prompt, context? } → text/event-stream of AskEvents (kickoff §7 point 6)
- *   | 400 invalid_body | 401 unauthorized | 409 no_key { provider } | 500 internal (all JSON, before streaming)
+ *   | 400 invalid_body | 401 unauthorized | 409 no_key { provider, paused? } | 500 internal (all JSON, before streaming)
  *
  * Boundaries honoured here:
  *   - The calling user's own seats.aero connection ("Bearer seats:ota:…", renewed first when it is about to run out,
@@ -10,12 +10,14 @@
  *   - Client disconnect (request.signal) or ReadableStream cancel aborts the SDK session so
  *     an abandoned tab cannot keep spending the user's daily budget.
  *   - No seats.aero connection is answered with a JSON 409 before any stream starts, so the drawer
- *     can point at /settings without parsing SSE.
+ *     can point at /settings without parsing SSE. While Login with Seats.aero is paused on this server
+ *     (SEATS_OAUTH_WEB=off, src/lib/seats-oauth/pause.ts) every account is answered so, with `paused: true`:
+ *     no session starts and no seats.aero access is handed to one.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { runAsk } from "@/lib/ask";
 import { getDecryptedKey, getMasterKey, hasKey, type KeyProvider } from "@/lib/keys";
-import { SeatsNotConnectedError, authorizationSecrets, seatsAuthorization } from "@/lib/seats-oauth";
+import { SeatsNotConnectedError, authorizationSecrets, pausedExtra, seatsAuthorization } from "@/lib/seats-oauth";
 import { getServerDb } from "@/lib/server/db";
 import { userFromRequest } from "@/lib/server/find";
 import { BodyError, readJson } from "@/lib/server/http";
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   try {
     keys = await resolveKeys(db, user.id);
   } catch (err) {
-    if (err instanceof SeatsNotConnectedError) return askError(409, "no_key", { provider: err.provider });
+    if (err instanceof SeatsNotConnectedError) return askError(409, "no_key", { provider: err.provider, ...pausedExtra(err) });
     return askError(500, "internal"); // MASTER_KEY missing/malformed, or the sign-in could not be renewed; never echo why
   }
   const secrets = [...authorizationSecrets(keys.seats_aero), keys.duffel, keys.ignav];

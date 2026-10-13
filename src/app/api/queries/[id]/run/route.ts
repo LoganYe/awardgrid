@@ -5,10 +5,12 @@
  *   worker is running it right now) | 429 { error: "quota", resetAt } |
  *   502 { error: "seatsaero", kind } | 500 internal. A run the scheduler skipped for any other
  *   reason (upstream error, quiet hours, first run) is a 200 whose run.skipped_reason says why.
- * Ownership is checked BEFORE runNow so nobody can spend another user's quota.
+ * Ownership is checked BEFORE runNow so nobody can spend another user's quota. While Login with Seats.aero is paused on
+ * this server (SEATS_OAUTH_WEB=off, src/lib/seats-oauth/pause.ts) nothing runs and no run is recorded:
+ * 409 { error: "no_key", paused: true }.
  */
 import type { NextRequest, NextResponse } from "next/server";
-import { SeatsNotConnectedError } from "@/lib/seats-oauth";
+import { SeatsNotConnectedError, pausedExtra, seatsOAuthPaused } from "@/lib/seats-oauth";
 import { SeatsAeroError, SeatsAeroHttpError, SeatsAeroNetworkError } from "@awardgrid/core/seatsaero/client";
 import { getServerDb } from "@/lib/server/db";
 import { userFromRequest } from "@/lib/server/find";
@@ -23,11 +25,12 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
   if (!user) return queriesError(401, "unauthorized");
   const { id } = await ctx.params;
   if (!getSavedQuery(db, user.id, id)) return queriesError(404, "not_found");
+  if (seatsOAuthPaused()) return queriesError(409, "no_key", { paused: true });
   try {
     const run = await runNow(db, id, {});
     return queriesJson({ run });
   } catch (err) {
-    if (err instanceof SeatsNotConnectedError) return queriesError(409, "no_key");
+    if (err instanceof SeatsNotConnectedError) return queriesError(409, "no_key", pausedExtra(err));
     if (err instanceof RunInProgressError) return queriesError(409, "run_in_progress");
     if (err instanceof RunQuotaError) return queriesError(429, "quota", { resetAt: err.resetAt.toISOString() });
     if (err instanceof SeatsAeroError) {

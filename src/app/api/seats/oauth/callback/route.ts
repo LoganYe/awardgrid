@@ -7,12 +7,16 @@
  * connect.ts CONNECT_OUTCOMES). Without a session the code cannot be tied to an account and is dropped: the person
  * signs in and connects again.
  *
+ * While connecting is paused on this server (SEATS_OAUTH_WEB=off, src/lib/seats-oauth/pause.ts) nothing is read from
+ * the request and nothing is exchanged, signed in or not: the browser goes to /settings?seats=paused#seats, where the
+ * seats.aero section says connecting is paused.
+ *
  * The redirect is relative (it stays on whatever host served this request), the answer is never cached, and no
  * referrer leaves this URL, which carries the code.
  */
 import type { NextRequest } from "next/server";
 import { getServerDb } from "@/lib/server/db";
-import { finishConnect } from "@/lib/seats-oauth";
+import { finishConnect, seatsOAuthPaused } from "@/lib/seats-oauth";
 import { userFromRequest } from "../../../keys/session";
 
 export const runtime = "nodejs";
@@ -23,6 +27,7 @@ function seeOther(location: string): Response {
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
+  if (seatsOAuthPaused()) return seeOther("/settings?seats=paused#seats");
   const db = getServerDb();
   const user = userFromRequest(request, db);
   if (!user) return seeOther("/login");
