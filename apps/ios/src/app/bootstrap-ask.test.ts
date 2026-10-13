@@ -35,6 +35,8 @@ import { type FakeHandler, fakeFetch } from "@awardgrid/core/test-fixtures/seats
 import { createNativeFetch } from "../native/http";
 import { type KeyStore, MemoryKeyStore } from "../native/keychain";
 import { LOCAL_USER } from "../search/search";
+import { allowAi, withdrawAi } from "../ask/consent";
+import { withAsk } from "../ask/services";
 import { ASK_FILE, AskStore } from "../store/ask-store";
 import { CACHE_FILE, MemoryFileStore, QUOTA_FILE, SnapshotStore } from "../store/persistence";
 import { fixtureQuery, fixtureSnapshot } from "@awardgrid/core/test-fixtures/uiux/factory";
@@ -136,7 +138,7 @@ describe("launch", () => {
   it("resolves with no Anthropic key and no Anthropic transport injected, and touches neither", async () => {
     const files = new MemoryFileStore();
     const anthropicKeys = watchedKeys(null);
-    const svc = await bootstrap({ keys: await seatsKeys(), anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: fakeFetch(seatsAero()) });
+    const svc = withAsk(await bootstrap({ keys: await seatsKeys(), anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: fakeFetch(seatsAero()) }));
 
     expect(svc.anthropicKeys).toBe(anthropicKeys);
     expect(anthropicKeys.get).not.toHaveBeenCalled();
@@ -159,7 +161,7 @@ describe("launch", () => {
 
   it("a grid search still spends through the observed fetch, with the Anthropic transport untouched", async () => {
     const seats = fakeFetch(seatsAero());
-    const svc = await bootstrap({ keys: await seatsKeys(), anthropicKeys: watchedKeys(ANTHROPIC_KEY), snapshots: new SnapshotStore(new MemoryFileStore()), now: () => NOW, fetchImpl: seats });
+    const svc = withAsk(await bootstrap({ keys: await seatsKeys(), anthropicKeys: watchedKeys(ANTHROPIC_KEY), snapshots: new SnapshotStore(new MemoryFileStore()), now: () => NOW, fetchImpl: seats }));
 
     const res = await svc.engine.search("HKG to SEA next 30 days business", SEATS_KEY);
     expect(res.ok).toBe(true);
@@ -186,7 +188,7 @@ describe("launch", () => {
     await new AskStore(files).write(left);
     const anthropicKeys = watchedKeys(ANTHROPIC_KEY);
 
-    const svc = await bootstrap({ keys: await seatsKeys(), anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: fakeFetch(seatsAero()) });
+    const svc = withAsk(await bootstrap({ keys: await seatsKeys(), anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: fakeFetch(seatsAero()) }));
 
     expect(svc.ask.state().entries[0]!.end?.status).toBe("unfinished");
     expect((await new AskStore(files).read())?.pending).toBeNull();
@@ -216,9 +218,9 @@ describe("a question through AppServices", () => {
     const keys = await seatsKeys();
     const anthropicKeys = new MemoryKeyStore();
     await anthropicKeys.set(ANTHROPIC_KEY);
-    const svc = await bootstrap({ keys, anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: seats, anthropicFetch: api.fetchImpl });
+    const svc = withAsk(await bootstrap({ keys, anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: seats, anthropicFetch: api.fetchImpl }));
     // Release D10: the permission the consent sheet gives, saved in the settings file.
-    await svc.settings.allowAi(NOW);
+    await allowAi(svc.settings, NOW);
     const state = await svc.ask.ask(QUESTION, true);
     return { files, seats, api, keys, anthropicKeys, svc, state };
   }
@@ -229,7 +231,7 @@ describe("a question through AppServices", () => {
     const seats = fakeFetch(seatsAero());
     const api = anthropic(["tool_use_search", "text"]);
     const anthropicKeys = watchedKeys(ANTHROPIC_KEY);
-    const svc = await bootstrap({ keys: await seatsKeys(), anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: seats, anthropicFetch: api.fetchImpl });
+    const svc = withAsk(await bootstrap({ keys: await seatsKeys(), anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: seats, anthropicFetch: api.fetchImpl }));
 
     const refused = await svc.ask.ask(QUESTION, true);
     expect(refused.notice?.kind).toBe("no_consent");
@@ -240,10 +242,10 @@ describe("a question through AppServices", () => {
     expect(seats.calls).toEqual([]);
 
     // Given, the same question goes; withdrawn, the next one does not.
-    await svc.settings.allowAi(NOW);
+    await allowAi(svc.settings, NOW);
     expect((await svc.ask.ask(QUESTION, true)).entries[0]?.end?.status).toBe("answered");
     const sent = api.calls.length;
-    await svc.settings.withdrawAi();
+    await withdrawAi(svc.settings);
     expect((await svc.ask.ask(QUESTION, true)).notice?.kind).toBe("no_consent");
     expect(api.calls).toHaveLength(sent);
   });
@@ -321,7 +323,7 @@ describe("whenWatchesIdle and lastSearch", () => {
     const hold = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const svc = await bootstrap({ keys: await seatsKeys(), anthropicKeys: watchedKeys(null), snapshots: new SnapshotStore(new MemoryFileStore()), now: () => NOW, fetchImpl: fakeFetch(seatsAero(hold)) });
+    const svc = withAsk(await bootstrap({ keys: await seatsKeys(), anthropicKeys: watchedKeys(null), snapshots: new SnapshotStore(new MemoryFileStore()), now: () => NOW, fetchImpl: fakeFetch(seatsAero(hold)) }));
 
     let idleBefore = false;
     void svc.whenWatchesIdle().then(() => {
@@ -351,7 +353,7 @@ describe("whenWatchesIdle and lastSearch", () => {
   it("the last search is the workspace's shown snapshot; the key is never written; a relaunch shows the saved one", async () => {
     const files = new MemoryFileStore();
     const options = { keys: await seatsKeys(), anthropicKeys: watchedKeys(null), snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl: fakeFetch(seatsAero()) };
-    const svc = await bootstrap(options);
+    const svc = withAsk(await bootstrap(options));
     expect(svc.lastSearch.get()).toBeNull();
     const res = await svc.searchText("HKG to SEA next 30 days business");
     if (!res.ok) throw new Error("the grid search should have succeeded");
@@ -360,7 +362,7 @@ describe("whenWatchesIdle and lastSearch", () => {
 
     await svc.persist();
     for (const contents of files.files.values()) expect(contents).not.toContain(SEATS_KEY);
-    const relaunched = await bootstrap(options);
+    const relaunched = withAsk(await bootstrap(options));
     expect(relaunched.workspace.getState().displayedSnapshot?.query.origins).toEqual(["HKG"]);
     const restored = relaunched.lastSearch.get();
     expect(restored?.value.query.origins).toEqual(["HKG"]);

@@ -20,7 +20,7 @@ import {
 } from "@awardgrid/core/ask/limits";
 import { GET_FLIGHTS, PROPOSE_QUERY_CHANGE, SEARCH_AWARDS, type SearchEcho, type ToolStep } from "@awardgrid/core/ask/tools";
 import { SOURCE_NAMES } from "@awardgrid/core/seatsaero/types";
-import { copy } from "@awardgrid/core/workspace/present";
+import { aiCopy } from "@awardgrid/core/workspace/present";
 import { cabinName } from "@awardgrid/core/workspace/query-editor";
 import type { Cabin } from "@awardgrid/core/query/schema";
 import type { Locale } from "../app/locale";
@@ -274,7 +274,7 @@ const ZH: EntryLabels = {
         return end.failure ? ZH.failure(end.failure).text : ZH.announcements.failed;
       case "unfinished":
         // The approved "The previous task did not finish.", then why and what it may have cost.
-        return `${copy("ai.unfinished", "zh")}应用在问题进行时被关闭，已发出的请求可能已计费。本应用不会自动重新发送。`;
+        return `${aiCopy("ai.unfinished", "zh")}应用在问题进行时被关闭，已发出的请求可能已计费。本应用不会自动重新发送。`;
     }
   },
   entryMetaLine(entry) {

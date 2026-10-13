@@ -23,7 +23,7 @@ import { useLocale, useT } from "@awardgrid/core/i18n/client";
 import type { Cabin, QueryObject } from "@awardgrid/core/query/schema";
 import { favoriteFromOption, optionOrigin } from "@awardgrid/core/workspace/favorites-store";
 import { projectResults } from "@awardgrid/core/workspace/projection";
-import { copy, coverageNotices, optionsCount } from "@awardgrid/core/workspace/present";
+import { aiCopy, copy, coverageNotices, optionsCount } from "@awardgrid/core/workspace/present";
 import { describeQuery, draftFromQuery, resolveDraft, sameDraft, type QueryDraft } from "@awardgrid/core/workspace/query-editor";
 import { AskDrawer } from "@/components/ask/ask-drawer";
 import { cellContextFromRow } from "@/components/ask/context";
@@ -299,7 +299,7 @@ export function WorkspaceApp({ userId, initialQuery, hasKey, seatsNotice = false
     { id: "view_list", label: t("workspace.cmd.view_list"), keywords: ["list", "列表"] },
     { id: "view_calendar", label: t("workspace.cmd.view_calendar"), keywords: ["calendar", "日历"] },
     { id: "view_matrix", label: t("workspace.cmd.view_matrix"), keywords: ["matrix", "矩阵"] },
-    { id: "open_assistant", label: copy("ai.entry", locale), keywords: ["ai", "ask", "assistant", "提问"] },
+    { id: "open_assistant", label: aiCopy("ai.entry", locale), keywords: ["ai", "ask", "assistant", "提问"] },
     { id: "close_panel", label: t("workspace.cmd.close_panel"), hint: "Esc", disabled: panel.kind === "none" },
     { id: "go_saved", label: t("workspace.cmd.go_saved"), keywords: ["saved", "收藏"] },
     { id: "go_queries", label: t("workspace.cmd.go_queries"), keywords: ["queries", "watch", "查询", "关注"] },
@@ -379,7 +379,7 @@ export function WorkspaceApp({ userId, initialQuery, hasKey, seatsNotice = false
             aria-pressed={panel.kind === "assistant"}
             onClick={(e) => (panel.kind === "assistant" ? dispatch({ type: "close" }) : openAssistant(e.currentTarget))}
           >
-            {copy("ai.entry", locale)}
+            {aiCopy("ai.entry", locale)}
           </button>
         </div>
       </header>
@@ -463,7 +463,7 @@ export function WorkspaceApp({ userId, initialQuery, hasKey, seatsNotice = false
             )
           ) : null}
         </div>
-        <aside ref={setSlot} className="ag-ws-panel-slot" aria-label={panel.kind === "assistant" ? copy("ai.entry", locale) : panel.kind === "detail" ? t("workspace.view_option") : undefined} />
+        <aside ref={setSlot} className="ag-ws-panel-slot" aria-label={panel.kind === "assistant" ? aiCopy("ai.entry", locale) : panel.kind === "detail" ? t("workspace.view_option") : undefined} />
       </div>
 
       <AskDrawer
@@ -472,7 +472,7 @@ export function WorkspaceApp({ userId, initialQuery, hasKey, seatsNotice = false
         query={snapshot?.query ?? null}
         cell={selectedRow ? cellContextFromRow(selectedRow.value) : null}
         hasKey={hasKey}
-        panel={{ title: copy("ai.entry", locale), width: ASSISTANT_PANEL_WIDTH, container: slot, testId: "assistant-panel", className: "ag-ws-tokens", opener: panelOpener }}
+        panel={{ title: aiCopy("ai.entry", locale), width: ASSISTANT_PANEL_WIDTH, container: slot, testId: "assistant-panel", className: "ag-ws-tokens", opener: panelOpener }}
       />
       <DetailPanel
         open={panel.kind === "detail"}

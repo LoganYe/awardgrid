@@ -8,7 +8,8 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { notice, noticeText, type Notice } from "../notices";
+import { notice } from "../notices";
+import { ParseError } from "./parse-error";
 import { DEFAULT_PLACES, type Places } from "./places";
 import { DEFAULT_CABINS, MAX_SPAN_DAYS, QueryObjectLLM, type QueryObjectInput } from "./schema";
 import { SEATS_SOURCES } from "../seatsaero/types";
@@ -23,19 +24,8 @@ export function resolveParserModel(env: Record<string, string | undefined> = pro
   return v && v.length > 0 ? v : PARSER_MODEL_DEFAULT;
 }
 
-/** User-facing parse failure. `missing` lists fields the UI can ask for when known. */
-export class ParseError extends Error {
-  readonly missing: string[];
-  /** Structured form of `message` ({code, vars}) so the UI can translate it; message = noticeText(notice). */
-  readonly notice: Notice | null;
-  constructor(message: string | Notice, opts: { missing?: string[]; cause?: unknown } = {}) {
-    const n = typeof message === "string" ? null : message;
-    super(n ? noticeText(n) : (message as string), opts.cause === undefined ? undefined : { cause: opts.cause });
-    this.name = "ParseError";
-    this.missing = opts.missing ?? [];
-    this.notice = n;
-  }
-}
+/** User-facing parse failure (./parse-error.ts), exported here as before. */
+export { ParseError };
 
 /** The auto-parseable output format for QueryObjectLLM (what zodOutputFormat returns). */
 export type QueryOutputFormat = ReturnType<typeof zodOutputFormat<typeof QueryObjectLLM>>;

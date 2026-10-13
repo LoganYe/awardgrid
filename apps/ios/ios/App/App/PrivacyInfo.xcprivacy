@@ -4,8 +4,8 @@
 <!--
   The app's privacy manifest (docs/release/APP_STORE_HANDOFF.md §3.1). It must say what the App Privacy answers in
   App Store Connect say (D8), and both must follow what the code sends (handoff §6). It describes the App Store build
-  (`npm run build:store`), which has no Ask: nothing is sent to Anthropic, so Other User Content is not collected
-  (release decision D8).
+  (`npm run build:store`), which has no AI feature: it sends no Other User Content anywhere, so none is collected
+  (release decision D8). This file ships inside the app, so it names no AI provider either.
 
   - No tracking, no tracking domains: no analytics, ads, crash reporting or accounts of ours. The App Store build is
     the OAuth flavour (`build:store` sets VITE_AG_CONNECT=oauth): searches go to seats.aero with the access token from

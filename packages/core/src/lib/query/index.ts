@@ -12,6 +12,7 @@ export {
   type QueryObjectInput,
 } from "./schema";
 export { parseQuery, type ParseQueryOptions, type ParseQueryResult } from "./parse";
+export { parseQueryLocal, type ParseQueryLocalOptions } from "./parse-local";
 export {
   parseDeterministic,
   parseCabins,

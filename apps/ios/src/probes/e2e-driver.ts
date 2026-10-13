@@ -24,9 +24,13 @@ import type { SearchEcho } from "@awardgrid/core/ask/tools";
 import type { AppServices } from "../app/bootstrap";
 import type { AskState } from "../ask/ask-service";
 import { stepLabel } from "../ask/labels";
+import { type AskServices, withAsk } from "../ask/services";
 import { createNativeFetch } from "../native/http";
 import { LOCAL_USER } from "../search/search";
 import { PROBE_SERVER } from "./probe-transport";
+
+/** The app's services with Ask's part: the driver runs Ask, and the e2e build has it (only the App Store build has not). */
+type DriverServices = AppServices & AskServices;
 
 type Values = Record<string, unknown>;
 
@@ -381,7 +385,7 @@ async function queue(...items: string[]): Promise<void> {
   if (!res.ok) throw new Error(`POST /reset answered ${res.status}: ${await res.text()}`);
 }
 
-function waitState(services: AppServices, what: string, test: (state: AskState) => boolean, timeoutMs = 120_000): Promise<AskState> {
+function waitState(services: DriverServices, what: string, test: (state: AskState) => boolean, timeoutMs = 120_000): Promise<AskState> {
   return new Promise((resolve, reject) => {
     const check = () => {
       const state = services.ask.state();
@@ -406,7 +410,7 @@ function waitState(services: AppServices, what: string, test: (state: AskState) 
 const last = (state: AskState) => state.entries.at(-1);
 
 /** What planFind plans for a search step's query: the requests the mock's log should show. */
-function planned(services: AppServices, search: SearchEcho | null): Values | null {
+function planned(services: DriverServices, search: SearchEcho | null): Values | null {
   if (search === null) return null;
   const parsed = QueryObject.safeParse({
     origins: search.origins,
@@ -428,7 +432,7 @@ function planned(services: AppServices, search: SearchEcho | null): Values | nul
   return { mode: plan.mode, estimated_calls: plan.estimated_calls, requests: plan.requests.map((r) => ({ kind: r.kind, pages: r.pages, params: r.params })) };
 }
 
-async function setKeys(services: AppServices, anthropic: string | null, seats: string | null): Promise<void> {
+async function setKeys(services: DriverServices, anthropic: string | null, seats: string | null): Promise<void> {
   if (anthropic === null) await services.anthropicKeys.clear();
   else await services.anthropicKeys.set(anthropic);
   if (seats === null) await services.keys.clear();
@@ -436,7 +440,7 @@ async function setKeys(services: AppServices, anthropic: string | null, seats: s
 }
 
 /** Leave the device as the normal app expects it: no conversation, no cache, no watches, today's count at zero. */
-async function cleanSlate(services: AppServices): Promise<void> {
+async function cleanSlate(services: DriverServices): Promise<void> {
   if (services.ask.isRunning()) {
     services.ask.stop();
     await waitState(services, "the question to end", (s) => s.running === null);
@@ -459,7 +463,7 @@ function scrollToEntry(): void {
 // ---------------------------------------------------------------------------
 
 /** A5 with no keys, then A3: no Anthropic key. Ask refuses before anything is sent, and a grid search still works. */
-async function phaseA3(services: AppServices): Promise<void> {
+async function phaseA3(services: DriverServices): Promise<void> {
   // A5's state with both keys missing: two notices, each with its own Open Settings link.
   await setKeys(services, null, null);
   await reopenAsk();
@@ -491,7 +495,7 @@ async function phaseA3(services: AppServices): Promise<void> {
 }
 
 /** E1 (a question end to end), E2 (empty-cell reasons), and E3 up to Stop; the host then relaunches for E3's second half. */
-async function phaseE1(services: AppServices): Promise<void> {
+async function phaseE1(services: DriverServices): Promise<void> {
   await setKeys(services, PROBE_KEY, SEATS_NORMAL);
   await go("#/", () => document.querySelector("#q"));
   await waitFor("the quota line", quotaLine);
@@ -579,7 +583,7 @@ async function phaseE1(services: AppServices): Promise<void> {
 }
 
 /** E3 after the relaunch, then E4, E5, E6, and A5's too-large failure. */
-async function phaseE3Relaunch(services: AppServices): Promise<void> {
+async function phaseE3Relaunch(services: DriverServices): Promise<void> {
   await setKeys(services, PROBE_KEY, SEATS_NORMAL);
   await reopenAsk();
   const restored = await waitState(services, "the restored conversation", (s) => s.entries.length >= 2);
@@ -645,7 +649,7 @@ async function phaseE3Relaunch(services: AppServices): Promise<void> {
 }
 
 /** E7: a 40 s first request; the host opens Settings 3 s in and comes back at 30 s. */
-async function phaseE7(services: AppServices): Promise<void> {
+async function phaseE7(services: DriverServices): Promise<void> {
   await setKeys(services, PROBE_KEY, SEATS_NORMAL);
   await reopenAsk();
   const t0 = Date.now();
@@ -688,7 +692,7 @@ async function phaseE7(services: AppServices): Promise<void> {
 }
 
 /** E8, first half: a slow replay, which the host ends by terminating the app. */
-async function phaseE8(services: AppServices): Promise<void> {
+async function phaseE8(services: DriverServices): Promise<void> {
   await setKeys(services, PROBE_KEY, SEATS_NORMAL);
   await reopenAsk();
   await queue("text:every=5000:label=E8");
@@ -698,7 +702,7 @@ async function phaseE8(services: AppServices): Promise<void> {
 }
 
 /** E8, second half: after the relaunch. */
-async function phaseE8Relaunch(services: AppServices): Promise<void> {
+async function phaseE8Relaunch(services: DriverServices): Promise<void> {
   await setKeys(services, PROBE_KEY, SEATS_NORMAL);
   await reopenAsk();
   const restored = await waitState(services, "the restored conversation", (s) => s.entries.length >= 1);
@@ -710,7 +714,7 @@ async function phaseE8Relaunch(services: AppServices): Promise<void> {
 }
 
 /** A4 (and A5's states) on one device: Settings, Ask idle, the nav with Watches (12) and Ask (working), Ask answered. */
-async function phaseLayout(services: AppServices, device: string): Promise<void> {
+async function phaseLayout(services: DriverServices, device: string): Promise<void> {
   await setKeys(services, PROBE_KEY, SEATS_NORMAL);
   const grid = await gridSearch(GRID_QUERY);
   await post(`A4-${device}-search`, grid);
@@ -764,7 +768,7 @@ async function phaseLayout(services: AppServices, device: string): Promise<void>
   await cleanSlate(services);
 }
 
-type Phase = (services: AppServices, arg: string) => Promise<void>;
+type Phase = (services: DriverServices, arg: string) => Promise<void>;
 
 const PHASES: Record<string, Phase> = {
   a3: phaseA3,
@@ -793,7 +797,7 @@ export async function startE2E(services: AppServices): Promise<void> {
     return;
   }
   try {
-    await run(services, arg);
+    await run(withAsk(services), arg);
     await post(`phase-done:${phase}`, {}, true);
   } catch (err) {
     await post(`phase-done:${phase}`, { harness_error: errorFacts(err), dom: domFacts() }, false);

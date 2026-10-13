@@ -7,10 +7,12 @@
  * a reinstall would be the one call whose header nobody read, which is exactly the case PIVOT §2
  * says to protect against.
  *
- * Ask is wired here too, and left cold. Launch builds no Anthropic client and reads no Anthropic key:
- * the service reads both keys when a question starts (../ask/ask-service.ts), so the grid lane opens,
- * searches and checks watches with no Anthropic key at all. The only Ask work at launch is reading
- * ask.json, so that a question the app was closed during shows as unfinished instead of vanishing.
+ * Ask is wired here too, and left cold, in every build but the App Store one. Launch builds no Anthropic client and
+ * reads no Anthropic key: the service reads both keys when a question starts (../ask/ask-service.ts), so the grid lane
+ * opens, searches and checks watches with no Anthropic key at all. The only Ask work at launch is reading ask.json, so
+ * that a question the app was closed during shows as unfinished instead of vanishing. The App Store build (./flags.ts
+ * STORE) has no Ask: ASK_KIT below is false there, Ask's code (../ask/kit.ts) is never loaded, and its bundle carries
+ * none of it — no service, no Anthropic SDK, no Anthropic key item; AppServices.ask and anthropicKeys are absent.
  *
  * The workspace (UI/UX v1 T05) is restored here too, and runs nothing: what was on screen comes back as it was saved,
  * with its own time, and a new search only starts when the person asks for one.
@@ -21,19 +23,16 @@
  * expired before each save and on `sweepShortTerm`; Disconnect/revocation purge it and known legacy copies. The key
  * flavour has no `seatsAccount` and no limit, and launches exactly as it did.
  */
-import { ANTHROPIC_IDLE_TIMEOUT_MS } from "@awardgrid/core/ask/limits";
 import { InMemoryAvailabilityCache } from "@awardgrid/core/seatsaero/cache";
 import { Quota } from "@awardgrid/core/seatsaero/quota";
 import { ResilientRoutesCatalog } from "@awardgrid/core/seatsaero/routes";
-import { type AskService, type Visibility, createAskService } from "../ask/ask-service";
-import { anthropicKeychain } from "../native/anthropic-key";
+import type { AskService, Visibility } from "../ask/ask-service";
 import { createNativeFetch } from "../native/http";
 import { type KeyStore, keychain } from "../native/keychain";
 import { type DataSourceControl, LIVE_ONLY } from "./data-source";
 import { localDate } from "./local-date";
 import { type Locale, detectLocale } from "./locale";
 import { type LastSearchStore, createWorkspaceLastSearch } from "../search/last-search";
-import { AskStore } from "../store/ask-store";
 import { type FileStore, SnapshotStore, WATCHES_FILE } from "../store/persistence";
 import { migrateLegacyWatch } from "@awardgrid/core/workspace/watch-migration";
 import { DeviceQuotaStore } from "../store/quota-store";
@@ -72,10 +71,17 @@ export interface AppServices {
   watches: WatchStore;
   snapshots: SnapshotStore;
   keys: KeyStore;
-  /** The Anthropic key Ask uses, in its own Keychain item. Read when a question or a key check starts, never at launch. */
-  anthropicKeys: KeyStore;
-  /** Ask's one conversation. The service runs questions, not a screen, so leaving the Ask screen never stops one. */
-  ask: AskService;
+  /**
+   * The Anthropic key Ask uses, in its own Keychain item. Read when a question or a key check starts, never at launch.
+   * Absent in the App Store build (./flags.ts STORE), which has no Ask (see `ask`).
+   */
+  anthropicKeys?: KeyStore;
+  /**
+   * Ask's one conversation. The service runs questions, not a screen, so leaving the Ask screen never stops one.
+   * Absent in the App Store build (./flags.ts STORE): bootstrap never loads Ask's code there (ASK_KIT), so that bundle
+   * has no Ask service, no Anthropic SDK and no Anthropic key item. Only a build with Ask routes the Ask screens.
+   */
+  ask?: AskService;
   /**
    * The versioned workspace: query revisions, the snapshot on screen and the ones before it, view preferences.
    * Saved in its own namespace by `persist`; restored at launch without running anything.
@@ -308,7 +314,10 @@ export interface BootstrapOptions {
   now?: () => Date;
   /** Injected in tests; production builds the native adapter. */
   fetchImpl?: typeof fetch;
-  /** Injected in tests; production uses the Anthropic key's own Keychain item. */
+  /**
+   * Injected in tests; production uses the Anthropic key's own Keychain item. This and the next three are Ask's, and
+   * a build without Ask (the App Store build, ASK_KIT) never reads them.
+   */
   anthropicKeys?: KeyStore;
   /** The transport for api.anthropic.com. Injected in tests; production builds a second native adapter. */
   anthropicFetch?: typeof fetch;
@@ -378,6 +387,14 @@ function whenWorkspaceSettled(workspace: WorkspaceStore, timeoutMs = 30_000): Pr
  * any flavour). Written out as App.tsx's OAUTH_BUILT is, so the other flavours' bundles carry no OAuth chunk.
  */
 const OAUTH_KIT = import.meta.env.VITE_AG_CONNECT === "oauth" || import.meta.env.MODE === "test";
+
+/**
+ * Whether this build may load Ask (../ask/kit.ts): every build but the App Store one (./flags.ts STORE). Written out as
+ * App.tsx's ASK_BUILT is, so the App Store bundle carries no Ask chunk and no Ask code at all: the import below is
+ * dropped, and so is every use of Ask's options and service that tests it first. flags.test.ts keeps the conditions
+ * the same.
+ */
+const ASK_KIT = import.meta.env.VITE_AG_STORE !== "1";
 
 /** How many options a saved item shows: what Saved and the Search screen show of it (core projectResults). */
 function optionsShown(item: FavoriteV1): number {
@@ -453,6 +470,9 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   // The OAuth parts are their own chunk, loaded only here and only for that flavour (../oauth/kit.ts). OAUTH_KIT is a
   // build-time constant, so a build of another flavour drops the import and carries no such chunk at all.
   const kit = oauth && OAUTH_KIT ? await import("../oauth/kit") : null;
+  // Ask's parts are their own chunk too, loaded only in a build that has Ask (ASK_KIT, a build-time constant like
+  // OAUTH_KIT): the App Store build drops the import and carries no such chunk.
+  const askKit = ASK_KIT ? await import("../ask/kit") : null;
   const tokenBroker = oauth && kit ? (oauth.broker ?? kit.createTokenBroker({ fetchImpl: oauth.tokenFetch ?? createNativeFetch({ timeoutMs: kit.TOKEN_SERVICE_TIMEOUT_MS }) })) : null;
   const tokenStore: TokenKeyStore | null =
     oauth && kit && tokenBroker
@@ -464,7 +484,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
           } })
       : null;
   const keys: KeyStore & RenewableKeys = opts.keys ?? tokenStore ?? keychain;
-  const anthropicKeys = opts.anthropicKeys ?? anthropicKeychain;
+  const anthropicKeys = ASK_KIT && askKit ? (opts.anthropicKeys ?? askKit.anthropicKeychain) : null;
   const originalSnapshots = opts.snapshots ?? new SnapshotStore();
   // Provider responses stay in memory: an iOS app cannot delete an on-disk copy while it is suspended.
   // The same boundary also cleans the account's files when sample mode boots its token-free account sweeper.
@@ -512,10 +532,10 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   // while still appearing to work, which is the exact failure mode PIVOT §2 is about.
   const fetchImpl = seatsTransport(opts.fetchImpl ?? createNativeFetch(), quotaStore, now);
 
-  // Anthropic gets a second adapter of its own. Its idle timeout is 90 s where seats.aero keeps 20 s
-  // (core ask/limits.ts, ANTHROPIC_IDLE_TIMEOUT_MS), and it has NO rate-limit observer: an Anthropic
+  // Anthropic gets a second adapter of its own, in a build with Ask. Its idle timeout is 90 s where seats.aero keeps
+  // 20 s (core ask/limits.ts, ANTHROPIC_IDLE_TIMEOUT_MS), and it has NO rate-limit observer: an Anthropic
   // response says nothing about seats.aero's quota. Building it sends nothing.
-  const anthropicFetch = opts.anthropicFetch ?? createNativeFetch({ timeoutMs: ANTHROPIC_IDLE_TIMEOUT_MS });
+  const anthropicFetch = ASK_KIT && askKit ? (opts.anthropicFetch ?? createNativeFetch({ timeoutMs: askKit.ANTHROPIC_IDLE_TIMEOUT_MS })) : null;
 
   const engine = new SearchEngine({
     fetchImpl,
@@ -605,45 +625,49 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
         );
 
   const lastSearch = createWorkspaceLastSearch(workspace, searchViewFromSnapshot, now);
-  const ask = createAskService({
-    // Release D10: read at every question, so a permission withdrawn in Settings stops the next one.
-    consent: () => settings.aiConsent() !== null,
-    anthropicKeys,
-    seatsKeys: keys,
-    anthropicFetch,
-    seatsFetch: fetchImpl,
-    engine,
-    store: new AskStore(snapshots.files),
-    // A tool call that spent calls saves what this function saves: the cache, the quota and ask.json.
-    persist: async () => {
-      await persist();
-    },
-    lastSearch,
-    // T15: the search and any attached results come from the one snapshot every view shows, and its selection.
-    context: {
-      snapshot: () => workspace.getState().displayedSnapshot,
-      selected: () => workspace.getState().selected,
-      subscribe: (listener) => workspace.subscribe(listener),
-      // The revision of the search on screen, not the run counter: a search still running leaves a proposal about the
-      // one shown pending, and publishing (or showing another) makes it stale (T16 review).
-      revision: () => workspace.getState().displayedSnapshot?.revision ?? 0,
-    },
-    // T17: each tool call is queued with the other spending entries; one still waiting at Stop never starts.
-    coordinate: (kind, operation, signal, onStart) => requests.run(kind, operation, { signal, onStart }),
-    // T16: an applied proposal is a search like any other: the workspace runs it, and what it spent is saved.
-    runQuery: async (query) => {
-      await workspace.run(query);
-      await persist();
-    },
-    whenWatchesIdle,
-    now,
-    visibility: opts.visibility,
-    assertNative: opts.assertNative,
-  });
+  // Null in a build without Ask (ASK_KIT), where none of what follows is built, and every use below tests it first.
+  const ask: AskService | null =
+    ASK_KIT && askKit && anthropicKeys && anthropicFetch
+      ? askKit.createAskService({
+          // Release D10: read at every question, so a permission withdrawn in Settings stops the next one.
+          consent: () => askKit.aiConsent(settings) !== null,
+          anthropicKeys,
+          seatsKeys: keys,
+          anthropicFetch,
+          seatsFetch: fetchImpl,
+          engine,
+          store: new askKit.AskStore(snapshots.files),
+          // A tool call that spent calls saves what this function saves: the cache, the quota and ask.json.
+          persist: async () => {
+            await persist();
+          },
+          lastSearch,
+          // T15: the search and any attached results come from the one snapshot every view shows, and its selection.
+          context: {
+            snapshot: () => workspace.getState().displayedSnapshot,
+            selected: () => workspace.getState().selected,
+            subscribe: (listener) => workspace.subscribe(listener),
+            // The revision of the search on screen, not the run counter: a search still running leaves a proposal about
+            // the one shown pending, and publishing (or showing another) makes it stale (T16 review).
+            revision: () => workspace.getState().displayedSnapshot?.revision ?? 0,
+          },
+          // T17: each tool call is queued with the other spending entries; one still waiting at Stop never starts.
+          coordinate: (kind, operation, signal, onStart) => requests.run(kind, operation, { signal, onStart }),
+          // T16: an applied proposal is a search like any other: the workspace runs it, and what it spent is saved.
+          runQuery: async (query) => {
+            await workspace.run(query);
+            await persist();
+          },
+          whenWatchesIdle,
+          now,
+          visibility: opts.visibility,
+          assertNative: opts.assertNative,
+        })
+      : null;
 
   /** Under the short-term limit, an Ask conversation holding a question older than it is cleared (it carries results). */
   const expireAsk = async () => {
-    if (shortTermMs == null) return;
+    if (shortTermMs == null || !ask) return;
     const oldest = ask.state().entries[0];
     const at = oldest ? Date.parse(oldest.askedAt) : NaN;
     if (oldest && !(at >= cutoff()) && ask.state().running === null) await ask.newConversation();
@@ -688,7 +712,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     await attempt("saved", expireFavorites);
     await attempt("workspace", expireWorkspace);
     const watchesExpired = expireWatches() > 0;
-    await attempt("ask", expireAsk);
+    if (ASK_KIT && ask) await attempt("ask", expireAsk);
     await attempt("cache", () => snapshots.saveCache(cache.snapshot()));
     if (quotaStore.dirty) {
       // Marked clean only once written, so a failed write is tried again next time.
@@ -709,11 +733,13 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       failed.push("workspace");
       message ||= lastWorkspaceSave.message;
     }
-    await attempt("ask", async () => {
-      await ask.persist();
-      // Ask's own save never rejects (a question must not fail on it); it says whether ask.json is still unsaved.
-      if (ask.saveFailed?.()) throw new Error("ask.json could not be saved");
-    });
+    if (ASK_KIT && ask) {
+      await attempt("ask", async () => {
+        await ask.persist();
+        // Ask's own save never rejects (a question must not fail on it); it says whether ask.json is still unsaved.
+        if (ask.saveFailed?.()) throw new Error("ask.json could not be saved");
+      });
+    }
     if (providerFiles) {
       await providerFiles.sweep();
       if (providerFiles.problems().length > 0) {
@@ -775,10 +801,11 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
   };
 
   // Last of the warm start, and the only Ask work at launch: read ask.json, where a question the app
-  // was closed during becomes an unfinished entry. No key is read and nothing is sent.
-  await ask.restore();
-
-  await expireAsk();
+  // was closed during becomes an unfinished entry. No key is read and nothing is sent. None in a build without Ask.
+  if (ASK_KIT && ask) {
+    await ask.restore();
+    await expireAsk();
+  }
 
   const sweepShortTerm = async (): Promise<void> => {
     if (shortTermMs == null) return;
@@ -837,7 +864,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
       const saved = await favorites.removeRows(() => true, now().toISOString(), optionsShown, true);
       if (!saved.ok) fail("saved", saved.reason === "write_failed" ? saved.message : "Saved could not be changed on this device, so its seats.aero results were not removed.");
       if (!watches.hold) for (const watch of watches.all()) watches.update(watch.id, watchReset());
-      if (ask.state().entries.length > 0 && ask.state().running === null) await ask.newConversation();
+      if (ASK_KIT && ask && ask.state().entries.length > 0 && ask.state().running === null) await ask.newConversation();
       const report = await persist();
       if (!report.ok) for (const part of report.failed) fail(part, report.message);
     } catch (err) {
@@ -880,8 +907,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppService
     watches,
     snapshots,
     keys,
-    anthropicKeys,
-    ask,
+    // Ask's two, only in a build that has Ask: the App Store build's services have neither (ASK_KIT).
+    ...(ASK_KIT && ask && anthropicKeys ? { anthropicKeys, ask } : {}),
     workspace,
     details,
     checkSeatsKey: (draft) => engine.checkKey(draft),

@@ -159,6 +159,30 @@ describe("installWebViewFetchGuard", () => {
   });
 });
 
+describe("in the App Store build (VITE_AG_STORE=1)", () => {
+  it("guards seats.aero alone: the build has no Anthropic client, and names no Anthropic host", async () => {
+    vi.resetModules();
+    vi.stubEnv("VITE_AG_STORE", "1");
+    try {
+      const store = await import("./webview-fetch-guard");
+      const { t, inner } = target();
+      store.installWebViewFetchGuard(t);
+      const err = await rejection(t.fetch("https://seats.aero/partnerapi/search"));
+      expect((err as Error).name).toBe("NativeHttpRequiredError");
+      expect((err as NativeHttpRequiredError).host).toBe("seats.aero");
+      expect(inner).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it("writes the condition out, so the App Store bundle does not carry the Anthropic host", () => {
+    const source = readFileSync(path.join(import.meta.dirname, "webview-fetch-guard.ts"), "utf8");
+    expect(source).toContain('new Set(import.meta.env.VITE_AG_STORE === "1" ? ["seats.aero"] : ["api.anthropic.com", "seats.aero"])');
+  });
+});
+
 describe("main.tsx", () => {
   it("installs the guard at the top level, before createRoot renders anything", () => {
     const file = path.join(import.meta.dirname, "..", "main.tsx");

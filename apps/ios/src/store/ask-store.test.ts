@@ -10,6 +10,7 @@ import { CONVERSATION_FILE_VERSION, newConversation, serializeConversation, type
 import type { Watch } from "@awardgrid/core/watch";
 import { fakeFetch, jsonResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
 import { bootstrap } from "../app/bootstrap";
+import { withAsk } from "../ask/services";
 import { MemoryKeyStore } from "../native/keychain";
 import { ASK_FILE, AskStore } from "./ask-store";
 import { CACHE_FILE, MemoryFileStore, QUOTA_FILE, SnapshotStore, WATCHES_FILE, type FileStore } from "./persistence";
@@ -154,7 +155,7 @@ async function device() {
           hasMore: false,
         }),
   );
-  const svc = await bootstrap({ keys, anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl, anthropicFetch });
+  const svc = withAsk(await bootstrap({ keys, anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl, anthropicFetch }));
   await svc.engine.search(QUERY, SEATS_KEY);
   svc.watches.add(watch());
   await svc.persist();

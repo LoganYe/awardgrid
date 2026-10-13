@@ -132,7 +132,7 @@ function classifyStatus(status: number): SeatsAeroHttpKind {
 function messageFor(kind: SeatsAeroHttpKind, status: number): string {
   switch (kind) {
     case "invalid_key":
-      return `seats.aero rejected the API key (invalid key, HTTP ${status})`;
+      return `seats.aero rejected the credential (invalid key or token, HTTP ${status})`;
     case "rate_limited":
       return "seats.aero rate limited this key (HTTP 429)";
     case "unavailable":
@@ -226,7 +226,7 @@ export class SeatsAeroClient {
 
   constructor(opts: SeatsAeroClientOptions) {
     if (typeof opts.apiKey !== "string" || opts.apiKey.trim() === "") {
-      throw new SeatsAeroError("a seats.aero API key is required (no default key exists)");
+      throw new SeatsAeroError("a seats.aero credential is required (no default one exists)");
     }
     this.#apiKey = opts.apiKey;
     this.#fetch = opts.fetch ?? globalThis.fetch;

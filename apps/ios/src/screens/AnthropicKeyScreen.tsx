@@ -17,8 +17,10 @@ import { WithTail } from "../app/WithTail";
 import { useFocusOnArrival } from "../app/focus";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import type { KeyCheckResult } from "../ask/ask-service";
+import { aiConsent, withdrawAi } from "../ask/consent";
 import { CONSENT } from "../ask/consent-copy";
 import { PRICING_URL } from "../ask/labels";
+import { type AskServices, withAsk } from "../ask/services";
 import { type KeyStore, maskedKey } from "../native/keychain";
 import { ANTHROPIC_PAGE } from "./anthropic-copy";
 import { BackToSettings, ConfirmRemove } from "./SettingsScreen";
@@ -43,7 +45,7 @@ export interface KeyStatus {
   tail?: string;
 }
 
-type AnthropicKeyServices = Pick<AppServices, "anthropicKeys" | "ask"> & Partial<Pick<AppServices, "settings">>;
+type AnthropicKeyServices = AskServices & Partial<Pick<AppServices, "settings">>;
 
 /** What a key check says, in its tone. */
 export function checkStatus(result: KeyCheckResult): KeyStatus {
@@ -89,7 +91,7 @@ export async function saveAnthropicKey(
 }
 
 /** Remove the key, then read the Keychain again: a removal is reported only when the key is really gone. */
-export async function removeAnthropicKey(services: Pick<AppServices, "anthropicKeys">, locale: Locale = "en"): Promise<KeyStatus> {
+export async function removeAnthropicKey(services: Pick<AskServices, "anthropicKeys">, locale: Locale = "en"): Promise<KeyStatus> {
   const a = ANTHROPIC_PAGE[locale];
   let before: string | null = null;
   try {
@@ -122,7 +124,7 @@ function errorText(err: unknown): string {
 
 /** The Anthropic key (S08 "AI（可选）"): its own page, the existing section. */
 export function AnthropicKeyScreen() {
-  const services = useOutletContext<AppServices>();
+  const services = withAsk(useOutletContext<AppServices>());
   const locale = useLocale(services);
   const title = useRef<HTMLHeadingElement>(null);
   useFocusOnArrival(title);
@@ -299,10 +301,11 @@ export function AnthropicKeySection({
  */
 export function AskPermission({ settings, locale }: { settings: AppServices["settings"]; locale: Locale }) {
   const k = CONSENT[locale].settings;
-  const consent = useSyncExternalStore(settings.subscribe, settings.aiConsent, settings.aiConsent);
+  const read = () => aiConsent(settings);
+  const consent = useSyncExternalStore(settings.subscribe, read, read);
   const [status, setStatus] = useState<string | null>(null);
   const withdraw = async () => {
-    const saved = await settings.withdrawAi();
+    const saved = await withdrawAi(settings);
     setStatus(saved ? k.withdrawn : k.withdrawNotSaved);
   };
   return (

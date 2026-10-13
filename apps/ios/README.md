@@ -141,7 +141,8 @@ that iOS's timeout is an idle interval that arriving bytes reset (an 18 s drip c
 timeout), and T2 showed the SDK's request crossing the native adapter unchanged (the body's sha256 equal
 on both sides). The WebView's own fetch refuses both Anthropic and seats.aero: `main.tsx` installs a
 tripwire that throws before it calls the WebView's fetch, A2 saw it reject both hosts, and lint keeps
-`@anthropic-ai/sdk` out of `src/`.
+`@anthropic-ai/sdk` out of `src/`. (The App Store build has no Anthropic client at all, and its tripwire guards
+seats.aero alone.)
 
 **Limits**, all in `packages/core/src/lib/ask/limits.ts`:
 
@@ -216,16 +217,22 @@ gets. It is the OAuth flavour (below): a seats.aero account is connected only th
 page is not in the bundle, and the build refuses to run without `VITE_AG_SEATS_CLIENT_ID`. Ask is compiled
 out — no `#/ask` or `#/settings/anthropic` route (an old link lands on Search), no AI link in the Search header or
 under the results, no AI group in Settings, and none of the copy that names Ask or Anthropic (nor the query editor's
-"No AI" notes, which only point at what this build has not got). AppServices.ask is
-still built at launch and never opened, so both flavours bundle the same npm modules and share one licenses list
-(`@anthropic-ai/sdk` stays in it: a license notice, not a feature). The plain `npm run build` keeps Ask for
-development, the probes and the UI/UX e2e, whose `ios-store` project runs `e2e/uiux/store-*.spec.ts` against the
-fixture host served with `UIUX_STORE=1` on 127.0.0.1:4311.
+"No AI" notes, which only point at what this build has not got). Since 1.0 (8) its code is compiled out too:
+`bootstrap.ts` loads Ask's service (`src/ask/kit.ts`) only where `ASK_KIT` holds, so the App Store build's services
+have no `ask` and no `anthropicKeys`, and its bundle has no Ask service, tool runner or prompt, no Anthropic SDK, no
+Anthropic endpoint, no Anthropic Keychain item, no LLM query parser (the app parses with core's `parseQueryLocal`) and
+none of AI assistance's approved rows (core `AI_COPY`). The two flavours therefore ship different npm modules, and
+each has its own licenses list: `src/about/acknowledgements.json` for the plain build and
+`src/about/acknowledgements.store.json` for this one, which names no Anthropic package. The plain `npm run build`
+keeps Ask for development, the probes and the UI/UX e2e, whose `ios-store` project runs `e2e/uiux/store-*.spec.ts`
+against the fixture host served with `UIUX_STORE=1` on 127.0.0.1:4311.
 
-`build:store` runs the fixture-marker check, then `scripts/check-store-bundle.mjs` (Ask's strings and routes,
-paid-plan phrases, the paste field's words and the key page's chunk, and the OAuth connect page's words, which must be
-there; each known hit is documented in the script with the reason it is there and what must surround it), then the
-licenses check. `src/store-copy.test.ts` holds the wording of the source the store build is made from, the OAuth
+`build:store` runs the fixture-marker check, then `scripts/check-store-bundle.mjs` (Ask's strings and routes;
+"anthropic", "api.anthropic.com", "claude", "sk-ant", "Pro key" and "API key" in any case; the words Ask and Pro;
+paid-plan phrases, the paste field's words and the key page's chunk; and the OAuth connect page's words, which must be
+there; a known hit would have to be documented in the script with its reason and surroundings, and today there is
+none), then the licenses check against the App Store build's own list (the build records its flavour in
+`dist-sourcemaps/flavour.json`, and `scripts/acknowledgements.mjs` reads it). `src/store-copy.test.ts` holds the wording of the source the store build is made from, the OAuth
 flavour, to the same lists. The `ios-store` fixture host is the OAuth flavour too: the sign-in is played in the page
 with the HTTP mock's consent and token rules (`fixture-host/transports.ts` `fixtureOAuth`).
 
@@ -316,13 +323,10 @@ reproducibly on the xcframework download (`docs/PHASE0.md` §6).
 
 ## Known costs, recorded rather than hidden
 
-- **The bundle carries `@anthropic-ai/sdk` (~650 KB total).** `query/llm.ts` imports it as a
-  *value*, and `query/parse.ts` imports from `query/llm.ts`, so importing `parseQuery` pulls the
-  SDK in even though the grid lane never passes an `llmClient` and needs no Anthropic key. The
-  remedy, when bundle size matters, is to import `query/deterministic` + `query/schema` directly
-  and reimplement `parseQuery`'s ~45-line tail — deferred because duplicating that tail is a
-  divergence risk for a cost that does not yet hurt. Since Phase 5, Ask builds its client from the
-  SDK too (core's `createAskClient`), so that remedy would no longer take the SDK out of the bundle.
+- **The plain build's bundle carries `@anthropic-ai/sdk`**, in Ask's own chunk (`src/ask/kit.ts`): Ask builds its
+  client from it (core's `createAskClient`). The App Store build carries none of it since 1.0 (8). The grid lane no
+  longer pulls the SDK in either: it parses with core's `parseQueryLocal` (`query/parse-local.ts`), which shares
+  `parseQuery`'s steps without importing `query/llm.ts`, so nothing was duplicated to get there.
 - **The main chunk has grown past the point where growth is investigated.** After Phase 5 it is
   746,386 bytes, 78,945 over the Phase 5 design's 667,441-byte baseline and past its 60 KB threshold
   (`docs/PHASE5.md` §2.12). Recorded, not investigated yet (#92).

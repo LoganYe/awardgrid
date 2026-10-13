@@ -12,20 +12,25 @@
  *   - every string the shell's store-reachable source can show — the files src/main.tsx reaches through the imports
  *     that build keeps (test-support/store-graph.ts), read the way honesty.test.ts reads copy
  *     (test-support/source-strings.ts), leaving out what sits in a branch the build compiles out;
- *   - the approved rows (core present.ts COPY) those files render through copy("key"), in both languages.
+ *   - the approved rows (core present.ts COPY) those files render through copy("key"), in both languages, and any
+ *     row of AI_COPY or KEY_COPY they render at all (aiCopy, keyCopy).
  *
- * Allowed, each with its reason: the modules of AppServices.ask, which the store build still constructs and never
- * opens (SERVICE_ONLY), and single strings in ALLOWED. scripts/check-store-bundle.mjs checks the bundle itself.
+ * Allowed, each with its reason: single strings in ALLOWED (none). Since 1.0 (8) the store build constructs no Ask
+ * service either (app/bootstrap.ts ASK_KIT), so no module of Ask's is reached at all, nor any of core's Ask modules,
+ * its LLM query parser or the Anthropic SDK (ASK_MODULE, ASK_OUTSIDE). scripts/check-store-bundle.mjs checks the
+ * bundle itself.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { COPY, type CopyKey } from "@awardgrid/core/workspace/present";
+import { AI_COPY, COPY, KEY_COPY } from "@awardgrid/core/workspace/present";
 import { extract } from "./test-support/source-strings";
-import { STORE_CONSTANTS, deadRanges, evaluate, isDead, liveImports, parseSource, storeSources } from "./test-support/store-graph";
+import { STORE_CONSTANTS, deadRanges, evaluate, isDead, liveSpecifiers, parseSource, storeSources } from "./test-support/store-graph";
 
 const SRC = import.meta.dirname;
+/** Every approved row (core present.ts): COPY, and AI assistance's and the key check's own tables. */
+const APPROVED: Readonly<Record<string, { en: string; zh: string } | undefined>> = { ...COPY, ...AI_COPY, ...KEY_COPY };
 const MAIN = path.join(SRC, "main.tsx");
 
 /** A paid plan, a purchase or a subscription, an unlock or an upgrade, or cached data called live. */
@@ -39,19 +44,14 @@ const ASK = /\bAsk\b|Anthropic|Claude|AI 对话|AI ?辅助|AI assistance|AI（�
 const KEY = /Paste your seats\.aero API key|seats\.aero API key|API tab|Paste the API key|Check and save|Checking the key|did not accept this key|Key on file|Remove the seats\.aero key|Remove key|粘贴|API 密钥|API 页|检查并保存|检查密钥|已保存密钥|移除 seats\.aero 密钥|移除密钥/;
 
 /**
- * Modules the store build reaches only to construct AppServices.ask (app/bootstrap.ts), which it never opens: no
- * route, link or screen of Ask is in that build. Their sentences are Ask's own (its refusals, its key check, its
- * prompt's labels) and never reach a screen there; check-store-bundle.mjs confirms that the ones a screen would show
- * are gone from the bundle. Kept so both flavours ship the same npm modules and one licenses list (release plan D3).
+ * Ask's own modules: its screens, its service and everything only they use, its Keychain item and its conversation
+ * file. The App Store build reaches none of them (app/flags.ts STORE, App.tsx ASK_BUILT, app/bootstrap.ts ASK_KIT).
+ * app/ask-running.ts is not one: the store build reads it as the constant false (it has no `ask` to subscribe to).
  */
-const SERVICE_ONLY: Record<string, string> = {
-  "ask/ask-service.ts": "AppServices.ask itself: built at launch, never asked a question in the store build.",
-  "ask/labels.ts": "Ask's sentences, imported by ask-service.ts for its refusals and key-check results.",
-  "ask/context.ts": "What a question carries to Anthropic; ask-service.ts builds it.",
-  "ask/seats-port.ts": "Ask's way to search seats.aero; ask-service.ts builds it.",
-  "store/ask-store.ts": "Ask's conversation file (ask.json), restored at launch by bootstrap.ts.",
-  "native/anthropic-key.ts": "The Anthropic Keychain item bootstrap.ts hands to AppServices.ask; never read in this build.",
-};
+const ASK_MODULE = /^(ask\/|store\/ask-store\.ts$|native\/anthropic-key\.ts$|screens\/(AskScreen|AnthropicKeyScreen)\.tsx$|screens\/anthropic-copy\.ts$|components\/(AskEntry|AnswerText|QueryChangeProposal)\.tsx$)/;
+
+/** Outside modules no store-reachable file may import: core's Ask, its LLM query parser, and the Anthropic SDK. */
+const ASK_OUTSIDE = /^(@awardgrid\/core\/ask(\/|$)|@awardgrid\/core\/query(\/(llm|parse))?$|@anthropic-ai\/)/;
 
 /** Single strings a store-reachable file may hold, with why each is not a claim the deny-lists are for. */
 const ALLOWED: ReadonlyArray<{ file: string; text: string; why: string }> = [];
@@ -81,7 +81,7 @@ function liveCopyKeys(file: string): string[] {
   const sf = parseSource(file);
   const keys: string[] = [];
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "copy" && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && ["copy", "aiCopy", "keyCopy"].includes(node.expression.text) && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) {
       if (!isDead(node)) keys.push(node.arguments[0].text);
     }
     ts.forEachChild(node, visit);
@@ -98,7 +98,6 @@ function storeHits(): { hits: Hit[]; allowedUsed: Set<string>; scanned: string[]
   const scanned: string[] = [];
   for (const file of storeSources(MAIN)) {
     const name = rel(file);
-    if (name in SERVICE_ONLY) continue;
     scanned.push(name);
     for (const { text, line } of liveStrings(file)) {
       for (const rule of rules(text)) {
@@ -108,8 +107,10 @@ function storeHits(): { hits: Hit[]; allowedUsed: Set<string>; scanned: string[]
       }
     }
     for (const key of liveCopyKeys(file)) {
-      const row = COPY[key as CopyKey];
-      for (const lang of ["en", "zh"] as const) for (const rule of rules(row?.[lang] ?? "")) hits.push({ file: `${name} copy("${key}") ${lang}`, line: 0, text: row[lang], rule });
+      const row = APPROVED[key];
+      // A row of AI assistance's or of the key check's is a hit wherever it is rendered: this build has neither.
+      if (key in AI_COPY || key in KEY_COPY) hits.push({ file: `${name} copy("${key}")`, line: 0, text: key, rule: key in AI_COPY ? "ASK" : "KEY" });
+      for (const lang of ["en", "zh"] as const) for (const rule of rules(row?.[lang] ?? "")) hits.push({ file: `${name} copy("${key}") ${lang}`, line: 0, text: row?.[lang] ?? "", rule });
     }
   }
   return { hits, allowedUsed, scanned };
@@ -136,15 +137,16 @@ describe("the App Store build's wording", () => {
     expect(hits.map((h) => `${h.file}:${h.line} [${h.rule}] ${JSON.stringify(h.text)}`)).toEqual([]);
   });
 
-  it("every allowance is still needed, and every service-only module is still reached only to build AppServices.ask", () => {
+  it("every allowance is still needed, and the store build reaches no module of Ask's, here or in core, nor the SDK", () => {
     expect(ALLOWED.filter((a) => !allowedUsed.has(`${a.file}:${a.text}`))).toEqual([]);
     const reached = storeSources(MAIN).map(rel);
-    for (const name of Object.keys(SERVICE_ONLY)) expect(reached, `${name} is no longer reached: remove it from SERVICE_ONLY`).toContain(name);
-    // Nothing a screen renders imports them: only bootstrap.ts and the Ask service's own modules do.
-    const importers = new Set(
-      reached.filter((name) => !(name in SERVICE_ONLY) && liveImports(path.join(SRC, name)).some((target) => rel(target) in SERVICE_ONLY)),
-    );
-    expect([...importers].sort()).toEqual(["app/bootstrap.ts"]);
+    expect(reached.filter((name) => ASK_MODULE.test(name))).toEqual([]);
+    const outside = reached.flatMap((name) => liveSpecifiers(path.join(SRC, name)).filter((specifier) => ASK_OUTSIDE.test(specifier)).map((specifier) => `${name} imports ${specifier}`));
+    expect(outside).toEqual([]);
+    // The reading is not an empty walk: the default build reaches Ask's service through bootstrap's kit, and its parser.
+    const full = storeSources(MAIN, { ...STORE_CONSTANTS, STORE: false, ASK_BUILT: true, ASK_KIT: true }).map(rel);
+    expect(full).toEqual(expect.arrayContaining(["ask/kit.ts", "ask/ask-service.ts", "store/ask-store.ts", "native/anthropic-key.ts"]));
+    expect(full.flatMap((name) => liveSpecifiers(path.join(SRC, name))).filter((specifier) => ASK_OUTSIDE.test(specifier))).toEqual(expect.arrayContaining(["@awardgrid/core/ask/client"]));
   });
 });
 

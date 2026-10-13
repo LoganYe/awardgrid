@@ -14,6 +14,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { fakeFetch, jsonResponse } from "@awardgrid/core/test-fixtures/seatsaero/helpers";
+import { withAsk } from "../ask/services";
 import type { KeyStore } from "../native/keychain";
 import { LOCAL_USER } from "../search/search";
 import { ASK_FILE } from "../store/ask-store";
@@ -64,7 +65,7 @@ async function launch(files: MemoryFileStore, answer = false) {
     : (vi.fn(async () => {
         throw new Error("nothing may be sent by launching");
       }) as unknown as typeof fetch);
-  const svc = await bootstrap({ keys, anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl, anthropicFetch: fetchImpl });
+  const svc = withAsk(await bootstrap({ keys, anthropicKeys, snapshots: new SnapshotStore(files), now: () => NOW, fetchImpl, anthropicFetch: fetchImpl }));
   return { svc, keys, anthropicKeys, fetchImpl };
 }
 

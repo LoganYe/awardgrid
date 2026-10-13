@@ -17,8 +17,14 @@ import type { CoverageEvidence, CoverageSlice, EmptyKind, ISODate, ISOInstant, M
 export type Locale = "en" | "zh";
 
 /**
- * Approved copy (fixtures/copy.zh-en.json), every row, by key: the one table the app's approved sentences come from,
- * in both languages (T11, U-037). `{name}` placeholders are filled by `copy(key, locale, vars)`.
+ * Approved copy (fixtures/copy.zh-en.json), by key: the tables the app's approved sentences come from, in both
+ * languages (T11, U-037). `{name}` placeholders are filled by `copy(key, locale, vars)`.
+ *
+ * Three tables, each with its own lookup, so a build that never renders a table's rows carries none of them: COPY
+ * (every surface), AI_COPY (AI assistance, read with `aiCopy`) and KEY_COPY (the pasted key's check, read with
+ * `keyCopy`). The iPhone App Store build has neither Ask nor a paste field, and `copy` cannot reach the other two
+ * tables, so its bundle holds none of their sentences (apps/ios/scripts/check-store-bundle.mjs). Together they are
+ * every approved row, and no key is in two of them (present.test.ts).
  */
 export const COPY = {
   "data.source": { en: "Data: seats.aero", zh: "数据：seats.aero" },
@@ -52,6 +58,15 @@ export const COPY = {
   "watch.cached": { en: "Skipped while cached results are still valid", zh: "缓存期内未重查" },
   "watch.quota": { en: "Deferred due to low quota", zh: "额度不足，暂缓检查" },
   "watch.failed": { en: "Check failed; previous baseline kept", zh: "检查失败，已保留旧基线" },
+  "demo.synthetic": { en: "Illustrative data — not live availability", zh: "虚构示例数据，并非实时库存" },
+  "watch.foreground_only": { en: "Checked on open and foreground only.", zh: "仅打开或返回前台时检查。" },
+  "watch.scheduled_with_push": { en: "Scheduled checks and push delivery are configured. Check the last run status.", zh: "已配置定期检查与消息发送，请查看最近运行状态。" },
+  "watch.scheduled_only": { en: "Scheduled checks are configured; push delivery is not enabled.", zh: "已配置定期检查，未启用消息发送。" },
+  "watch.unavailable": { en: "No active checking capability has been confirmed.", zh: "尚未确认可用的检查能力。" },
+} as const satisfies Record<string, Record<Locale, string>>;
+
+/** AI assistance's approved rows (the web workspace's assistant, the iPhone app's Ask), read with `aiCopy`. */
+export const AI_COPY = {
   "ai.entry": { en: "AI assistance", zh: "AI辅助" },
   "ai.query_only": { en: "Only the query conditions will be sent.", zh: "仅附带查询条件。" },
   "ai.selected": { en: "Query and {count} selected options will be sent.", zh: "附带查询条件及{count}个所选选项。" },
@@ -62,18 +77,31 @@ export const COPY = {
   "ai.stop_note": { en: "Requests already sent cannot be recalled and may still be billed.", zh: "已发送的请求不能撤回，仍可能计费。" },
   "ai.unfinished": { en: "The previous task did not finish.", zh: "上次任务未完成。" },
   "ai.new_content": { en: "New content", zh: "有新内容" },
+} as const satisfies Record<string, Record<Locale, string>>;
+
+/** The approved row about checking a pasted seats.aero key (the iPhone app's key flavour), read with `keyCopy`. */
+export const KEY_COPY = {
   "key.check_cost": { en: "Checking this key sends a request to the data source.", zh: "检查密钥会向数据源发送一次请求。" },
-  "demo.synthetic": { en: "Illustrative data — not live availability", zh: "虚构示例数据，并非实时库存" },
-  "watch.foreground_only": { en: "Checked on open and foreground only.", zh: "仅打开或返回前台时检查。" },
-  "watch.scheduled_with_push": { en: "Scheduled checks and push delivery are configured. Check the last run status.", zh: "已配置定期检查与消息发送，请查看最近运行状态。" },
-  "watch.scheduled_only": { en: "Scheduled checks are configured; push delivery is not enabled.", zh: "已配置定期检查，未启用消息发送。" },
-  "watch.unavailable": { en: "No active checking capability has been confirmed.", zh: "尚未确认可用的检查能力。" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type CopyKey = keyof typeof COPY;
+export type AiCopyKey = keyof typeof AI_COPY;
+export type KeyCopyKey = keyof typeof KEY_COPY;
+
+function fill(text: string, vars: Record<string, string>): string {
+  return text.replace(/\{(\w+)\}/g, (_, name: string) => vars[name] ?? `{${name}}`);
+}
 
 export function copy(key: CopyKey, locale: Locale, vars: Record<string, string> = {}): string {
-  return COPY[key][locale].replace(/\{(\w+)\}/g, (_, name: string) => vars[name] ?? `{${name}}`);
+  return fill(COPY[key][locale], vars);
+}
+
+export function aiCopy(key: AiCopyKey, locale: Locale, vars: Record<string, string> = {}): string {
+  return fill(AI_COPY[key][locale], vars);
+}
+
+export function keyCopy(key: KeyCopyKey, locale: Locale, vars: Record<string, string> = {}): string {
+  return fill(KEY_COPY[key][locale], vars);
 }
 
 const MILES = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });

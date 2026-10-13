@@ -6,10 +6,18 @@
  *
  * Read only behind `STORE ? … : …` (app/flags.ts). The App Store build compiles Ask out, so this table is not in its
  * bundle (scripts/check-store-bundle.mjs), and those screens use their neutral wording instead (settings-copy.ts,
- * components/results/copy.ts). English sentences ./labels.ts already holds come from there, unchanged.
+ * components/results/copy.ts). The three English sentences it shares with Ask's own labels are written here, and
+ * ./labels.ts re-exports them: this module imports nothing of Ask's, so the screens that import it for a branch the
+ * App Store build drops do not pull Ask's labels, its tool definitions or its guard into that bundle with it.
  */
 import type { Locale } from "../app/locale";
-import { ASK_ABOUT_SEARCH, CACHE_CLEARED, CACHE_NOTE } from "./labels";
+
+/** On the Search screen, next to Watch this search, whenever a result is shown (design §6.1). */
+export const ASK_ABOUT_SEARCH = "Ask Claude about this search";
+
+export const CACHE_NOTE =
+  "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls. Clearing it costs one cold search, nothing more. This does not touch your keys or your Ask conversation.";
+export const CACHE_CLEARED = "Cached results cleared. Your keys are untouched.";
 
 export interface AskSurfaceCopy {
   search: {
