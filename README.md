@@ -4,7 +4,7 @@
 ## AwardGrid for iPhone
 
 AwardGrid is an iPhone app by Curastone CORP.
-AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.
+AwardGrid for iPhone has been submitted as a free app, with no in-app purchase. Your own seats.aero data (optional): if you have a seats.aero account with API access (seats.aero decides which accounts have API access; AwardGrid sells nothing), you can connect it to see results from that account instead of sample data.
 AwardGrid for iPhone is submitted to the App Store and not available there yet.
 AwardGrid depends on seats.aero's Partner API and connects to your seats.aero account through seats.aero's own sign-in (Login with Seats.aero); seats.aero's terms apply to that account.
 
@@ -14,7 +14,7 @@ Without a seats.aero account, AwardGrid shows sample data only: search, the List
 Sample data is labelled on every screen that shows it, its options have no booking links, and nothing is sent.
 
 Type the routes and dates in English or Chinese, or set them in the editor.
-List, Calendar and Matrix views; compare up to four options; save results on the device.
+List, Calendar and Matrix views; compare up to four options; save searches on the device.
 
 Results are seats.aero's cached availability, not a live search, and each shows how old it is. Confirm on the program's own site before you transfer points.
 Watches are checked when you open or return to the app, and at no other time; there is no background check and no notification.
@@ -22,7 +22,7 @@ Ask, which answers questions about your results with Claude on your own Anthropi
 
 The AwardGrid iPhone app has no accounts of its own, and there is no analytics, advertising, tracking or crash reporting in the app. Searches on your own seats.aero account go from the iPhone directly to seats.aero, and a small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens and stores nothing; sample data sends nothing.
 You connect your seats.aero account with seats.aero's own sign-in (Login with Seats.aero): seats.aero asks you to sign in and approve AwardGrid, and AwardGrid never sees your password. You can disconnect at any time, in AwardGrid or in your seats.aero settings.
-Results from your seats.aero account are cached only in memory, not written to app files. Saved keeps query conditions; after the app restarts, opening a saved query searches again.
+AwardGrid 1.0 (6) keeps results from your seats.aero account on the iPhone for at most 24 hours; later versions keep them only in memory while the app runs. Saved keeps your queries; opening a saved query whose results are gone searches again.
 
 For an option it opens seats.aero's booking link when there is one; otherwise you copy the search. It never books.
 No live search, no booking, no round trips, no alerts or notifications, no scraping of airline or bank sites, no airline or bank passwords, no logos.
