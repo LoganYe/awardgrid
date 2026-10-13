@@ -762,23 +762,27 @@ export const CONTENT_RULES = [
   {
     id: "FREE_WITHOUT_PRO",
     guard: true,
-    // 160 characters: the D6 prerequisite sentence (the owner's wording, 2026-10-06) names "seats.aero Pro" about 145
+    // 180 characters: the D6 prerequisite sentence (the owner's wording, 2026-10-06) named "seats.aero Pro" about 145
     // characters after the "free" of the price sentence it follows; README.md, /ios/ and llms.txt put the two together.
-    near: { source: String.raw`seats\.aero Pro`, flags: "i", distance: 160, affirmative: true },
+    // Since 2026-10-12 it says "seats.aero decides which accounts have API access" where it said "part of seats.aero
+    // Pro" (either counts), and that phrase ends about 167 characters after the "free" before it, and starts about as
+    // far before the "free" of the released status line that follows it on the home page and in llms.txt.
+    near: { source: String.raw`seats\.aero Pro|seats\.aero decides which accounts have API access`, flags: "i", distance: 180, affirmative: true },
     patterns: [
       p(
         // Not "free" as in "feel free", "free up space", "free-text" or "free of ads"; "free of charge" is a price.
         String.raw`(?<!-)(?<!\bfeel )\bfree\b(?![- ](?:text|form)\b)(?!\s+(?:up|space)\b)(?!\s+of\s+(?!charge|cost))|\bno (?:[\w-]+ ){0,2}(?:fees?|charges?)\b|\bat no (?:extra )?cost\b|\bwithout (?:any )?(?:charge|cost|fees?)\b`,
-        'free never reads as free of seats.aero Pro: "seats.aero Pro", affirmed, within 160 characters',
+        'free never reads as free seats.aero data: "seats.aero decides which accounts have API access" (or "seats.aero Pro"), affirmed, within 180 characters',
       ),
     ],
   },
   {
     id: "FREE_WITHOUT_PRO",
     guard: true,
-    // 100 characters: the Chinese D6 sentence names Pro about 90 characters after the 免费 of the sentence it follows.
-    near: { source: String.raw`\bPro\b`, flags: "", distance: 100, affirmative: true },
-    patterns: [p(String.raw`免费|免費|不收费|不收費|零费用|零費用`, "免费 needs Pro, affirmed, within 100 characters")],
+    // 100 characters: the Chinese D6 sentence names the API access (由 seats.aero 决定; until 2026-10-12, Pro) about 75
+    // characters after the 免费 of the sentence it follows.
+    near: { source: String.raw`\bPro\b|由\s*seats\.aero\s*决定`, flags: "", distance: 100, affirmative: true },
+    patterns: [p(String.raw`免费|免費|不收费|不收費|零费用|零費用`, "免费 needs 由 seats.aero 决定 (or Pro), affirmed, within 100 characters")],
   },
   {
     id: "PRICE_UNSOURCED",

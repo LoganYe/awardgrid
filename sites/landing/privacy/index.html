@@ -34,6 +34,11 @@
       Since 2026-10-08 the page names the token service's host, Cloudflare Workers (sites/auth/wrangler.jsonc), and
       "This website" says that the app's requests to it reach Cloudflare, where it said the app sends Cloudflare nothing.
       No script in this file and no webfont request (honesty.test.ts scans it). Cloudflare adds its Web Analytics beacon at the edge, for browsers; the section "This website" says so.
+      Since 2026-10-12 (later the same day) the page covers the App Store version only and says what each build keeps:
+      1.0 (6), the build in App Review, keeps results from the account in the app's files for at most 24 hours (source
+      b6fb23f, apps/ios/src/retention/short-term.ts), and later versions keep them only in memory
+      (apps/ios/src/retention/provider-files.ts); registry claim short_term_caching. The test-build parts (Ask on an
+      Anthropic key, a pasted key) are gone: test builds tell their testers in TestFlight's What to Test.
     -->
     <link rel="stylesheet" href="../styles.css" />
   </head>
@@ -49,6 +54,7 @@
         <p class="eyebrow">Privacy policy</p>
         <h1>AwardGrid for iPhone</h1>
         <p class="doc-meta">Last updated 12 October 2026.</p>
+        <p>This policy covers the App Store version of AwardGrid for iPhone.</p>
       </header>
 
       <section aria-labelledby="short-h">
@@ -73,13 +79,11 @@
             stores nothing and keeps no logs of tokens.
           </li>
           <li>
-            Results from your seats.aero account are cached only in memory, not written to app files. Saved keeps
-            query conditions; after the app restarts, opening a saved query searches again.
+            AwardGrid 1.0 (6) keeps results from your seats.aero account on the iPhone for at most 24 hours; later
+            versions keep them only in memory while the app runs. Saved keeps your queries; opening a saved query
+            whose results are gone searches again.
           </li>
-          <li>
-            The App Store version sends nothing to Anthropic: Ask, which does, is only in the app's test builds and in
-            the separate web app.
-          </li>
+          <li>The App Store version sends nothing to Anthropic.</li>
           <li>
             The sign-in tokens, if you connect your account, stay in your device's Keychain. Everything else the app
             keeps stays in its own storage on your device.
@@ -132,48 +136,18 @@
           <li>when you open a result's flight details, that result's availability ID.</li>
         </ul>
         <p>
-          These requests are made when you search, when you open flight details, when you open a saved query without
-          its results in memory, and when you open or return to the app while you have watches (in a test
-          build with Ask, also when Ask searches for a question). seats.aero handles them under its own terms (<a href="https://seats.aero/terms">seats.aero/terms</a>) and
-          privacy practices.
+          These requests are made when you search, when you open flight details, when you open a saved query whose
+          results are gone, and when you open or return to the app while you have watches. seats.aero handles them
+          under its own terms (<a href="https://seats.aero/terms">seats.aero/terms</a>) and privacy practices.
         </p>
 
-        <h3>Anthropic: only for Ask, in test builds</h3>
-        <p>
-          The App Store version of AwardGrid for iPhone has no Ask and sends nothing to Anthropic. Ask, which answers
-          questions about your results with Claude on your own Anthropic API key, is in the app's test builds and in
-          the separate web app only. The rest of this section is for a test build of the iPhone app.
-        </p>
-        <p>
-          In a test build, Ask is optional. It works only with your own Anthropic API key, and before your first
-          question the app asks for your permission to send data to Anthropic. A question sends Anthropic:
-        </p>
-        <ul>
-          <li>the question, and today's date;</li>
-          <li>the earlier questions and answers in the same conversation;</li>
-          <li>the search you choose to include, and any results you attach;</li>
-          <li>
-            the seats.aero results of the searches and flight lookups Ask makes for the question, with how many
-            seats.aero calls are left.
-          </li>
-        </ul>
-        <p>
-          Each request also carries your Anthropic API key, headers that name Anthropic's software library and its
-          version, and the Accept-Language header, which gives the app's language and region. Checking your Anthropic
-          key sends a request with no question in it. Your seats.aero credentials are never sent to Anthropic. Anthropic handles
-          this data under its own terms and privacy policy
-          (<a href="https://www.anthropic.com/legal/privacy">anthropic.com/legal/privacy</a>), and bills your account
-          for each question.
-        </p>
-        <p>
-          You can withdraw the permission on the Anthropic key page in Settings. That stops later questions; it cannot
-          recall what was already sent.
-        </p>
+        <h3>Anthropic: nothing</h3>
+        <p>The App Store version of AwardGrid for iPhone sends nothing to Anthropic.</p>
 
         <h3>Nothing else</h3>
         <p>
-          Like any internet request, a request to seats.aero or to the token service (or, in a test build with Ask, to
-          Anthropic) shows that service your device's IP address. The app sends nothing to any other server, and the
+          Like any internet request, a request to seats.aero or to the token service shows that service your device's
+          IP address. The app sends nothing to any other server, and the
           token service, which the developer runs, keeps nothing it receives. If you choose, in iOS, to share
           analytics with app developers, or you test the app through TestFlight, Apple may pass crash reports or the
           feedback you send to the developer; those are Apple's features, under your device's settings and Apple's
@@ -185,29 +159,35 @@
         <h2 id="kept-h">What stays on your device</h2>
         <ul>
           <li>
-            <strong>Keychain:</strong> the sign-in tokens for your seats.aero account, if you connect it (and, in a
-            test build with Ask, your Anthropic key, if you add one). They are kept for this device only and not synced
-            through iCloud Keychain. The app never shows the tokens, and shows only the last four characters of a key.
+            <strong>Keychain:</strong> the sign-in tokens for your seats.aero account, if you connect it. They are
+            kept for this device only and not synced through iCloud Keychain. The app never shows them.
           </li>
           <li>
             <strong>The app's own files:</strong> whether you use sample data or your seats.aero account; today's
-            count of seats.aero calls; your search conditions and view preferences; saved query conditions and when
-            you saved them; watch conditions; saved trip plans; and your settings (language and appearance).
-            In an OAuth test build with Ask, the app also keeps the permission to send data to Anthropic and your
-            questions, but not answers or tool results that may contain seats.aero data. A development test build
-            that uses a pasted key retains its existing cached results, saved snapshots and Ask conversations.
+            count of seats.aero calls; your search conditions and view preferences; your saved queries and when you
+            saved them; watch conditions; saved trip plans; and your settings (language and appearance). In AwardGrid
+            1.0 (6) they also hold results from your seats.aero account, as the next item says.
           </li>
           <li>
-            <strong>Account results in memory:</strong> the OAuth version does not write seats.aero results or
-            watch comparisons to app files. Repeated searches can use an in-memory cache for 45 minutes. Restarting
-            the app loses those results; Saved keeps query conditions and searches again when opened. Watches keep
-            their conditions; the first check after restart sets a new baseline, and later checks compare with it.
+            <strong>Account results in AwardGrid 1.0 (6):</strong> results from your seats.aero account are kept on
+            the iPhone for at most 24 hours: the results it has cached (a search repeated within 45 minutes uses them
+            and costs no calls), the results on screen, the results in Saved, and what your watches last saw. The app
+            removes older ones when it opens, when you return to it and while it stays open; while the app is not
+            running, older ones wait until it next opens. A saved query then keeps the query, when you saved it and how
+            many options it showed. Watches keep their conditions; the first check after that sets a new baseline.
           </li>
           <li>
-            <strong>Older stored data:</strong> the app checks older files for known seats.aero result fields and
-            removes those fields. If a file is unknown, damaged or cannot be updated safely, it is kept and the app
-            reports that cleanup could not finish. Such an error does not mean every old copy was deleted. This
-            cleanup does not rewrite backups you made outside the app.
+            <strong>Account results in later versions:</strong> results from your seats.aero account and watch
+            comparisons are not written to app files; they stay in memory while the app runs. Repeated searches can use
+            an in-memory cache for 45 minutes. Restarting the app loses those results; Saved keeps your queries and
+            searches again when you open one. Watches keep their conditions; the first check after restart sets a new
+            baseline, and later checks compare with it.
+          </li>
+          <li>
+            <strong>Older stored data, in later versions:</strong> the app checks older files for known seats.aero
+            result fields and removes those fields. If a file is unknown, damaged or cannot be updated safely, it is kept
+            and the app reports that cleanup could not finish. Such an error does not mean every old copy was deleted.
+            This cleanup does not rewrite backups you made outside the app.
           </li>
           <li>
             <strong>Sample data:</strong> while it is on, the app keeps its own copies of these files (its cached
@@ -234,17 +214,13 @@
           <li>Clear cached results in Settings.</li>
           <li>Exit sample data to delete everything sample data kept.</li>
           <li>
-            In a test build with Ask: remove the Anthropic key in Settings, start a new conversation in Ask to delete
-            the conversation from the device, and withdraw Ask's permission on the Anthropic key page in Settings.
-          </li>
-          <li>
             Delete the app to delete its files. iOS may keep Keychain items after the app is deleted, so disconnect in
             Settings first if you want the sign-in tokens gone.
           </li>
         </ul>
         <p>
-          What seats.aero (or, for Ask in a test build, Anthropic) received is held by them, under their own policies;
-          ask them about it. AwardGrid has no copy, so it cannot delete it for you.
+          What seats.aero received is held by seats.aero, under its own policies; ask seats.aero about it. AwardGrid has
+          no copy, so it cannot delete it for you.
         </p>
       </section>
 
@@ -285,10 +261,7 @@
 
       <section aria-labelledby="changes-h">
         <h2 id="changes-h">Changes</h2>
-        <p>
-          If what the app sends changes, this page changes first, with a new date. In a test build with Ask, if Ask
-          would send something new to Anthropic, the app asks for your permission again.
-        </p>
+        <p>If what the app sends changes, this page changes first, with a new date.</p>
       </section>
 
       <section aria-labelledby="contact-h">
@@ -309,6 +282,7 @@
         <p class="eyebrow">隐私政策</p>
         <h2 id="zh-h">AwardGrid iPhone 版</h2>
         <p class="doc-meta">最后更新：2026 年 10 月 12 日。</p>
+        <p>本政策适用于 AwardGrid iPhone 版的 App Store 版本。</p>
 
         <h3>概要</h3>
         <ul>
@@ -317,8 +291,8 @@
           <li>你用 seats.aero 自己的登录（Login with Seats.aero）连接 seats.aero 账户：seats.aero 会请你登录并批准 AwardGrid，AwardGrid 不会看到你的密码。你可以随时在 AwardGrid 或 seats.aero 设置中断开连接。</li>
           <li>连接账户后，查票时应用用这次登录得到的访问令牌，把你的查询从本机直接发送给 seats.aero。</li>
           <li>awardgrid.dowhiz.com 上的一个小型令牌服务为 AwardGrid 交换和续期登录令牌；它不保存任何内容，也不记录令牌。</li>
-          <li>来自你的 seats.aero 账户的结果只在内存中缓存，不写入应用文件。收藏会保留查询条件；重启应用后，打开收藏的查询时会重新查票。</li>
-          <li>App Store 版本不向 Anthropic 发送任何内容：会发送的 AI 辅助（Ask）只在应用的测试版本和独立的网页应用里。</li>
+          <li>AwardGrid 1.0 (6) 在 iPhone 上最多保留来自你的 seats.aero 账户的结果 24 小时；之后的版本只在应用运行期间把这些结果保存在内存中。收藏会保留你的查询；打开结果已不在的收藏查询时，会重新查票。</li>
+          <li>App Store 版本不向 Anthropic 发送任何内容。</li>
           <li>连接账户后，登录令牌保存在本机钥匙串中。应用保存的其他内容都留在本机上它自己的存储中。</li>
           <li>本网站（不是应用）用 Cloudflare Web Analytics 统计访问，不使用 cookie（见<a href="#zh-site">本网站</a>）。</li>
         </ul>
@@ -352,47 +326,34 @@
           <li>打开某个结果的航班详情时，该结果的 availability ID。</li>
         </ul>
         <p>
-          这些请求发生在：你查票时、打开航班详情时、再次打开内存中已无结果的收藏查询时，以及你有关注并打开或回到应用时（在有 AI 辅助的测试版本中，还包括 AI 辅助为问题查票时）。seats.aero
+          这些请求发生在：你查票时、打开航班详情时、打开结果已不在的收藏查询时，以及你有关注并打开或回到应用时。seats.aero
           按其自身的条款（<a href="https://seats.aero/terms">seats.aero/terms</a>）和隐私做法处理这些请求。
         </p>
 
-        <h4>Anthropic：仅用于测试版本中的 AI 辅助</h4>
-        <p>
-          AwardGrid iPhone 版的 App Store 版本没有 AI 辅助，不向 Anthropic 发送任何内容。AI 辅助（Ask）用你自己的 Anthropic API 密钥、由 Claude
-          回答关于结果的问题，只在应用的测试版本和独立的网页应用里。本节其余内容适用于 iPhone 应用的测试版本。
-        </p>
-        <p>在测试版本中，AI 辅助是可选功能。它只使用你自己的 Anthropic API 密钥；在你第一次提问之前，应用会先征求你同意向 Anthropic 发送数据。一次提问会向 Anthropic 发送：</p>
-        <ul>
-          <li>问题本身和今天的日期；</li>
-          <li>同一对话中之前的问答；</li>
-          <li>你选择附带的查询，以及你附上的结果；</li>
-          <li>AI 辅助为这个问题进行的查询和航班查找所得到的 seats.aero 结果，以及剩余的 seats.aero 调用次数。</li>
-        </ul>
-        <p>
-          每个请求还会带上你的 Anthropic API 密钥、标明 Anthropic 软件库及其版本的请求头，以及表示应用语言和地区的
-          Accept-Language 请求头。检查 Anthropic 密钥时发送的请求不含任何问题。你的 seats.aero 凭据不会发给 Anthropic。Anthropic
-          按其自身的条款和隐私政策（<a href="https://www.anthropic.com/legal/privacy">anthropic.com/legal/privacy</a>）处理这些数据，并按每次提问向你的账户计费。
-        </p>
-        <p>你可以在设置的 Anthropic 密钥页撤回许可。撤回后不再发送之后的问题；已发送的内容无法撤回。</p>
+        <h4>Anthropic：不发送任何内容</h4>
+        <p>AwardGrid iPhone 版的 App Store 版本不向 Anthropic 发送任何内容。</p>
 
         <h4>其他</h4>
         <p>
-          与任何网络请求一样，发往 seats.aero 或令牌服务（或在有 AI 辅助的测试版本中发往 Anthropic）的请求会让对方看到你设备的 IP 地址。应用不会向任何其他服务器发送数据；由开发者运行的令牌服务不保存它收到的任何内容。如果你在
+          与任何网络请求一样，发往 seats.aero 或令牌服务的请求会让对方看到你设备的 IP 地址。应用不会向任何其他服务器发送数据；由开发者运行的令牌服务不保存它收到的任何内容。如果你在
           iOS 中选择与应用开发者共享分析数据，或通过 TestFlight 测试本应用，Apple 可能会把崩溃报告或你提交的反馈转交给开发者；这些是 Apple
           的功能，受你的设备设置和 Apple 的政策约束。
         </p>
 
         <h3>留在你设备上的内容</h3>
         <ul>
-          <li><strong>钥匙串：</strong>你连接账户后的 seats.aero 登录令牌（在有 AI 辅助的测试版本中，还有你添加的 Anthropic 密钥）。它们只保存在本机，不通过 iCloud 钥匙串同步。应用从不显示令牌，密钥只显示末四位。</li>
+          <li><strong>钥匙串：</strong>你连接账户后的 seats.aero 登录令牌。它们只保存在本机，不通过 iCloud 钥匙串同步。应用从不显示令牌。</li>
           <li>
-            <strong>应用自己的文件：</strong>你使用示例数据还是 seats.aero 账户；今天的 seats.aero 调用次数；查询条件和显示偏好；收藏的查询条件及收藏时间；关注条件；保存的行程规划；以及你的设置（语言和外观）。在有 AI 辅助的 OAuth 测试版本中，还保存是否允许向 Anthropic 发送数据以及你提出的问题，但不保存可能包含 seats.aero 数据的回答或工具结果。使用粘贴密钥的开发测试版本仍按原来的方式保存缓存结果、收藏快照和 AI 辅助对话。
+            <strong>应用自己的文件：</strong>你使用示例数据还是 seats.aero 账户；今天的 seats.aero 调用次数；查询条件和显示偏好；你收藏的查询及收藏时间；关注条件；保存的行程规划；以及你的设置（语言和外观）。在 AwardGrid 1.0 (6) 中，这些文件还保存来自你的 seats.aero 账户的结果，见下一项。
           </li>
           <li>
-            <strong>内存中的账户结果：</strong>OAuth 版本不把 seats.aero 的结果或关注比较记录写入应用文件。重复查询可以使用 45 分钟的内存缓存。重启应用后，这些结果不再保留；收藏会保留查询条件，打开时重新查询。关注会保留条件；重启后的首次检查重新建立基线，之后的检查再与它比较。
+            <strong>AwardGrid 1.0 (6) 中的账户结果：</strong>来自你的 seats.aero 账户的结果在 iPhone 上最多保留 24 小时：缓存的结果（45 分钟内重复查询会使用它们，不消耗调用）、屏幕上的结果、收藏中的结果，以及关注上次看到的内容。应用会在打开时、你回到应用时以及保持打开期间移除更早的结果；应用没有运行时，更早的结果会留到它下次打开时再移除。之后收藏的查询会保留查询条件、收藏时间和显示过的选项数。关注会保留条件；此后的首次检查会重新建立基线。
           </li>
           <li>
-            <strong>旧版保存的数据：</strong>应用会检查旧文件中能识别的 seats.aero 结果字段，并移除这些字段。文件格式未知、损坏或无法安全更新时，文件会保留，应用会报告清理未完成。出现这类错误不表示所有旧副本都已删除。此清理不会改写你在应用之外创建的备份。
+            <strong>之后版本中的账户结果：</strong>来自你的 seats.aero 账户的结果和关注比较记录不写入应用文件，只在应用运行期间保存在内存中。重复查询可以使用 45 分钟的内存缓存。重启应用后，这些结果不再保留；收藏会保留你的查询，打开时重新查询。关注会保留条件；重启后的首次检查重新建立基线，之后的检查再与它比较。
+          </li>
+          <li>
+            <strong>之后版本中的旧版保存数据：</strong>应用会检查旧文件中能识别的 seats.aero 结果字段，并移除这些字段。文件格式未知、损坏或无法安全更新时，文件会保留，应用会报告清理未完成。出现这类错误不表示所有旧副本都已删除。此清理不会改写你在应用之外创建的备份。
           </li>
           <li>
             <strong>示例数据：</strong>开启期间，应用把自己的一套文件（缓存结果、关注、保存的结果和行程规划、屏幕上的查询和设置）放在单独的文件夹里，退出示例数据时会删除它们。示例数据从不读取或更改你的登录令牌，也不读取或更改今天的
@@ -406,10 +367,9 @@
           <li>在“设置 › seats.aero 账户”中断开连接：这会移除登录令牌并清除当前账户结果，收藏的查询条件和关注会保留。令牌或旧版数据如无法清除，应用会报告失败。你也可以在 seats.aero 设置中移除 AwardGrid 的访问权限；应用的下一次令牌刷新被拒绝时，会清除连接和当前账户结果。</li>
           <li>在设置中清除缓存结果。</li>
           <li>退出示例数据，即删除示例数据保存的全部内容。</li>
-          <li>在有 AI 辅助的测试版本中：在设置中移除 Anthropic 密钥；在 AI 辅助中开始新对话，即从本机删除该对话；在设置的 Anthropic 密钥页撤回 AI 辅助的许可。</li>
           <li>删除应用即删除其文件。应用删除后，iOS 可能仍在钥匙串中保留内容；如需删除登录令牌，请先在设置中断开连接。</li>
         </ul>
-        <p>seats.aero（或在测试版本中为 AI 辅助接收内容的 Anthropic）收到的内容由它们按各自的政策保存，请直接向它们询问。AwardGrid 没有副本，因此无法替你删除。</p>
+        <p>seats.aero 收到的内容由 seats.aero 按其自身的政策保存，请直接向 seats.aero 询问。AwardGrid 没有副本，因此无法替你删除。</p>
 
         <h3>App Store 隐私标签</h3>
         <p>
@@ -429,7 +389,7 @@
         <p>应用本身不包含这段脚本。应用发往 AwardGrid 令牌服务的请求会到达 Cloudflare，因为该服务托管在 Cloudflare Workers 上：连接时发送一次性代码和随机值，续期连接时发送刷新令牌。从应用里打开这些页面（设置 › 隐私政策或支持）会在 Safari 中打开，与其他访问一样；你点按链接时，iOS 可能已经开始连接 awardgrid.dowhiz.com，这会让 Cloudflare 看到你的 IP 地址。</p>
 
         <h3>变更</h3>
-        <p>如果应用发送的内容有变，本页会先更新，并注明新的日期。在有 AI 辅助的测试版本中，如果 AI 辅助要向 Anthropic 发送新的内容，应用会重新征求你的许可。</p>
+        <p>如果应用发送的内容有变，本页会先更新，并注明新的日期。</p>
 
         <h3>联系</h3>
         <p>

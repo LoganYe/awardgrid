@@ -233,7 +233,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-08",
+      "checked_at": "2026-10-12",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/search/search.ts:162-163 \"async parseText(text: string, apiKey: string | null)\"",
@@ -250,17 +250,17 @@
         "apps/ios/src/screens/oauth-copy.ts:42 \"where: \"seats.aero offers this to accounts with API access. Without it, AwardGrid shows sample data only.\",\"",
         "apps/ios/package.json:10 \"\"build:store\": \"VITE_AG_STORE=1 VITE_AG_CONNECT=oauth vite build && node scripts/check-fixture-free-bundle.mjs\""
       ],
-      "allowed_copy": "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.",
-      "allowed_copy_zh": "你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据。",
+      "allowed_copy": "Your own seats.aero data (optional): if you have a seats.aero account with API access (seats.aero decides which accounts have API access; AwardGrid sells nothing), you can connect it to see results from that account instead of sample data.",
+      "allowed_copy_zh": "你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（哪些账户有 API 权限由 seats.aero 决定；AwardGrid 不出售任何东西），你可以连接这个账户，看到它的结果，而不是示例数据。",
       "allowed_copy_extra": [
-        "Optional: your own seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), connected with seats.aero's own sign-in. Without it, AwardGrid shows sample data only.",
-        "Only on sample data. seats.aero says not every Pro account or country gets API access; without it, AwardGrid shows sample data only.",
+        "Optional: your own seats.aero account with API access (seats.aero decides which accounts have API access; AwardGrid sells nothing), connected with seats.aero's own sign-in. Without it, AwardGrid shows sample data only.",
+        "Only on sample data. seats.aero decides which accounts have API access; AwardGrid sells nothing. Without API access, AwardGrid shows sample data only.",
         "Start with sample data, or connect your own seats.aero account in Settings with seats.aero's own sign-in (Login with Seats.aero).",
         "Your own award data (optional): if you have an account at the third-party award-data provider AwardGrid supports, with API access (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases."
       ],
       "allowed_copy_zh_extra": [
-        "可选：你自己的 seats.aero 账户，要有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），用 seats.aero 自己的登录连接。没有它，AwardGrid 只显示示例数据。",
-        "只能用示例数据。seats.aero 说明，并非每个 Pro 账户、每个国家或地区都能获得 API 权限；没有 API 权限，AwardGrid 只显示示例数据。",
+        "可选：你自己的 seats.aero 账户，要有 API 权限（哪些账户有 API 权限由 seats.aero 决定；AwardGrid 不出售任何东西），用 seats.aero 自己的登录连接。没有它，AwardGrid 只显示示例数据。",
+        "只能用示例数据。哪些账户有 API 权限由 seats.aero 决定；AwardGrid 不出售任何东西。没有 API 权限，AwardGrid 只显示示例数据。",
         "你自己的里程票数据（可选）：如果你在 AwardGrid 支持的第三方里程票数据提供方有带 API 权限的账户（属于该提供方的 Pro 方案，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据；连接时使用该提供方自己的登录。AwardGrid 没有内购。"
       ],
       "limitations": [
@@ -272,6 +272,7 @@
         "The extra sentences: the \"What you need\" item of /ios/ and /support/, the first step of /ios/award-grid/ (the app says \"Connect your seats.aero account in Settings.\", copy.ts), the answer to \"My seats.aero account has no API access. Will AwardGrid work?\" on /support/, and the store description's paragraph (apps/ios/store-metadata/en-US/description.txt). The App Store build has no paste field: the account is connected on seats.aero's own page (the oauth_connection claim), and seats.aero offers that connection to accounts with API access (oauth-copy.ts where). seats.aero may limit API access by location or for any reason (getting-started-p.md:27). Until 2026-10-07 these sentences said where to find the API key (the API tab of the seats.aero settings) and told the reader to paste it; that wording, and the /support/ answers \"Where do I find my seats.aero API key?\" and \"My seats.aero settings show no API tab\", are retired.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. allowed_copy_zh (the D6 sentence) and allowed_copy_zh_extra were rewritten on 2026-10-06 and 2026-10-07 and are pending that review too; 示例数据 is the app's own word for sample data (sample/sample-copy.ts 示例数据, present.ts 虚构示例数据), and AwardGrid 只显示示例数据 is the app's own sentence (settings-copy.ts).",
         "The retired Chinese sentence (没有这个密钥，App 什么也搜不到) is not listed in retired_copy: the gate matches retired wording only in pieces of 25 characters or more, and the rest of that sentence is still approved copy.",
+        "Since 2026-10-12 the site names no seats.aero plan: \"(seats.aero decides which accounts have API access; AwardGrid sells nothing)\" replaces \"(part of seats.aero Pro, which AwardGrid does not sell)\" in the D6 sentence and the first extra sentence, and \"seats.aero decides which accounts have API access; AwardGrid sells nothing.\" replaces \"seats.aero says not every Pro account or country gets API access\" in the /support/ answer, in English and Chinese (哪些账户有 API 权限由 seats.aero 决定；AwardGrid 不出售任何东西), so no public page names a plan to buy. \"seats.aero decides\": API access is offered by seats.aero, which says not every Pro account or country gets it (getting-started-p.md:25-27), and the app says \"seats.aero offers this to accounts with API access\" (oauth-copy.ts:42). \"AwardGrid sells nothing\": the app is free with no in-app purchase (the price claim), and the developer sells nothing (APP_STORE_HANDOFF.md:205). The earlier sentences are retired_copy. The gate's FREE_WITHOUT_PRO rule takes \"seats.aero decides which accounts have API access\" (in Chinese 由 seats.aero 决定) as it takes \"seats.aero Pro\", so a price sentence still needs the D6 sentence beside it. The store description's paragraph (the last extra sentence, and its Chinese) is App Store listing text, edited in App Store Connect; it is unchanged here and still says \"the provider's Pro plan\".",
         "The store description's paragraph (the last extra sentence, and its Chinese, the last of allowed_copy_zh_extra) names no data provider: since 2026-10-08 no App Store listing text uses the name seats.aero, per the data provider's trademark guidance (scripts/aso/validate_metadata.py and the gate's TRADEMARK_ASO fail any listing text that does, in any field). It says what the D6 sentence says, with \"an account at the third-party award-data provider AwardGrid supports, with API access\" for \"a seats.aero account with API access\" (seats.aero is the only provider the app connects to; \"third-party\" because AwardGrid is not that provider, the affiliation claim), \"the provider's Pro plan\" for seats.aero Pro and \"the provider's own sign-in\" for seats.aero's own sign-in, and no \"paid\" (D6). The app itself names seats.aero, and the site keeps the D6 sentence. Until 2026-10-08 the paragraph was the D6 sentence followed by \", with seats.aero's own sign-in. AwardGrid has no in-app purchases.\"; that wording is still true but no longer used anywhere, so it is listed neither as allowed nor as retired copy. 数据提供方 is the Chinese listing's word for the provider (第三方里程票数据提供方 at first mention); the Chinese is pending a native speaker's review.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
@@ -283,7 +284,13 @@
         "Optional: your own seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), and its API key from the API tab of your seats.aero settings. Without it, AwardGrid shows sample data only.",
         "In the API tab of your seats.aero settings, if your seats.aero account has API access (part of seats.aero Pro, which AwardGrid does not sell).",
         "Start with sample data, or connect your own seats.aero account in Settings with the API key from the API tab of your seats.aero settings.",
-        "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, by pasting the API key from your seats.aero settings. AwardGrid has no in-app purchases."
+        "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, by pasting the API key from your seats.aero settings. AwardGrid has no in-app purchases.",
+        "Your own seats.aero data (optional): if you have a seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data.",
+        "Optional: your own seats.aero account with API access (part of seats.aero Pro, which AwardGrid does not sell), connected with seats.aero's own sign-in. Without it, AwardGrid shows sample data only.",
+        "Only on sample data. seats.aero says not every Pro account or country gets API access; without it, AwardGrid shows sample data only.",
+        "你自己的 seats.aero 数据（可选）：如果你的 seats.aero 账户有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据。",
+        "可选：你自己的 seats.aero 账户，要有 API 权限（属于 seats.aero Pro，AwardGrid 不出售），用 seats.aero 自己的登录连接。没有它，AwardGrid 只显示示例数据。",
+        "只能用示例数据。seats.aero 说明，并非每个 Pro 账户、每个国家或地区都能获得 API 权限；没有 API 权限，AwardGrid 只显示示例数据。"
       ]
     },
     {
@@ -528,26 +535,33 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-09-28",
+      "checked_at": "2026-10-12",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/components/results/copy.ts:138-140 \"list: \"List\",\"",
         "apps/ios/src/components/results/copy.ts:243-245 \"list: \"列表\",\"",
         "packages/core/src/lib/workspace/selection.ts:18-19 \"Options a comparison can hold\"",
-        "packages/core/src/lib/workspace/favorites-store.ts:4-10 \"A favourite is a copy of what a search showed when it was saved\""
+        "packages/core/src/lib/workspace/favorites-store.ts:4-10 \"A favourite is a copy of what a search showed when it was saved\"",
+        "apps/ios/src/store/favorites-store.ts:10 \"A saved option is a user-selected narrow query\"",
+        "apps/ios/src/screens/favorites-copy.ts:131 \"intro: \"Saved queries stay on this device. Account results stay only in memory;\""
       ],
-      "allowed_copy": "List, Calendar and Matrix views; compare up to four options; save results on the device.",
+      "allowed_copy": "List, Calendar and Matrix views; compare up to four options; save searches on the device.",
       "allowed_copy_extra": [
-        "Read the result as a List, a Calendar or a Matrix; compare up to four options and save results on the device.",
+        "Read the result as a List, a Calendar or a Matrix; compare up to four options and save searches on the device.",
         "List, calendar and matrix views, and a side-by-side comparison of up to four options."
       ],
       "limitations": [
         "\"List, calendar and matrix views, and a side-by-side comparison of up to four options.\" is a bullet of the App Store description (build 3's App Store description, kept word for word in build 4's: apps/ios/store-metadata/en-US/description.txt).",
         "The iPhone app has no CSV export and no share sheet.",
         "The extra sentence is the same fact as a step of a list (the third step of \"How it works\" on /ios/award-grid/).",
+        "\"Save searches\" (since 2026-10-12; until then \"save results\", now retired_copy): Saved keeps the query in every version. In 1.0 (6) a saved item also keeps its results until they are 24 hours old (the short_term_caching claim); in later versions Saved keeps only the query (and a saved option's route, date, cabin and program) and results from the account stay in memory (apps/ios/src/store/favorites-store.ts accountFavorite; favorites-copy.ts shortTerm.intro). Over sample data a saved item keeps its sample results.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
-      "public_use": "approved"
+      "public_use": "approved",
+      "retired_copy": [
+        "List, Calendar and Matrix views; compare up to four options; save results on the device.",
+        "Read the result as a List, a Calendar or a Matrix; compare up to four options and save results on the device."
+      ]
     },
     {
       "claim_id": "cell_fields",
@@ -745,7 +759,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-07",
+      "checked_at": "2026-10-12",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "packages/core/src/lib/seatsaero/quota.ts:36-37 \"export const SEATS_AERO_DAILY_LIMIT = 1000;\"",
@@ -760,12 +774,11 @@
         "docs/reference/seatsaero/getting-started-p.md:25 \"Seats.aero Pro users may be able to access the partner API for up to 1,000 API calls per day\"",
         "[external] https://docs.seats.aero/article/68 (read 2026-09-28)"
       ],
-      "allowed_copy": "The app stops at 950 of seats.aero's 1,000 daily calls and keeps results on the device for 45 minutes, so repeating a search costs no calls. The app's own count restarts at midnight UTC.",
+      "allowed_copy": "The app stops at 950 of seats.aero's 1,000 daily calls and caches results for 45 minutes, so repeating a search costs no calls. The app's own count restarts at midnight UTC.",
       "allowed_copy_zh": "应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。",
       "allowed_copy_extra": [
         "The app's own count restarts at midnight UTC, when seats.aero resets usage.",
-        "Sample data uses no seats.aero calls.",
-        "The app stops at 950 of seats.aero's 1,000 daily calls and caches results in memory for 45 minutes, so repeating a search costs no calls. The app's own count restarts at midnight UTC."
+        "Sample data uses no seats.aero calls."
       ],
       "limitations": [
         "\"seats.aero's 1,000 daily calls\": the daily limit seats.aero gives an account's API key (getting-started-p.md:25). Until 2026-10-07 the sentence said \"the 1,000 daily calls a Pro key allows\"; since build 4 the public copy does not call the key a Pro key (decision D6), and that wording is retired_copy.",
@@ -776,10 +789,13 @@
         "The Chinese sentence (sites/landing/support/index.html) is pending a native speaker's review.",
         "External sources were read on the date given in their evidence_ref and are re-checked on the day of any publication that relies on them.",
         "In the OAuth build prepared on 2026-10-12, those cached account results are in memory only. A process restart does not reload provider rows from cache.json; user quota counts stay on disk. Sample mode and non-OAuth builds keep their existing storage rules.",
+        "\"Caches results for 45 minutes\" (since 2026-10-12) says nothing about where, because that differs by version: 1.0 (6) also writes the cache to cache.json and removes rows once they are 24 hours old, and later versions keep it only in memory (the short_term_caching claim). The 45 minutes are when a search fetches again, in both. Until then the sentence said \"keeps results on the device for 45 minutes\" (1.0 (6)) and, in an extra sentence, \"caches results in memory for 45 minutes\" (later versions); both are retired_copy.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
       "retired_copy": [
+        "The app stops at 950 of seats.aero's 1,000 daily calls and keeps results on the device for 45 minutes, so repeating a search costs no calls.",
+        "The app stops at 950 of seats.aero's 1,000 daily calls and caches results in memory for 45 minutes, so repeating a search costs no calls.",
         "The app stops at 950 of the 1,000 daily calls a Pro key allows and keeps results on the device for 45 minutes, so repeating a search costs no calls."
       ]
     },
@@ -857,6 +873,7 @@
         "Since 2026-10-07 the App Store build connects through seats.aero's own sign-in (the oauth_connection claim), so the iPhone app talks to one server of the developer's: the token service at awardgrid.dowhiz.com (sites/auth, the Worker awardgrid-auth), which holds AwardGrid's OAuth client secret and exchanges and refreshes the sign-in tokens. It is stateless: no storage binding, no console call, observability and Logpush off (sites/auth/src/index.ts:24-27, wrangler.jsonc). Searches never pass through it: they go from the iPhone to seats.aero with the access token (apps/ios/src/native/http.ts). \"No server of its own\" was true of the key flavour and is retired_copy. \"No accounts of its own\": the person's seats.aero account is seats.aero's; AwardGrid has no sign-up and no account of its own.",
         "The token service was deployed by the owner on 2026-10-07, with its client secret as a Worker secret (sites/auth/DEPLOY.md). The copy describes the build that uses it.",
         "The token service is a Cloudflare Worker on the awardgrid.dowhiz.com/oauth/* route (wrangler.jsonc). Since 2026-10-08 /privacy/ names that host, Cloudflare Workers, in its token-service section, and its \"This website\" section says that the app's requests to the token service (the one-time code and the random value, or the refresh token) reach Cloudflare. Until then that section said the app sends nothing to Cloudflare, which was true of the key flavour only.",
+        "Since 2026-10-12 /privacy/ covers the App Store version only (\"This policy covers the App Store version of AwardGrid for iPhone.\"): the parts about test builds (Ask on the tester's own Anthropic key, its permission, its Keychain item and conversation, and a development build's pasted key) are gone, in English and Chinese. Its Anthropic section says only that the App Store version sends nothing to Anthropic (the ask claim). What a test build sends is for its testers, in the What to Test notes of the TestFlight build that has it.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
@@ -875,7 +892,7 @@
       "evidence_level": "observed",
       "evidence_ref": [
         "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
-        "sites/landing/privacy/index.html:269-275 \"<h2 id=\"site-h\">This website</h2>\"",
+        "sites/landing/privacy/index.html:245-251 \"<h2 id=\"site-h\">This website</h2>\"",
         "sites/landing/DEPLOY.md:39-40 \"- Cloudflare Web Analytics can add its disclosed beacon to browser HTML responses.\"",
         "apps/ios/package.json:17-27 \"\"dependencies\": {\""
       ],
@@ -990,16 +1007,26 @@
         "apps/ios/src/retention/short-term.ts:174-175 \"export function watchReset(): Partial<Watch> {\"",
         "apps/ios/src/app/bootstrap-oauth.test.ts:577 \"persists queries and preferences without rows, coverage, watch baselines or copied prices, including after a restart\"",
         "apps/ios/src/screens/favorites-copy.ts:131 \"intro: \"Saved queries stay on this device. Account results stay only in memory;\"",
-        "apps/ios/src/screens/oauth-copy.ts:44 \"While connected, searches go from this device to seats.aero. Account results stay only in memory;\""
+        "apps/ios/src/screens/oauth-copy.ts:44 \"While connected, searches go from this device to seats.aero. Account results stay only in memory;\"",
+        "[external] https://github.com/LoganYe/awardgrid/blob/b6fb23f45752d265b9d5359e305419a3f90a4566/apps/ios/src/retention/short-term.ts#L1-L31 (read 2026-10-12): build 1.0 (6) keeps account results in cache.json, the workspace, Saved and watch baselines for at most 24 hours",
+        "[external] https://github.com/LoganYe/awardgrid/blob/b6fb23f45752d265b9d5359e305419a3f90a4566/apps/ios/src/app/App.tsx#L464-L484 (read 2026-10-12): build 1.0 (6) removes older results at launch, on return to the app and every hour while it stays open",
+        "[external] https://github.com/LoganYe/awardgrid/blob/b6fb23f45752d265b9d5359e305419a3f90a4566/apps/ios/src/app/bootstrap.ts#L18-L22 (read 2026-10-12): build 1.0 (6) prunes at launch, before each save and on each sweep; Disconnect or a revoked grant purges all"
       ],
-      "allowed_copy": "Results from your seats.aero account are cached only in memory, not written to app files. Saved keeps query conditions; after the app restarts, opening a saved query searches again.",
-      "allowed_copy_zh": "来自你的 seats.aero 账户的结果只在内存中缓存，不写入应用文件。收藏会保留查询条件；重启应用后，打开收藏的查询时会重新查票。",
+      "allowed_copy": "AwardGrid 1.0 (6) keeps results from your seats.aero account on the iPhone for at most 24 hours; later versions keep them only in memory while the app runs.",
+      "allowed_copy_zh": "AwardGrid 1.0 (6) 在 iPhone 上最多保留来自你的 seats.aero 账户的结果 24 小时；之后的版本只在应用运行期间把这些结果保存在内存中。",
       "allowed_copy_extra": [
-        "In the OAuth version, account results are cached only in memory, not written to app files. Saved retains query conditions; after restart, opening a saved query searches again.",
+        "Saved keeps your queries; opening a saved query whose results are gone searches again.",
+        "AwardGrid 1.0 (6) keeps account results on the iPhone for at most 24 hours; later versions keep them only in memory, not written to app files.",
         "Watches keep their conditions; the first check after restart sets a new baseline, and later checks compare with it.",
-        "The app checks older files for known seats.aero result fields and removes those fields. If a file is unknown, damaged or cannot be updated safely, it is kept and the app reports that cleanup could not finish. Such an error does not mean every old copy was deleted."
+        "The app checks older files for known seats.aero result fields and removes those fields. If a file is unknown, damaged or cannot be updated safely, it is kept and the app reports that cleanup could not finish. Such an error does not mean every old copy was deleted.",
+        "Watches keep their conditions. What a watch last saw is kept like the other results from your account: for at most 24 hours in AwardGrid 1.0 (6), and only in memory in later versions. When it is gone, the first check after that sets a new baseline, and later checks compare with it."
+      ],
+      "allowed_copy_zh_extra": [
+        "收藏会保留你的查询；打开结果已不在的收藏查询时，会重新查票。",
+        "关注会保留条件。关注上次看到的结果与你账户的其他结果一样保留：在 AwardGrid 1.0 (6) 中最多 24 小时，在之后的版本中只保留在内存中。这些结果不在后，之后的首次检查会重新建立基线，再之后的检查与它比较。"
       ],
       "limitations": [
+        "Since 2026-10-12 the copy is scoped by version, because the site serves two builds at once: 1.0 (6), the build in App Review since 2026-10-08, and the later build prepared on the same branch as this claim's in-tree evidence. Build 1.0 (6) (source b6fb23f, the external refs) writes results from the account to the app's files (cache.json, the workspace's snapshots, Saved's rows, watch baselines) and removes any older than 24 hours at launch, before every save, when the app becomes visible again and every hour while it stays open (App.tsx; the public copy says \"while it stays open\", not the interval). A file older than that can stay on the device while the app is not running, until its next launch removes it; /privacy/ says when removal happens. Saved keeps each item's query, when it was saved and how many options it showed; once its rows are gone, opening it searches again. Later versions keep the results only in memory (the limitation below). \"Later versions\" holds once 1.0 (6) is released, since a later build ships as a later version; if a later build replaces 1.0 (6) before release, the 1.0 (6) half of each sentence is removed.",
         "Updated on 2026-10-12 for build 7: the OAuth storage boundary strips provider responses before writing cache, workspace, Saved, watch and Ask files. New account results and watch comparisons therefore remain in process memory. Restarting the process cold-starts account results; saved query conditions and watch configuration persist. Sample-mode files and non-OAuth development/test builds retain their existing behaviour.",
         "Saved retains query conditions and the saved time, without result rows, result counts or provider row identity. Opening a saved query without its results in memory runs a fresh search, unless all dates have passed or no account is connected; the screen explains those cases. Saving a selected option retains its route/date/cabin/program conditions so the query remains specific to the selection.",
         "The 45-minute in-memory search cache (quota claim) decides whether a search fetches again during the same process. The existing foreground/hourly expiry also prunes old in-memory results. The copy makes no exact physical-deletion deadline while iOS suspends the app.",
@@ -1011,7 +1038,10 @@
       "retired_copy": [
         "Results from your seats.aero account are kept on the iPhone for at most 24 hours (seats.aero's Short-Term Caching rule); a saved search keeps the search and a summary, and opening it searches again.",
         "来自你的 seats.aero 账户的结果在 iPhone 上最多保留 24 小时（seats.aero 的短期缓存规则）；收藏的查询会保留查询条件和摘要，打开时会重新查询。",
-        "seats.aero results are kept on the iPhone for at most 24 hours (Short-Term Caching); saved searches keep the search and a summary."
+        "seats.aero results are kept on the iPhone for at most 24 hours (Short-Term Caching); saved searches keep the search and a summary.",
+        "Results from your seats.aero account are cached only in memory, not written to app files. Saved keeps query conditions; after the app restarts, opening a saved query searches again.",
+        "来自你的 seats.aero 账户的结果只在内存中缓存，不写入应用文件。收藏会保留查询条件；重启应用后，打开收藏的查询时会重新查票。",
+        "In the OAuth version, account results are cached only in memory, not written to app files. Saved retains query conditions; after restart, opening a saved query searches again."
       ]
     },
     {
