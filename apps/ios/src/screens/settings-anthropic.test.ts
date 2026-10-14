@@ -14,6 +14,7 @@ import type { AskService, KeyCheckResult } from "../ask/ask-service";
 import * as labels from "../ask/labels";
 import { SettingsStore } from "../app/settings-store";
 import { type KeyStore, MemoryKeyStore } from "../native/keychain";
+import { allowAi } from "../ask/consent";
 import { CONSENT } from "../ask/consent-copy";
 import { AnthropicKeySection, AskPermission, anthropicKeyLine, checkStatus, readMasked, removeAnthropicKey, saveAnthropicKey } from "./AnthropicKeyScreen";
 import { SettingsScreen } from "./SettingsScreen";
@@ -210,7 +211,7 @@ describe("Ask's permission on the Anthropic key page (release D10)", () => {
 
   it("once given, says so and offers to withdraw it, in the page's language", async () => {
     const settings = new SettingsStore({ deviceLocale: "zh" });
-    await settings.allowAi(new Date("2026-10-01T09:30:00.000Z"));
+    await allowAi(settings, new Date("2026-10-01T09:30:00.000Z"));
     const html = renderToStaticMarkup(createElement(AskPermission, { settings, locale: "zh" }));
     expect(html).toContain(`<p class="settings-copy">${CONSENT.zh.settings.allowed}</p>`);
     expect(html).toContain(`<button type="button" class="ag-button">${CONSENT.zh.settings.withdraw}</button>`);

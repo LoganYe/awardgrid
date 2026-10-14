@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { EntryProposal } from "@awardgrid/core/ask/conversation";
 import type { QueryObject } from "@awardgrid/core/query/schema";
-import { copy, formatMiles, programLabel, rangeLabel, routeLabel } from "@awardgrid/core/workspace/present";
+import { aiCopy, formatMiles, programLabel, rangeLabel, routeLabel } from "@awardgrid/core/workspace/present";
 import { type ProposalField, proposalChanges } from "@awardgrid/core/workspace/proposals";
 import { cabinName } from "@awardgrid/core/workspace/query-editor";
 import type { QueryChangeProposal as Proposal } from "@awardgrid/core/workspace/types";
@@ -121,7 +121,7 @@ export function QueryChangeProposal({ proposal, shown = null, status, locale, on
       </dl>
       {/* Always in the tree, so what happened to the proposal is announced. */}
       <div role="status" className="ag-proposal-status">
-        {status === "stale" ? <p className="ag-proposal-note">{copy("ai.stale", locale)}</p> : null}
+        {status === "stale" ? <p className="ag-proposal-note">{aiCopy("ai.stale", locale)}</p> : null}
         {status === "applied" ? (
           <p>
             {c.proposalApplied}{" "}
@@ -148,7 +148,7 @@ export function QueryChangeProposal({ proposal, shown = null, status, locale, on
               onApply();
             }}
           >
-            {copy("ai.apply", locale)}
+            {aiCopy("ai.apply", locale)}
           </button>
           <button
             type="button"
@@ -158,7 +158,7 @@ export function QueryChangeProposal({ proposal, shown = null, status, locale, on
               onKeep();
             }}
           >
-            {copy("ai.keep", locale)}
+            {aiCopy("ai.keep", locale)}
           </button>
         </div>
       ) : null}

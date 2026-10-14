@@ -18,7 +18,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { scrubSecrets } from "@awardgrid/core/ask/errors";
-import { copy } from "@awardgrid/core/workspace/present";
+import { keyCopy } from "@awardgrid/core/workspace/present";
 import type { AppServices } from "../app/bootstrap";
 import { WithTail } from "../app/WithTail";
 import { isSample } from "../app/data-source";
@@ -164,7 +164,7 @@ function SeatsKeyPage({ services }: { services: AppServices }) {
             {s.paste}
           </Button>
         </div>
-        <p className="ag-settings-copy ag-settings-muted">{copy("key.check_cost", locale)}</p>
+        <p className="ag-settings-copy ag-settings-muted">{keyCopy("key.check_cost", locale)}</p>
         <Button variant="primary" block disabled={draft.trim().length === 0} loading={busy} loadingLabel={s.checking} onClick={() => void checkAndSave()}>
           {s.checkAndSave}
         </Button>

@@ -9,12 +9,13 @@ import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AppServices } from "../app/bootstrap";
 import { PRIVACY_POLICY_URL, SITE_URL, SUPPORT_URL } from "../app/links";
 import { SettingsStore } from "../app/settings-store";
 import { MemoryKeyStore } from "../native/keychain";
-import { ACKNOWLEDGEMENTS, AcknowledgementsScreen } from "./AcknowledgementsScreen";
+import storeEntries from "../about/acknowledgements.store.json";
+import { ACKNOWLEDGEMENTS, type Acknowledgement, AcknowledgementsScreen } from "./AcknowledgementsScreen";
 import { SettingsScreen } from "./SettingsScreen";
 import { SETTINGS } from "./settings-copy";
 
@@ -106,6 +107,29 @@ describe("Acknowledgements", () => {
     expect(ACKNOWLEDGEMENTS.find((e) => e.name === "@capacitor/synapse")?.license).toBe("ISC (package.json), MIT (LICENSE.md)");
     // The one package that ships no license file says where its text came from.
     expect(ACKNOWLEDGEMENTS.filter((e) => e.noticeFrom).map((e) => [e.name, e.noticeFrom])).toEqual([["standardwebhooks", "package.json"]]);
+  });
+
+  it("the App Store build has a list of its own: the same, without Ask's SDK and the packages only it brings", () => {
+    // That build has no Ask (app/flags.ts STORE), so it ships no Anthropic SDK; scripts/acknowledgements.mjs --check,
+    // run by `npm run build:store`, holds this list to what that build ships.
+    const SDK_ONLY = ["@anthropic-ai/sdk", "@stablelib/base64", "fast-sha256", "standardwebhooks"];
+    const store = (storeEntries as Acknowledgement[]).map((e) => e.name);
+    expect([...store].sort()).toEqual(EXPECTED.filter((name) => !SDK_ONLY.includes(name)).sort());
+    expect(JSON.stringify(storeEntries)).not.toMatch(/anthropic|claude/i);
+    // Every entry it keeps is the default list's own, word for word.
+    for (const entry of storeEntries as Acknowledgement[]) expect(ACKNOWLEDGEMENTS.find((e) => e.name === entry.name)).toEqual(entry);
+  });
+
+  it("each build's page shows its own list: the App Store build's names no package it does not ship", async () => {
+    vi.resetModules();
+    vi.stubEnv("VITE_AG_STORE", "1");
+    try {
+      const { ACKNOWLEDGEMENTS: shown } = await import("./AcknowledgementsScreen");
+      expect(shown.map((e) => e.name)).toEqual((storeEntries as Acknowledgement[]).map((e) => e.name));
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 
   it("renders every entry with its license, the texts marked as English on a Chinese page", () => {

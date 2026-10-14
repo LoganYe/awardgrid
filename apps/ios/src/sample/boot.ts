@@ -7,7 +7,8 @@
  *   - **keys**: an in-memory key store holding a placeholder, so search, details and watches run as they do with an
  *     account. It is never written to the Keychain, never shown (Settings says "Sample data" instead), and never sent
  *     anywhere: the sample transport is the only thing that sees it.
- *   - **the Anthropic key**: an empty in-memory store; Ask stays off in sample mode.
+ *   - **the Anthropic key**: an empty in-memory store; Ask stays off in sample mode. The App Store build has no Ask
+ *     (../app/flags.ts STORE), and passes no Anthropic key or transport at all (ASK_KIT below).
  *   - **transports**: the sample transport for seats.aero (./sample-fetch.ts), and one that refuses every Anthropic
  *     request. The native HTTP adapter is never built, let alone called.
  *   - **files**: the live file store under `sample/` (SampleFiles): the cache, the quota counter, watches, the
@@ -163,6 +164,12 @@ export async function exitSampleData(live: FileStore): Promise<void> {
   await clearSampleFiles(live);
 }
 
+/**
+ * Whether this build has Ask, written out as ../app/bootstrap.ts ASK_KIT is: Ask's options are passed only then, so
+ * the App Store build's bundle carries neither them nor the transport below.
+ */
+const ASK_KIT = import.meta.env.VITE_AG_STORE !== "1";
+
 /** Every Anthropic request in sample mode: refused before anything is sent (Ask is off). */
 const noAnthropic: typeof fetch = async () => {
   throw new Error("Not available with sample data.");
@@ -214,11 +221,9 @@ export function accountSweeper(live: BootstrapOptions, files: FileStore, limitMs
           locale: live.locale,
           visibility: live.visibility,
           keys: new MemoryKeyStore(),
-          anthropicKeys: new MemoryKeyStore(),
           fetchImpl: sendNothing,
-          anthropicFetch: sendNothing,
           // Both transports are injected and neither is native (the rule bootstrap.ts gives); nothing is sent anyway.
-          assertNative: () => {},
+          ...(ASK_KIT ? { anthropicKeys: new MemoryKeyStore(), anthropicFetch: sendNothing, assertNative: () => {} } : {}),
           oauth: null,
           shortTermMs: limitMs,
         });
@@ -261,15 +266,13 @@ export async function sampleBootstrapOptions(live: BootstrapOptions, files: File
   const sweeper = accountLimit != null ? accountSweeper(live, files, accountLimit) : null;
   return {
     keys,
-    anthropicKeys: new MemoryKeyStore(),
     snapshots: new SnapshotStore(sampleFiles),
     now: live.now,
     fetchImpl: createSampleFetch({ now }),
-    anthropicFetch: noAnthropic,
     visibility: live.visibility,
     // Both transports are injected here, and neither is native: there is no native bridge for Ask to check for (the
     // rule bootstrap.ts gives for a host that injects both). Ask stays off in sample mode either way.
-    assertNative: () => {},
+    ...(ASK_KIT ? { anthropicKeys: new MemoryKeyStore(), anthropicFetch: noAnthropic, assertNative: () => {} } : {}),
     locale: live.locale,
     // No account in sample mode, whatever the flavour: no token store, no Disconnect, and no limit on sample data.
     oauth: null,

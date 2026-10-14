@@ -174,7 +174,7 @@ export function SettingsScreen() {
   const [seats] = useLast4(CAN_CONNECT && !OAUTH && !sample ? services.keys : null);
   const connected = useConnected(OAUTH && !sample ? services.seatsAccount : null);
   // The App Store build has no Ask, so it never reads the Anthropic Keychain item.
-  const [anthropic] = useLast4(STORE ? null : services.anthropicKeys);
+  const [anthropic] = useLast4(STORE ? null : (services.anthropicKeys ?? null));
   const theme = useSyncExternalStore(services.settings.subscribe, services.settings.theme, services.settings.theme);
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
   // Back from a key page: focus returns to the row that opened it.

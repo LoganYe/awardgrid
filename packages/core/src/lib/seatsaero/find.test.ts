@@ -483,7 +483,7 @@ describe("runFind (end to end over the synthetic fixture, no network)", () => {
 
   it("requires the calling user's key — there is no default", async () => {
     const h = harness();
-    await expect(runFind({ query: query(), userId: "alice", apiKey: "", ...h })).rejects.toThrow(/API key/);
+    await expect(runFind({ query: query(), userId: "alice", apiKey: "", ...h })).rejects.toThrow(/own seats\.aero credential/);
     expect(h.fetch.calls).toHaveLength(0);
   });
 });

@@ -7,7 +7,8 @@
  * flavour. A use is dead when it sits in the branch of a condition the build fixes the other way — `STORE ? … : use`,
  * `ASK_BUILT ? use : …`, `!STORE && use`, `if (E2E) use`, and the same for the inline `import.meta.env` comparisons —
  * and an import whose every use is dead is dropped, as the bundler drops it. Type-only imports never count. A dynamic
- * `import()` is followed when the call itself is live. Imports outside apps/ios/src (core, React) are not followed.
+ * `import()` is followed when the call itself is live. Imports outside apps/ios/src (core, React) are not followed;
+ * liveSpecifiers names them.
  *
  * It also reports, per file, the source ranges that are dead in this build, so a reader can leave out what the build
  * leaves out.
@@ -17,8 +18,9 @@ import path from "node:path";
 import ts from "typescript";
 
 /**
- * What the App Store build fixes, by name: ./flags.ts and the constants App.tsx and bootstrap.ts write out. The App Store
- * build is the OAuth flavour (`npm run build:store` sets VITE_AG_CONNECT=oauth), so the key page is not reached.
+ * What the App Store build fixes, by name: ./flags.ts and the constants App.tsx, bootstrap.ts and sample/boot.ts write
+ * out. The App Store build is the OAuth flavour (`npm run build:store` sets VITE_AG_CONNECT=oauth), so the key page is
+ * not reached; and it has no Ask (ASK_BUILT, ASK_KIT), so neither are Ask's screens nor its service.
  */
 export const STORE_CONSTANTS: Readonly<Record<string, boolean>> = {
   STORE: true,
@@ -27,6 +29,7 @@ export const STORE_CONSTANTS: Readonly<Record<string, boolean>> = {
   OAUTH_BUILT: true,
   OAUTH_KIT: true,
   ASK_BUILT: false,
+  ASK_KIT: false,
   PROBES: false,
   E2E: false,
 };
@@ -143,6 +146,14 @@ function valueBindings(decl: ts.ImportDeclaration): string[] {
 
 /** The imports of one file the App Store build keeps, as resolved paths inside apps/ios/src. */
 export function liveImports(file: string, constants: Readonly<Record<string, boolean>> = STORE_CONSTANTS): string[] {
+  return [...new Set(liveSpecifiers(file, constants).flatMap((specifier) => resolve(file, specifier) ?? []))];
+}
+
+/**
+ * Every module specifier one file's kept imports name, inside apps/ios/src or not (core's modules, npm packages): the
+ * same reading as liveImports, before resolving. Lets a test say which outside modules the App Store build pulls in.
+ */
+export function liveSpecifiers(file: string, constants: Readonly<Record<string, boolean>> = STORE_CONSTANTS): string[] {
   const sf = parse(file);
   const out = new Set<string>();
   const uses = new Map<string, ts.Identifier[]>();
@@ -153,26 +164,23 @@ export function liveImports(file: string, constants: Readonly<Record<string, boo
       uses.set(node.text, list);
     }
     if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) {
-      const target = resolve(file, node.arguments[0].text);
-      if (target && !isDead(node, constants)) out.add(target);
+      if (!isDead(node, constants)) out.add(node.arguments[0].text);
     }
     ts.forEachChild(node, collect);
   };
   collect(sf);
   for (const statement of sf.statements) {
     if (ts.isExportDeclaration(statement) && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier) && !statement.isTypeOnly) {
-      const target = resolve(file, statement.moduleSpecifier.text);
-      if (target) out.add(target);
+      out.add(statement.moduleSpecifier.text);
     }
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
-    const target = resolve(file, statement.moduleSpecifier.text);
-    if (!target) continue;
+    const specifier = statement.moduleSpecifier.text;
     if (!statement.importClause) {
-      out.add(target); // a side-effect import
+      out.add(specifier); // a side-effect import
       continue;
     }
     const live = valueBindings(statement).some((name) => (uses.get(name) ?? []).some((use) => !isDead(use, constants)));
-    if (live) out.add(target);
+    if (live) out.add(specifier);
   }
   return [...out];
 }

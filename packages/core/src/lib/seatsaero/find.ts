@@ -269,7 +269,7 @@ export interface FindResult {
 
 export async function runFind(opts: RunFindOptions): Promise<FindResult> {
   if (typeof opts.apiKey !== "string" || opts.apiKey.trim() === "") {
-    throw new SeatsAeroError("runFind requires the calling user's seats.aero API key");
+    throw new SeatsAeroError("runFind requires the calling user's own seats.aero credential");
   }
   const { query, userId, quota, cache, routes } = opts;
   const now = opts.now ?? (() => new Date());

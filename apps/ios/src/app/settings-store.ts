@@ -7,14 +7,15 @@
  *     screen that reads it (`useLocale`) without remounting anything, so the task on screen is kept.
  *   - **Appearance.** System, Light or Dark; applied to <html> (components/ui/theme.ts).
  *   - **Ask's permission** (release D10): given on the Ask screen's consent sheet before the first question, withdrawn
- *     on the Anthropic key page. Without it the Ask service sends nothing (ask-service.ts).
+ *     on the Anthropic key page. Without it the Ask service sends nothing (ask-service.ts). This store keeps it in the
+ *     file and nothing more: it is read, given and withdrawn only by ../ask/consent.ts, which a build without Ask (the
+ *     App Store build) does not carry, so there the record is kept as it was found, and never read or changed.
  *
  * A file that cannot be read, or holds anything unexpected, gives the defaults: settings never stop the app starting,
  * and a permission that cannot be read is no permission. A failed save keeps the choice for this run and says so to
  * the caller.
  */
 import type { StoragePort } from "@awardgrid/core/workspace/types";
-import { ANTHROPIC_CONSENT_VERSION } from "../ask/consent-version";
 import { type ThemePreference, isThemePreference } from "../components/ui/theme";
 import type { Locale } from "./locale";
 
@@ -22,8 +23,8 @@ export const SETTINGS_NAMESPACE = "settings-v1";
 
 /**
  * The person's permission for Ask to send data to Anthropic (release D10; App Review Guideline 5.1.2(i)). `version`
- * is the wording it was given for (ANTHROPIC_CONSENT_VERSION): one given for another wording counts as none, so a
- * change in what is sent asks again.
+ * is the wording it was given for (../ask/consent-version.ts ANTHROPIC_CONSENT_VERSION): one given for another wording
+ * counts as none (../ask/consent.ts aiConsent), so a change in what is sent asks again.
  */
 export interface AiConsent {
   version: number;
@@ -80,8 +81,6 @@ export class SettingsStore {
   readonly locale = (): Locale => this.#state.locale ?? this.#deviceLocale;
   readonly theme = (): ThemePreference => this.#state.theme;
   readonly get = (): AppSettings => this.#state;
-  /** Ask's permission, when it was given for the wording this build shows; null otherwise. */
-  readonly aiConsent = (): AiConsent | null => (this.#state.aiConsent?.version === ANTHROPIC_CONSENT_VERSION ? this.#state.aiConsent : null);
 
   readonly subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
@@ -89,28 +88,18 @@ export class SettingsStore {
   };
 
   setLocale(locale: Locale): Promise<boolean> {
-    return this.#update({ locale });
+    return this.update({ locale });
   }
 
   setTheme(theme: ThemePreference): Promise<boolean> {
-    return this.#update({ theme });
-  }
-
-  /** The person allowed Ask to send data to Anthropic, on the consent sheet, at `at`. */
-  allowAi(at: Date): Promise<boolean> {
-    return this.#update({ aiConsent: { version: ANTHROPIC_CONSENT_VERSION, at: at.toISOString() } });
+    return this.update({ theme });
   }
 
   /**
-   * The person withdrew it. Ask sends nothing from now on, in this run whatever the save says; a save that failed
-   * resolves false, so the page can say the change may not survive a relaunch.
+   * Change, tell every reader, then save; resolves false when the save failed (the change stays for this run). Ask's
+   * permission is changed through here, by ../ask/consent.ts.
    */
-  withdrawAi(): Promise<boolean> {
-    return this.#update({ aiConsent: null });
-  }
-
-  /** Change, tell every reader, then save; resolves false when the save failed (the change stays for this run). */
-  async #update(patch: Partial<AppSettings>): Promise<boolean> {
+  async update(patch: Partial<AppSettings>): Promise<boolean> {
     this.#state = { ...this.#state, ...patch };
     for (const listener of this.#listeners) listener();
     if (!this.#storage) return true;
