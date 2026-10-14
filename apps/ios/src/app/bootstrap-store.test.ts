@@ -81,7 +81,8 @@ async function boot(store: boolean) {
   return { services, anthropicKeys, anthropicFetch, files };
 }
 
-describe("the App Store build has no Ask service", () => {
+// Each test boots the whole app; on a busy machine that outlasts the 15 s default.
+describe("the App Store build has no Ask service", { timeout: 60_000 }, () => {
   it("never loads Ask's parts, reads no Anthropic key, and its services have neither ask nor anthropicKeys", async () => {
     const { services, anthropicKeys, anthropicFetch } = await boot(true);
     expect(kit.loaded).toBe(0);

@@ -387,7 +387,9 @@ everything from a worktree, never from the checkout production serves.
    owner's OK), and the licenses list must then be written again. That is the release plan's step 4b sequence —
    `env -u VITE_AG_PROBES npx vite build`, `LANG=en_US.UTF-8 npx cap sync ios`, `node scripts/acknowledgements.mjs`,
    then steps 2 and 3 again with `cap copy` — and `ios/App/Podfile`, `ios/App/Podfile.lock`, any
-   `project.pbxproj` change and `src/about/acknowledgements.json` go in a commit before the archive.
+   `project.pbxproj` change and both licenses lists go in a commit before the archive: `node scripts/acknowledgements.mjs`
+   after the plain build writes `src/about/acknowledgements.json`, and after `npm run build:store` it writes
+   `src/about/acknowledgements.store.json`.
 4. **Build number:** raise `CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` (both
    configurations) in a commit before every archive after the first; 1.0 (1) is the first.
 5. **Archive**, once the App ID is registered and the signing identity is on this Mac (the owner's steps):
