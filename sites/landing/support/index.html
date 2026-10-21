@@ -28,10 +28,12 @@
       same day (release plan 47F) the account is connected only with seats.aero's own sign-in (Login with Seats.aero):
       the answers about finding and pasting an API key are gone, "How do I connect my seats.aero account?" says how,
       and results from the account stay only in memory in the OAuth build (registry claims oauth_connection and
-      short_term_caching). Since 2026-10-12 (later the same day) the retention answers say what each build keeps:
-      1.0 (6), the build in App Review, at most 24 hours on the iPhone, and later versions only in memory; the
-      prerequisite names no seats.aero plan ("seats.aero decides which accounts have API access; AwardGrid sells
-      nothing", registry claim prerequisite).
+      short_term_caching). Since 2026-10-12 (later the same day) the prerequisite names no seats.aero plan ("seats.aero
+      decides which accounts have API access; AwardGrid sells nothing", registry claim prerequisite); from then until
+      2026-10-21 the retention answers said what each build kept (1.0 (6) at most 24 hours on the iPhone, later
+      versions only in memory). Since 2026-10-21 they describe the App Store version as it has been since 1.0 (7):
+      results from the account, and what a watch last saw, stay only in memory while the app runs (registry claim
+      short_term_caching); a failure to clear is described as shown on screen, and "About" no longer names Anthropic.
     -->
     <link rel="stylesheet" href="../styles.css" />
   </head>
@@ -101,9 +103,8 @@
 
         <h3>How long are results from my seats.aero account kept?</h3>
         <p>
-          AwardGrid 1.0 (6) keeps results from your seats.aero account on the iPhone for at most 24 hours; later
-          versions keep them only in memory while the app runs. Saved keeps your queries; opening a saved query whose
-          results are gone searches again.
+          AwardGrid keeps results from your seats.aero account only in memory while the app runs; it never writes them
+          to its files. Saved keeps your queries; opening a saved query whose results are gone searches again.
         </p>
 
         <h3>What does an empty result mean?</h3>
@@ -117,9 +118,8 @@
         <p>
           When you open the app or come back to it, and at no other time. iOS cannot promise to run an app while
           you are not using it, so AwardGrid does not claim to. Watches keep their conditions. What a watch last saw is
-          kept like the other results from your account: for at most 24 hours in AwardGrid 1.0 (6), and only in memory
-          in later versions. When it is gone, the first check after that sets a new baseline, and later checks compare
-          with it.
+          kept like the other results from your account: only in memory while the app runs. When it is gone, the first
+          check after that sets a new baseline, and later checks compare with it.
         </p>
 
         <h3>Are the results live?</h3>
@@ -131,8 +131,8 @@
         <h3>How do I disconnect, or remove my data?</h3>
         <p>
           Disconnect in Settings › seats.aero account: it removes sign-in tokens and clears current account results.
-          Saved query conditions and watches stay. If tokens or older stored data cannot be cleared, the app reports
-          the failure. You can also remove AwardGrid's access in your seats.aero settings. Clear cached results in
+          Saved query conditions and watches stay. If tokens or older stored data cannot be cleared, the app says so
+          on screen. You can also remove AwardGrid's access in your seats.aero settings. Clear cached results in
           Settings. Exit sample data to delete everything sample data kept. The <a href="../privacy/">privacy policy</a>
           lists everything the app keeps and sends.
         </p>
@@ -142,8 +142,8 @@
         <h2 id="about-h">About</h2>
         <p>
           Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by, or sponsored
-          by seats.aero, Anthropic, any airline, or any loyalty program. It never asks for an airline, bank or
-          loyalty-program password, and it never books anything.
+          by seats.aero, any airline, or any loyalty program. It never asks for an airline, bank or loyalty-program
+          password, and it never books anything.
         </p>
       </section>
 
@@ -182,22 +182,22 @@
           分钟，重复查询不消耗调用。应用自己的计数在 UTC 午夜重新开始，seats.aero 也在这时重置用量。示例数据不消耗 seats.aero 调用。
         </p>
         <h4>来自我的 seats.aero 账户的结果会保留多久？</h4>
-        <p>AwardGrid 1.0 (6) 在 iPhone 上最多保留来自你的 seats.aero 账户的结果 24 小时；之后的版本只在应用运行期间把这些结果保存在内存中。收藏会保留你的查询；打开结果已不在的收藏查询时，会重新查票。</p>
+        <p>AwardGrid 只在应用运行期间把来自你的 seats.aero 账户的结果保存在内存中，从不写入它的文件。收藏会保留你的查询；打开结果已不在的收藏查询时，会重新查票。</p>
         <h4>结果为空是什么意思？</h4>
         <p>结果为空，表示 seats.aero 没有这条航线在那一天的缓存数据，也可能是 seats.aero 没有监测这条航线。结果来自 seats.aero 的缓存，并非实时查询，所以那里没有结果不等于没有座位。</p>
         <h4>关注什么时候检查？</h4>
-        <p>在你打开或回到应用时检查，其他时间不会。iOS 无法保证应用在你没有打开它时运行，所以 AwardGrid 不作这样的承诺。关注会保留条件。关注上次看到的结果与你账户的其他结果一样保留：在 AwardGrid 1.0 (6) 中最多 24 小时，在之后的版本中只保留在内存中。这些结果不在后，之后的首次检查会重新建立基线，再之后的检查与它比较。</p>
+        <p>在你打开或回到应用时检查，其他时间不会。iOS 无法保证应用在你没有打开它时运行，所以 AwardGrid 不作这样的承诺。关注会保留条件。关注上次看到的结果与你账户的其他结果一样，只在应用运行期间保留在内存中。这些结果不在后，之后的首次检查会重新建立基线，再之后的检查与它比较。</p>
         <h4>结果是实时的吗？</h4>
         <p>结果是 seats.aero 的缓存数据，并注明每条结果的数据时间。里程票随时会消失；转点前请先在里程计划官网确认。</p>
         <h4>如何断开连接或删除数据？</h4>
         <p>
-          在“设置 › seats.aero 账户”中断开连接：这会移除登录令牌并清除当前账户结果，收藏的查询条件和关注会保留。令牌或旧版数据如无法清除，应用会报告失败。你也可以在 seats.aero 设置中移除 AwardGrid
+          在“设置 › seats.aero 账户”中断开连接：这会移除登录令牌并清除当前账户结果，收藏的查询条件和关注会保留。令牌或旧版数据如无法清除，应用会在屏幕上说明。你也可以在 seats.aero 设置中移除 AwardGrid
           的访问权限。在设置中清除缓存结果。退出示例数据即可删除示例数据保存的全部内容。<a href="../privacy/">隐私政策</a>列出了应用保存和发送的全部内容。
         </p>
 
         <h3>关于</h3>
         <p>
-          数据：<a href="https://seats.aero">seats.aero</a>。AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。它从不索要航空公司、银行或里程计划的密码，也从不预订任何东西。
+          数据：<a href="https://seats.aero">seats.aero</a>。AwardGrid 与 seats.aero、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。它从不索要航空公司、银行或里程计划的密码，也从不预订任何东西。
         </p>
       </section>
     </main>

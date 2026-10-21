@@ -749,7 +749,7 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertNotEqual(description, blockquote(listing, "- **Description:**", "- **Description, Chinese:**"))
         for needed in (
             "• Sample data: search any route between the 84 airports AwardGrid recognises",
-            "Your own award data (optional): if you have an account at the third-party award-data provider AwardGrid supports, with API access (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases.",
+            "Your own award data (optional): if you have an account at the third-party award-data provider AwardGrid supports, with API access (the provider decides which accounts have it; AwardGrid sells nothing), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases.",
             "Results from the provider are its cached data: confirm on the program's own site before you transfer points.",
             "AwardGrid never sees the password to your provider account, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off.",
             "Searches go from the iPhone directly to the provider.",

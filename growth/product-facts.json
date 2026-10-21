@@ -233,7 +233,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-12",
+      "checked_at": "2026-10-21",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/search/search.ts:162-163 \"async parseText(text: string, apiKey: string | null)\"",
@@ -256,7 +256,7 @@
         "Optional: your own seats.aero account with API access (seats.aero decides which accounts have API access; AwardGrid sells nothing), connected with seats.aero's own sign-in. Without it, AwardGrid shows sample data only.",
         "Only on sample data. seats.aero decides which accounts have API access; AwardGrid sells nothing. Without API access, AwardGrid shows sample data only.",
         "Start with sample data, or connect your own seats.aero account in Settings with seats.aero's own sign-in (Login with Seats.aero).",
-        "Your own award data (optional): if you have an account at the third-party award-data provider AwardGrid supports, with API access (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases."
+        "Your own award data (optional): if you have an account at the third-party award-data provider AwardGrid supports, with API access (the provider decides which accounts have it; AwardGrid sells nothing), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases."
       ],
       "allowed_copy_zh_extra": [
         "可选：你自己的 seats.aero 账户，要有 API 权限（哪些账户有 API 权限由 seats.aero 决定；AwardGrid 不出售任何东西），用 seats.aero 自己的登录连接。没有它，AwardGrid 只显示示例数据。",
@@ -272,8 +272,8 @@
         "The extra sentences: the \"What you need\" item of /ios/ and /support/, the first step of /ios/award-grid/ (the app says \"Connect your seats.aero account in Settings.\", copy.ts), the answer to \"My seats.aero account has no API access. Will AwardGrid work?\" on /support/, and the store description's paragraph (apps/ios/store-metadata/en-US/description.txt). The App Store build has no paste field: the account is connected on seats.aero's own page (the oauth_connection claim), and seats.aero offers that connection to accounts with API access (oauth-copy.ts where). seats.aero may limit API access by location or for any reason (getting-started-p.md:27). Until 2026-10-07 these sentences said where to find the API key (the API tab of the seats.aero settings) and told the reader to paste it; that wording, and the /support/ answers \"Where do I find my seats.aero API key?\" and \"My seats.aero settings show no API tab\", are retired.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more; it is pending a native speaker's review before that page is deployed. allowed_copy_zh (the D6 sentence) and allowed_copy_zh_extra were rewritten on 2026-10-06 and 2026-10-07 and are pending that review too; 示例数据 is the app's own word for sample data (sample/sample-copy.ts 示例数据, present.ts 虚构示例数据), and AwardGrid 只显示示例数据 is the app's own sentence (settings-copy.ts).",
         "The retired Chinese sentence (没有这个密钥，App 什么也搜不到) is not listed in retired_copy: the gate matches retired wording only in pieces of 25 characters or more, and the rest of that sentence is still approved copy.",
-        "Since 2026-10-12 the site names no seats.aero plan: \"(seats.aero decides which accounts have API access; AwardGrid sells nothing)\" replaces \"(part of seats.aero Pro, which AwardGrid does not sell)\" in the D6 sentence and the first extra sentence, and \"seats.aero decides which accounts have API access; AwardGrid sells nothing.\" replaces \"seats.aero says not every Pro account or country gets API access\" in the /support/ answer, in English and Chinese (哪些账户有 API 权限由 seats.aero 决定；AwardGrid 不出售任何东西), so no public page names a plan to buy. \"seats.aero decides\": API access is offered by seats.aero, which says not every Pro account or country gets it (getting-started-p.md:25-27), and the app says \"seats.aero offers this to accounts with API access\" (oauth-copy.ts:42). \"AwardGrid sells nothing\": the app is free with no in-app purchase (the price claim), and the developer sells nothing (APP_STORE_HANDOFF.md:205). The earlier sentences are retired_copy. The gate's FREE_WITHOUT_PRO rule takes \"seats.aero decides which accounts have API access\" (in Chinese 由 seats.aero 决定) as it takes \"seats.aero Pro\", so a price sentence still needs the D6 sentence beside it. The store description's paragraph (the last extra sentence, and its Chinese) is App Store listing text, edited in App Store Connect; it is unchanged here and still says \"the provider's Pro plan\".",
-        "The store description's paragraph (the last extra sentence, and its Chinese, the last of allowed_copy_zh_extra) names no data provider: since 2026-10-08 no App Store listing text uses the name seats.aero, per the data provider's trademark guidance (scripts/aso/validate_metadata.py and the gate's TRADEMARK_ASO fail any listing text that does, in any field). It says what the D6 sentence says, with \"an account at the third-party award-data provider AwardGrid supports, with API access\" for \"a seats.aero account with API access\" (seats.aero is the only provider the app connects to; \"third-party\" because AwardGrid is not that provider, the affiliation claim), \"the provider's Pro plan\" for seats.aero Pro and \"the provider's own sign-in\" for seats.aero's own sign-in, and no \"paid\" (D6). The app itself names seats.aero, and the site keeps the D6 sentence. Until 2026-10-08 the paragraph was the D6 sentence followed by \", with seats.aero's own sign-in. AwardGrid has no in-app purchases.\"; that wording is still true but no longer used anywhere, so it is listed neither as allowed nor as retired copy. 数据提供方 is the Chinese listing's word for the provider (第三方里程票数据提供方 at first mention); the Chinese is pending a native speaker's review.",
+        "Since 2026-10-12 the site names no seats.aero plan: \"(seats.aero decides which accounts have API access; AwardGrid sells nothing)\" replaces \"(part of seats.aero Pro, which AwardGrid does not sell)\" in the D6 sentence and the first extra sentence, and \"seats.aero decides which accounts have API access; AwardGrid sells nothing.\" replaces \"seats.aero says not every Pro account or country gets API access\" in the /support/ answer, in English and Chinese (哪些账户有 API 权限由 seats.aero 决定；AwardGrid 不出售任何东西), so no public page names a plan to buy. \"seats.aero decides\": API access is offered by seats.aero, which says not every Pro account or country gets it (getting-started-p.md:25-27), and the app says \"seats.aero offers this to accounts with API access\" (oauth-copy.ts:42). \"AwardGrid sells nothing\": the app is free with no in-app purchase (the price claim), and the developer sells nothing (APP_STORE_HANDOFF.md:205). The earlier sentences are retired_copy. The gate's FREE_WITHOUT_PRO rule takes \"seats.aero decides which accounts have API access\" (in Chinese 由 seats.aero 决定) as it takes \"seats.aero Pro\", so a price sentence still needs the D6 sentence beside it. The store description's paragraph (the last extra sentence) is App Store listing text, edited in App Store Connect; since 2026-10-21 it names no plan either: \"(the provider decides which accounts have it; AwardGrid sells nothing)\" replaces \"(part of the provider's Pro plan, which AwardGrid does not sell)\" in apps/ios/store-metadata/en-US/description.txt and next/en-US, en-GB and en-AU. The paragraph has no \"free\", so FREE_WITHOUT_PRO does not apply to it. Its Chinese (the last of allowed_copy_zh_extra, next/zh-Hans/description.txt, a draft for a later version) is unchanged and still says 属于该提供方的 Pro 方案.",
+        "The store description's paragraph (the last extra sentence, and its Chinese, the last of allowed_copy_zh_extra) names no data provider: since 2026-10-08 no App Store listing text uses the name seats.aero, per the data provider's trademark guidance (scripts/aso/validate_metadata.py and the gate's TRADEMARK_ASO fail any listing text that does, in any field). It says what the D6 sentence says, with \"an account at the third-party award-data provider AwardGrid supports, with API access\" for \"a seats.aero account with API access\" (seats.aero is the only provider the app connects to; \"third-party\" because AwardGrid is not that provider, the affiliation claim), \"the provider decides which accounts have it; AwardGrid sells nothing\" for \"seats.aero decides which accounts have API access; AwardGrid sells nothing\" (until 2026-10-21 \"the provider's Pro plan\" for seats.aero Pro, as its Chinese still says) and \"the provider's own sign-in\" for seats.aero's own sign-in, and no \"paid\" (D6). The app itself names seats.aero, and the site keeps the D6 sentence. Until 2026-10-08 the paragraph was the D6 sentence followed by \", with seats.aero's own sign-in. AwardGrid has no in-app purchases.\"; that wording is still true but no longer used anywhere, so it is listed neither as allowed nor as retired copy. 数据提供方 is the Chinese listing's word for the provider (第三方里程票数据提供方 at first mention); the Chinese is pending a native speaker's review.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
@@ -804,7 +804,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-07",
+      "checked_at": "2026-10-21",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/app/flags.ts:30 \"export const STORE: boolean = import.meta.env.VITE_AG_STORE === \"1\";\"",
@@ -831,7 +831,8 @@
         "Search needs no AI key: the search parser is deterministic and needs no Anthropic key (apps/ios/src/search/search.ts:157-158).",
         "No per-question cost is stated.",
         "In Chinese the feature is AI 辅助, as the app names it (apps/ios/src/ask/ask-surface-copy.ts, consent-copy.ts, screens/anthropic-copy.ts) and as /support/#zh did; the Chinese copy says AI 辅助（Ask） so a reader can match it to the English pages.",
-        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) is the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html), written on 2026-09-28 to say what the English says and nothing more and rewritten on 2026-10-07; it is pending a native speaker's review before that page is deployed.",
+        "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status) was the wording of /ios/zh-hans/ (sites/landing/ios/zh-hans/index.html) until 2026-10-21, written on 2026-09-28 to say what the English says and nothing more and rewritten on 2026-10-07; it is pending a native speaker's review.",
+        "Since 2026-10-21 the site no longer states this claim: the question \"Do I need an AI key?\" (需要 AI 密钥吗？) is gone from /ios/ and /ios/zh-hans/, on the page and in the FAQPage JSON-LD, and the Ask line is gone from llms.txt, because the App Store version has no Ask. The sentences stay registered, still true, for README.md's public section (allowed_copy) and growth/geo/accuracy-answer.md (the extra sentences); no page of the site uses the Chinese any more.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
@@ -847,7 +848,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-07",
+      "checked_at": "2026-10-21",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/package.json:17-27 \"\"dependencies\": {\"",
@@ -873,7 +874,8 @@
         "Since 2026-10-07 the App Store build connects through seats.aero's own sign-in (the oauth_connection claim), so the iPhone app talks to one server of the developer's: the token service at awardgrid.dowhiz.com (sites/auth, the Worker awardgrid-auth), which holds AwardGrid's OAuth client secret and exchanges and refreshes the sign-in tokens. It is stateless: no storage binding, no console call, observability and Logpush off (sites/auth/src/index.ts:24-27, wrangler.jsonc). Searches never pass through it: they go from the iPhone to seats.aero with the access token (apps/ios/src/native/http.ts). \"No server of its own\" was true of the key flavour and is retired_copy. \"No accounts of its own\": the person's seats.aero account is seats.aero's; AwardGrid has no sign-up and no account of its own.",
         "The token service was deployed by the owner on 2026-10-07, with its client secret as a Worker secret (sites/auth/DEPLOY.md). The copy describes the build that uses it.",
         "The token service is a Cloudflare Worker on the awardgrid.dowhiz.com/oauth/* route (wrangler.jsonc). Since 2026-10-08 /privacy/ names that host, Cloudflare Workers, in its token-service section, and its \"This website\" section says that the app's requests to the token service (the one-time code and the random value, or the refresh token) reach Cloudflare. Until then that section said the app sends nothing to Cloudflare, which was true of the key flavour only.",
-        "Since 2026-10-12 /privacy/ covers the App Store version only (\"This policy covers the App Store version of AwardGrid for iPhone.\"): the parts about test builds (Ask on the tester's own Anthropic key, its permission, its Keychain item and conversation, and a development build's pasted key) are gone, in English and Chinese. Its Anthropic section says only that the App Store version sends nothing to Anthropic (the ask claim). What a test build sends is for its testers, in the What to Test notes of the TestFlight build that has it.",
+        "Since 2026-10-12 /privacy/ covers the App Store version only (\"This policy covers the App Store version of AwardGrid for iPhone.\"): the parts about test builds (Ask on the tester's own Anthropic key, its permission, its Keychain item and conversation, and a development build's pasted key) are gone, in English and Chinese. Until 2026-10-21 its Anthropic section said only that the App Store version sends nothing to Anthropic (the ask claim). What a test build sends is for its testers, in the What to Test notes of the TestFlight build that has it.",
+        "Since 2026-10-21 /privacy/ names no Anthropic: its Anthropic section and the \"In short\" item that said the App Store version sends nothing to Anthropic are gone, in English and Chinese, because the App Store version has no Ask (LEGAL.md:61-64) and \"Nothing else\" already says that the app sends nothing to any other server. Its retention items describe the App Store version as it has been since 1.0 (7), results from the account only in memory (the short_term_caching claim), and its date is 21 October 2026.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
@@ -892,7 +894,7 @@
       "evidence_level": "observed",
       "evidence_ref": [
         "LEGAL.md:6-7 \"Neither app has telemetry or analytics of its own\"",
-        "sites/landing/privacy/index.html:246-252 \"<h2 id=\"site-h\">This website</h2>\"",
+        "sites/landing/privacy/index.html:236-242 \"<h2 id=\"site-h\">This website</h2>\"",
         "sites/landing/DEPLOY.md:39-40 \"- Cloudflare Web Analytics can add its disclosed beacon to browser HTML responses.\"",
         "apps/ios/package.json:17-27 \"\"dependencies\": {\""
       ],
@@ -944,7 +946,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-12",
+      "checked_at": "2026-10-21",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/package.json:10 \"\"build:store\": \"VITE_AG_STORE=1 VITE_AG_CONNECT=oauth vite build && node scripts/check-fixture-free-bundle.mjs\"",
@@ -957,6 +959,7 @@
         "sites/auth/src/index.ts:24-27 \"It is stateless on purpose. It keeps nothing: no KV, D1, R2, Durable Object, cache or cookie; no request or response\"",
         "sites/auth/wrangler.jsonc:15-17 \"\"observability\": { \"enabled\": false, \"logs\": { \"enabled\": false } },\"",
         "apps/ios/src/app/bootstrap.ts:865 \"async disconnect(): Promise<DisconnectOutcome> {\"",
+        "apps/ios/src/screens/oauth-copy.ts:65-66 \"disconnectKeychain: \"Could not remove the connection from this device. Try again.\",\"",
         "apps/ios/scripts/check-store-bundle.mjs:67 \"\"Paste your seats.aero API key\",\""
       ],
       "allowed_copy": "You connect your seats.aero account with seats.aero's own sign-in (Login with Seats.aero): seats.aero asks you to sign in and approve AwardGrid, and AwardGrid never sees your password. You can disconnect at any time, in AwardGrid or in your seats.aero settings.",
@@ -967,7 +970,7 @@
         "AwardGrid never sees the password to your provider account, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off.",
         "A small token service at awardgrid.dowhiz.com exchanges and refreshes the sign-in tokens for AwardGrid; it stores nothing and keeps no logs of tokens.",
         "Searches go from the iPhone directly to the provider.",
-        "Disconnect in Settings › seats.aero account: it removes sign-in tokens and clears current account results. Saved query conditions and watches stay. If tokens or older stored data cannot be cleared, the app reports the failure.",
+        "Disconnect in Settings › seats.aero account: it removes sign-in tokens and clears current account results. Saved query conditions and watches stay. If tokens or older stored data cannot be cleared, the app says so on screen.",
         "Never send your seats.aero password: AwardGrid never sees it, and nobody helping you needs it."
       ],
       "allowed_copy_zh_extra": [
@@ -980,7 +983,7 @@
       "limitations": [
         "Registered on 2026-10-07 (release plan step 47F, step 5): the App Store build connects a seats.aero account only through seats.aero's own sign-in, Login with Seats.aero (OAuth 2.0). `npm run build:store` builds that flavour (apps/ios/package.json:10), App.tsx routes its connect page and drops the key page, and scripts/check-store-bundle.mjs fails the build if any word of the paste field reaches the bundle. seats.aero confirmed in writing on 7 October 2026 that AwardGrid may use Login with Seats.aero; the owner's approval of the plan (2026-10-06) covers this wording.",
         "\"seats.aero asks you to sign in and approve AwardGrid\": Connect seats.aero opens https://seats.aero/oauth2/consent in the system's sign-in sheet (ASWebAuthenticationSession, SeatsAuthPlugin.swift), which shares Safari's sign-in, so a person already signed in to seats.aero there may only be asked to approve. \"AwardGrid never sees your password\": the password is typed on seats.aero's page, inside the system sheet; the app receives only an authorization code, which the token service exchanges for tokens (apps/ios/src/oauth/connect.ts).",
-        "\"Disconnect at any time\": the app removes tokens, clears current in-memory account results and sanitises known legacy stored provider fields. Token-removal or legacy-cleanup failures are reported and do not claim complete deletion. Removing access in seats.aero invalidates refresh access; the app clears the connection and current account results when its next refresh is refused.",
+        "\"Disconnect at any time\": the app removes tokens, clears current in-memory account results and sanitises known legacy stored provider fields. Token-removal or legacy-cleanup failures are shown on screen (oauth-copy.ts disconnectKeychain, disconnectSaved; since 2026-10-21 the pages say \"says so on screen\" where they said \"reports the failure\", which could be read as telemetry) and do not claim complete deletion. Removing access in seats.aero invalidates refresh access; the app clears the connection and current account results when its next refresh is refused.",
         "The token service (sites/auth, the Worker awardgrid-auth) holds the client secret, exchanges the code and refreshes the access token; it keeps nothing and logs nothing (sites/auth/src/index.ts:24-27, wrangler.jsonc). The owner registered the OAuth client with seats.aero and deployed the Worker, with its secrets, on 2026-10-07 (sites/auth/DEPLOY.md); since then it runs on Cloudflare Workers, on the awardgrid.dowhiz.com/oauth/* route, and /privacy/ names that host. Build 1.0 (4), an internal TestFlight build, connects with a pasted key and is not submitted.",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra) is the wording of /support/#zh, written on 2026-10-07 to say what the English says and nothing more; it is pending a native speaker's review.",
         "The store description's privacy paragraph (since 2026-10-08) says \"the password to your provider account\" and \"directly to the provider\", in Chinese 你在数据提供方的账户密码 and 直接发往数据提供方: no App Store listing text uses the name seats.aero, per the data provider's trademark guidance; the provider is the award-data provider the description's paragraph on the account names. Until then it said \"your seats.aero password\", which /ios/award-grid/ still says, and \"directly to seats.aero\", which is no longer used anywhere. The Chinese is pending a native speaker's review.",
@@ -996,7 +999,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-12",
+      "checked_at": "2026-10-21",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/app/bootstrap.ts:471-473 \"const providerFiles = shortTermMs != null ? new ProviderConfigurationFiles(originalSnapshots.files) : null;\"",
@@ -1008,30 +1011,33 @@
         "apps/ios/src/app/bootstrap-oauth.test.ts:577 \"persists queries and preferences without rows, coverage, watch baselines or copied prices, including after a restart\"",
         "apps/ios/src/screens/favorites-copy.ts:131 \"intro: \"Saved queries stay on this device. Account results stay only in memory;\"",
         "apps/ios/src/screens/oauth-copy.ts:44 \"While connected, searches go from this device to seats.aero. Account results stay only in memory;\"",
+        "apps/ios/src/app/App.tsx:243 \"function SaveProblemBar({ services, problem, locale }\"",
         "[external] https://github.com/LoganYe/awardgrid/blob/b6fb23f45752d265b9d5359e305419a3f90a4566/apps/ios/src/retention/short-term.ts#L1-L31 (read 2026-10-12): build 1.0 (6) keeps account results in cache.json, the workspace, Saved and watch baselines for at most 24 hours",
         "[external] https://github.com/LoganYe/awardgrid/blob/b6fb23f45752d265b9d5359e305419a3f90a4566/apps/ios/src/app/App.tsx#L464-L484 (read 2026-10-12): build 1.0 (6) removes older results at launch, on return to the app and every hour while it stays open",
         "[external] https://github.com/LoganYe/awardgrid/blob/b6fb23f45752d265b9d5359e305419a3f90a4566/apps/ios/src/app/bootstrap.ts#L18-L22 (read 2026-10-12): build 1.0 (6) prunes at launch, before each save and on each sweep; Disconnect or a revoked grant purges all"
       ],
-      "allowed_copy": "AwardGrid 1.0 (6) keeps results from your seats.aero account on the iPhone for at most 24 hours; later versions keep them only in memory while the app runs.",
-      "allowed_copy_zh": "AwardGrid 1.0 (6) 在 iPhone 上最多保留来自你的 seats.aero 账户的结果 24 小时；之后的版本只在应用运行期间把这些结果保存在内存中。",
+      "allowed_copy": "AwardGrid keeps results from your seats.aero account only in memory while the app runs; it never writes them to its files.",
+      "allowed_copy_zh": "AwardGrid 只在应用运行期间把来自你的 seats.aero 账户的结果保存在内存中，从不写入它的文件。",
       "allowed_copy_extra": [
         "Saved keeps your queries; opening a saved query whose results are gone searches again.",
+        "AwardGrid 1.0 (6) keeps results from your seats.aero account on the iPhone for at most 24 hours; later versions keep them only in memory while the app runs.",
         "AwardGrid 1.0 (6) keeps account results on the iPhone for at most 24 hours; later versions keep them only in memory, not written to app files.",
         "Watches keep their conditions; the first check after restart sets a new baseline, and later checks compare with it.",
-        "The app checks older files for known seats.aero result fields and removes those fields. If a file is unknown, damaged or cannot be updated safely, it is kept and the app reports that cleanup could not finish. Such an error does not mean every old copy was deleted.",
-        "Watches keep their conditions. What a watch last saw is kept like the other results from your account: for at most 24 hours in AwardGrid 1.0 (6), and only in memory in later versions. When it is gone, the first check after that sets a new baseline, and later checks compare with it."
+        "The app checks older files for known seats.aero result fields and removes those fields. If a file is unknown, damaged or cannot be updated safely, it is kept and the app shows on screen that cleanup could not finish. Such an error does not mean every old copy was deleted.",
+        "Watches keep their conditions. What a watch last saw is kept like the other results from your account: only in memory while the app runs. When it is gone, the first check after that sets a new baseline, and later checks compare with it."
       ],
       "allowed_copy_zh_extra": [
         "收藏会保留你的查询；打开结果已不在的收藏查询时，会重新查票。",
-        "关注会保留条件。关注上次看到的结果与你账户的其他结果一样保留：在 AwardGrid 1.0 (6) 中最多 24 小时，在之后的版本中只保留在内存中。这些结果不在后，之后的首次检查会重新建立基线，再之后的检查与它比较。"
+        "关注会保留条件。关注上次看到的结果与你账户的其他结果一样，只在应用运行期间保留在内存中。这些结果不在后，之后的首次检查会重新建立基线，再之后的检查与它比较。"
       ],
       "limitations": [
-        "Since 2026-10-12 the copy is scoped by version, because the site serves two builds at once: 1.0 (6), the build in App Review since 2026-10-08, and the later build prepared on the same branch as this claim's in-tree evidence. Build 1.0 (6) (source b6fb23f, the external refs) writes results from the account to the app's files (cache.json, the workspace's snapshots, Saved's rows, watch baselines) and removes any older than 24 hours at launch, before every save, when the app becomes visible again and every hour while it stays open (App.tsx; the public copy says \"while it stays open\", not the interval). A file older than that can stay on the device while the app is not running, until its next launch removes it; /privacy/ says when removal happens. Saved keeps each item's query, when it was saved and how many options it showed; once its rows are gone, opening it searches again. Later versions keep the results only in memory (the limitation below). \"Later versions\" holds once 1.0 (6) is released, since a later build ships as a later version; if a later build replaces 1.0 (6) before release, the 1.0 (6) half of each sentence is removed.",
+        "Since 2026-10-21 allowed_copy, allowed_copy_zh and the watch sentences name no build: they describe the App Store version as it has been since 1.0 (7), whose source is this claim's in-tree evidence. Results from the account stay only in memory while the app runs and are never written to the app's files (provider-files.ts strips them before any write; bootstrap-oauth.test.ts). 1.0 (6) was withdrawn before review, so, as the next limitation says, the 1.0 (6) half of each sentence is gone from the site: /privacy/, /support/ and llms.txt, in English and Chinese. The two sentences that still name 1.0 (6) (the second and third of allowed_copy_extra) stay only because README.md's public section and LEGAL.md use them; the external b6fb23f refs back their 1.0 (6) half, and their \"later versions\" half is what 1.0 (7) and later do. \"Shows on screen\" and \"says so on screen\" replace \"reports\", which could be read as telemetry: a cleanup that could not finish is shown in the app's save-problem bar (App.tsx SaveProblemBar), and a failed Disconnect on the seats.aero account screen (oauth-copy.ts); nothing is sent anywhere.",
+        "From 2026-10-12 to 2026-10-21 the copy was scoped by version, because the site served two builds at once: 1.0 (6), then waiting for App Review, and the later build prepared on the same branch as this claim's in-tree evidence. Build 1.0 (6) (source b6fb23f, the external refs) writes results from the account to the app's files (cache.json, the workspace's snapshots, Saved's rows, watch baselines) and removes any older than 24 hours at launch, before every save, when the app becomes visible again and every hour while it stays open (App.tsx; the public copy says \"while it stays open\", not the interval). A file older than that can stay on the device while the app is not running, until its next launch removes it; /privacy/ says when removal happens. Saved keeps each item's query, when it was saved and how many options it showed; once its rows are gone, opening it searches again. Later versions keep the results only in memory (the limitation below). \"Later versions\" holds once 1.0 (6) is released, since a later build ships as a later version; if a later build replaces 1.0 (6) before release, the 1.0 (6) half of each sentence is removed.",
         "Updated on 2026-10-12 for build 7: the OAuth storage boundary strips provider responses before writing cache, workspace, Saved, watch and Ask files. New account results and watch comparisons therefore remain in process memory. Restarting the process cold-starts account results; saved query conditions and watch configuration persist. Sample-mode files and non-OAuth development/test builds retain their existing behaviour.",
         "Saved retains query conditions and the saved time, without result rows, result counts or provider row identity. Opening a saved query without its results in memory runs a fresh search, unless all dates have passed or no account is connected; the screen explains those cases. Saving a selected option retains its route/date/cabin/program conditions so the query remains specific to the selection.",
         "The 45-minute in-memory search cache (quota claim) decides whether a search fetches again during the same process. The existing foreground/hourly expiry also prunes old in-memory results. The copy makes no exact physical-deletion deadline while iOS suspends the app.",
         "Known legacy provider fields and app-created old watch backups are sanitised on read/sweep. Unknown or damaged shapes, listing failures and unverified writes remain explicit SaveStatus/Disconnect failures; the app does not claim all stored data was removed. This does not rewrite device backups made outside the app.",
-        "The Chinese is the wording of /privacy/#zh, revised on 2026-10-12; it is pending a native speaker review. These local files are not evidence of a public deployment or an Apple-approved binary.",
+        "The Chinese is the wording of /privacy/#zh and /support/#zh, revised on 2026-10-12 and 2026-10-21; it is pending a native speaker review. These local files are not evidence of a public deployment or an Apple-approved binary.",
         "Source-verified; not run on a physical iPhone; not verified with real keys on the 1.0 build."
       ],
       "public_use": "approved",
@@ -1104,7 +1110,7 @@
       "released_version": "1.0",
       "candidate_version": null,
       "market": "all storefronts where offered",
-      "checked_at": "2026-10-08",
+      "checked_at": "2026-10-21",
       "evidence_level": "source-verified",
       "evidence_ref": [
         "apps/ios/src/screens/settings-copy.ts:92 \"\"AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero\"",
@@ -1113,11 +1119,11 @@
         "apps/ios/src/native/http.ts:2-11 \"The native-HTTP adapter. Every seats.aero byte in this app goes through here.\"",
         "packages/core/src/lib/seatsaero/types.ts:4 \"Base URL https://seats.aero/partnerapi/\""
       ],
-      "allowed_copy": "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.",
-      "allowed_copy_zh": "AwardGrid 与 seats.aero、Anthropic、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
+      "allowed_copy": "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program.",
+      "allowed_copy_zh": "AwardGrid 与 seats.aero、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。",
       "allowed_copy_extra": [
         "Its data comes from seats.aero.",
-        "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program.",
+        "AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program.",
         "AwardGrid is not affiliated with, endorsed by, or sponsored by its data provider, any airline, or any loyalty program."
       ],
       "allowed_copy_zh_extra": [
@@ -1125,7 +1131,7 @@
         "AwardGrid 与其数据提供方、任何航空公司或任何里程计划均无关联，也未获其认可或赞助。"
       ],
       "limitations": [
-        "The extra sentence without Anthropic was the App Store description's disclaimer for build 4 (release plan step 36): the App Store version has no Ask. It is still the app's own (settings-copy.ts:92) and /privacy/'s. The pages keep Anthropic, because the web app and the iPhone app's test builds use Claude.",
+        "Since 2026-10-21 allowed_copy and allowed_copy_zh name no Anthropic, and every page of the site, llms.txt included, uses them: the App Store version has no Ask, and they are the App Store build's own sentences (settings-copy.ts:92 and :135, the STORE branch). The English was the App Store description's disclaimer for build 4 (release plan step 36). Until 2026-10-21 the pages named Anthropic, because the web app and the iPhone app's test builds use Claude; that sentence, the second of allowed_copy_extra, stays for README.md's public section and growth/geo/accuracy-answer.md, which also describe Ask in testing. Its Chinese (AwardGrid 与 seats.aero、Anthropic、…) is no longer used anywhere and is not listed.",
         "Used verbatim; the Chinese sentence is the app's own (settings-copy.ts:135).",
         "\"Its data comes from seats.aero\": every search goes to the seats.aero Partner API through the native HTTP adapter (http.ts:2-11; types.ts:4).",
         "The Chinese (allowed_copy_zh, allowed_copy_zh_extra, allowed_copy_zh_by_status): the sentence is the app's own; the extra sentence (\"Its data comes from seats.aero.\") is the wording of /ios/zh-hans/, written on 2026-09-28 and pending a native speaker's review before that page is deployed.",
