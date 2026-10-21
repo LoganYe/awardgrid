@@ -779,7 +779,7 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertEqual(zh.count("\n\n"), en.count("\n\n"))
         self.assertEqual(zh.count("• "), en.count("• "))
         for needed in (
-            "你自己的里程票数据（可选）：如果你在 AwardGrid 支持的第三方里程票数据提供方有带 API 权限的账户（属于该提供方的 Pro 方案，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据",
+            "你自己的里程票数据（可选）：如果你在 AwardGrid 支持的第三方里程票数据提供方有带 API 权限的账户（哪些账户有 API 权限由该提供方决定；AwardGrid 不出售任何东西），你可以连接这个账户，看到它的结果，而不是示例数据",
             "示例数据",
             "84 个机场",
             "来自数据提供方的结果是它的缓存数据，转点前请先在里程计划官网确认。",

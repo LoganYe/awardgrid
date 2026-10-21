@@ -43,6 +43,8 @@
       (apps/ios/src/retention/provider-files.ts; registry claim short_term_caching), so the 1.0 (6) item and the
       wording by build are gone. The Anthropic section is gone too ("Nothing else" says the app sends nothing to any
       other server), and a failure to clear tokens or older data is described as shown on screen.
+      Until docs/release/APP_STORE_HANDOFF.md §6 is brought in line, its "24 hours at most" item is 1.0 (6)'s; this
+      page and LEGAL.md describe the App Store version.
     -->
     <link rel="stylesheet" href="../styles.css" />
   </head>
@@ -164,8 +166,8 @@
           <li>
             <strong>The app's own files:</strong> whether you use sample data or your seats.aero account; today's
             count of seats.aero calls; your search conditions and view preferences; your saved queries and when you
-            saved them; watch conditions; saved trip plans; and your settings (language and appearance). They never
-            hold results from your seats.aero account.
+            saved them; watch conditions; saved trip plans; and your settings (language and appearance). The app never
+            writes results from your seats.aero account to them.
           </li>
           <li>
             <strong>Account results:</strong> results from your seats.aero account and watch comparisons are not
@@ -331,7 +333,7 @@
         <ul>
           <li><strong>钥匙串：</strong>你连接账户后的 seats.aero 登录令牌。它们只保存在本机，不通过 iCloud 钥匙串同步。应用从不显示令牌。</li>
           <li>
-            <strong>应用自己的文件：</strong>你使用示例数据还是 seats.aero 账户；今天的 seats.aero 调用次数；查询条件和显示偏好；你收藏的查询及收藏时间；关注条件；保存的行程规划；以及你的设置（语言和外观）。这些文件从不保存来自你的 seats.aero 账户的结果。
+            <strong>应用自己的文件：</strong>你使用示例数据还是 seats.aero 账户；今天的 seats.aero 调用次数；查询条件和显示偏好；你收藏的查询及收藏时间；关注条件；保存的行程规划；以及你的设置（语言和外观）。应用从不把来自你的 seats.aero 账户的结果写入这些文件。
           </li>
           <li>
             <strong>账户结果：</strong>来自你的 seats.aero 账户的结果和关注比较记录不写入应用文件，只在应用运行期间保存在内存中。重复查询可以使用 45 分钟的内存缓存。重启应用后，这些结果不再保留；收藏会保留你的查询，打开时重新查询。关注会保留条件；重启后的首次检查重新建立基线，之后的检查再与它比较。

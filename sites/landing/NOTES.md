@@ -139,7 +139,8 @@ the visible questions, never the JSON-LD.
 - 2026-10-21: the App Store version has no Ask, so the page no longer speaks of it. "Do I need an AI key?" is gone, on
   the page and in the FAQPage JSON-LD (nine answers now; on /ios/zh-hans/ 需要 AI 密钥吗？ is gone too), the
   affiliation answer and the footer name no Anthropic (the affiliation claim), and the row "No key of its own" is
-  "No shared account".
+  "No shared account". `growth/geo/accuracy-answer.md` changes the same way, so the questions and answers are
+  still its own, word for word and in the same order.
 
 ### `ios/award-grid/index.html`: how the table works
 

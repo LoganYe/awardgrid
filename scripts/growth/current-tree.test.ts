@@ -394,7 +394,7 @@ describe("the public copy is the registry's", () => {
       .split(/^## .*$/m)
       .slice(1)
       .map((block) => block.replace(/\s+/g, " ").trim());
-    expect(answers).toHaveLength(10);
+    expect(answers).toHaveLength(9);
     const loose = sentences(answers).filter((s) => s !== "No." && s !== "Yes." && !registered.has(s));
     expect(loose).toEqual([]);
   });
