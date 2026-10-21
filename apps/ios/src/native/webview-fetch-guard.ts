@@ -12,14 +12,19 @@
  *     the WebView, with an Origin header on every request.
  *
  * `createAskClient` already refuses `globalThis.fetch` (packages/core/src/lib/ask/client.ts), and lint keeps the
- * SDK out of this app (eslint.config.mjs). This guard is the runtime layer under both. main.tsx installs it before
+ * SDK out of this app (eslint.config.mjs). This guard is the runtime layer under both. The App Store build
+ * (../app/flags.ts STORE) has no Ask, no SDK and no Anthropic client at all, so there it guards seats.aero alone and
+ * names no Anthropic host. main.tsx installs it before
  * React renders, and from then on a global fetch to either host rejects with NativeHttpRequiredError. That name is
  * one describeAskError reads as a wiring failure (errors.ts WIRING_ERRORS), so Ask's copy calls it a wiring bug and
  * not an outage. Every other URL passes through untouched.
  */
 
-/** Hosts this app reaches only through the native adapter. Compared after the URL parser lower-cases the host. */
-const NATIVE_ONLY_HOSTS: ReadonlySet<string> = new Set(["api.anthropic.com", "seats.aero"]);
+/**
+ * Hosts this app reaches only through the native adapter. Compared after the URL parser lower-cases the host. The App
+ * Store build reaches seats.aero only; the condition is written out, so its bundle does not carry the other host.
+ */
+const NATIVE_ONLY_HOSTS: ReadonlySet<string> = new Set(import.meta.env.VITE_AG_STORE === "1" ? ["seats.aero"] : ["api.anthropic.com", "seats.aero"]);
 
 /** Marks an installed guard, so a second install (a hot reload, a second import) wraps nothing twice. */
 const GUARD_MARK = Symbol.for("awardgrid.webViewFetchGuard");

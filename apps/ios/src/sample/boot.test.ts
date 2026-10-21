@@ -190,7 +190,8 @@ describe("sample mode's boot", () => {
     expect(services.dataSource.coverage?.airports).toBe(84);
     expect(options.keys).not.toBe(liveKeys);
     expect(await services.keys.get()).toBe(SAMPLE_KEY);
-    expect(await services.anthropicKeys.get()).toBeNull();
+    expect(await services.anthropicKeys?.get()).toBeNull();
+    expect(services.ask).toBeDefined();
 
     const recorded = recording(files);
     // A search, an option's itineraries, a watch check, a save: everything that could reach a transport or a file.

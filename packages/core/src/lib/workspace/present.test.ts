@@ -7,7 +7,10 @@ import copyFixture from "../../../test/fixtures/uiux/copy.zh-en.json";
 import { fixtureSnapshot } from "../../../test/fixtures/uiux/factory";
 import { coverageFor } from "./coverage";
 import {
+  AI_COPY,
   COPY,
+  KEY_COPY,
+  aiCopy,
   calendarDayName,
   compactMiles,
   copy,
@@ -23,6 +26,7 @@ import {
   programShortLabel,
   feesLabel,
   formatMiles,
+  keyCopy,
   monthLabel,
   moreConditionsCount,
   programLabel,
@@ -37,29 +41,42 @@ import {
   weekdayHeads,
 } from "./present";
 
+/** Every approved row: the three tables together. */
+const APPROVED_COPY: Record<string, { en: string; zh: string }> = { ...COPY, ...AI_COPY, ...KEY_COPY };
+
 describe("approved copy", () => {
   it("every string used here is the handoff copy's, in both languages", () => {
     const rows = new Map(copyFixture.rows.map((r) => [r.key, r]));
-    for (const [key, text] of Object.entries(COPY)) {
+    for (const [key, text] of Object.entries(APPROVED_COPY)) {
       expect(rows.get(key), key).toBeDefined();
       expect(text.en, key).toBe(rows.get(key)!.en);
       expect(text.zh, key).toBe(rows.get(key)!.zh);
     }
   });
 
-  it("every approved row is here (T11): one table, both languages, no key missing from either", () => {
-    expect(Object.keys(COPY).sort()).toEqual(copyFixture.rows.map((r) => r.key).sort());
-    for (const [key, text] of Object.entries(COPY)) {
+  it("every approved row is here (T11): three tables, both languages, no key missing from either", () => {
+    expect(Object.keys(APPROVED_COPY).sort()).toEqual(copyFixture.rows.map((r) => r.key).sort());
+    for (const [key, text] of Object.entries(APPROVED_COPY)) {
       expect(text.en.trim().length, key).toBeGreaterThan(0);
       expect(text.zh.trim().length, key).toBeGreaterThan(0);
     }
   });
 
-  it("both languages carry the same placeholders, and copy() fills them", () => {
+  it("AI assistance's rows and the key check's row are in their own tables, which copy() cannot read", () => {
+    const keys = [Object.keys(COPY), Object.keys(AI_COPY), Object.keys(KEY_COPY)];
+    expect(keys.flat().length).toBe(Object.keys(APPROVED_COPY).length);
+    expect(Object.keys(AI_COPY).every((key) => key.startsWith("ai."))).toBe(true);
+    expect(Object.keys(KEY_COPY)).toEqual(["key.check_cost"]);
+    expect(Object.keys(COPY).filter((key) => key.startsWith("ai.") || key.startsWith("key."))).toEqual([]);
+    expect(keyCopy("key.check_cost", "en")).toBe("Checking this key sends a request to the data source.");
+  });
+
+  it("both languages carry the same placeholders, and copy() and aiCopy() fill them", () => {
     const names = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
-    for (const [key, text] of Object.entries(COPY)) expect(names(text.zh), key).toEqual(names(text.en));
-    expect(copy("ai.selected", "en", { count: "2" })).toBe("Query and 2 selected options will be sent.");
-    expect(copy("ai.selected", "zh", { count: "2" })).toBe("附带查询条件及2个所选选项。");
+    for (const [key, text] of Object.entries(APPROVED_COPY)) expect(names(text.zh), key).toEqual(names(text.en));
+    expect(aiCopy("ai.selected", "en", { count: "2" })).toBe("Query and 2 selected options will be sent.");
+    expect(aiCopy("ai.selected", "zh", { count: "2" })).toBe("附带查询条件及2个所选选项。");
+    expect(copy("time.local", "en", { time: "09:30" })).toBe("Fetched on this device at 09:30");
   });
 });
 

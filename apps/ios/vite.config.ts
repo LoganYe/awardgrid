@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import { type Plugin, defineConfig, loadEnv } from "vite";
@@ -18,11 +18,14 @@ function walk(dir: string): string[] {
 /**
  * The maps are written, then moved out of dist/ before `cap copy` can put them in the app (release D14: about 4.4 MB
  * carrying the original TypeScript). They are kept beside it for reading a stack trace, and for the checks that read
- * them: scripts/check-fixture-free-bundle.mjs (no fixture module was bundled) and scripts/check-acknowledgements.mjs
+ * them: scripts/check-fixture-free-bundle.mjs (no fixture module was bundled) and scripts/acknowledgements.mjs
  * (every package that ships has its notice). "hidden" writes no sourceMappingURL comment into the chunks, so nothing
  * in the app points at a file that is not there.
+ *
+ * Beside them goes flavour.json, which build they are of: the App Store build (VITE_AG_STORE=1) has no Ask, ships
+ * fewer packages and has a licenses list of its own, and scripts/acknowledgements.mjs reads this to pick the list.
  */
-function sourceMapsBesideBundle(): Plugin {
+function sourceMapsBesideBundle(flavour: { store: boolean }): Plugin {
   return {
     name: "awardgrid:source-maps-beside-bundle",
     apply: "build",
@@ -34,6 +37,8 @@ function sourceMapsBesideBundle(): Plugin {
         mkdirSync(path.dirname(target), { recursive: true });
         renameSync(file, target);
       }
+      mkdirSync(mapsDir, { recursive: true });
+      writeFileSync(path.join(mapsDir, "flavour.json"), `${JSON.stringify(flavour)}\n`);
     },
   };
 }
@@ -63,9 +68,10 @@ export function checkFlavour(env: Record<string, string>, command: "build" | "se
 }
 
 export default defineConfig(({ command, mode }) => {
-  checkFlavour(loadEnv(mode, here, "VITE_AG_"), command);
+  const env = loadEnv(mode, here, "VITE_AG_");
+  checkFlavour(env, command);
   return {
-    plugins: [react(), sourceMapsBesideBundle()],
+    plugins: [react(), sourceMapsBesideBundle({ store: env.VITE_AG_STORE === "1" })],
     // Capacitor copies dist/ into ios/App/App/public and serves it from capacitor://localhost,
     // so every asset URL must be relative.
     base: "",

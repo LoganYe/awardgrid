@@ -3,13 +3,15 @@
  * each flag is a literal comparison on `import.meta.env`, so in a build where it does not hold, the code behind it is
  * dropped from the bundle, not merely hidden.
  *
- *   - **STORE** (`VITE_AG_STORE=1`, `npm run build:store`): the App Store build. Ask (AI assistance) is compiled out:
- *     its routes, every way into it, and the copy that mentions it or Anthropic. AppServices.ask is still built at
- *     launch, never opened, so both flavours ship the same npm modules and one licenses list (release plan D3).
+ *   - **STORE** (`VITE_AG_STORE=1`, `npm run build:store`): the App Store build. Ask (AI assistance) is compiled out,
+ *     code and all: its routes, every way into it, the copy that mentions it or Anthropic, and since 1.0 (8) its
+ *     service too — bootstrap.ts never loads ../ask/kit.ts there, so AppServices has no `ask` and no `anthropicKeys`,
+ *     and the bundle has no Ask service, no Anthropic SDK and no Anthropic endpoint. The flavours therefore ship
+ *     different npm modules, and each has its own licenses list (scripts/acknowledgements.mjs).
  *     `npm run build:store` also sets VITE_AG_CONNECT=oauth: the App Store build connects a seats.aero account only
  *     through seats.aero's own sign-in, with no paste field (and so needs VITE_AG_SEATS_CLIENT_ID).
- *     scripts/check-store-bundle.mjs checks the result: no Ask, no paid plan, and none of the paste field's words. The
- *     default `build` (dev, probes, the UI/UX e2e) keeps Ask and the key flavour.
+ *     scripts/check-store-bundle.mjs checks the result: nothing of Ask's, Anthropic's or Claude's, no paid plan, and
+ *     none of the paste field's words. The default `build` (dev, probes, the UI/UX e2e) keeps Ask and the key flavour.
  *   - **CONNECT** (`VITE_AG_CONNECT`): how a seats.aero account is connected. "key" (the default, for development,
  *     the probes, the UI/UX e2e and internal test builds; never the App Store build): its API key is pasted on the
  *     connect page. "0": no connection at all — the connect page and every link to it are compiled out

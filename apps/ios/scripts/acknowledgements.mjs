@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * The Acknowledgements page's data (src/about/acknowledgements.json), taken from what actually ships (release handoff
- * §3.5: the MIT, ISC and OFL licenses require their notice to travel with the copies):
+ * The Acknowledgements page's data (src/about/acknowledgements.json, and acknowledgements.store.json for the App Store
+ * build; see below), taken from what actually ships (release handoff §3.5: the MIT, ISC and OFL licenses require
+ * their notice to travel with the copies):
  *
  *   - every npm package a source map beside the bundle names (vite.config.ts moves the maps to dist-sourcemaps/, so
  *     they list exactly the modules the chunks were built from);
@@ -19,6 +20,11 @@
  *   node scripts/acknowledgements.mjs            write the JSON (after `vite build`)
  *   node scripts/acknowledgements.mjs --check    fail when the JSON is not what ships (run by `pnpm build`)
  *
+ * Each flavour has its own list, and the build's maps say which they are of (dist-sourcemaps/flavour.json,
+ * vite.config.ts): src/about/acknowledgements.json for the default build, src/about/acknowledgements.store.json for
+ * the App Store build (`npm run build:store`, VITE_AG_STORE=1), which has no Ask and so ships no Anthropic SDK and
+ * none of the packages only it brings. The Acknowledgements page shows its own build's list.
+ *
  * Without ios/App/Pods (a checkout that never ran pod install) the two pods' entries cannot be read again: --check
  * then compares everything else and says it did not re-read them.
  */
@@ -29,7 +35,7 @@ import path from "node:path";
 const here = import.meta.dirname;
 const app = path.resolve(here, "..");
 const mapsDir = path.join(app, "dist-sourcemaps");
-const out = path.join(app, "src", "about", "acknowledgements.json");
+const flavourFile = path.join(mapsDir, "flavour.json");
 const pods = path.join(app, "ios", "App", "Pods");
 const podfileLock = path.join(app, "ios", "App", "Podfile.lock");
 const require = createRequire(path.join(app, "package.json"));
@@ -179,6 +185,14 @@ function fontEntry() {
   return { name: "Inter", version: "4.001", license: "OFL-1.1", kind: "font", notice };
 }
 
+/** The list of the flavour the maps are of: the App Store build's own, or the default build's. */
+function listFile() {
+  if (!existsSync(flavourFile)) throw new Error(`No ${path.relative(app, flavourFile)}: run \`vite build\` (or \`npm run build:store\`) first.`);
+  const { store } = JSON.parse(readFileSync(flavourFile, "utf8"));
+  if (typeof store !== "boolean") throw new Error(`${path.relative(app, flavourFile)} does not say whether the build is the App Store one`);
+  return { store, file: path.join(app, "src", "about", store ? "acknowledgements.store.json" : "acknowledgements.json") };
+}
+
 function build() {
   if (!existsSync(mapsDir)) throw new Error(`No source maps at ${mapsDir}: run \`vite build\` first.`);
   const roots = shippedPackages();
@@ -190,6 +204,8 @@ function build() {
 }
 
 const { all, reread } = build();
+const { store, file: out } = listFile();
+const listName = path.relative(app, out);
 if (process.argv.includes("--check")) {
   const committed = JSON.parse(readFileSync(out, "utf8"));
   const key = (e) => `${e.kind}:${e.name}`;
@@ -201,13 +217,14 @@ if (process.argv.includes("--check")) {
     const names = (list) => new Set(list.map(key));
     const shipped = names(all);
     const listed = names(comparable);
-    console.error("acknowledgements: src/about/acknowledgements.json is not what ships. Run `node scripts/acknowledgements.mjs` and commit it.");
+    console.error(`acknowledgements: ${listName} is not what the ${store ? "App Store" : "default"} build ships. Run \`node scripts/acknowledgements.mjs\` after that build and commit it.`);
     for (const k of shipped) if (!listed.has(k)) console.error(`  ships, not listed: ${k}`);
     for (const k of listed) if (!shipped.has(k)) console.error(`  listed, does not ship: ${k}`);
     process.exit(1);
   }
-  console.log(`acknowledgements: ${all.length} entries match what ships${reread ? "" : " (Pods not installed: KeychainSwift and IONFilesystemLib not re-read)"}`);
+  console.log(`acknowledgements: ${all.length} entries in ${listName} match what the ${store ? "App Store" : "default"} build ships${reread ? "" : " (Pods not installed: KeychainSwift and IONFilesystemLib not re-read)"}`);
 } else {
+  if (!reread) throw new Error("ios/App/Pods is not installed: the list cannot be written without KeychainSwift's and IONFilesystemLib's license files");
   writeFileSync(out, `${JSON.stringify(all, null, 2)}\n`);
   console.log(`acknowledgements: wrote ${all.length} entries to ${path.relative(process.cwd(), out)}`);
 }

@@ -30,10 +30,12 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { en } from "@awardgrid/core/i18n/dictionaries/en";
 import { zh } from "@awardgrid/core/i18n/dictionaries/zh";
-import { COPY, type CopyKey } from "@awardgrid/core/workspace/present";
+import { AI_COPY, COPY, KEY_COPY } from "@awardgrid/core/workspace/present";
 import { decodeEntities, extract, sourceFiles } from "./test-support/source-strings";
 
 const SHELL_SRC = path.join(import.meta.dirname);
+/** Every approved row (core present.ts): COPY, AI assistance's AI_COPY and the key check's KEY_COPY, by key. */
+const APPROVED: Readonly<Record<string, { en: string; zh: string } | undefined>> = { ...COPY, ...AI_COPY, ...KEY_COPY };
 const CORE_WATCH = path.join(import.meta.dirname, "..", "..", "..", "packages", "core", "src", "lib", "watch");
 // Ask's system prompt, tool descriptions and failure copy are string literals in core, not in the shell. A
 // person reads the copy, and the model repeats what the prompt and the tools tell it, so both are scanned.
@@ -660,13 +662,14 @@ describe("no background check is claimed while none is built", () => {
 
   it("the approved rows the shell renders through copy() are scanned too, in both languages (T11)", () => {
     // copy("key", locale) renders core COPY's sentence; the scan above sees only the key. Every call's key is read
-    // from the source, and must be a literal, so no row reaches the screen unscanned.
+    // from the source, and must be a literal, so no row reaches the screen unscanned. aiCopy and keyCopy read AI
+    // assistance's rows and the key check's (AI_COPY, KEY_COPY) the same way, and are scanned the same way.
     const keys = new Set<string>();
     const dynamic: string[] = [];
     for (const file of sourceFiles(SHELL_SRC)) {
       const sf = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
       const visit = (node: ts.Node) => {
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "copy" && node.arguments.length > 0) {
+        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && ["copy", "aiCopy", "keyCopy"].includes(node.expression.text) && node.arguments.length > 0) {
           const arg = node.arguments[0]!;
           if (ts.isStringLiteralLike(arg)) keys.add(arg.text);
           else dynamic.push(`${path.relative(SHELL_SRC, file)}:${sf.getLineAndCharacterOfPosition(node.getStart()).line + 1}`);
@@ -679,8 +682,9 @@ describe("no background check is claimed while none is built", () => {
     expect(keys.size).toBeGreaterThan(5);
     const offenders: string[] = [];
     for (const key of keys) {
-      const row = COPY[key as CopyKey];
+      const row = APPROVED[key];
       expect(row, `copy("${key}") has no approved row`).toBeDefined();
+      if (!row) continue;
       for (const lang of ["en", "zh"] as const) {
         const text = row[lang];
         for (const hit of [...cadenceHits(text), ...claims(text)]) offenders.push(`${key} (${lang}) ${JSON.stringify(text)} matches ${hit}`);
@@ -692,7 +696,7 @@ describe("no background check is claimed while none is built", () => {
   it("the copy() scan would catch a scheduled-check row if the shell rendered one", () => {
     // COPY holds the web's scheduled-check rows; they must fail the scan the moment the shell renders them.
     for (const key of ["watch.scheduled_only", "watch.scheduled_with_push"] as const) {
-      const row = COPY[key as CopyKey];
+      const row = APPROVED[key];
       if (!row) continue;
       expect([...cadenceHits(row.en), ...claims(row.en), ...cadenceHits(row.zh), ...claims(row.zh)], key).not.toEqual([]);
     }

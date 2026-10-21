@@ -1901,3 +1901,51 @@ step 3's probe mode, §1's two (§1.7) and §2.12's one, each with a key it reje
   workspace, an option's details, a standing query's changes and Ask's answers, besides the footer.
 - **Unchanged.** The iPhone app; the Worker's behaviour for every state the iPhone app makes; `pnpm grid` (the
   operator's own CLI, still on `SEATS_AERO_API_KEY`).
+
+## 1.0 (8): the App Store build ships no Ask code (2026-10-13)
+
+Builds 4-7 compiled Ask's routes, entry points and copy out of the App Store build (release plan D3), but bootstrap
+still constructed `AppServices.ask` at launch "so both flavours ship the same npm modules and one licenses list". The
+store bundle therefore carried the Ask service, its tool runner and system prompt, the Anthropic SDK with its endpoint,
+the Anthropic key's Keychain item, AI assistance's approved rows, and a licenses list naming `@anthropic-ai/sdk`:
+code nothing in that build could reach, which App Review Guideline 2.3.1(a) calls a dormant feature. Build 8 removes
+it.
+
+- **Ask's service is a chunk only a build with Ask loads.** `apps/ios/src/ask/kit.ts` gathers the service, its
+  conversation file, the consent check, the Anthropic key's Keychain item and Anthropic's idle timeout; `bootstrap.ts`
+  loads it with `import()` behind `ASK_KIT` (`import.meta.env.VITE_AG_STORE !== "1"`, written out as `App.tsx`'s
+  `ASK_BUILT` is), as it loads the OAuth kit. `AppServices.ask` and `anthropicKeys` are absent in the App Store build;
+  the Ask screens read them through `withAsk` (`src/ask/services.ts`), and every save, sweep and purge step of Ask's
+  runs only where they exist. Sample mode passes Ask's options behind the same constant.
+- **Ask's permission lives with the settings, and is read only by Ask.** The settings file keeps `aiConsent` as it is
+  (one file for every build), but the settings store no longer reads, gives or withdraws it: `src/ask/consent.ts` does,
+  and only Ask's screens and service import it.
+- **The grid lane's parser no longer imports the LLM parser.** `query/parse.ts` imported `query/llm.ts`, and with it the
+  SDK, into every iPhone build (recorded in Phase 2 as an accepted cost, with the remedy of re-implementing the tail).
+  `query/parse-local.ts` now holds the steps `parseQuery` shares, and `parseQueryLocal` is `parseQuery` without the
+  LLM step; `parseQuery` is built from the same steps, so nothing is duplicated. `ParseError` moved to
+  `query/parse-error.ts` and is re-exported where it was. The iPhone app (search, the planner, the watch migration)
+  uses `parseQueryLocal`; the web app's parsing is unchanged.
+- **AI assistance's approved rows have their own table.** Core's `COPY` held every approved row, and `copy()` shipped
+  the whole table. `AI_COPY` (read with `aiCopy`) and `KEY_COPY` (the pasted key's check, read with `keyCopy`) are now
+  tables of their own, so a build that renders none of their rows carries none of their sentences.
+- **Smaller pieces.** `ask/ask-surface-copy.ts` no longer imports Ask's labels (they re-export its three shared
+  sentences), so the screens that import it for a branch the store build drops do not pull Ask's tool definitions in
+  with it. The WebView fetch tripwire guards seats.aero alone in the App Store build. Core's missing- and
+  rejected-credential errors say "credential" rather than "API key".
+- **Two licenses lists.** The flavours now ship different npm packages. `vite.config.ts` records the flavour beside the
+  source maps (`dist-sourcemaps/flavour.json`); `scripts/acknowledgements.mjs` writes and checks
+  `src/about/acknowledgements.json` (default build, 19 entries) or `acknowledgements.store.json` (App Store build, 15:
+  without `@anthropic-ai/sdk`, `standardwebhooks`, `@stablelib/base64` and `fast-sha256`), and the Acknowledgements page
+  shows its own build's list.
+- **The gate.** `scripts/check-store-bundle.mjs` fails the App Store build on "anthropic", "api.anthropic.com",
+  "claude", "claude-", "sk-ant", "Pro key" and "API key" in any case, on the words "Ask" and "Pro", and on Ask's own
+  copy; its allow-list is empty. `src/store-copy.test.ts` fails if the store build's source graph reaches any module of
+  Ask's, core's Ask modules, its LLM parser or the SDK.
+- **Measured** (the store bundle, `VITE_AG_SEATS_CLIENT_ID` set, before → after): "anthropic" (any case) 453 → 0,
+  "Anthropic" 46 → 0, "api.anthropic.com" 4 → 0, "claude" 24 → 0, "claude-" 9 → 0, "API key" 8 → 0, "Pro key" 1 → 0,
+  "sk-ant" 0 → 0, the word "Ask" 11 → 0; the main chunk 997 kB → 731 kB.
+- **What is still there, and why.** The settings file's `aiConsent` field name (data, never read in that build); the
+  retention sweep's list of legacy files, which names `ask.json` so that a conversation an internal build left on a
+  device is cleaned like any other file holding seats.aero results; and three parser notices in core's shared English
+  dictionary that mention a language model, which the iPhone app cannot raise (it never calls the LLM parser).

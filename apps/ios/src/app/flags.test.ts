@@ -1,7 +1,8 @@
 /**
  * The build's flavour flags (./flags.ts): what each environment value gives, the guard vite.config.ts puts in front
- * of a build, and the one place the store condition is written out instead of read from ./flags.ts (App.tsx, so the
- * bundler drops the Ask chunks), which must say the same thing.
+ * of a build, and the places the store condition is written out instead of read from ./flags.ts (App.tsx, so the
+ * bundler drops the Ask chunks; bootstrap.ts and sample/boot.ts, so it drops Ask's service), which must say the same
+ * thing.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -83,6 +84,20 @@ describe("the flavour flags", () => {
     expect(app).toMatch(/const AnthropicKeyScreen = ASK_BUILT \? lazy\(\(\) => import\("\.\.\/screens\/AnthropicKeyScreen"\)/);
     expect(app.match(/screens\/AskScreen"/g)).toHaveLength(1);
     expect(app.match(/screens\/AnthropicKeyScreen"/g)).toHaveLength(1);
+  });
+
+  it("bootstrap.ts and sample/boot.ts write the same condition out for Ask's service, and load it only behind it", () => {
+    const here = import.meta.dirname;
+    const bootstrap = readFileSync(path.join(here, "bootstrap.ts"), "utf8");
+    const sample = readFileSync(path.join(here, "..", "sample", "boot.ts"), "utf8");
+    for (const source of [bootstrap, sample]) expect(source).toContain('const ASK_KIT = import.meta.env.VITE_AG_STORE !== "1";');
+    // Ask's parts come in through one dynamic import behind that constant; bootstrap imports none of Ask's modules itself.
+    expect(bootstrap).toContain('const askKit = ASK_KIT ? await import("../ask/kit") : null;');
+    expect(bootstrap.match(/"\.\.\/ask\/kit"/g)).toHaveLength(1);
+    expect(bootstrap).not.toMatch(/^import (?!type )[^;]*from "(\.\.\/ask\/(?!ask-service")|\.\.\/store\/ask-store|\.\.\/native\/anthropic-key|@awardgrid\/core\/ask)/m);
+    // Sample mode passes Ask's options only behind it.
+    expect(sample.match(/anthropicKeys: new MemoryKeyStore\(\)/g)).toHaveLength(2);
+    expect(sample.match(/\.\.\.\(ASK_KIT \? \{ anthropicKeys: new MemoryKeyStore\(\)/g)).toHaveLength(2);
   });
 });
 

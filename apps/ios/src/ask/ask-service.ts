@@ -99,7 +99,7 @@ export const documentVisibility: Visibility = {
 
 export interface AskServiceDeps {
   /**
-   * Whether the person has allowed Ask to send data to Anthropic (release D10: SettingsStore.aiConsent, given on the
+   * Whether the person has allowed Ask to send data to Anthropic (release D10: ./consent.ts aiConsent, given on the
    * Ask screen's consent sheet). Read at every question and every Try again; false sends nothing. Required, so no
    * wiring can leave it out and send without asking.
    */

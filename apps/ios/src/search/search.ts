@@ -13,7 +13,7 @@
 import { buildGrid } from "@awardgrid/core/grid/pivot";
 import type { AvailabilityRow, Grid } from "@awardgrid/core/grid/types";
 import { type Notice, isNotice } from "@awardgrid/core/notices";
-import { parseQuery } from "@awardgrid/core/query/parse";
+import { parseQueryLocal } from "@awardgrid/core/query/parse-local";
 import { type Cabin, QueryObject } from "@awardgrid/core/query/schema";
 import { isRealDate } from "@awardgrid/core/workspace/semantics";
 import type { CoverageEvidence } from "@awardgrid/core/workspace/types";
@@ -155,9 +155,9 @@ export class SearchEngine {
   /**
    * Check the key and parse free text, sending nothing. The same checks, in the same order, as `search`.
    *
-   * No llmClient is passed: the grid lane is deterministic-only and needs no Anthropic key
-   * (PIVOT §3). A query the parser cannot resolve becomes a `parse` failure with the missing
-   * fields named, which is what the chip editors use to offer a manual fix.
+   * The grid lane is deterministic-only and needs no Anthropic key (PIVOT §3): core's parseQueryLocal, which does not
+   * even import the LLM parser, so no build of this app bundles one for it. A query the parser cannot resolve becomes
+   * a `parse` failure with the missing fields named, which is what the chip editors use to offer a manual fix.
    */
   async parseText(text: string, apiKey: string | null): Promise<ApiResult<ParsedText>> {
     if (!apiKey) return noKey();
@@ -175,7 +175,7 @@ export class SearchEngine {
     if (!trimmed) return { ok: false, status: 400, error: "invalid_body", message: "Type a query first.", notice: { code: "parse.empty" } };
     try {
       // "Today" on the person's own calendar, not UTC's: in the US evening UTC is already tomorrow (PR-D).
-      const parsed = await parseQuery(trimmed, { today: localDate(this.#now()) });
+      const parsed = await parseQueryLocal(trimmed, { today: localDate(this.#now()) });
       return { ok: true, value: { query: parsed.query, warnings: parsed.warnings, notices: parsed.notices } };
     } catch (err) {
       const notice = noticeFrom(err);
