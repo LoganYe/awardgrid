@@ -13,7 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AskEntry, EntryEnd } from "@awardgrid/core/ask/conversation";
 import { buildGrid } from "@awardgrid/core/grid/pivot";
 import { QueryObject } from "@awardgrid/core/query/schema";
-import { copy } from "@awardgrid/core/workspace/present";
+import { aiCopy } from "@awardgrid/core/workspace/present";
 import type { AskActivity, AskService, AskState, ContextPreview } from "../ask/ask-service";
 import * as labels from "../ask/labels";
 import { MemoryKeyStore, type KeyStore } from "../native/keychain";
@@ -62,8 +62,8 @@ function fakeAsk(current: AskState): AskService {
 }
 
 /** T17: the approved Stop (S09 "停止后续步骤") and its note, never a claim that a request is recalled. */
-const STOP = copy("ai.stop", "en");
-const STOP_NOTE = copy("ai.stop_note", "en");
+const STOP = aiCopy("ai.stop", "en");
+const STOP_NOTE = aiCopy("ai.stop_note", "en");
 
 const LAST_SEARCH: LastSearchEntry = (() => {
   const query = QueryObject.parse({

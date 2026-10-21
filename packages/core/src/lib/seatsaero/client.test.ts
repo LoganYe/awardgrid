@@ -255,6 +255,6 @@ describe("SeatsAeroClient errors", () => {
   });
 
   it("refuses to construct without a key (no default key exists)", () => {
-    expect(() => new SeatsAeroClient({ apiKey: "" })).toThrow(/API key is required/);
+    expect(() => new SeatsAeroClient({ apiKey: "" })).toThrow(/credential is required/);
   });
 });

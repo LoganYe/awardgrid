@@ -2,13 +2,18 @@
  * parseQuery: NL → QueryObject (kickoff §4.2). Deterministic first; the LLM is called ONLY when
  * origins/destinations or both date bounds cannot be produced deterministically. Without an
  * LLM client the caller gets a ParseError naming the missing fields so the UI can ask for them.
+ *
+ * The steps before and after the LLM are ./parse-local.ts's, shared with parseQueryLocal, the same parse with no LLM
+ * at all for a caller that must not bundle one (the iPhone app).
  */
-import { notice, noticesToText, type Notice } from "../notices";
-import { addDays, capRange, parseISODate } from "./dates";
-import { parseDeterministic, type MissingField, type Provenance } from "./deterministic";
-import { ParseError, parseWithLLM, type ParserClient } from "./llm";
+import { notice, type Notice } from "../notices";
+import { parseWithLLM, type ParserClient } from "./llm";
+import { type ParseQueryResult, finishParse, missingFieldsError, startParse } from "./parse-local";
 import { DEFAULT_PLACES, expandPlace, type Places } from "./places";
-import { MAX_SPAN_DAYS, QueryObject, type QueryObjectInput, type QueryObjectLLM } from "./schema";
+import type { QueryObjectInput, QueryObjectLLM } from "./schema";
+import type { MissingField, Provenance } from "./deterministic";
+
+export type { ParseQueryResult } from "./parse-local";
 
 export interface ParseQueryOptions {
   /** ISO date (YYYY-MM-DD), injected by the caller. */
@@ -16,28 +21,6 @@ export interface ParseQueryOptions {
   llmClient?: ParserClient;
   model?: string;
   places?: Places;
-}
-
-export interface ParseQueryResult {
-  query: QueryObject;
-  provenance: Record<string, Provenance>;
-  used_llm: boolean;
-  /** English renderings of `notices` (CLI, logs, tests). */
-  warnings: string[];
-  /** Structured {code, vars} for translation in the UI. */
-  notices: Notice[];
-}
-
-const FIELD_LABELS: Record<MissingField, string> = {
-  origins: "origin airport(s)",
-  destinations: "destination airport(s)",
-  date_from: "start date",
-  date_to: "end date",
-};
-
-function describeMissing(missing: MissingField[]): string {
-  const labels = [...new Set(missing.map((m) => FIELD_LABELS[m]))];
-  return labels.join(", ");
 }
 
 /**
@@ -108,43 +91,14 @@ function mergeLLM(
   return out;
 }
 
-/** Enforce date_to >= date_from and the 92-day cap by truncation (never by failing). */
-function normalizeDates(input: Partial<QueryObjectInput>, notices: Notice[]): void {
-  if (!input.date_from || !input.date_to) return;
-  let from: number;
-  let to: number;
-  try {
-    from = parseISODate(input.date_from);
-    to = parseISODate(input.date_to);
-  } catch {
-    return; // let QueryObject.parse report the invalid date
-  }
-  if (to < from) {
-    notices.push(notice("parse.end_before_start", { date_to: input.date_to, date_from: input.date_from }));
-    to = from;
-  }
-  const capped = capRange(from, to);
-  if (capped.capped) {
-    notices.push(notice("parse.range_truncated", { days: MAX_SPAN_DAYS, date_from: capped.date_from, date_to: capped.date_to }));
-  }
-  input.date_from = capped.date_from;
-  input.date_to = capped.date_to;
-}
-
 export async function parseQuery(text: string, opts: ParseQueryOptions): Promise<ParseQueryResult> {
-  const trimmed = text.trim();
-  if (trimmed.length === 0) throw new ParseError(notice("parse.empty"), { missing: ["origins", "destinations", "date_from", "date_to"] });
-  parseISODate(opts.today); // fail fast on a bad `today`
-
-  const det = parseDeterministic(trimmed, { today: opts.today, places: opts.places });
+  const { trimmed, det } = startParse(text, opts);
   const notices: Notice[] = [...det.notices];
   let input = det.partial;
   let usedLLM = false;
 
   if (det.missing.length > 0) {
-    if (!opts.llmClient) {
-      throw new ParseError(notice("parse.missing", { fields: describeMissing(det.missing), text: trimmed }), { missing: det.missing });
-    }
+    if (!opts.llmClient) throw missingFieldsError(trimmed, det.missing);
     const llm = await parseWithLLM(trimmed, {
       today: opts.today,
       partial: det.partial,
@@ -157,21 +111,5 @@ export async function parseQuery(text: string, opts: ParseQueryOptions): Promise
     if (llm.attempts > 1) notices.push(notice("parse.llm_retry"));
   }
 
-  normalizeDates(input, notices);
-  if (input.date_from && parseISODate(input.date_from) < parseISODate(opts.today)) {
-    notices.push(notice("parse.start_in_past", { date_from: input.date_from, today: opts.today }));
-  }
-  if (input.date_from && parseISODate(input.date_from) > addDays(parseISODate(opts.today), 366)) {
-    notices.push(notice("parse.start_far_out", { date_from: input.date_from }));
-  }
-
-  const checked = QueryObject.safeParse(input);
-  if (!checked.success) {
-    const issues = checked.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
-    throw new ParseError(notice("parse.invalid", { issues }), {
-      missing: det.missing,
-      cause: checked.error,
-    });
-  }
-  return { query: checked.data, provenance: det.provenance, used_llm: usedLLM, warnings: noticesToText(notices), notices };
+  return finishParse(input, det, usedLLM, notices, opts.today);
 }

@@ -176,6 +176,25 @@
   gap: var(--ag-space-3);
 }
 
+.query-date-pair > .ag-field {
+  min-width: 0;
+}
+
+/* iOS draws a date field in its native look about 209 pt wide whatever its width says, wider than a column on a
+   402-pt phone: Start covered End, and End ran past the screen edge. Without that look (iOS only) the field takes its
+   column's width; a tap still opens the date picker. */
+@supports (-webkit-touch-callout: none) {
+  .query-date-pair .ag-input {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
+
+  .query-date-pair .ag-input::-webkit-date-and-time-value {
+    text-align: start;
+  }
+}
+
 /* ---- rows: switches and openers ---- */
 
 .query-row {

@@ -1,34 +1,53 @@
 #!/usr/bin/env node
 /**
  * Fails the App Store build (`npm run build:store`, VITE_AG_STORE=1 VITE_AG_CONNECT=oauth; src/app/flags.ts) if Ask,
- * a paid-plan phrase or the paste-a-key connection reached the bundle Capacitor copies into the app (3.1.1
- * remediation, plan steps 14-15 and 47F).
+ * Anthropic, a paid-plan phrase or the paste-a-key connection reached the bundle Capacitor copies into the app (3.1.1
+ * remediation, plan steps 14-15 and 47F; Guideline 2.3.1(a): no dormant feature).
  *
- * The store build compiles Ask out: its routes (#/ask, #/settings/anthropic), every way into it, and the copy that
- * names Ask, Claude or Anthropic. The neutral wording leaves no "Pro key" and nothing to subscribe to. And it is the
- * OAuth flavour: a seats.aero account is connected only through seats.aero's own sign-in ("Connect seats.aero"), so the
- * key page, its paste field, its key check and every sentence that asks for an API key are compiled out too. This check
- * makes that a fact about dist/, not about the source: every .js, .css, .html and .json file there is searched for the
- * NEEDLES below; no chunk may be named after the Ask screen, the Anthropic key page or the key page; and the OAuth
- * connect page's words must be there (REQUIRED: a bundle without them was not built as the OAuth flavour).
+ * The store build has no Ask at all: no route (#/ask, #/settings/anthropic), no way into it and none of the copy that
+ * names Ask, Claude or Anthropic, and no code behind it either — bootstrap never loads Ask's service (src/ask/kit.ts),
+ * so the Ask service, its tool runner and prompt, the Anthropic SDK, the Anthropic endpoint and the Anthropic key's
+ * Keychain item are not in the bundle, nor is the LLM query parser (the app parses with core's parseQueryLocal), nor AI
+ * assistance's approved rows (core present.ts AI_COPY). The neutral wording leaves no "Pro key" and nothing to
+ * subscribe to. And it is the OAuth flavour: a seats.aero account is connected only through seats.aero's own sign-in
+ * ("Connect seats.aero"), so the key page, its paste field, its key check and every sentence that asks for an API key
+ * are compiled out too. This check makes that a fact about dist/, not about the source: every .js, .css, .html and
+ * .json file there is searched for the NEEDLES below, the first group case-insensitively; no chunk may be named after
+ * the Ask screen, the Anthropic key page or the key page; and the OAuth connect page's words must be there (REQUIRED: a
+ * bundle without them was not built as the OAuth flavour).
  *
- * Some hits are known and allowed, each in ALLOWED with the reason. An allowed hit must lie inside a match of the
- * entry's `around` pattern (looked for within 240 characters of it), not merely share a needle, so the same words
- * anywhere else still fail. An entry that matches nothing fails too: when the reason goes away, so does the entry.
+ * A known hit may be allowed, in ALLOWED with the reason; there is none today. An allowed hit must lie inside a match
+ * of the entry's `around` pattern (looked for within 240 characters of it), not merely share a needle, so the same
+ * words anywhere else still fail. An entry that matches nothing fails too: when the reason goes away, so does the entry.
  *
  *   node scripts/check-store-bundle.mjs [distDir]      (run by `npm run build:store`, after `vite build`)
  *
- * What it does not see: the licenses list (src/about/acknowledgements.json) still names @anthropic-ai/sdk, because the
- * SDK is still bundled for AppServices.ask, which is built at launch and never opened in this build (release plan D3,
- * a known artifact: a license notice, not a feature). apps/ios/src/store-copy.test.ts checks the wording itself, in
- * the source the store build is made from.
+ * The licenses list the bundle carries is the App Store build's own (src/about/acknowledgements.store.json, checked by
+ * scripts/acknowledgements.mjs), which names no package this build does not ship, and it is searched like the rest.
+ * apps/ios/src/store-copy.test.ts checks the wording itself, in the source the store build is made from.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-/** Strings that must not be in the store bundle. Plain strings match exactly; regular expressions as written. */
+/**
+ * Strings that must not be in the store bundle. Plain strings match exactly; regular expressions as written. The first
+ * group is matched case-insensitively: anything of Anthropic's or Claude's, a key of Anthropic's, and the words of a
+ * paid key or a pasted one, wherever and however they are written.
+ */
 export const NEEDLES = [
+  // Anthropic, its API and its keys, and Claude's models (case-insensitive).
+  /anthropic/i,
+  /api\.anthropic\.com/i,
+  /claude/i,
+  /claude-/i,
+  /sk-ant/i,
+  /Pro key/i,
+  /API key/i,
+  // "Pro" as a word, in any sentence: a plan name has no place in this build.
+  /\bPro\b/,
+  // Ask, by name, in any sentence: the build has no Ask to name.
+  /\bAsk\b/,
   // Ask's routes and the Anthropic key page.
   "settings/anthropic",
   /[`'"]#?\/ask[`'"/?]/,
@@ -47,6 +66,23 @@ export const NEEDLES = [
   "AI 对话",
   "AI (optional)",
   "AI（可选）",
+  // AI assistance's approved rows (core present.ts AI_COPY): the Ask screen's own words, in this build in no table.
+  "Only the query conditions will be sent",
+  "selected options will be sent",
+  "Apply and search",
+  "Keep current conditions",
+  "Create a new proposal",
+  "Stop subsequent steps",
+  "may still be billed",
+  "The previous task did not finish",
+  "仅附带查询条件",
+  "个所选选项",
+  "应用并查找",
+  "保留原条件",
+  "重新生成修改建议",
+  "停止后续步骤",
+  "仍可能计费",
+  "上次任务未完成",
   // The query editor's note that no AI is used: true in every build, but in this one, which has no AI, it only points
   // at a feature that is not there (simulator QA, plan step 20). The store build says what the editor does instead.
   "No AI",
@@ -88,65 +124,10 @@ export const NEEDLES = [
 
 /**
  * Known hits, each with why it is there and why it is not shown. `needle` is the NEEDLES entry it answers (its
- * source, for a regular expression), `around` the text that must surround it.
+ * source, for a regular expression), `around` the text that must surround it. None today: since 1.0 (8) the store
+ * bundle carries no Ask code, no Anthropic SDK and no approved row of Ask's or of the key page, so nothing needs one.
  */
-export const ALLOWED = [
-  {
-    needle: "AI assistance",
-    around: /"ai\.entry":\{en:[`'"]AI assistance[`'"],zh:[`'"]AI辅助[`'"]\}/,
-    why:
-      "core workspace/present.ts COPY row ai.entry: the approved-copy table ships whole, since copy(key) looks rows up " +
-      "by key. The shell renders the ai.* rows only on the Ask screen, which this build does not have.",
-  },
-  {
-    needle: "AI辅助",
-    around: /"ai\.entry":\{en:[`'"]AI assistance[`'"],zh:[`'"]AI辅助[`'"]\}/,
-    why: "The same COPY row's Chinese.",
-  },
-  {
-    needle: "platform.claude.com",
-    around: /https:\/\/platform\.claude\.com\/docs\/en\/build-with-claude\/(?:compaction|adaptive-thinking)/,
-    why:
-      "@anthropic-ai/sdk's own console warnings for deprecated parameters. The SDK stays bundled with AppServices.ask " +
-      "(release plan D3), which this build never opens; nothing here is rendered.",
-  },
-  {
-    needle: "seats.aero Pro",
-    around: /and for seats\.aero calls with their own seats\.aero Pro key\./,
-    why:
-      "core ask/prompt.ts ASK_SYSTEM_PROMPT: sent to Anthropic as Ask's instructions, never shown. Bundled with " +
-      "AppServices.ask, which this build never opens.",
-  },
-  {
-    needle: "Pro key",
-    around: /and for seats\.aero calls with their own seats\.aero Pro key\./,
-    why: "The same system prompt sentence.",
-  },
-  {
-    needle: "Checking this key sends a request",
-    around: /"key\.check_cost":\{en:[`'"]Checking this key sends a request to the data source\.[`'"],zh:[`'"]检查密钥会向数据源发送一次请求。[`'"]\}/,
-    why:
-      "core workspace/present.ts COPY row key.check_cost: the approved-copy table ships whole, as ai.entry does. The shell " +
-      "renders it only on the key flavour's connect page, which this build does not have.",
-  },
-  {
-    needle: "检查密钥会向数据源发送一次请求",
-    around: /"key\.check_cost":\{en:[`'"]Checking this key sends a request to the data source\.[`'"],zh:[`'"]检查密钥会向数据源发送一次请求。[`'"]\}/,
-    why: "The same COPY row's Chinese.",
-  },
-  {
-    needle: "seats.aero API key",
-    around: /new [\w$]+\([`'"]a seats\.aero API key is required \(no default key exists\)[`'"]\)/,
-    why:
-      "core seatsaero/client.ts: the client's own error for an empty credential, thrown in code, never a sentence a " +
-      "screen shows. In this build the credential is the sign-in's access token, and the shell checks for one first.",
-  },
-  {
-    needle: "seats.aero API key",
-    around: /new [\w$]+\([`'"]runFind requires the calling user's seats\.aero API key[`'"]\)/,
-    why: "core seatsaero/find.ts: the same kind of error, for runFind called without a credential.",
-  },
-];
+export const ALLOWED = [];
 
 /**
  * What the OAuth flavour's bundle must carry: its connect page's button and the consent page it opens. Without them the
@@ -242,7 +223,7 @@ function main() {
     .map((file) => ({ name: path.relative(dist, file), text: readFileSync(file, "utf8") }));
   const { problems, used } = findProblems(files);
   if (problems.length) {
-    console.error("check-store-bundle: the App Store bundle carries Ask, a paid-plan phrase or the paste-a-key connection, or is not the OAuth flavour:");
+    console.error("check-store-bundle: the App Store bundle carries Ask, Anthropic, a paid-plan phrase or the paste-a-key connection, or is not the OAuth flavour:");
     for (const p of problems) console.error(`  ${p}`);
     process.exit(1);
   }

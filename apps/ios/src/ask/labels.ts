@@ -536,8 +536,8 @@ export function askNavLabel(running: boolean): string {
   return running ? "Ask (working)" : "Ask";
 }
 
-/** On the Search screen, next to Watch this search, whenever a result is shown (design §6.1). */
-export const ASK_ABOUT_SEARCH = "Ask Claude about this search";
+/** On the Search screen, next to Watch this search, whenever a result is shown (design §6.1). Written in ./ask-surface-copy.ts. */
+export { ASK_ABOUT_SEARCH } from "./ask-surface-copy";
 
 // ---------------------------------------------------------------------------
 // Settings (design §7)
@@ -580,9 +580,8 @@ export const KEY_NOT_REMOVED = "Could not remove the key: it is still in the Key
 
 /** The sentence the seats.aero section gains. */
 export const SEATS_KEY_NOT_SENT = "Ask never sends this key to Anthropic.";
-export const CACHE_NOTE =
-  "Award results are cached on this device for 45 minutes so repeating a search costs no seats.aero calls. Clearing it costs one cold search, nothing more. This does not touch your keys or your Ask conversation.";
-export const CACHE_CLEARED = "Cached results cleared. Your keys are untouched.";
+/** The cache's note and its confirmation, written in ./ask-surface-copy.ts (the Settings screen shows them there). */
+export { CACHE_CLEARED, CACHE_NOTE } from "./ask-surface-copy";
 
 // ---------------------------------------------------------------------------
 // Settings: the Anthropic key check (design §7)

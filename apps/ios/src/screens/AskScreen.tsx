@@ -18,7 +18,7 @@
  *     failure line is role="alert" on the same terms, so reopening the screen does not read old failures out again.
  *   - WHERE THE READER IS. Entries read oldest first, newest at the bottom (S09). Reading at the end, new content
  *     follows into view; reading earlier content, nothing moves, and "New content below" offers the way down.
- *   - PERMISSION FIRST (release D10). Until the person has allowed Ask to send data to Anthropic (SettingsStore
+ *   - PERMISSION FIRST (release D10). Until the person has allowed Ask to send data to Anthropic (../ask/consent.ts
  *     aiConsent), Ask, Try again and Ask again open the consent sheet instead: it names Anthropic, what is sent and
  *     what is not, and sends the question only on Allow. Not now sends nothing and keeps the words in the box. The
  *     service refuses on its own as well (ask-service.ts), so the sheet is the way to it, not the only guard.
@@ -33,17 +33,19 @@ import { Link, useLocation, useNavigate, useOutletContext } from "react-router";
 import type { AskEntry as Entry } from "@awardgrid/core/ask/conversation";
 import { MAX_QUESTION_CHARS } from "@awardgrid/core/ask/limits";
 import { SEARCH_AWARDS } from "@awardgrid/core/ask/tools";
-import { copy, querySubline, routeLabel } from "@awardgrid/core/workspace/present";
+import { aiCopy, querySubline, routeLabel } from "@awardgrid/core/workspace/present";
 import type { AppServices } from "../app/bootstrap";
 import { isSample } from "../app/data-source";
 import { useFocusOnArrival } from "../app/focus";
 import { useKeepInView } from "../app/keyboard";
 import { type Locale, langTag, useLocale } from "../app/locale";
 import { ASK_COPY } from "../ask/ask-copy";
+import { aiConsent, allowAi } from "../ask/consent";
 import { ANTHROPIC_PRIVACY_URL, CONSENT } from "../ask/consent-copy";
 import type { AskNotice, AskState, ContextPreview } from "../ask/ask-service";
 import { ENTRY_LABELS } from "../ask/entry-labels";
 import { includeSearchLabel, searchSummary } from "../ask/labels";
+import { type AskServices, withAsk } from "../ask/services";
 import { AskEntry } from "../components/AskEntry";
 import { SampleBanner } from "../components/SampleBanner";
 import { Button, IconButton, Sheet } from "../components/ui";
@@ -60,7 +62,7 @@ export interface KeyPresence {
 const KEYS_NOT_READ: KeyPresence = { anthropic: null, seats: null };
 
 /** Both keys, read as the service reads them when a question starts: a blank key or a store that throws is no key. */
-export async function readKeyPresence(services: Pick<AppServices, "anthropicKeys" | "keys">): Promise<{ anthropic: boolean; seats: boolean }> {
+export async function readKeyPresence(services: Pick<AskServices, "anthropicKeys"> & Pick<AppServices, "keys">): Promise<{ anthropic: boolean; seats: boolean }> {
   const onFile = async (store: KeyStore): Promise<boolean> => {
     try {
       const key = await store.get();
@@ -149,7 +151,7 @@ export function lastSearchLabel(last: LastSearchEntry): string {
 
 /** The route element: the services from the shell, and which keys are on file. */
 export function AskScreen() {
-  const services = useOutletContext<AppServices>();
+  const services = withAsk(useOutletContext<AppServices>());
   const [keys, setKeys] = useState<KeyPresence>(KEYS_NOT_READ);
 
   useEffect(() => {
@@ -169,7 +171,7 @@ export function AskScreen() {
 }
 
 export interface AskViewProps {
-  services: Pick<AppServices, "ask" | "lastSearch"> & Partial<Pick<AppServices, "locale" | "settings" | "details">>;
+  services: Pick<AskServices, "ask"> & Pick<AppServices, "lastSearch"> & Partial<Pick<AppServices, "locale" | "settings" | "details">>;
   keys: KeyPresence;
   /** Milliseconds since the epoch, for the wait counter. */
   now?: () => number;
@@ -201,7 +203,7 @@ export function AskView({ services, keys, now = Date.now, sample = false, banner
   const k = CONSENT[locale].sheet;
   // Release D10. A stand-in without settings (older tests) asks nothing here; the service still decides.
   const settings = services.settings;
-  const consented = useSyncExternalStore(settings?.subscribe ?? noSubscription, () => (settings ? settings.aiConsent() !== null : true), () => (settings ? settings.aiConsent() !== null : true));
+  const consented = useSyncExternalStore(settings?.subscribe ?? noSubscription, () => (settings ? aiConsent(settings) !== null : true), () => (settings ? aiConsent(settings) !== null : true));
   /** The action waiting on the consent sheet: the question, Try again or Ask again the person tapped. */
   const [awaitingConsent, setAwaitingConsent] = useState<(() => void) | null>(null);
   const [declined, setDeclined] = useState(false);
@@ -313,8 +315,8 @@ export function AskView({ services, keys, now = Date.now, sample = false, banner
     preview.context === null
       ? c.sendsQuestionOnly
       : preview.context.sent === "query_and_selected_rows"
-        ? copy("ai.selected", locale, { count: String(preview.rows.length) })
-        : copy("ai.query_only", locale);
+        ? aiCopy("ai.selected", locale, { count: String(preview.rows.length) })
+        : aiCopy("ai.query_only", locale);
   const coverage = preview.context && preview.snapshot ? preview.snapshot.coverage.state : "complete";
 
   const suggestions = preview.context !== null ? c.suggestionsWithSearch : c.suggestionsWithoutSearch;
@@ -332,7 +334,7 @@ export function AskView({ services, keys, now = Date.now, sample = false, banner
   const allow = async () => {
     const action = awaitingConsent;
     setAwaitingConsent(null);
-    await settings?.allowAi(new Date(now()));
+    if (settings) await allowAi(settings, new Date(now()));
     action?.();
   };
   const notNow = () => {
@@ -489,7 +491,7 @@ export function AskView({ services, keys, now = Date.now, sample = false, banner
 
       {newContent ? (
         <button type="button" className="ag-button ask-new-content" onClick={toNewest}>
-          {copy("ai.new_content", locale)}
+          {aiCopy("ai.new_content", locale)}
         </button>
       ) : null}
 
@@ -507,7 +509,7 @@ export function AskView({ services, keys, now = Date.now, sample = false, banner
         {/* One button in one place: Ask, or Stop while a question runs. */}
         {running !== null ? (
           <button type="button" className="ag-button ag-button-primary ask-send" disabled={running.stopping} onClick={() => ask.stop()}>
-            {copy("ai.stop", locale)}
+            {aiCopy("ai.stop", locale)}
           </button>
         ) : (
           <button type="button" className="ag-button ag-button-primary ask-send" disabled={cannotStart || draft.trim().length === 0} onClick={send}>
@@ -515,7 +517,7 @@ export function AskView({ services, keys, now = Date.now, sample = false, banner
           </button>
         )}
         {/* The approved "Stop subsequent steps" and its note (S09): never a claim that a request is recalled. */}
-        {running !== null ? <p className="ask-note ask-stop-note">{copy("ai.stop_note", locale)}</p> : null}
+        {running !== null ? <p className="ask-note ask-stop-note">{aiCopy("ai.stop_note", locale)}</p> : null}
       </div>
 
       <Sheet open={awaitingConsent !== null} title={k.title} closeLabel={k.close} onClose={notNow}>

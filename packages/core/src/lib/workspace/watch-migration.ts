@@ -18,7 +18,7 @@
  * No AI is involved; the deterministic parser only.
  */
 import { addDays, formatISODate, parseDates, parseISODate } from "../query/dates";
-import { parseQuery } from "../query/parse";
+import { parseQueryLocal } from "../query/parse-local";
 import { spanDays } from "./query-editor";
 import type { DateRule, ISODate, QueryDraft, SavedQueryV2 } from "./types";
 
@@ -62,7 +62,7 @@ export async function migrateLegacyWatch(input: LegacyWatchInput, today: ISODate
   const base = { schemaVersion: 2 as const, id: input.id, title: input.name, enabled: input.enabled, legacyRawText: input.text };
   let query;
   try {
-    ({ query } = await parseQuery(input.text, { today }));
+    ({ query } = await parseQueryLocal(input.text, { today }));
   } catch {
     return { ...base, draft: null, review: "unparsed" };
   }
@@ -71,7 +71,7 @@ export async function migrateLegacyWatch(input: LegacyWatchInput, today: ISODate
     const draft: QueryDraft = { query, dates: evidence.rule };
     return { ...base, draft };
   }
-  // Unclear (or no phrase, which parseQuery would not have accepted): what the text means today, for the person to
+  // Unclear (or no phrase, which parseQueryLocal would not have accepted): what the text means today, for the person to
   // confirm; the watch keeps reading its text until then.
   return { ...base, draft: { query, dates: { kind: "fixed", from: query.date_from, to: query.date_to } }, review: "dates" };
 }

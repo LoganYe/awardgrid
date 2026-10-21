@@ -252,7 +252,13 @@ for (const lang of ["en", "zh"] as const) {
     await page.evaluate(() => (location.hash = "#/edit"));
     await expect(page.getByRole("heading", { level: 1, name: lang === "en" ? "Edit search" : "编辑查询" })).toBeVisible();
     await checkScreen("edit", /Premium economy/g);
-    // Not scanned: Settings › Licenses, which names @anthropic-ai/sdk among the packages that ship (a license notice,
-    // not a feature: the SDK stays bundled with the Ask service this build never opens, release plan D3).
+    // Settings › Licenses too: the App Store build's own list (src/about/acknowledgements.store.json), which names no
+    // Anthropic SDK, since this build ships no Ask code at all; the license texts are read as well, folded or not.
+    await page.evaluate(() => (location.hash = "#/settings/acknowledgements"));
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator(".ag-ack-name").first()).toBeVisible();
+    await expect(page.locator(".ag-ack-name", { hasText: /anthropic|standardwebhooks/i })).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText(/anthropic|claude/i);
+    await expect(page.locator("main")).not.toContainText(ASK_WORDS);
   });
 }

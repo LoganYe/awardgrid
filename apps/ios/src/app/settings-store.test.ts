@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { StoragePort } from "@awardgrid/core/workspace/types";
+import { aiConsent, allowAi, withdrawAi } from "../ask/consent";
 import { ANTHROPIC_CONSENT_VERSION } from "../ask/consent-copy";
 import { SETTINGS_NAMESPACE, SettingsStore } from "./settings-store";
 
@@ -66,32 +67,32 @@ describe("SettingsStore", () => {
     const storage = new Memory();
     const store = new SettingsStore({ storage, deviceLocale: "en" });
     await store.restore();
-    expect(store.aiConsent()).toBeNull();
+    expect(aiConsent(store)).toBeNull();
     let heard = 0;
     store.subscribe(() => heard++);
 
-    expect(await store.allowAi(new Date("2026-10-01T09:30:00.000Z"))).toBe(true);
+    expect(await allowAi(store, new Date("2026-10-01T09:30:00.000Z"))).toBe(true);
     const given = { version: ANTHROPIC_CONSENT_VERSION, at: "2026-10-01T09:30:00.000Z" };
-    expect(store.aiConsent()).toEqual(given);
+    expect(aiConsent(store)).toEqual(given);
     expect(heard).toBe(1);
     expect(storage.values.get(SETTINGS_NAMESPACE)).toEqual({ locale: null, theme: "system", aiConsent: given });
     // A relaunch reads it back, and a language change keeps it.
     const again = new SettingsStore({ storage, deviceLocale: "en" });
     await again.restore();
-    expect(again.aiConsent()).toEqual(given);
+    expect(aiConsent(again)).toEqual(given);
     await again.setLocale("zh");
-    expect(again.aiConsent()).toEqual(given);
+    expect(aiConsent(again)).toEqual(given);
 
-    expect(await again.withdrawAi()).toBe(true);
-    expect(again.aiConsent()).toBeNull();
+    expect(await withdrawAi(again)).toBe(true);
+    expect(aiConsent(again)).toBeNull();
     const after = new SettingsStore({ storage, deviceLocale: "en" });
     await after.restore();
-    expect(after.aiConsent()).toBeNull();
+    expect(aiConsent(after)).toBeNull();
     expect(after.locale()).toBe("zh");
   });
 
   it("a permission given for another wording, or one that does not read, is no permission", async () => {
-    for (const aiConsent of [
+    for (const stored of [
       { version: ANTHROPIC_CONSENT_VERSION + 1, at: "2026-10-01T09:30:00.000Z" },
       { version: ANTHROPIC_CONSENT_VERSION - 1, at: "2026-10-01T09:30:00.000Z" },
       { version: ANTHROPIC_CONSENT_VERSION, at: "not a date" },
@@ -100,10 +101,10 @@ describe("SettingsStore", () => {
       "yes",
     ]) {
       const storage = new Memory();
-      storage.values.set(SETTINGS_NAMESPACE, { locale: "en", theme: "dark", aiConsent });
+      storage.values.set(SETTINGS_NAMESPACE, { locale: "en", theme: "dark", aiConsent: stored });
       const store = new SettingsStore({ storage, deviceLocale: "en" });
       await store.restore();
-      expect(store.aiConsent(), JSON.stringify(aiConsent)).toBeNull();
+      expect(aiConsent(store), JSON.stringify(stored)).toBeNull();
       expect(store.theme()).toBe("dark");
     }
   });
@@ -111,9 +112,9 @@ describe("SettingsStore", () => {
   it("a withdrawal that cannot be saved still stops Ask for this run, and says the save failed", async () => {
     const storage = new Memory();
     const store = new SettingsStore({ storage, deviceLocale: "en" });
-    await store.allowAi(new Date("2026-10-01T09:30:00.000Z"));
+    await allowAi(store, new Date("2026-10-01T09:30:00.000Z"));
     storage.fail = true;
-    expect(await store.withdrawAi()).toBe(false);
-    expect(store.aiConsent()).toBeNull();
+    expect(await withdrawAi(store)).toBe(false);
+    expect(aiConsent(store)).toBeNull();
   });
 });

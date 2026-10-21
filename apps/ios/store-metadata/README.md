@@ -40,8 +40,8 @@ the release documents like the keyword readback.
   sees the password to the provider account, that the sign-in tokens stay in the Keychain, that searches go directly
   to the provider, and that the token service at awardgrid.dowhiz.com stores nothing. Build 4 connects with a pasted
   key and is an internal TestFlight build only: these texts are not for it. The build they go with is the next one
-  built with an OAuth client ID (`sites/auth/DEPLOY.md`); the current review submission is build 6, and build 7 is in
-  preparation.
+  built with an OAuth client ID (`sites/auth/DEPLOY.md`); the current review submission is build 6, and after
+  build 7, build 8 (whose bundle carries no Ask code) is in preparation.
 - Its first sentence, like the promotional text, names no data source ("AwardGrid puts award seats for several
   origins, several destinations and up to 92 days into one table."): the sample-data bullet and the D6 paragraph say
   where results come from, so the listing does not open by presenting the provider's data as what the app is for
