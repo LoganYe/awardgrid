@@ -13,7 +13,7 @@ No. Without one, AwardGrid shows sample data only: search, the List, Calendar an
 
 ## Is AwardGrid affiliated with seats.aero?
 
-No. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program. Its data comes from seats.aero.
+No. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program. Its data comes from seats.aero.
 
 ## Will it alert me when award seats open up?
 
@@ -26,10 +26,6 @@ No. Results are seats.aero's cached availability, not a live search, and each sh
 ## Which programs does it cover?
 
 The 26 programs seats.aero lists, where seats.aero monitors the route. An empty result means seats.aero has no cached availability for that route and day, which can also mean seats.aero does not monitor the route.
-
-## Do I need an AI key?
-
-No. Search needs no AI key. Ask, the optional AI feature, is in testing and is not part of the App Store version 1.0.
 
 ## Can I search in Chinese?
 

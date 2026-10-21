@@ -38,10 +38,10 @@ awardgrid.dowhiz.com count visits with Cloudflare Web Analytics, which sets no c
   (`sites/auth`, the Worker awardgrid-auth) exchanges and refreshes the sign-in tokens for AwardGrid,
   for the iOS app and the web app alike, with AwardGrid's client secret, which never ships in the app
   and is not on the web app's server; it stores nothing and keeps no logs of tokens. The tokens stay in the iPhone's Keychain, and searches go from the iPhone directly to
-  seats.aero. AwardGrid 1.0 (6) keeps account results on the iPhone for at most 24 hours; later
-  versions keep them only in memory, not written to app files. Saved keeps your queries; opening a
+  seats.aero. AwardGrid keeps results from your seats.aero account only in memory while the app
+  runs; it never writes them to its files. Saved keeps your queries; opening a
   saved query whose results are gone searches again. Disconnect clears the connection and current results; if tokens or older stored data cannot
-  be cleared, the app reports the failure. A grant revoked at seats.aero is handled when the next
+  be cleared, the app says so on screen. A grant revoked at seats.aero is handled when the next
   token refresh is refused. The iOS app's
   development and internal test builds connect with a pasted key instead.
 - **No scraping.** awardgrid never automates, crawls or scrapes any airline, alliance,

@@ -749,7 +749,7 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertNotEqual(description, blockquote(listing, "- **Description:**", "- **Description, Chinese:**"))
         for needed in (
             "• Sample data: search any route between the 84 airports AwardGrid recognises",
-            "Your own award data (optional): if you have an account at the third-party award-data provider AwardGrid supports, with API access (part of the provider's Pro plan, which AwardGrid does not sell), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases.",
+            "Your own award data (optional): if you have an account at the third-party award-data provider AwardGrid supports, with API access (the provider decides which accounts have it; AwardGrid sells nothing), you can connect it to see results from that account instead of sample data, with the provider's own sign-in. AwardGrid has no in-app purchases.",
             "Results from the provider are its cached data: confirm on the program's own site before you transfer points.",
             "AwardGrid never sees the password to your provider account, and the sign-in tokens stay in your iPhone's Keychain, with iCloud Keychain sync off.",
             "Searches go from the iPhone directly to the provider.",
@@ -779,7 +779,7 @@ class TestShippedMetadata(unittest.TestCase):
         self.assertEqual(zh.count("\n\n"), en.count("\n\n"))
         self.assertEqual(zh.count("• "), en.count("• "))
         for needed in (
-            "你自己的里程票数据（可选）：如果你在 AwardGrid 支持的第三方里程票数据提供方有带 API 权限的账户（属于该提供方的 Pro 方案，AwardGrid 不出售），你可以连接这个账户，看到它的结果，而不是示例数据",
+            "你自己的里程票数据（可选）：如果你在 AwardGrid 支持的第三方里程票数据提供方有带 API 权限的账户（哪些账户有 API 权限由该提供方决定；AwardGrid 不出售任何东西），你可以连接这个账户，看到它的结果，而不是示例数据",
             "示例数据",
             "84 个机场",
             "来自数据提供方的结果是它的缓存数据，转点前请先在里程计划官网确认。",

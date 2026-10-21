@@ -65,7 +65,7 @@
                 "name": "Is AwardGrid affiliated with seats.aero?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "No. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any loyalty program. Its data comes from seats.aero."
+                  "text": "No. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty program. Its data comes from seats.aero."
                 }
               },
               {
@@ -90,14 +90,6 @@
                 "acceptedAnswer": {
                   "@type": "Answer",
                   "text": "The 26 programs seats.aero lists, where seats.aero monitors the route. An empty result means seats.aero has no cached availability for that route and day, which can also mean seats.aero does not monitor the route."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Do I need an AI key?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "No. Search needs no AI key. Ask, the optional AI feature, is in testing and is not part of the App Store version 1.0."
                 }
               },
               {
@@ -144,7 +136,9 @@
       run it. "Ask" names only the AI feature; searching is "type". hreflang: this page (en and x-default) and
       /ios/zh-hans/, its Chinese version (zh-Hans). Since 2026-10-07 (build 4, release plan step 22) the page says
       that without a seats.aero account the app shows sample data only (sample_mode), and that Ask is not part of the
-      App Store version (ask); "Pro key" is gone from its headlines and rows.
+      App Store version (ask); "Pro key" is gone from its headlines and rows. Since 2026-10-21 the page says nothing
+      about Ask: the question "Do I need an AI key?" is gone, here and in the JSON-LD; the non-affiliation sentences
+      name no Anthropic (registry claim affiliation); and the row "No key of its own" is "No shared account".
     -->
     <link rel="stylesheet" href="../styles.css" />
   </head>
@@ -266,8 +260,8 @@
 
         <h3>Is AwardGrid affiliated with seats.aero?</h3>
         <p>
-          No. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, Anthropic, any airline, or any
-          loyalty program. Its data comes from seats.aero.
+          No. AwardGrid is not affiliated with, endorsed by, or sponsored by seats.aero, any airline, or any loyalty
+          program. Its data comes from seats.aero.
         </p>
 
         <h3>Will it alert me when award seats open up?</h3>
@@ -286,12 +280,6 @@
         <p>
           The 26 programs seats.aero lists, where seats.aero monitors the route. An empty result means seats.aero has no
           cached availability for that route and day, which can also mean seats.aero does not monitor the route.
-        </p>
-
-        <h3>Do I need an AI key?</h3>
-        <p>
-          No. Search needs no AI key. Ask, the optional AI feature, is in testing and is not part of the App Store
-          version 1.0.
         </p>
 
         <h3>Can I search in Chinese?</h3>
@@ -339,7 +327,7 @@
                 </td>
               </tr>
               <tr>
-                <th scope="row">No key of its own</th>
+                <th scope="row">No shared account</th>
                 <td>
                   Without your own seats.aero account, AwardGrid shows sample data only. It cannot
                   search on someone else's behalf, and nobody can search on yours.
@@ -387,7 +375,7 @@
         <a href="../privacy/">Privacy policy</a> · <a href="../support/">Support</a> ·
         <a href="./zh-hans/" hreflang="zh-Hans" lang="zh-Hans">简体中文</a> ·
         Data: <a href="https://seats.aero">seats.aero</a>. AwardGrid is not affiliated with, endorsed by, or sponsored
-        by seats.aero, Anthropic, any airline, or any loyalty program. © 2026 Curastone CORP.
+        by seats.aero, any airline, or any loyalty program. © 2026 Curastone CORP.
       </p>
     </footer>
   </body>

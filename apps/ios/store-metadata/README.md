@@ -13,10 +13,16 @@ was internal TestFlight only. The 2026-10-12 ASC snapshot has version 1.0 with b
 2026-10-08 17:12 PT, with **Manual** release. Its exact review status is recorded in
 `docs/release/IOS_1.0_RELEASE.md`.
 
-Build 7 preparation changes only `keywords.txt` here: it adopts the existing `next/en-US` keywords, which were
+Build 7 preparation changed only `keywords.txt` here: it adopts the existing `next/en-US` keywords, which were
 written for the same name and subtitle and remove repeated words. This local edit is not a claim that the saved ASC
 keyword field has already changed. The Build 7 execution owner records the saved field readback in
-`docs/release/IOS_1.0_BUILD7.md`. Name, subtitle, description, promotional text and URLs remain as before.
+`docs/release/IOS_1.0_BUILD7.md`. Name, subtitle, promotional text and URLs remain as before.
+
+On 2026-10-21 `description.txt` changed here too, in its third paragraph only: "(the provider decides which accounts
+have it; AwardGrid sells nothing)" replaces "(part of the provider's Pro plan, which AwardGrid does not sell)", as
+in `next/` (and in `next/zh-Hans/`'s Chinese). This is also a local edit: the description saved in App Store Connect
+for version 1.0 keeps the earlier paragraph until the description is next saved there, and that save is recorded in
+the release documents like the keyword readback.
 
 - **No listing text names the data provider (since 2026-10-08).** Per the data provider's trademark guidance, the
   name seats.aero is in no App Store listing text: not the name, subtitle or keywords (Guideline 2.3.7 already kept
@@ -28,8 +34,9 @@ keyword field has already changed. The Build 7 execution owner records the saved
   with Seats").
 - Since 2026-10-07 (plan step 47F.5) the description is for the build that connects through the provider's own
   sign-in (Login with Seats.aero in the app), the only connection the App Store build has: it says "with the
-  provider's own sign-in" and "AwardGrid has no in-app purchases" after the one neutral sentence about the provider's
-  Pro plan (decision D6, in its unnamed form since 2026-10-08), and its privacy paragraph says that AwardGrid never
+  provider's own sign-in" and "AwardGrid has no in-app purchases" after the one neutral sentence about API access
+  (decision D6, in its unnamed form since 2026-10-08; since 2026-10-21 it says the provider decides which accounts
+  have it, where it named the provider's Pro plan), and its privacy paragraph says that AwardGrid never
   sees the password to the provider account, that the sign-in tokens stay in the Keychain, that searches go directly
   to the provider, and that the token service at awardgrid.dowhiz.com stores nothing. Build 4 connects with a pasted
   key and is an internal TestFlight build only: these texts are not for it. The build they go with is the next one

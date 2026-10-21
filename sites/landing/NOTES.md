@@ -107,8 +107,8 @@ the visible questions, never the JSON-LD.
 - The three "How it works" articles (the web app's front-door copy) are gone. Their facts are in "What you need",
   the questions and the table; their "Bilingual" article said "Ask in Chinese or English", and Ask is the name of
   the AI feature, so searching is "type" everywhere (`docs/COPY.md`, "The product's name").
-- "How the table works" links to `/ios/award-grid/`; the footer links the Chinese version and names Anthropic in the
-  affiliation sentence, as the other pages do.
+- "How the table works" links to `/ios/award-grid/`; the footer links the Chinese version and, until 2026-10-21, named
+  Anthropic in the affiliation sentence, as the other pages did.
 - The "What it does not do" table turns the front door's one sentence (`home.limits.body`) into a table, longer
   rather than shorter, after Restful's page (docs/PIVOT.md §4; DECISIONS.md, same entry). Its rows are kept as they
   were, the "No accounts, no analytics in the app" row word for word as the owner wrote it (PR #104); "No round trips"
@@ -136,6 +136,11 @@ the visible questions, never the JSON-LD.
   account?" (ten answers now) and answer "Do I need an AI key?" with Ask not being part of the App Store version 1.0,
   and the kept rows "No airline sites" and "No key of its own" and the status paragraph no longer speak of Ask or of
   a Pro key.
+- 2026-10-21: the App Store version has no Ask, so the page no longer speaks of it. "Do I need an AI key?" is gone, on
+  the page and in the FAQPage JSON-LD (nine answers now; on /ios/zh-hans/ 需要 AI 密钥吗？ is gone too), the
+  affiliation answer and the footer name no Anthropic (the affiliation claim), and the row "No key of its own" is
+  "No shared account". `growth/geo/accuracy-answer.md` changes the same way, so the questions and answers are
+  still its own, word for word and in the same order.
 
 ### `ios/award-grid/index.html`: how the table works
 
