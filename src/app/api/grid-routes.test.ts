@@ -90,6 +90,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   delete process.env.MASTER_KEY;
+  delete process.env.SEATS_OAUTH_WEB;
   resetMasterKeyCache();
 });
 
@@ -237,6 +238,26 @@ describe("GET /api/trips/[id]", () => {
     expect(body.api_calls_used).toBe(1);
     expect(body.trips.length).toBeGreaterThan(0);
     expect(fetchStub.calls).toHaveLength(1);
+  });
+});
+
+describe("SEATS_OAUTH_WEB=off (src/lib/seats-oauth/pause.ts)", () => {
+  const PAUSED = { error: "no_key", provider: "seats_aero", paused: true };
+  const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
+
+  it("search, Get Trips and export answer 409 no_key { paused } for a connected account; nothing reaches seats.aero", async () => {
+    // A grid searched while the switch was on: its rows are cached and fresh.
+    expect((await find(post("/api/find", { query: QUERY }, aliceToken))).status).toBe(200);
+    const before = fetchStub.calls.length;
+    process.env.SEATS_OAUTH_WEB = "off";
+    const found = await find(post("/api/find", { query: QUERY }, aliceToken));
+    expect([found.status, await found.json()]).toEqual([409, PAUSED]);
+    const id = "2PPrELk9WcfJaNREWEPXypvhXAD";
+    const trip = await trips(get(`/api/trips/${id}?cabin=J`, aliceToken), ctx(id));
+    expect([trip.status, await trip.json()]).toEqual([409, PAUSED]);
+    const csv = await exportCsv(post("/api/export", { query: QUERY }, aliceToken));
+    expect([csv.status, await csv.json()]).toEqual([409, PAUSED]);
+    expect(fetchStub.calls).toHaveLength(before);
   });
 });
 

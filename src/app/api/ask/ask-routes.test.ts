@@ -82,6 +82,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   delete process.env.MASTER_KEY;
+  delete process.env.SEATS_OAUTH_WEB;
   resetMasterKeyCache();
 });
 
@@ -98,6 +99,15 @@ describe("POST /api/ask", () => {
     expect(res.status).toBe(409);
     expect(res.headers.get("content-type")).toContain("application/json");
     expect(await res.json()).toEqual({ error: "no_key", provider: "seats_aero" });
+    expect(script.calls).toHaveLength(0);
+  });
+
+  it("SEATS_OAUTH_WEB=off: 409 no_key { paused } even for a connected account; no session, no seats.aero access handed out", async () => {
+    process.env.SEATS_OAUTH_WEB = "off";
+    const res = await POST(post({ prompt: "hi" }, aliceToken));
+    expect(res.status).toBe(409);
+    expect(res.headers.get("content-type")).toContain("application/json");
+    expect(await res.json()).toEqual({ error: "no_key", provider: "seats_aero", paused: true });
     expect(script.calls).toHaveLength(0);
   });
 

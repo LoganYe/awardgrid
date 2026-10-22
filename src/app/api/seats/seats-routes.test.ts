@@ -68,6 +68,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env.MASTER_KEY;
   delete process.env.SEATS_OAUTH_CLIENT_ID;
+  delete process.env.SEATS_OAUTH_WEB;
   resetMasterKeyCache();
 });
 
@@ -147,6 +148,39 @@ describe("GET /api/seats/oauth/callback", () => {
     const res = await callback(req(`/api/seats/oauth/callback?code=c&state=${state}`));
     expect([res.status, res.headers.get("location")]).toEqual([303, "/login"]);
     expect(calls).toEqual([]);
+  });
+});
+
+describe("SEATS_OAUTH_WEB=off (src/lib/seats-oauth/pause.ts)", () => {
+  it("Connect answers 503 paused and records no sign-in", async () => {
+    process.env.SEATS_OAUTH_WEB = "off";
+    const res = await connect(req("/api/seats/connect", { method: "POST", token: aliceToken, body: {} }));
+    expect([res.status, await res.json()]).toEqual([503, { error: "paused" }]);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(db.select().from(seatsOauthStates).all()).toEqual([]);
+    // The session and body checks still come first.
+    expect((await connect(req("/api/seats/connect", { method: "POST", body: {} }))).status).toBe(401);
+  });
+
+  it("a sign-in coming back is never exchanged: Settings says connecting is paused, signed in or not", async () => {
+    const state = await startConnect();
+    const calls = tokenService();
+    process.env.SEATS_OAUTH_WEB = "off";
+    for (const token of [aliceToken, undefined]) {
+      const res = await callback(req(`/api/seats/oauth/callback?code=the-code&state=${state}`, { token }));
+      expect([res.status, res.headers.get("location")]).toEqual([303, "/settings?seats=paused#seats"]);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+    }
+    expect(calls).toEqual([]);
+    expect(isSeatsConnected(db, "alice")).toBe(false);
+  });
+
+  it("Disconnect still works (a connection the purge has not reached yet)", async () => {
+    connectForTests(db, "alice", { masterKey: MASTER });
+    process.env.SEATS_OAUTH_WEB = "off";
+    expect((await disconnect(req("/api/seats/connection", { method: "DELETE", token: aliceToken }))).status).toBe(204);
+    expect(isSeatsConnected(db, "alice")).toBe(false);
   });
 });
 

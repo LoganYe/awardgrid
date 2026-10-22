@@ -10,7 +10,9 @@
  *   TELEGRAM_BOT_TOKEN unset → MockTransport ("mock transport" is logged; no poller).
  *
  * Env: MASTER_KEY (required — fails fast, value never logged), DATABASE_PATH, APP_URL,
- * TELEGRAM_BOT_TOKEN, AWARDGRID_DATA_DIR (mock JSONL sink), TELEGRAM_API_BASE (tests/dev).
+ * TELEGRAM_BOT_TOKEN, AWARDGRID_DATA_DIR (mock JSONL sink), TELEGRAM_API_BASE (tests/dev),
+ * SEATS_OAUTH_WEB (=off: Login with Seats.aero is paused, src/lib/seats-oauth/pause.ts — no standing query runs, and
+ * at start and on every tick every account's sign-in tokens and every seats.aero result are deleted instead).
  *
  * Everything is injected through `WorkerIo` so a test can start the worker over an in-memory
  * database with a fake clock, a fake fetch and a fake scheduler. `worker.ts` is the thin
@@ -21,6 +23,7 @@
  */
 import nodeCron, { type ScheduledTask, type TaskOptions } from "node-cron";
 import { openDb, type Db } from "@/lib/db/client";
+import { checkpointAfterPurge, purgeForPause, purgedAnything, seatsOAuthWebSetting } from "@/lib/seats-oauth/pause";
 import { sweepSeatsData } from "@/lib/seats-oauth/retention";
 import { parseMasterKey } from "@/lib/crypto/aes";
 import { createTransportFromEnv, runTelegramLinkPoller, TelegramTransport, type PollerEvent, type Transport } from "@/lib/notify";
@@ -33,7 +36,7 @@ export const MASTER_TICK_NAME = "awardgrid-tick";
 export const DEFAULT_APP_URL = "http://localhost:3000";
 
 export type WorkerEnv = Partial<
-  Record<"TELEGRAM_BOT_TOKEN" | "APP_URL" | "DATABASE_PATH" | "MASTER_KEY" | "AWARDGRID_DATA_DIR" | "TELEGRAM_API_BASE", string>
+  Record<"TELEGRAM_BOT_TOKEN" | "APP_URL" | "DATABASE_PATH" | "MASTER_KEY" | "AWARDGRID_DATA_DIR" | "TELEGRAM_API_BASE" | "SEATS_OAUTH_WEB", string>
 >;
 
 export type WorkerLog = (event: string, fields?: SchedulerLogFields) => void;
@@ -150,6 +153,31 @@ export async function startWorker(io: WorkerIo): Promise<WorkerHandle> {
     }
   };
 
+  // Login with Seats.aero paused (src/lib/seats-oauth/pause.ts): every account's tokens and every seats.aero result go,
+  // now and on every tick, and no standing query runs. A value the switch does not know pauses too (`unknown_value`).
+  // Counts only.
+  const setting = seatsOAuthWebSetting({ SEATS_OAUTH_WEB: env.SEATS_OAUTH_WEB });
+  const paused = setting !== "on";
+  const purgeForPaused = () => {
+    try {
+      const purged = purgeForPause(db, now());
+      if (!purgedAnything(purged)) return;
+      log("worker.seats_paused_purge", { ...purged });
+    } catch (err) {
+      log("worker.seats_paused_purge_failed", { error: err instanceof Error ? err.name : typeof err });
+      return;
+    }
+    try {
+      checkpointAfterPurge(db);
+    } catch (err) {
+      log("worker.seats_paused_checkpoint_failed", { error: err instanceof Error ? err.name : typeof err });
+    }
+  };
+  if (paused) {
+    log("worker.seats_paused", setting === "unknown" ? { unknown_value: true } : {});
+    purgeForPaused();
+  }
+
   // Seats.aero results older than 24 hours, for every account (src/lib/seats-oauth/retention.ts). Counts only.
   const sweepRetention = () => {
     try {
@@ -170,6 +198,13 @@ export async function startWorker(io: WorkerIo): Promise<WorkerHandle> {
       return inFlight;
     }
     if (stopping) return Promise.resolve(null);
+    if (paused) {
+      // Nothing is fetched while the sign-in is paused; anything that arrived meanwhile goes again.
+      purgeForPaused();
+      log("worker.tick_skipped", { reason: "seats_paused" });
+      beat(true);
+      return Promise.resolve(null);
+    }
     inFlight = (async () => {
       try {
         // Short-term caching first: what is 24 hours old leaves the database before anything reads it.

@@ -16,8 +16,9 @@ import type { DbConn } from "@/lib/auth/clock";
 import { getMasterKey } from "@/lib/keys";
 import { type TokenBroker, createTokenBroker } from "./broker";
 import { type SeatsOAuthConfig, seatsOAuthConfigFromEnv } from "./config";
+import { seatsOAuthPaused } from "./pause";
 import { purgeSeatsDataForUser } from "./retention";
-import { WEB_STATE_RE, consumeState } from "./state";
+import { WEB_STATE_RE, clearPendingStates, consumeState } from "./state";
 import { isSeatsConnected, saveConnection } from "./store";
 
 /** An authorization code: URL-safe characters only, bounded (the token service's CODE_RE). */
@@ -32,9 +33,10 @@ export const CODE_RE = /^[A-Za-z0-9._~+/=:-]{1,512}$/;
  *   - rejected: seats.aero refused the code.
  *   - unavailable: the token service or seats.aero could not finish it now.
  *   - not_configured: this server has no seats.aero client ID.
+ *   - paused: connecting is paused on this server (./pause.ts); nothing was exchanged.
  *   - failed: anything else (a malformed answer, MASTER_KEY missing, the tokens not stored).
  */
-export const CONNECT_OUTCOMES = ["connected", "denied", "mismatch", "expired", "rejected", "unavailable", "not_configured", "failed"] as const;
+export const CONNECT_OUTCOMES = ["connected", "denied", "mismatch", "expired", "rejected", "unavailable", "not_configured", "paused", "failed"] as const;
 export type ConnectOutcome = (typeof CONNECT_OUTCOMES)[number];
 
 export function isConnectOutcome(value: unknown): value is ConnectOutcome {
@@ -50,8 +52,15 @@ export interface FinishConnectOptions {
   config?: SeatsOAuthConfig | null;
 }
 
-/** Steps 3 above, for the account signed in on the callback request. */
+/**
+ * Steps 3 above, for the account signed in on the callback request. While connecting is paused (./pause.ts) nothing is
+ * exchanged and the account's sign-ins under way are forgotten.
+ */
 export async function finishConnect(db: DbConn, userId: string, params: URLSearchParams, opts: FinishConnectOptions = {}): Promise<ConnectOutcome> {
+  if (seatsOAuthPaused()) {
+    clearPendingStates(db, userId);
+    return "paused";
+  }
   const now = opts.now ?? (() => new Date());
   const config = opts.config === undefined ? seatsOAuthConfigFromEnv() : opts.config;
   const state = params.get("state") ?? "";
